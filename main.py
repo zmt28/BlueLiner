@@ -3,18 +3,19 @@ from fastapi import FastAPI
 from fastapi.params import Body
 import requests
 import httpx
+import json
+
 
 app = FastAPI()
-
 
 
 @app.get("/get_MDstreams")
 async def get_MDstreams():
     api_url = 'https://waterservices.usgs.gov/nwis/iv/'
     format = 'json'
-    stateCd = 'MD'
+    stateCd = 'md'
     siteStatus = 'active'
-    siteType = ['ST', 'ST-CA', 'ST-DCH', 'ST-TS']
+    siteType = ['ST', 'FA-WWTP', 'SP', 'ST-TS']
     
     params = {
         'format': format,
@@ -26,4 +27,7 @@ async def get_MDstreams():
 
     async with httpx.AsyncClient() as client:
         response = await client.get(api_url, params=params)
+        data = response.json()
+        print(json.dumps(data, indent=4))
         return response.json()
+    
