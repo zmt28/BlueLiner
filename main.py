@@ -30,4 +30,3 @@ async def get_MDstreams():
         data = response.json()
         print(json.dumps(data, indent=4))
         return response.json()
-    

@@ -5,6 +5,60 @@ import asyncio
 import branca
 from datetime import datetime
 from collections import defaultdict
+import geopandas
+
+linear_streams = ["https://www2.census.gov/geo/tiger/TIGER2024/LINEARWATER/tl_2024_24001_linearwater.zip",
+                     "https://www2.census.gov/geo/tiger/TIGER2024/LINEARWATER/tl_2024_24003_linearwater.zip",
+                     "https://www2.census.gov/geo/tiger/TIGER2024/LINEARWATER/tl_2024_24005_linearwater.zip",
+                     "https://www2.census.gov/geo/tiger/TIGER2024/LINEARWATER/tl_2024_24009_linearwater.zip",
+                     "https://www2.census.gov/geo/tiger/TIGER2024/LINEARWATER/tl_2024_24011_linearwater.zip",
+                     "https://www2.census.gov/geo/tiger/TIGER2024/LINEARWATER/tl_2024_24013_linearwater.zip",
+                     "https://www2.census.gov/geo/tiger/TIGER2024/LINEARWATER/tl_2024_24015_linearwater.zip",
+                     "https://www2.census.gov/geo/tiger/TIGER2024/LINEARWATER/tl_2024_24017_linearwater.zip",
+                     "https://www2.census.gov/geo/tiger/TIGER2024/LINEARWATER/tl_2024_24019_linearwater.zip",
+                     "https://www2.census.gov/geo/tiger/TIGER2024/LINEARWATER/tl_2024_24021_linearwater.zip",
+                     "https://www2.census.gov/geo/tiger/TIGER2024/LINEARWATER/tl_2024_24023_linearwater.zip",
+                     "https://www2.census.gov/geo/tiger/TIGER2024/LINEARWATER/tl_2024_24025_linearwater.zip",
+                     "https://www2.census.gov/geo/tiger/TIGER2024/LINEARWATER/tl_2024_24027_linearwater.zip",
+                     "https://www2.census.gov/geo/tiger/TIGER2024/LINEARWATER/tl_2024_24029_linearwater.zip",
+                     "https://www2.census.gov/geo/tiger/TIGER2024/LINEARWATER/tl_2024_24031_linearwater.zip",
+                     "https://www2.census.gov/geo/tiger/TIGER2024/LINEARWATER/tl_2024_24033_linearwater.zip",
+                     "https://www2.census.gov/geo/tiger/TIGER2024/LINEARWATER/tl_2024_24035_linearwater.zip",
+                     "https://www2.census.gov/geo/tiger/TIGER2024/LINEARWATER/tl_2024_24037_linearwater.zip",
+                     "https://www2.census.gov/geo/tiger/TIGER2024/LINEARWATER/tl_2024_24039_linearwater.zip",
+                     "https://www2.census.gov/geo/tiger/TIGER2024/LINEARWATER/tl_2024_24041_linearwater.zip",
+                     "https://www2.census.gov/geo/tiger/TIGER2024/LINEARWATER/tl_2024_24043_linearwater.zip",
+                     "https://www2.census.gov/geo/tiger/TIGER2024/LINEARWATER/tl_2024_24045_linearwater.zip",
+                     "https://www2.census.gov/geo/tiger/TIGER2024/LINEARWATER/tl_2024_24047_linearwater.zip",
+                     "https://www2.census.gov/geo/tiger/TIGER2024/LINEARWATER/tl_2024_24510_linearwater.zip"
+                     ]
+
+area_water = ["https://www2.census.gov/geo/tiger/TIGER2024/AREAWATER/tl_2024_24001_areawater.zip",
+                     "https://www2.census.gov/geo/tiger/TIGER2024/AREAWATER/tl_2024_24003_areawater.zip",
+                     "https://www2.census.gov/geo/tiger/TIGER2024/AREAWATER/tl_2024_24005_areawater.zip",
+                     "https://www2.census.gov/geo/tiger/TIGER2024/AREAWATER/tl_2024_24009_areawater.zip",
+                     "https://www2.census.gov/geo/tiger/TIGER2024/AREAWATER/tl_2024_24011_areawater.zip",
+                     "https://www2.census.gov/geo/tiger/TIGER2024/AREAWATER/tl_2024_24013_areawater.zip",
+                     "https://www2.census.gov/geo/tiger/TIGER2024/AREAWATER/tl_2024_24015_areawater.zip",
+                     "https://www2.census.gov/geo/tiger/TIGER2024/AREAWATER/tl_2024_24017_areawater.zip",
+                     "https://www2.census.gov/geo/tiger/TIGER2024/AREAWATER/tl_2024_24019_areawater.zip",
+                     "https://www2.census.gov/geo/tiger/TIGER2024/AREAWATER/tl_2024_24021_areawater.zip",
+                     "https://www2.census.gov/geo/tiger/TIGER2024/AREAWATER/tl_2024_24023_areawater.zip",
+                     "https://www2.census.gov/geo/tiger/TIGER2024/AREAWATER/tl_2024_24025_areawater.zip",
+                     "https://www2.census.gov/geo/tiger/TIGER2024/AREAWATER/tl_2024_24027_areawater.zip",
+                     "https://www2.census.gov/geo/tiger/TIGER2024/AREAWATER/tl_2024_24029_areawater.zip",
+                     "https://www2.census.gov/geo/tiger/TIGER2024/AREAWATER/tl_2024_24031_areawater.zip",
+                     "https://www2.census.gov/geo/tiger/TIGER2024/AREAWATER/tl_2024_24033_areawater.zip",
+                     "https://www2.census.gov/geo/tiger/TIGER2024/AREAWATER/tl_2024_24035_areawater.zip",
+                     "https://www2.census.gov/geo/tiger/TIGER2024/AREAWATER/tl_2024_24037_areawater.zip",
+                     "https://www2.census.gov/geo/tiger/TIGER2024/AREAWATER/tl_2024_24039_areawater.zip",
+                     "https://www2.census.gov/geo/tiger/TIGER2024/AREAWATER/tl_2024_24041_areawater.zip",
+                     "https://www2.census.gov/geo/tiger/TIGER2024/AREAWATER/tl_2024_24043_areawater.zip",
+                     "https://www2.census.gov/geo/tiger/TIGER2024/AREAWATER/tl_2024_24045_areawater.zip",
+                     "https://www2.census.gov/geo/tiger/TIGER2024/AREAWATER/tl_2024_24047_areawater.zip",
+                     "https://www2.census.gov/geo/tiger/TIGER2024/AREAWATER/tl_2024_24510_areawater.zip"
+                     ]
+
 
 async def fetch_MDstreams_data():
     api_url = 'http://127.0.0.1:8000/get_MDstreams'
@@ -17,7 +71,6 @@ async def create_map():
     data = await fetch_MDstreams_data()
 
     time_series = data.get("value", {}).get("timeSeries",[])
-    print(time_series)
 
     m = folium.Map(
         location=[44.967243, -103.771556], 
@@ -25,6 +78,27 @@ async def create_map():
         zoom_start=4,
         max_bounds=True,
     )
+ #I LEFT OFF HERE - ADDING TOOLTIP TO GEO DATA!!!!!   
+    for file in linear_streams:
+        county_streams = geopandas.read_file(file)
+        linear_streams_tooltip = folium.GeoJsonTooltip(
+            fields=["FULLNAME"],
+            aliases=["Name:"],
+            localize=True,
+            labels=True,
+        )
+        folium.GeoJson(county_streams,tooltip=linear_streams_tooltip,).add_to(m)
+ #I LEFT OFF HERE - ADDING TOOLTIP TO GEO DATA!!!!!   
+    for file in area_water:
+        county_area_water = geopandas.read_file(file)
+        country_water_tooltip = folium.GeoJsonTooltip(
+            fields=["FULLNAME"],
+            aliases=["Name:"],
+            localize=True,
+            labels=True,
+        )
+        folium.GeoJson(county_area_water, tooltip=country_water_tooltip).add_to(m)
+
     sites = defaultdict(list)
     for series in time_series:
         source_info = series.get("sourceInfo", {})
