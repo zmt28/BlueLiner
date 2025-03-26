@@ -59,7 +59,6 @@ area_water = ["https://www2.census.gov/geo/tiger/TIGER2024/AREAWATER/tl_2024_240
                      "https://www2.census.gov/geo/tiger/TIGER2024/AREAWATER/tl_2024_24510_areawater.zip"
                      ]
 
-
 async def fetch_MDstreams_data():
     api_url = 'http://127.0.0.1:8000/get_MDstreams'
     async with httpx.AsyncClient() as client:
@@ -78,7 +77,7 @@ async def create_map():
         zoom_start=4,
         max_bounds=True,
     )
- #I LEFT OFF HERE - ADDING TOOLTIP TO GEO DATA!!!!!   
+
     for file in linear_streams:
         county_streams = geopandas.read_file(file)
         linear_streams_tooltip = folium.GeoJsonTooltip(
@@ -88,7 +87,7 @@ async def create_map():
             labels=True,
         )
         folium.GeoJson(county_streams,tooltip=linear_streams_tooltip,).add_to(m)
- #I LEFT OFF HERE - ADDING TOOLTIP TO GEO DATA!!!!!   
+
     for file in area_water:
         county_area_water = geopandas.read_file(file)
         country_water_tooltip = folium.GeoJsonTooltip(
