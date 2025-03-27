@@ -2,16 +2,8 @@ from typing import Union
 from fastapi import FastAPI
 from fastapi.params import Body
 from fastapi.responses import FileResponse
-from fastapi.responses import FileResponse
 import requests
 import httpx
-import json
-import folium
-from datetime import datetime
-from collections import defaultdict
-import geopandas
-import branca
-
 import json
 import folium
 from datetime import datetime
@@ -28,9 +20,7 @@ async def get_MDstreams():
     api_url = 'https://waterservices.usgs.gov/nwis/iv/'
     format = 'json'
     stateCd = 'md'
-    stateCd = 'md'
     siteStatus = 'active'
-    siteType = ['ST', 'FA-WWTP', 'SP', 'ST-TS']
     siteType = ['ST', 'FA-WWTP', 'SP', 'ST-TS']
     
     params = {
@@ -39,12 +29,9 @@ async def get_MDstreams():
         'siteStatus': siteStatus,
         'siteType': ','.join(siteType)
     }      
-    }      
 
     async with httpx.AsyncClient() as client:
         response = await client.get(api_url, params=params)
-        data = response.json()
-        print(json.dumps(data, indent=4))
         data = response.json()
         print(json.dumps(data, indent=4))
         return response.json()
@@ -201,6 +188,3 @@ async def create_map():
     m.save(map_file_path)
 
     return FileResponse(map_file_path)
-
-
-#adding as test of git
