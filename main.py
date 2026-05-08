@@ -1,6 +1,6 @@
 from typing import Optional
 from fastapi import FastAPI, Query
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, RedirectResponse
 import httpx
 import json
 import folium
@@ -13,6 +13,11 @@ from states import STATES, US_CENTER, get_linear_urls, get_area_urls
 
 
 app = FastAPI()
+
+
+@app.get("/")
+async def root():
+    return RedirectResponse(url="/map?state=MD")
 
 
 def score_conditions(variables: list[dict]) -> dict:
@@ -130,7 +135,7 @@ async def get_streams(state: str = Query(default="MD", description="Two-letter s
 
 
 @app.get("/map")
-async def create_map(state: Optional[str] = Query(default=None, description="Two-letter state code (MD, VA, WV). Omit for all states.")):
+async def create_map(state: str = Query(default="MD", description="Two-letter state code (MD, VA, WV). Use 'all' for all states.")):
     """
     Generates and returns an interactive HTML map with waterway geometries
     and live sensor markers for the specified state (or all supported states).
@@ -143,13 +148,13 @@ async def create_map(state: Optional[str] = Query(default=None, description="Two
 
     Returns an HTML file containing the interactive map.
     """
-    if state:
-        state = state.upper()
-        if state not in STATES:
-            return {"error": f"Unsupported state: {state}. Supported: {', '.join(STATES.keys())}"}
+    state = state.upper()
+    if state == "ALL":
+        states_to_load = list(STATES.keys())
+    elif state in STATES:
         states_to_load = [state]
     else:
-        states_to_load = list(STATES.keys())
+        return {"error": f"Unsupported state: {state}. Supported: {', '.join(STATES.keys())}, or 'all'"}
 
     # Set map center based on whether we're showing one state or all
     if len(states_to_load) == 1:
