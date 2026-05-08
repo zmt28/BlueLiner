@@ -2,6 +2,8 @@
 
 A real-time stream condition monitor for fly fishermen.
 
+![BlueLines Demo](bluelines-demo.gif)
+
 ## The Problem
 
 Fly fishing is deeply condition-dependent. Flow rate, water temperature, and discharge
@@ -11,15 +13,22 @@ fragmented, slow, and not designed for quick decision-making. BlueLines consolid
 live sensor data from USGS monitoring stations into a single, fast, map-based view
 so you can check conditions before you drive to the water.
 
-<!-- TODO: add screenshot -->
+## Features
+
+- **Color-coded condition markers** -- green (good), orange (fair), red (poor), gray (no data) at a glance
+- **Historical flow context** -- current discharge compared to the historical median for today's date, powered by the USGS Statistics API
+- **Trout stream overlay** -- designated trout water from Virginia DWR and Maryland DNR fisheries data, with spatial tagging of nearby USGS gauges
+- **Multi-state support** -- Maryland, Virginia, and West Virginia with a one-click state selector
+- **Styled popup cards** -- condition badges, flow trends, data tables, and direct links to USGS site pages
 
 ## Tech Stack
 
 - **FastAPI** -- async API backend
-- **USGS National Water Information System API** -- real-time stream sensor data
+- **USGS NWIS API** -- real-time stream sensor data (instantaneous values + daily statistics)
 - **U.S. Census TIGER/Line shapefiles** -- geospatial waterway boundaries
-- **GeoPandas** -- geospatial data processing
-- **Folium + Branca** -- interactive map rendering
+- **State fisheries ArcGIS REST services** -- trout stream designations (VA DWR, MD DNR)
+- **GeoPandas** -- geospatial data processing and spatial joins
+- **Folium + Branca** -- interactive map rendering with layer controls
 - **httpx** -- async HTTP client
 
 ## Built with AI
@@ -38,43 +47,34 @@ uvicorn main:app --reload
 
 Then open: `http://localhost:8000`
 
-## API Endpoints
+## How Scoring Works
 
-- `GET /` -- redirects to the Maryland map
-- `GET /streams?state=MD` -- fetches live stream data from USGS NWIS for all active
-  monitoring sites (stream gauges, springs, wastewater treatment plants) in the
-  specified state. Supports MD, VA, and WV.
-- `GET /map?state=MD` -- generates and returns an interactive HTML map with waterway
-  geometries, live sensor markers, and fishing condition scores.
-  Use `state=all` to load all supported states.
-
-## Fishing Conditions Scoring
-
-Each monitoring station is scored based on current readings and displayed with
-color-coded markers:
-
-- **Green** -- good conditions. Water temperature and flow are in the sweet spot
-  for active fish.
-- **Orange** -- fair conditions. Temperature or flow is outside the ideal range
-  but still fishable.
-- **Red** -- poor conditions. Water is too warm, too cold, or flow is too high/low
-  for a productive trip.
-- **Gray** -- insufficient data to score this station.
-
-### How Scoring Works
+Each monitoring station is scored based on current readings:
 
 **Water temperature** (optimized for trout):
 - Green: 48-65 degrees F
-- Yellow: 45-48 or 65-68 degrees F
+- Orange: 45-48 or 65-68 degrees F
 - Red: above 68 or below 40 degrees F
 
 **Flow rate** (discharge in cubic feet per second):
-- Scored relative to each site's typical range using available data.
-  Extremely high or low flows are flagged.
+- Scored relative to the site's historical median for today's date
+- Good: 0.5x to 2x of median
+- Fair: 0.25x-0.5x or 2x-3x of median
+- Poor: below 0.25x or above 3x of median
+- Falls back to absolute thresholds when no historical data is available
+
+## API Endpoints
+
+- `GET /` -- redirects to the Maryland map
+- `GET /streams?state=MD` -- live stream data from USGS NWIS for the specified state
+- `GET /map?state=MD` -- full application with interactive map, popups, and legend
+- `GET /map/raw?state=MD` -- raw Folium map HTML (used by the app shell iframe)
+
+Supported states: `MD`, `VA`, `WV`, or `all`
 
 ## Roadmap
 
 - Mobile-responsive layout for on-the-water use
-- Species filter (show only trout streams, bass streams, etc.)
-- Historical conditions charting per station
-- User-configurable alert thresholds
+- "Best bet" recommendation card highlighting the top-scoring station
+- Loading skeleton for perceived performance during data fetch
+- URL-shareable map state (lat/lon/zoom in the URL)
