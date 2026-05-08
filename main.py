@@ -6,6 +6,7 @@ import folium
 from datetime import datetime
 from collections import defaultdict
 import geopandas
+import pandas as pd
 import branca
 import asyncio
 
@@ -14,19 +15,34 @@ from trout import load_trout_streams, is_near_trout_stream
 
 
 # Module-level caches populated at startup
-_shapefile_cache: dict[str, list[geopandas.GeoDataFrame]] = {}
+_shapefile_cache: dict[str, geopandas.GeoDataFrame] = {}
 _stats_cache: dict[str, dict] = {}
 
 
-def _load_shapefiles_for_state(state_code: str) -> list[geopandas.GeoDataFrame]:
-    """Load and cache all TIGER shapefiles for a state. Called once at startup."""
+def _load_shapefiles_for_state(state_code: str) -> geopandas.GeoDataFrame:
+    """Load TIGER shapefiles for a state, merge into one GeoDataFrame, and simplify."""
+    urls = get_linear_urls(state_code)
+    # Only load area water for small states -- lakes/ponds add bulk but little
+    # value for stream fishing
+    if len(STATES[state_code]["fips_codes"]) < 30:
+        urls += get_area_urls(state_code)
+
     gdfs = []
-    for url in get_linear_urls(state_code) + get_area_urls(state_code):
+    for url in urls:
         try:
             gdfs.append(geopandas.read_file(url))
         except Exception:
             continue
-    return gdfs
+
+    if not gdfs:
+        return geopandas.GeoDataFrame()
+
+    merged = pd.concat(gdfs, ignore_index=True)
+    merged = merged[merged["FULLNAME"].notna() & (merged["FULLNAME"] != "")]
+    merged["geometry"] = merged["geometry"].simplify(
+        tolerance=0.001, preserve_topology=True
+    )
+    return merged
 
 
 @asynccontextmanager
@@ -40,7 +56,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(lifespan=lifespan)
 
 
-def get_cached_shapefiles(state_code: str) -> list[geopandas.GeoDataFrame]:
+def get_cached_shapefiles(state_code: str) -> geopandas.GeoDataFrame:
     if state_code not in _shapefile_cache:
         _shapefile_cache[state_code] = _load_shapefiles_for_state(state_code)
     return _shapefile_cache[state_code]
@@ -205,7 +221,8 @@ def score_conditions(variables: list[dict], historical_median: float | None = No
 # -- Popup HTML --
 
 def build_popup_html(site_name: str, variables: list[dict], conditions: dict,
-                     historical_median: float | None, on_trout: bool = False) -> str:
+                     historical_median: float | None, on_trout: bool = False,
+                     site_no: str | None = None) -> str:
     score = conditions["overall"]
     badge_color = SCORE_COLORS[score]
     badge_bg = SCORE_BG[score]
@@ -273,6 +290,7 @@ def build_popup_html(site_name: str, variables: list[dict], conditions: dict,
                     </tr>
                     {rows}
                 </table>
+                {f'<div style="padding:6px 0 2px;text-align:right"><a href="https://waterdata.usgs.gov/nwis/uv?site_no={site_no}" target="_blank" style="color:#3498db;font-size:12px;text-decoration:none">View on USGS &#x2197;</a></div>' if site_no else ""}
             </div>
         </div>
     """
@@ -294,7 +312,7 @@ def build_app_html(state: str) -> str:
     <title>BlueLines -- Stream Conditions</title>
     <style>
         * {{ margin: 0; padding: 0; box-sizing: border-box; }}
-        body {{ font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }}
+        html, body {{ font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; overflow: hidden; height: 100%; }}
         .header {{
             background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
             color: white;
@@ -304,7 +322,10 @@ def build_app_html(state: str) -> str:
             justify-content: space-between;
             box-shadow: 0 2px 8px rgba(0,0,0,0.3);
             z-index: 1000;
-            position: relative;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
         }}
         .header-left {{ display: flex; align-items: center; gap: 14px; }}
         .logo {{
@@ -331,7 +352,7 @@ def build_app_html(state: str) -> str:
         }}
         .state-select option {{ background: #1a1a2e; color: white; }}
         .map-container {{
-            position: absolute;
+            position: fixed;
             top: 56px;
             bottom: 0;
             left: 0;
@@ -478,24 +499,20 @@ async def create_map(state: str = Query(default="MD", description="Two-letter st
     trout_streams_group = folium.FeatureGroup(name="Trout Streams")
 
     for st in states_to_load:
-        gdfs = await asyncio.to_thread(get_cached_shapefiles, st)
-        for gdf in gdfs:
-            try:
-                tooltip = folium.GeoJsonTooltip(
+        gdf = await asyncio.to_thread(get_cached_shapefiles, st)
+        if not gdf.empty:
+            folium.GeoJson(
+                gdf,
+                tooltip=folium.GeoJsonTooltip(
                     fields=["FULLNAME"], aliases=[""], localize=True, labels=False,
                     style="font-size:12px;font-weight:600;color:#1a1a2e;",
-                )
-                folium.GeoJson(
-                    gdf,
-                    tooltip=tooltip,
-                    style_function=lambda x: {
-                        "color": "#4a90d9",
-                        "weight": 1.2,
-                        "opacity": 0.4,
-                    },
-                ).add_to(waterways_group)
-            except Exception:
-                continue
+                ),
+                style_function=lambda x: {
+                    "color": "#4a90d9",
+                    "weight": 1.2,
+                    "opacity": 0.4,
+                },
+            ).add_to(waterways_group)
 
         trout_gdf = await asyncio.to_thread(load_trout_streams, st)
         if trout_gdf is not None and not trout_gdf.empty:
@@ -588,7 +605,7 @@ async def create_map(state: str = Query(default="MD", description="Two-letter st
             if on_trout:
                 trout_badge = ' <span style="color:#1abc9c;font-size:11px">&#x1f41f; Trout Water</span>'
 
-            popup_html = build_popup_html(site_name, variables, conditions, historical_median, on_trout)
+            popup_html = build_popup_html(site_name, variables, conditions, historical_median, on_trout, site_no)
             iframe = branca.element.IFrame(html=popup_html, width=420, height=340)
             popup = folium.Popup(iframe, max_width=420)
 
@@ -614,7 +631,7 @@ async def create_map(state: str = Query(default="MD", description="Two-letter st
 
     waterways_group.add_to(m)
     trout_streams_group.add_to(m)
-    folium.LayerControl(collapsed=False).add_to(m)
+    folium.LayerControl(collapsed=True).add_to(m)
 
     map_html = m._repr_html_()
     return HTMLResponse(content=map_html)
