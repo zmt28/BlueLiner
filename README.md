@@ -36,16 +36,17 @@ pip install -r requirements.txt
 uvicorn main:app --reload
 ```
 
-Then open: `http://localhost:8000/map`
+Then open: `http://localhost:8000`
 
 ## API Endpoints
 
+- `GET /` -- redirects to the Maryland map
 - `GET /streams?state=MD` -- fetches live stream data from USGS NWIS for all active
   monitoring sites (stream gauges, springs, wastewater treatment plants) in the
   specified state. Supports MD, VA, and WV.
 - `GET /map?state=MD` -- generates and returns an interactive HTML map with waterway
   geometries, live sensor markers, and fishing condition scores.
-  Omit the state parameter to load all supported states.
+  Use `state=all` to load all supported states.
 
 ## Fishing Conditions Scoring
 
