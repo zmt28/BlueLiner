@@ -29,6 +29,11 @@ function monthsLabel(mm) {
   return `${MON[s - 1]}-${MON[e - 1]}`;
 }
 
+// Keep popups inside small screens.
+function popupOpts() {
+  return { maxWidth: Math.min(420, (window.innerWidth || 420) - 32) };
+}
+
 const map = L.map("map");
 L.tileLayer("https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png", {
   attribution: '&copy; OpenStreetMap contributors &copy; CARTO',
@@ -173,7 +178,7 @@ function renderGauges() {
       `<b>${esc(g.name)}</b>${tBadge}${sBadge}` +
       `<br><span style="color:${g.color}">${esc(g.label)}</span>`
     );
-    m.bindPopup(g.popup_html, { maxWidth: 420 });
+    m.bindPopup(g.popup_html, popupOpts());
     m.on("popupopen", wireTrend);
     (g.on_trout ? troutGaugesLayer : otherGaugesLayer).addLayer(m);
   }
@@ -219,7 +224,8 @@ function addStockMarker(f) {
       ? `<div class="sp-row"><a href="${esc(p.agency_url)}" target="_blank" ` +
         `rel="noopener">Stocking schedule &#x2197;</a></div>`
       : "") +
-    `</div>`
+    `</div>`,
+    popupOpts()
   );
   stockingLayer.addLayer(m);
 }
@@ -243,7 +249,8 @@ function addPinMarker(p) {
   m.bindPopup(
     `<div class="pin-popup"><div class="pin-note">${esc(p.note || "(no note)")}</div>` +
     `<div class="pin-meta">${esc(p.created_at)}</div>` +
-    `<button class="pin-del" type="button">Delete</button></div>`
+    `<button class="pin-del" type="button">Delete</button></div>`,
+    popupOpts()
   );
   m.on("popupopen", (e) => {
     const btn = e.popup.getElement().querySelector(".pin-del");
@@ -329,6 +336,25 @@ document.getElementById("state-select").onchange = (e) => {
   loadStocking(s);
 };
 
+// -- Mobile: filter sheet + collapsible legend --
+
+const controls = document.getElementById("controls");
+const filtersToggle = document.getElementById("filters-toggle");
+function setSheet(open) {
+  controls.classList.toggle("open", open);
+  filtersToggle.classList.toggle("active", open);
+  filtersToggle.setAttribute("aria-expanded", open ? "true" : "false");
+}
+filtersToggle.onclick = () => setSheet(!controls.classList.contains("open"));
+document.getElementById("controls-done").onclick = () => setSheet(false);
+
+const legend = document.getElementById("legend");
+const legendToggle = document.getElementById("legend-toggle");
+legendToggle.onclick = () => {
+  const collapsed = legend.classList.toggle("collapsed");
+  legendToggle.setAttribute("aria-expanded", collapsed ? "false" : "true");
+};
+
 // -- Init --
 
 const state = currentState();
@@ -338,3 +364,9 @@ loadGeo(state);
 loadGauges(state);
 loadStocking(state);
 loadPins();
+
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("/sw.js").catch(() => {});
+  });
+}

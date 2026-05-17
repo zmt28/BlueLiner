@@ -4,6 +4,9 @@ html, body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
     background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
     color: white;
     padding: 14px 24px;
+    padding-top: calc(14px + env(safe-area-inset-top));
+    padding-left: calc(24px + env(safe-area-inset-left));
+    padding-right: calc(24px + env(safe-area-inset-right));
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -41,9 +44,11 @@ html, body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
 .ctrl-check { display: flex; align-items: center; gap: 6px; user-select: none; }
 .ctrl-check input { cursor: pointer; }
 #drop-pin.active { background: #8e44ad; border-color: #8e44ad; }
+#controls { display: flex; align-items: center; gap: 10px; }
+#filters-toggle, #controls-done, .legend-toggle { display: none; }
 #map {
     position: fixed;
-    top: 56px;
+    top: calc(56px + env(safe-area-inset-top));
     bottom: 0;
     left: 0;
     right: 0;
@@ -143,4 +148,75 @@ html, body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
 .pin-popup .pin-del {
     border: none; border-radius: 6px; padding: 6px 10px;
     background: #fdedec; color: #c0392b; font-weight: 600; cursor: pointer;
+}
+.legend-body { display: block; }
+
+/* Fluid popups so the card never exceeds a phone screen */
+.leaflet-popup-content table { max-width: 100%; }
+@media (max-width: 700px) {
+    .leaflet-popup-content-wrapper { max-width: 90vw; }
+    .leaflet-popup-content { width: auto !important; max-width: calc(90vw - 30px); }
+}
+
+/* -- Mobile layout -- */
+@media (max-width: 700px) {
+    .header {
+        padding: 10px 14px;
+        padding-top: calc(10px + env(safe-area-inset-top));
+    }
+    .tagline { display: none; }
+    .logo { font-size: 20px; }
+    #map { top: calc(50px + env(safe-area-inset-top)); }
+
+    #filters-toggle { display: inline-block; }
+    #filters-toggle.active { background: #4fc3f7; color: #0b2233; border-color: #4fc3f7; }
+    #controls {
+        position: fixed;
+        left: 0; right: 0; bottom: 0;
+        flex-direction: column;
+        align-items: stretch;
+        gap: 10px;
+        background: rgba(20, 20, 40, 0.98);
+        backdrop-filter: blur(8px);
+        padding: 16px 16px calc(16px + env(safe-area-inset-bottom));
+        border-radius: 14px 14px 0 0;
+        box-shadow: 0 -4px 22px rgba(0,0,0,0.45);
+        transform: translateY(115%);
+        transition: transform 0.25s ease;
+        z-index: 1003;
+        max-height: 72vh;
+        overflow: auto;
+    }
+    #controls.open { transform: none; }
+    #controls .ctrl {
+        width: 100%;
+        font-size: 16px;   /* >=16px stops iOS focus zoom */
+        padding: 12px 14px;
+    }
+    #controls .ctrl-check { justify-content: space-between; }
+    #controls-done {
+        display: block;
+        background: #4fc3f7; color: #0b2233; border-color: #4fc3f7;
+        font-weight: 700;
+    }
+
+    .legend {
+        bottom: calc(12px + env(safe-area-inset-bottom));
+        left: 12px;
+        padding: 8px 10px;
+        font-size: 12px;
+    }
+    .legend-toggle {
+        display: block;
+        background: none; border: none;
+        font-weight: 700; color: #1a1a2e; font-size: 12px;
+        cursor: pointer; padding: 2px 2px;
+    }
+    .legend.collapsed .legend-body { display: none; }
+
+    .pin-form {
+        width: min(280px, calc(100vw - 24px));
+        right: 12px;
+        bottom: calc(12px + env(safe-area-inset-bottom));
+    }
 }

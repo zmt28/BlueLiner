@@ -9,6 +9,7 @@ from collections import defaultdict
 import geopandas
 import pandas as pd
 import asyncio
+import logging
 import os
 
 from states import STATES, get_linear_urls, get_area_urls
@@ -18,6 +19,8 @@ import hatches
 import stocking
 import db
 
+
+logger = logging.getLogger("bluelines")
 
 # Module-level caches populated at startup
 _shapefile_cache: dict[str, geopandas.GeoDataFrame] = {}
@@ -89,7 +92,9 @@ async def fetch_bulk_stats(site_nos: list[str]) -> None:
     url = "https://waterservices.usgs.gov/nwis/stat/"
     batch_size = 10
 
-    async with httpx.AsyncClient(timeout=60.0) as client:
+    async with httpx.AsyncClient(
+        timeout=60.0, headers={"User-Agent": USER_AGENT}
+    ) as client:
         for i in range(0, len(uncached), batch_size):
             batch = uncached[i:i + batch_size]
             params = {
@@ -355,7 +360,7 @@ def build_popup_html(site_name: str, variables: list[dict], conditions: dict,
         """
 
     return f"""
-        <div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;min-width:380px">
+        <div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;max-width:380px">
             <div style="padding:12px 14px 8px">
                 <div style="font-size:18px;font-weight:700;color:#1a1a2e;margin-bottom:6px">{site_name}</div>
                 <span style="display:inline-block;padding:3px 10px;border-radius:12px;font-size:12px;font-weight:700;
@@ -512,6 +517,16 @@ async def root():
     return RedirectResponse(url="/map?state=MD")
 
 
+@app.get("/healthz")
+async def healthz():
+    try:
+        await asyncio.to_thread(db.healthcheck)
+    except Exception as exc:
+        logger.error("healthcheck failed: %s", exc)
+        raise HTTPException(status_code=503, detail="unhealthy")
+    return {"status": "ok"}
+
+
 @app.get("/streams")
 async def get_streams(state: str = Query(default="MD", description="Two-letter state code (MD, VA, WV)")):
     """
@@ -530,15 +545,34 @@ async def get_streams(state: str = Query(default="MD", description="Two-letter s
         "siteType": "ST,FA-WWTP,SP,ST-TS",
     }
 
-    async with httpx.AsyncClient(timeout=30.0) as client:
-        response = await client.get(api_url, params=params)
-        return response.json()
+    empty = {"value": {"timeSeries": []}}
+    try:
+        async with httpx.AsyncClient(
+            timeout=30.0, headers={"User-Agent": USER_AGENT}
+        ) as client:
+            response = await client.get(api_url, params=params)
+            response.raise_for_status()
+            return response.json()
+    except Exception as exc:
+        # A public app must not 500 because USGS is slow/down/rate-limiting;
+        # callers treat an empty series as "no gauges right now".
+        logger.warning("USGS IV fetch failed for %s: %s", state, exc)
+        return empty
 
 
 @app.get("/map")
 async def map_shell():
     """Serves the static client shell; state/filters are resolved client-side."""
     return FileResponse(os.path.join(STATIC_DIR, "index.html"))
+
+
+@app.get("/sw.js")
+async def service_worker():
+    # Served from root so the service worker's scope covers the whole app
+    # (a /static/ path would only control /static/* requests).
+    return FileResponse(
+        os.path.join(STATIC_DIR, "sw.js"), media_type="application/javascript"
+    )
 
 
 @app.get("/api/gauges")

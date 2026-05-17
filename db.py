@@ -43,6 +43,12 @@ def init_db() -> None:
         )
 
 
+def healthcheck() -> bool:
+    with _connect() as conn:
+        conn.execute("SELECT 1")
+    return True
+
+
 def list_pins() -> list[dict]:
     with _connect() as conn:
         rows = conn.execute(
