@@ -34,7 +34,8 @@ so you can check conditions before you drive to the water.
 - **State fisheries ArcGIS REST services** -- trout stream designations (VA DWR, MD DNR)
 - **GeoPandas** -- geospatial data processing and spatial joins
 - **Leaflet (vendored) + vanilla JS** -- client-side interactive map; no framework, no build step
-- **SQLite (stdlib)** -- local datastore for user-generated content (saved pins)
+- **SQLite / Postgres** -- user-content datastore (saved pins); SQLite locally, Postgres in production via the same `db.py`
+- **gunicorn + uvicorn workers** -- production server (Docker, deployable to Render)
 - **httpx** -- async HTTP client
 
 ## Built with AI
@@ -50,6 +51,33 @@ and own completely.
 pip install -r requirements.txt
 uvicorn main:app --reload
 ```
+
+With no `DATABASE_URL` set, pins are stored in a local SQLite file
+(`bluelines.db`, override with `BLUELINES_DB`).
+
+## Deploying (24/7 on Render)
+
+`render.yaml` is a Render Blueprint that provisions the Docker web service
+plus a managed Postgres database and wires them together:
+
+1. Push to GitHub, then in Render: **New > Blueprint** and pick this repo.
+2. Render builds the `Dockerfile`, creates `bluelines-db`, and injects
+   `DATABASE_URL` -- `db.py` automatically uses Postgres when it's a
+   `postgres://` URL, SQLite otherwise. No code change to switch.
+3. Health checks hit `/healthz`; HTTPS and a domain are provided by Render.
+
+Plans default to `free` (Render's free Postgres expires and free web
+services sleep when idle) -- bump both to a paid tier for genuine 24/7.
+
+### Environment variables
+
+| Var | Default | Purpose |
+|-----|---------|---------|
+| `DATABASE_URL` | _(unset)_ | Postgres URL; absent ⇒ SQLite |
+| `BLUELINES_DB` | `./bluelines.db` | SQLite path (when no `DATABASE_URL`) |
+| `WEB_CONCURRENCY` | `2` | gunicorn workers (caches are per-worker) |
+| `LOG_LEVEL` | `INFO` | Root log level |
+| `PIN_RATE_MAX` | `20` | Max pin creates / IP / minute |
 
 Then open: `http://localhost:8000`
 

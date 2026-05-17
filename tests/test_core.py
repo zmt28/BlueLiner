@@ -1,5 +1,10 @@
 """Pure unit tests (no network, no app lifespan) for the core logic."""
 
+from types import SimpleNamespace
+
+import pytest
+from fastapi import HTTPException
+
 import hatches
 import stocking
 import db
@@ -89,6 +94,29 @@ def test_score_conditions_cases():
 
 
 # -- popup --
+
+def test_db_backend_selection_and_paramstyle(monkeypatch):
+    assert db._IS_PG is False
+    assert db._ph("WHERE id = ?") == "WHERE id = ?"
+    monkeypatch.setattr(db, "_IS_PG", True)
+    assert db._ph("WHERE id = ? AND lat = ?") == "WHERE id = %s AND lat = %s"
+
+
+def _fake_request(ip="9.9.9.9"):
+    return SimpleNamespace(headers={}, client=SimpleNamespace(host=ip))
+
+
+def test_pin_rate_limit(monkeypatch):
+    monkeypatch.setattr(main, "_PIN_RATE_MAX", 3)
+    monkeypatch.setattr(main, "_pin_hits", {})
+    req = _fake_request("203.0.113.7")
+    for _ in range(3):
+        main._rate_limit_pins(req)          # within limit -> no raise
+    with pytest.raises(HTTPException) as ei:
+        main._rate_limit_pins(req)          # 4th in window -> 429
+    assert ei.value.status_code == 429
+    assert main._rate_limit_pins(_fake_request("198.51.100.1")) is None  # other IP ok
+
 
 def test_build_popup_html_sections():
     z = hatches.zone_for(39.6361, -76.6889)

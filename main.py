@@ -1,5 +1,5 @@
 from contextlib import asynccontextmanager
-from fastapi import FastAPI, Query, HTTPException
+from fastapi import FastAPI, Query, HTTPException, Request
 from fastapi.responses import RedirectResponse, FileResponse, Response
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
@@ -11,6 +11,7 @@ import pandas as pd
 import asyncio
 import logging
 import os
+import time
 
 from states import STATES, get_linear_urls, get_area_urls
 from trout import load_trout_streams, is_near_trout_stream
@@ -20,6 +21,10 @@ import stocking
 import db
 
 
+logging.basicConfig(
+    level=os.environ.get("LOG_LEVEL", "INFO").upper(),
+    format="%(asctime)s %(levelname)s %(name)s %(message)s",
+)
 logger = logging.getLogger("bluelines")
 
 # Module-level caches populated at startup
@@ -685,13 +690,49 @@ class PinIn(BaseModel):
     note: str = Field(default="", max_length=500)
 
 
+# Best-effort, per-process fixed-window limiter on the one public write
+# endpoint. Not exact across gunicorn workers -- it's abuse mitigation, not
+# a quota. (A shared store, e.g. Redis, would be the multi-instance answer.)
+_PIN_RATE_MAX = int(os.environ.get("PIN_RATE_MAX", "20"))
+_PIN_RATE_WINDOW = 60.0
+_pin_hits: dict[str, tuple[float, int]] = {}
+
+
+def _client_ip(request: Request) -> str:
+    xff = request.headers.get("x-forwarded-for")
+    if xff:
+        return xff.split(",")[0].strip()
+    return request.client.host if request.client else "unknown"
+
+
+def _rate_limit_pins(request: Request) -> None:
+    now = time.time()
+    if len(_pin_hits) > 5000:  # bound memory: drop stale windows
+        for k, (s, _) in list(_pin_hits.items()):
+            if now - s >= _PIN_RATE_WINDOW:
+                _pin_hits.pop(k, None)
+    ip = _client_ip(request)
+    start, count = _pin_hits.get(ip, (now, 0))
+    if now - start >= _PIN_RATE_WINDOW:
+        start, count = now, 0
+    count += 1
+    _pin_hits[ip] = (start, count)
+    if count > _PIN_RATE_MAX:
+        retry = int(_PIN_RATE_WINDOW - (now - start)) + 1
+        raise HTTPException(
+            status_code=429, detail="Too many pins, slow down.",
+            headers={"Retry-After": str(retry)},
+        )
+
+
 @app.get("/api/pins")
 async def api_list_pins():
     return await asyncio.to_thread(db.list_pins)
 
 
 @app.post("/api/pins")
-async def api_add_pin(pin: PinIn):
+async def api_add_pin(pin: PinIn, request: Request):
+    _rate_limit_pins(request)
     return await asyncio.to_thread(db.add_pin, pin.lat, pin.lon, pin.note)
 
 
