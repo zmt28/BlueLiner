@@ -1,0 +1,9 @@
+.git
+.github
+.claude
+__pycache__/
+*.pyc
+.pytest_cache/
+bluelines.db*
+tests/
+requirements-dev.txt

@@ -17,10 +17,13 @@ so you can check conditions before you drive to the water.
 
 - **Color-coded condition markers** -- green (good), orange (fair), red (poor), gray (no data) at a glance
 - **Historical flow context** -- current discharge compared to the historical median for today's date, powered by the USGS Statistics API
-- **Trout stream overlay** -- designated trout water from Virginia DWR and Maryland DNR fisheries data, with spatial tagging of nearby USGS gauges
+- **Trout stream overlay** -- designated trout water from Virginia DWR and Maryland DNR fisheries data (fully paginated), with spatial tagging of nearby USGS gauges
+- **Hatch guidance** -- "what's hatching now" per gauge, resolved to a sub-state hatch zone and the current month
+- **Stocking overlay** -- well-known stocked / specially-managed waters (MD/VA/WV baseline + live VA DWR feed) as a toggleable layer and a per-gauge badge
+- **1-year flow trend** -- on-demand USGS daily-values sparkline in the gauge popup (served live, never stored)
 - **Multi-state support** -- Maryland, Virginia, and West Virginia with a one-click state selector
 - **Styled popup cards** -- condition badges, flow trends, data tables, and direct links to USGS site pages
-- **Instant filters** -- filter by condition or trout water and switch states client-side, with no full page reload
+- **Instant filters** -- filter by condition, trout water, hatch, or stocking and switch states client-side, with no full page reload
 - **Saved pins** -- drop a pin with a note anywhere on the map; pins persist in a local SQLite store
 
 ## Tech Stack
@@ -31,7 +34,8 @@ so you can check conditions before you drive to the water.
 - **State fisheries ArcGIS REST services** -- trout stream designations (VA DWR, MD DNR)
 - **GeoPandas** -- geospatial data processing and spatial joins
 - **Leaflet (vendored) + vanilla JS** -- client-side interactive map; no framework, no build step
-- **SQLite (stdlib)** -- local datastore for user-generated content (saved pins)
+- **SQLite / Postgres** -- user-content datastore (saved pins); SQLite locally, Postgres in production via the same `db.py`
+- **gunicorn + uvicorn workers** -- production server (Docker, deployable to Render)
 - **httpx** -- async HTTP client
 
 ## Built with AI
@@ -47,6 +51,33 @@ and own completely.
 pip install -r requirements.txt
 uvicorn main:app --reload
 ```
+
+With no `DATABASE_URL` set, pins are stored in a local SQLite file
+(`bluelines.db`, override with `BLUELINES_DB`).
+
+## Deploying (24/7 on Render)
+
+`render.yaml` is a Render Blueprint that provisions the Docker web service
+plus a managed Postgres database and wires them together:
+
+1. Push to GitHub, then in Render: **New > Blueprint** and pick this repo.
+2. Render builds the `Dockerfile`, creates `bluelines-db`, and injects
+   `DATABASE_URL` -- `db.py` automatically uses Postgres when it's a
+   `postgres://` URL, SQLite otherwise. No code change to switch.
+3. Health checks hit `/healthz`; HTTPS and a domain are provided by Render.
+
+Plans default to `free` (Render's free Postgres expires and free web
+services sleep when idle) -- bump both to a paid tier for genuine 24/7.
+
+### Environment variables
+
+| Var | Default | Purpose |
+|-----|---------|---------|
+| `DATABASE_URL` | _(unset)_ | Postgres URL; absent ⇒ SQLite |
+| `BLUELINES_DB` | `./bluelines.db` | SQLite path (when no `DATABASE_URL`) |
+| `WEB_CONCURRENCY` | `2` | gunicorn workers (caches are per-worker) |
+| `LOG_LEVEL` | `INFO` | Root log level |
+| `PIN_RATE_MAX` | `20` | Max pin creates / IP / minute |
 
 Then open: `http://localhost:8000`
 
@@ -71,9 +102,11 @@ Each monitoring station is scored based on current readings:
 - `GET /` -- redirects to the Maryland map
 - `GET /map` -- the application shell (static client; state/filters resolved in the browser)
 - `GET /streams?state=MD` -- raw live stream data from USGS NWIS for the specified state
-- `GET /api/gauges?state=MD` -- scored gauges (conditions, flow context, trout tag, popup) as JSON
+- `GET /api/gauges?state=MD` -- scored gauges (conditions, flow context, trout tag, hatch, stocking, popup) as JSON
 - `GET /api/waterways?state=MD` -- TIGER waterway geometry as GeoJSON
 - `GET /api/trout?state=MD` -- designated trout water as GeoJSON
+- `GET /api/stocking?state=MD` -- stocked / specially-managed trout waters as GeoJSON
+- `GET /api/history?site_no=01581920` -- ~1 year of USGS daily values (served live, not stored)
 - `GET /api/pins` / `POST /api/pins` / `DELETE /api/pins/{id}` -- saved map pins
 
 Supported states: `MD`, `VA`, `WV`, or `all`
