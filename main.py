@@ -13,6 +13,9 @@ import os
 
 from states import STATES, get_linear_urls, get_area_urls
 from trout import load_trout_streams, is_near_trout_stream
+from arcgis import USER_AGENT
+import hatches
+import stocking
 import db
 
 
@@ -56,6 +59,8 @@ async def lifespan(app: FastAPI):
     # Pre-load Maryland shapefiles at startup so the first request is fast.
     # Other states load on first request.
     _shapefile_cache["MD"] = await asyncio.to_thread(_load_shapefiles_for_state, "MD")
+    # Warm the VA live stocking feed off the hot path (degrades gracefully).
+    await asyncio.to_thread(stocking.load_stocking, "VA")
     yield
 
 
@@ -227,9 +232,74 @@ def score_conditions(variables: list[dict], historical_median: float | None = No
 
 # -- Popup HTML --
 
+_MONTH_ABBR = "JFMAMJJASOND"
+_MONTH_FULL = ["January", "February", "March", "April", "May", "June", "July",
+               "August", "September", "October", "November", "December"]
+
+
+def _month_strip_html(months: tuple, peak: tuple) -> str:
+    cells = ""
+    for m in range(1, 13):
+        on = hatches._in_range(m, months[0], months[1])
+        pk = hatches._in_range(m, peak[0], peak[1])
+        if pk:
+            style = "background:#27ae60;color:#fff;font-weight:700"
+        elif on:
+            style = "background:#d5f5e3;color:#1e8449"
+        else:
+            style = "background:#eef0f2;color:#aab"
+        cells += (
+            f'<span style="display:inline-block;width:15px;text-align:center;'
+            f'font-size:9px;padding:2px 0;{style}">{_MONTH_ABBR[m - 1]}</span>'
+        )
+    return f'<div style="display:flex;gap:1px;margin:4px 0">{cells}</div>'
+
+
+def _hatch_section_html(zone: dict | None, active: list[dict] | None,
+                        month: int) -> str:
+    if not zone:
+        return ""
+    title = f"Hatching now &mdash; {_MONTH_FULL[month - 1]} &middot; {zone['name']}"
+    if not active:
+        body = ('<div style="font-size:12px;color:#777">No major mayfly/caddis '
+                'hatches indexed this month &mdash; fish midges, eggs, and '
+                'streamers.</div>')
+    else:
+        body = ""
+        for e in active[:6]:
+            patterns = ", ".join(e["patterns"][:2])
+            body += f"""
+                <div style="padding:6px 0;border-top:1px solid #e3efe8">
+                    <div style="font-size:13px;font-weight:700;color:#1a1a2e">{e['common_name']}
+                        <span style="font-weight:400;color:#8a8a8a;font-style:italic;font-size:11px">{e['insect']}</span></div>
+                    {_month_strip_html(e['months'], e['peak'])}
+                    <div style="font-size:11px;color:#555">Hooks {e['hook_sizes']} &middot; {e['time_of_day']}</div>
+                    <div style="font-size:11px;color:#1e8449">Try: {patterns}</div>
+                </div>"""
+    return f"""
+        <div style="margin-top:10px;padding:8px 12px;background:#eef7f2;border:1px solid #d1f2eb;border-radius:6px">
+            <div style="font-size:13px;font-weight:700;color:#0e6655">{title}</div>
+            {body}
+        </div>"""
+
+
+def _trend_html(site_no: str | None) -> str:
+    if not site_no:
+        return ""
+    return f"""
+        <div style="margin-top:8px">
+            <button type="button" class="bl-trend-btn" data-site="{site_no}"
+                style="background:#eaf2fb;color:#2c6fbf;border:1px solid #b8d4f0;border-radius:6px;
+                padding:5px 10px;font-size:12px;cursor:pointer">Show 1-yr flow trend</button>
+            <div class="bl-trend" data-site="{site_no}" style="margin-top:6px"></div>
+        </div>"""
+
+
 def build_popup_html(site_name: str, variables: list[dict], conditions: dict,
                      historical_median: float | None, on_trout: bool = False,
-                     site_no: str | None = None) -> str:
+                     site_no: str | None = None, hatch_zone: dict | None = None,
+                     active_hatches: list[dict] | None = None,
+                     near_stocked: bool = False, month: int | None = None) -> str:
     score = conditions["overall"]
     badge_color = SCORE_COLORS[score]
     badge_bg = SCORE_BG[score]
@@ -239,6 +309,12 @@ def build_popup_html(site_name: str, variables: list[dict], conditions: dict,
         'font-weight:600;color:#0e6655;background:#d1f2eb;border:1px solid #1abc9c;margin-left:6px">'
         '&#x1f41f; Trout Water</span>'
     ) if on_trout else ""
+    stocked_html = (
+        '<span style="display:inline-block;padding:3px 8px;border-radius:12px;font-size:11px;'
+        'font-weight:600;color:#9c4a00;background:#fdebd0;border:1px solid #e67e22;margin-left:6px">'
+        'Recently Stocked</span>'
+    ) if near_stocked else ""
+    hatch_month = month or datetime.now().month
 
     rows = ""
     for i, variable in enumerate(variables):
@@ -285,7 +361,7 @@ def build_popup_html(site_name: str, variables: list[dict], conditions: dict,
                 <span style="display:inline-block;padding:3px 10px;border-radius:12px;font-size:12px;font-weight:700;
                     color:{badge_color};background:{badge_bg};border:1.5px solid {badge_color};letter-spacing:0.5px">
                     {badge_label}
-                </span>{trout_html}
+                </span>{trout_html}{stocked_html}
             </div>
             <div style="padding:6px 14px 10px">
                 {flow_context}
@@ -297,6 +373,8 @@ def build_popup_html(site_name: str, variables: list[dict], conditions: dict,
                     </tr>
                     {rows}
                 </table>
+                {_hatch_section_html(hatch_zone, active_hatches, hatch_month)}
+                {_trend_html(site_no)}
                 {f'<div style="padding:6px 0 2px;text-align:right"><a href="https://waterdata.usgs.gov/nwis/uv?site_no={site_no}" target="_blank" style="color:#3498db;font-size:12px;text-decoration:none">View on USGS &#x2197;</a></div>' if site_no else ""}
             </div>
         </div>
@@ -335,8 +413,11 @@ async def _gauges_for_states(states_to_load: list[str]) -> list[dict]:
     today_key = (today.month, today.day)
     gauges: list[dict] = []
 
+    month_now = today.month
+
     for st in states_to_load:
         trout_gdf_for_state = await asyncio.to_thread(load_trout_streams, st)
+        stocked_pts = await asyncio.to_thread(stocking.stocked_points, st)
 
         data = await get_streams(state=st)
         time_series = data.get("value", {}).get("timeSeries", [])
@@ -394,8 +475,14 @@ async def _gauges_for_states(states_to_load: list[str]) -> list[dict]:
             if trout_gdf_for_state is not None:
                 on_trout = is_near_trout_stream(latitude, longitude, trout_gdf_for_state)
 
+            zone = hatches.zone_for(latitude, longitude)
+            active = hatches.active_hatches(zone, month_now)
+            near_stocked = stocking.is_near_stocked(latitude, longitude, stocked_pts)
+
             popup_html = build_popup_html(
-                site_name, variables, conditions, historical_median, on_trout, site_no
+                site_name, variables, conditions, historical_median, on_trout,
+                site_no, hatch_zone=zone, active_hatches=active,
+                near_stocked=near_stocked, month=month_now,
             )
 
             gauges.append({
@@ -406,6 +493,9 @@ async def _gauges_for_states(states_to_load: list[str]) -> list[dict]:
                 "conditions": conditions,
                 "historical_median": historical_median,
                 "on_trout": on_trout,
+                "near_stocked": near_stocked,
+                "hatch_zone": zone["name"],
+                "active_hatches": [e["common_name"] for e in active],
                 "color": SCORE_COLORS[overall],
                 "label": SCORE_LABELS[overall],
                 "popup_html": popup_html,
@@ -483,6 +573,76 @@ async def api_trout(state: str = Query(default="MD", description="MD, VA, WV, or
     for st in states_to_load:
         gdfs.append(await asyncio.to_thread(load_trout_streams, st))
     return _gdf_to_geojson_response(gdfs)
+
+
+@app.get("/api/stocking")
+async def api_stocking(state: str = Query(default="MD", description="MD, VA, WV, or 'all'.")):
+    states_to_load = _resolve_states(state)
+    if states_to_load is None:
+        raise HTTPException(status_code=400, detail=f"Unsupported state: {state}")
+    features = []
+    for st in states_to_load:
+        for p in await asyncio.to_thread(stocking.stocked_points, st):
+            features.append({
+                "type": "Feature",
+                "geometry": {"type": "Point", "coordinates": [p["lon"], p["lat"]]},
+                "properties": {
+                    "water": p["water"],
+                    "species": p["species"],
+                    "category": p["category"],
+                    "season_months": list(p["season_months"]),
+                    "agency_url": p["agency_url"],
+                    "source": p.get("source", "baseline"),
+                    "state": st,
+                },
+            })
+    return {"type": "FeatureCollection", "features": features}
+
+
+@app.get("/api/history")
+async def api_history(
+    site_no: str = Query(..., pattern=r"^[0-9A-Za-z-]{4,20}$",
+                         description="USGS site number"),
+):
+    """Proxies ~1 year of USGS daily values (discharge + water temp).
+
+    History is served live from USGS, never stored locally.
+    """
+    url = "https://waterservices.usgs.gov/nwis/dv/"
+    params = {
+        "format": "json",
+        "sites": site_no,
+        "period": "P365D",
+        "parameterCd": "00060,00010",
+        "statCd": "00003",
+        "siteStatus": "all",
+    }
+    async with httpx.AsyncClient(timeout=30.0, headers={"User-Agent": USER_AGENT}) as client:
+        resp = await client.get(url, params=params)
+    try:
+        data = resp.json()
+    except Exception:
+        raise HTTPException(status_code=502, detail="USGS daily values unavailable")
+
+    series = []
+    for ts in data.get("value", {}).get("timeSeries", []):
+        var = ts.get("variable", {})
+        code = var.get("variableCode", [{}])[0].get("value")
+        name = var.get("variableName") or var.get("variableDescription")
+        unit = var.get("unit", {}).get("unitCode")
+        points = []
+        for v in (ts.get("values") or [{}])[0].get("value", []):
+            try:
+                val = float(v.get("value"))
+            except (TypeError, ValueError):
+                continue
+            if val <= -999999:  # USGS no-data sentinel
+                continue
+            points.append({"date": v.get("dateTime"), "value": val})
+        if points:
+            series.append({"parameter": code, "name": name, "unit": unit,
+                            "points": points})
+    return {"site_no": site_no, "series": series}
 
 
 class PinIn(BaseModel):

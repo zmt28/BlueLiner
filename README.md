@@ -17,10 +17,13 @@ so you can check conditions before you drive to the water.
 
 - **Color-coded condition markers** -- green (good), orange (fair), red (poor), gray (no data) at a glance
 - **Historical flow context** -- current discharge compared to the historical median for today's date, powered by the USGS Statistics API
-- **Trout stream overlay** -- designated trout water from Virginia DWR and Maryland DNR fisheries data, with spatial tagging of nearby USGS gauges
+- **Trout stream overlay** -- designated trout water from Virginia DWR and Maryland DNR fisheries data (fully paginated), with spatial tagging of nearby USGS gauges
+- **Hatch guidance** -- "what's hatching now" per gauge, resolved to a sub-state hatch zone and the current month
+- **Stocking overlay** -- well-known stocked / specially-managed waters (MD/VA/WV baseline + live VA DWR feed) as a toggleable layer and a per-gauge badge
+- **1-year flow trend** -- on-demand USGS daily-values sparkline in the gauge popup (served live, never stored)
 - **Multi-state support** -- Maryland, Virginia, and West Virginia with a one-click state selector
 - **Styled popup cards** -- condition badges, flow trends, data tables, and direct links to USGS site pages
-- **Instant filters** -- filter by condition or trout water and switch states client-side, with no full page reload
+- **Instant filters** -- filter by condition, trout water, hatch, or stocking and switch states client-side, with no full page reload
 - **Saved pins** -- drop a pin with a note anywhere on the map; pins persist in a local SQLite store
 
 ## Tech Stack
@@ -71,9 +74,11 @@ Each monitoring station is scored based on current readings:
 - `GET /` -- redirects to the Maryland map
 - `GET /map` -- the application shell (static client; state/filters resolved in the browser)
 - `GET /streams?state=MD` -- raw live stream data from USGS NWIS for the specified state
-- `GET /api/gauges?state=MD` -- scored gauges (conditions, flow context, trout tag, popup) as JSON
+- `GET /api/gauges?state=MD` -- scored gauges (conditions, flow context, trout tag, hatch, stocking, popup) as JSON
 - `GET /api/waterways?state=MD` -- TIGER waterway geometry as GeoJSON
 - `GET /api/trout?state=MD` -- designated trout water as GeoJSON
+- `GET /api/stocking?state=MD` -- stocked / specially-managed trout waters as GeoJSON
+- `GET /api/history?site_no=01581920` -- ~1 year of USGS daily values (served live, not stored)
 - `GET /api/pins` / `POST /api/pins` / `DELETE /api/pins/{id}` -- saved map pins
 
 Supported states: `MD`, `VA`, `WV`, or `all`
