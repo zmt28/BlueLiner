@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BlueLines -- Stream Conditions</title>
+    <link rel="stylesheet" href="/static/vendor/leaflet/leaflet.css">
+    <link rel="stylesheet" href="/static/app.css">
+</head>
+<body>
+    <div class="header">
+        <div class="header-left">
+            <div>
+                <div class="logo">Blue<span>Lines</span></div>
+                <div class="tagline">Real-time stream conditions for fly fishermen</div>
+            </div>
+        </div>
+        <div class="header-right">
+            <select id="state-select" class="ctrl">
+                <option value="MD">Maryland</option>
+                <option value="VA">Virginia</option>
+                <option value="WV">West Virginia</option>
+                <option value="ALL">All States</option>
+            </select>
+            <select id="cond-select" class="ctrl" title="Filter by condition">
+                <option value="any">Any condition</option>
+                <option value="green">Good</option>
+                <option value="yellow">Fair</option>
+                <option value="red">Poor</option>
+                <option value="gray">No Data</option>
+            </select>
+            <label class="ctrl ctrl-check"><input type="checkbox" id="trout-only"> Trout only</label>
+            <button id="drop-pin" class="ctrl" type="button">Drop a pin</button>
+        </div>
+    </div>
+
+    <div id="map"></div>
+
+    <div id="pin-form" class="pin-form" hidden>
+        <div class="pin-form-title">New pin</div>
+        <textarea id="pin-note" rows="3" maxlength="500" placeholder="Note (optional) -- e.g. parking, access, what was working"></textarea>
+        <div class="pin-form-actions">
+            <button id="pin-save" type="button">Save pin</button>
+            <button id="pin-cancel" type="button" class="secondary">Cancel</button>
+        </div>
+    </div>
+
+    <div class="legend">
+        <div class="legend-title">Fishing Conditions</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#2ecc71"></div> Good</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#f39c12"></div> Fair</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#e74c3c"></div> Poor</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#95a5a6"></div> No Data</div>
+        <div style="border-top:1px solid #e0e0e0;margin:8px 0 6px"></div>
+        <div class="legend-item"><div class="legend-dot" style="background:#1abc9c"></div> Trout Stream</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#8e44ad"></div> Saved Pin</div>
+    </div>
+
+    <script src="/static/vendor/leaflet/leaflet.js"></script>
+    <script src="/static/app.js"></script>
+</body>
+</html>

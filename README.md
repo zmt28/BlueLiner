@@ -20,15 +20,18 @@ so you can check conditions before you drive to the water.
 - **Trout stream overlay** -- designated trout water from Virginia DWR and Maryland DNR fisheries data, with spatial tagging of nearby USGS gauges
 - **Multi-state support** -- Maryland, Virginia, and West Virginia with a one-click state selector
 - **Styled popup cards** -- condition badges, flow trends, data tables, and direct links to USGS site pages
+- **Instant filters** -- filter by condition or trout water and switch states client-side, with no full page reload
+- **Saved pins** -- drop a pin with a note anywhere on the map; pins persist in a local SQLite store
 
 ## Tech Stack
 
-- **FastAPI** -- async API backend
+- **FastAPI** -- async JSON API backend
 - **USGS NWIS API** -- real-time stream sensor data (instantaneous values + daily statistics)
 - **U.S. Census TIGER/Line shapefiles** -- geospatial waterway boundaries
 - **State fisheries ArcGIS REST services** -- trout stream designations (VA DWR, MD DNR)
 - **GeoPandas** -- geospatial data processing and spatial joins
-- **Folium + Branca** -- interactive map rendering with layer controls
+- **Leaflet (vendored) + vanilla JS** -- client-side interactive map; no framework, no build step
+- **SQLite (stdlib)** -- local datastore for user-generated content (saved pins)
 - **httpx** -- async HTTP client
 
 ## Built with AI
@@ -66,9 +69,12 @@ Each monitoring station is scored based on current readings:
 ## API Endpoints
 
 - `GET /` -- redirects to the Maryland map
-- `GET /streams?state=MD` -- live stream data from USGS NWIS for the specified state
-- `GET /map?state=MD` -- full application with interactive map, popups, and legend
-- `GET /map/raw?state=MD` -- raw Folium map HTML (used by the app shell iframe)
+- `GET /map` -- the application shell (static client; state/filters resolved in the browser)
+- `GET /streams?state=MD` -- raw live stream data from USGS NWIS for the specified state
+- `GET /api/gauges?state=MD` -- scored gauges (conditions, flow context, trout tag, popup) as JSON
+- `GET /api/waterways?state=MD` -- TIGER waterway geometry as GeoJSON
+- `GET /api/trout?state=MD` -- designated trout water as GeoJSON
+- `GET /api/pins` / `POST /api/pins` / `DELETE /api/pins/{id}` -- saved map pins
 
 Supported states: `MD`, `VA`, `WV`, or `all`
 

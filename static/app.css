@@ -1,0 +1,132 @@
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html, body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; overflow: hidden; height: 100%; }
+.header {
+    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+    color: white;
+    padding: 14px 24px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+    z-index: 1000;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+}
+.header-left { display: flex; align-items: center; gap: 14px; }
+.logo {
+    font-size: 24px;
+    font-weight: 800;
+    letter-spacing: -0.5px;
+    color: #e2e8f0;
+}
+.logo span { color: #4fc3f7; }
+.tagline {
+    font-size: 13px;
+    color: #94a3b8;
+    letter-spacing: 0.3px;
+}
+.header-right { display: flex; align-items: center; gap: 10px; }
+.ctrl {
+    background: rgba(255,255,255,0.1);
+    color: white;
+    border: 1px solid rgba(255,255,255,0.2);
+    border-radius: 6px;
+    padding: 6px 10px;
+    font-size: 14px;
+    cursor: pointer;
+}
+.ctrl option { background: #1a1a2e; color: white; }
+.ctrl-check { display: flex; align-items: center; gap: 6px; user-select: none; }
+.ctrl-check input { cursor: pointer; }
+#drop-pin.active { background: #8e44ad; border-color: #8e44ad; }
+#map {
+    position: fixed;
+    top: 56px;
+    bottom: 0;
+    left: 0;
+    right: 0;
+}
+.legend {
+    position: fixed;
+    bottom: 24px;
+    left: 24px;
+    background: rgba(255,255,255,0.95);
+    backdrop-filter: blur(8px);
+    border-radius: 10px;
+    padding: 14px 18px;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.15);
+    z-index: 1001;
+    font-size: 13px;
+}
+.legend-title {
+    font-weight: 700;
+    color: #1a1a2e;
+    margin-bottom: 8px;
+    font-size: 13px;
+}
+.legend-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 4px;
+    color: #444;
+}
+.legend-dot {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+.pin-form {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    width: 280px;
+    background: rgba(255,255,255,0.97);
+    backdrop-filter: blur(8px);
+    border-radius: 10px;
+    padding: 14px 16px;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.18);
+    z-index: 1002;
+    font-size: 13px;
+}
+.pin-form-title { font-weight: 700; color: #1a1a2e; margin-bottom: 8px; }
+.pin-form textarea {
+    width: 100%;
+    border: 1px solid #d0d5dd;
+    border-radius: 6px;
+    padding: 8px;
+    font: inherit;
+    resize: vertical;
+}
+.pin-form-actions { display: flex; gap: 8px; margin-top: 10px; }
+.pin-form button {
+    flex: 1;
+    border: none;
+    border-radius: 6px;
+    padding: 8px 10px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    background: #8e44ad;
+    color: white;
+}
+.pin-form button.secondary { background: #e9ecef; color: #444; }
+.bl-pin-dot {
+    width: 16px;
+    height: 16px;
+    border-radius: 50% 50% 50% 0;
+    background: #8e44ad;
+    border: 2px solid #fff;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.4);
+    transform: rotate(-45deg);
+}
+.pin-popup { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; min-width: 180px; }
+.pin-popup .pin-note { font-size: 14px; color: #1a1a2e; white-space: pre-wrap; }
+.pin-popup .pin-meta { font-size: 11px; color: #888; margin: 6px 0 8px; }
+.pin-popup .pin-del {
+    border: none; border-radius: 6px; padding: 6px 10px;
+    background: #fdedec; color: #c0392b; font-weight: 600; cursor: pointer;
+}

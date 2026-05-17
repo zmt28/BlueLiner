@@ -1,22 +1,26 @@
 from contextlib import asynccontextmanager
-from fastapi import FastAPI, Query
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi import FastAPI, Query, HTTPException
+from fastapi.responses import RedirectResponse, FileResponse, Response
+from fastapi.staticfiles import StaticFiles
+from pydantic import BaseModel, Field
 import httpx
-import folium
 from datetime import datetime
 from collections import defaultdict
 import geopandas
 import pandas as pd
-import branca
 import asyncio
+import os
 
-from states import STATES, US_CENTER, get_linear_urls, get_area_urls
+from states import STATES, get_linear_urls, get_area_urls
 from trout import load_trout_streams, is_near_trout_stream
+import db
 
 
 # Module-level caches populated at startup
 _shapefile_cache: dict[str, geopandas.GeoDataFrame] = {}
 _stats_cache: dict[str, dict] = {}
+
+STATIC_DIR = os.path.join(os.path.dirname(__file__), "static")
 
 
 def _load_shapefiles_for_state(state_code: str) -> geopandas.GeoDataFrame:
@@ -47,6 +51,8 @@ def _load_shapefiles_for_state(state_code: str) -> geopandas.GeoDataFrame:
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    # Initialize the user-content datastore (saved pins).
+    db.init_db()
     # Pre-load Maryland shapefiles at startup so the first request is fast.
     # Other states load on first request.
     _shapefile_cache["MD"] = await asyncio.to_thread(_load_shapefiles_for_state, "MD")
@@ -54,6 +60,7 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(lifespan=lifespan)
+app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 
 
 def get_cached_shapefiles(state_code: str) -> geopandas.GeoDataFrame:
@@ -296,135 +303,115 @@ def build_popup_html(site_name: str, variables: list[dict], conditions: dict,
     """
 
 
-# -- Application shell HTML --
+# -- Helpers --
 
-def build_app_html(state: str) -> str:
-    state_options = ""
-    for code, info in STATES.items():
-        selected = "selected" if code == state else ""
-        state_options += f'<option value="{code}" {selected}>{info["name"]}</option>'
+def _resolve_states(state: str) -> list[str] | None:
+    state = state.upper()
+    if state == "ALL":
+        return list(STATES.keys())
+    if state in STATES:
+        return [state]
+    return None
 
-    return f"""<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BlueLines -- Stream Conditions</title>
-    <style>
-        * {{ margin: 0; padding: 0; box-sizing: border-box; }}
-        html, body {{ font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; overflow: hidden; height: 100%; }}
-        .header {{
-            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
-            color: white;
-            padding: 14px 24px;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.3);
-            z-index: 1000;
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-        }}
-        .header-left {{ display: flex; align-items: center; gap: 14px; }}
-        .logo {{
-            font-size: 24px;
-            font-weight: 800;
-            letter-spacing: -0.5px;
-            color: #e2e8f0;
-        }}
-        .logo span {{ color: #4fc3f7; }}
-        .tagline {{
-            font-size: 13px;
-            color: #94a3b8;
-            letter-spacing: 0.3px;
-        }}
-        .header-right {{ display: flex; align-items: center; gap: 12px; }}
-        .state-select {{
-            background: rgba(255,255,255,0.1);
-            color: white;
-            border: 1px solid rgba(255,255,255,0.2);
-            border-radius: 6px;
-            padding: 6px 10px;
-            font-size: 14px;
-            cursor: pointer;
-        }}
-        .state-select option {{ background: #1a1a2e; color: white; }}
-        .map-container {{
-            position: fixed;
-            top: 56px;
-            bottom: 0;
-            left: 0;
-            right: 0;
-        }}
-        .map-container iframe {{
-            width: 100%;
-            height: 100%;
-            border: none;
-        }}
-        .legend {{
-            position: fixed;
-            bottom: 24px;
-            left: 24px;
-            background: rgba(255,255,255,0.95);
-            backdrop-filter: blur(8px);
-            border-radius: 10px;
-            padding: 14px 18px;
-            box-shadow: 0 2px 12px rgba(0,0,0,0.15);
-            z-index: 1001;
-            font-size: 13px;
-        }}
-        .legend-title {{
-            font-weight: 700;
-            color: #1a1a2e;
-            margin-bottom: 8px;
-            font-size: 13px;
-        }}
-        .legend-item {{
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            margin-bottom: 4px;
-            color: #444;
-        }}
-        .legend-dot {{
-            width: 12px;
-            height: 12px;
-            border-radius: 50%;
-            flex-shrink: 0;
-        }}
-    </style>
-</head>
-<body>
-    <div class="header">
-        <div class="header-left">
-            <div>
-                <div class="logo">Blue<span>Lines</span></div>
-                <div class="tagline">Real-time stream conditions for fly fishermen</div>
-            </div>
-        </div>
-        <div class="header-right">
-            <select class="state-select" onchange="window.location.href='/map?state='+this.value">
-                {state_options}
-                <option value="all" {"selected" if state == "ALL" else ""}>All States</option>
-            </select>
-        </div>
-    </div>
-    <div class="map-container">
-        <iframe src="/map/raw?state={state}"></iframe>
-    </div>
-    <div class="legend">
-        <div class="legend-title">Fishing Conditions</div>
-        <div class="legend-item"><div class="legend-dot" style="background:#2ecc71"></div> Good</div>
-        <div class="legend-item"><div class="legend-dot" style="background:#f39c12"></div> Fair</div>
-        <div class="legend-item"><div class="legend-dot" style="background:#e74c3c"></div> Poor</div>
-        <div class="legend-item"><div class="legend-dot" style="background:#95a5a6"></div> No Data</div>
-        <div style="border-top:1px solid #e0e0e0;margin:8px 0 6px"></div>
-        <div class="legend-item"><div class="legend-dot" style="background:#1abc9c"></div> Trout Stream</div>
-    </div>
-</body>
-</html>"""
+
+def _gdf_to_geojson_response(gdfs: list[geopandas.GeoDataFrame]) -> Response:
+    valid = [g for g in gdfs if g is not None and not g.empty]
+    if not valid:
+        return Response(
+            content='{"type":"FeatureCollection","features":[]}',
+            media_type="application/json",
+        )
+    if len(valid) == 1:
+        merged = valid[0]
+    else:
+        merged = geopandas.GeoDataFrame(
+            pd.concat(valid, ignore_index=True), crs=valid[0].crs
+        )
+    return Response(content=merged.to_json(), media_type="application/json")
+
+
+async def _gauges_for_states(states_to_load: list[str]) -> list[dict]:
+    today = datetime.now()
+    today_key = (today.month, today.day)
+    gauges: list[dict] = []
+
+    for st in states_to_load:
+        trout_gdf_for_state = await asyncio.to_thread(load_trout_streams, st)
+
+        data = await get_streams(state=st)
+        time_series = data.get("value", {}).get("timeSeries", [])
+
+        # Aggregate multiple sensor readings per site
+        sites = defaultdict(lambda: {"variables": [], "site_no": None})
+        for series in time_series:
+            source_info = series.get("sourceInfo", {})
+            site_name = source_info.get("siteName", "Unknown").capitalize()
+            site_no = source_info.get("siteCode", [{}])[0].get("value", "")
+            geo_location = source_info.get("geoLocation", {}).get("geogLocation", {})
+            latitude = geo_location.get("latitude")
+            longitude = geo_location.get("longitude")
+            variable_description = series.get("variable", {}).get("variableDescription")
+            values_list = series.get("values", [])
+            if values_list:
+                value_data = values_list[0].get("value", [])
+                if value_data:
+                    value_entry = value_data[0]
+                    key = (site_name, latitude, longitude)
+                    sites[key]["variables"].append({
+                        "variable": variable_description,
+                        "value": value_entry.get("value"),
+                        "dateTime": value_entry.get("dateTime"),
+                    })
+                    if site_no:
+                        sites[key]["site_no"] = site_no
+
+        # Fetch historical stats in bulk for sites with discharge data
+        discharge_site_nos = []
+        for (_name, _lat, _lon), info in sites.items():
+            site_no = info.get("site_no")
+            has_discharge = any(
+                "discharge" in v.get("variable", "").lower() or "streamflow" in v.get("variable", "").lower()
+                for v in info["variables"]
+            )
+            if site_no and has_discharge:
+                discharge_site_nos.append(site_no)
+
+        if discharge_site_nos:
+            await fetch_bulk_stats(discharge_site_nos)
+
+        for (site_name, latitude, longitude), info in sites.items():
+            if not latitude or not longitude:
+                continue
+
+            variables = info["variables"]
+            site_no = info.get("site_no")
+            historical_median = _stats_cache.get(site_no, {}).get(today_key) if site_no else None
+
+            conditions = score_conditions(variables, historical_median)
+            overall = conditions["overall"]
+
+            on_trout = False
+            if trout_gdf_for_state is not None:
+                on_trout = is_near_trout_stream(latitude, longitude, trout_gdf_for_state)
+
+            popup_html = build_popup_html(
+                site_name, variables, conditions, historical_median, on_trout, site_no
+            )
+
+            gauges.append({
+                "site_no": site_no,
+                "name": site_name,
+                "lat": latitude,
+                "lon": longitude,
+                "conditions": conditions,
+                "historical_median": historical_median,
+                "on_trout": on_trout,
+                "color": SCORE_COLORS[overall],
+                "label": SCORE_LABELS[overall],
+                "popup_html": popup_html,
+            })
+
+    return gauges
 
 
 # -- Routes --
@@ -459,191 +446,64 @@ async def get_streams(state: str = Query(default="MD", description="Two-letter s
 
 
 @app.get("/map")
-async def map_shell(state: str = Query(default="MD", description="Two-letter state code (MD, VA, WV). Use 'all' for all states.")):
-    state = state.upper()
-    if state != "ALL" and state not in STATES:
-        return {"error": f"Unsupported state: {state}. Supported: {', '.join(STATES.keys())}, or 'all'"}
-    return HTMLResponse(content=build_app_html(state))
+async def map_shell():
+    """Serves the static client shell; state/filters are resolved client-side."""
+    return FileResponse(os.path.join(STATIC_DIR, "index.html"))
 
 
-@app.get("/map/raw")
-async def create_map(state: str = Query(default="MD", description="Two-letter state code (MD, VA, WV). Use 'all' for all states.")):
-    """
-    Generates and returns the raw Folium map HTML with styled popups,
-    color-coded markers, and layer controls.
-    """
-    state = state.upper()
-    if state == "ALL":
-        states_to_load = list(STATES.keys())
-    elif state in STATES:
-        states_to_load = [state]
-    else:
-        return {"error": f"Unsupported state: {state}. Supported: {', '.join(STATES.keys())}, or 'all'"}
+@app.get("/api/gauges")
+async def api_gauges(state: str = Query(default="MD", description="MD, VA, WV, or 'all'.")):
+    states_to_load = _resolve_states(state)
+    if states_to_load is None:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Unsupported state: {state}. Supported: {', '.join(STATES.keys())}, or 'all'",
+        )
+    gauges = await _gauges_for_states(states_to_load)
+    return {"state": state.upper(), "gauges": gauges}
 
-    if len(states_to_load) == 1:
-        center = STATES[states_to_load[0]]["center"]
-        zoom = 8
-    else:
-        center = US_CENTER
-        zoom = 6
 
-    m = folium.Map(
-        location=center,
-        tiles="CartoDB positron",
-        zoom_start=zoom,
-        max_bounds=True,
-    )
-
-    trout_gdfs: dict[str, geopandas.GeoDataFrame] = {}
-    waterways_group = folium.FeatureGroup(name="Waterways")
-    trout_streams_group = folium.FeatureGroup(name="Trout Streams")
-
+@app.get("/api/waterways")
+async def api_waterways(state: str = Query(default="MD", description="MD, VA, WV, or 'all'.")):
+    states_to_load = _resolve_states(state)
+    if states_to_load is None:
+        raise HTTPException(status_code=400, detail=f"Unsupported state: {state}")
+    gdfs = []
     for st in states_to_load:
-        gdf = await asyncio.to_thread(get_cached_shapefiles, st)
-        if not gdf.empty:
-            folium.GeoJson(
-                gdf,
-                tooltip=folium.GeoJsonTooltip(
-                    fields=["FULLNAME"], aliases=[""], localize=True, labels=False,
-                    style="font-size:12px;font-weight:600;color:#1a1a2e;",
-                ),
-                style_function=lambda x: {
-                    "color": "#4a90d9",
-                    "weight": 1.2,
-                    "opacity": 0.4,
-                },
-            ).add_to(waterways_group)
-
-        trout_gdf = await asyncio.to_thread(load_trout_streams, st)
-        if trout_gdf is not None and not trout_gdf.empty:
-            trout_gdfs[st] = trout_gdf
-            name_field = "NAME" if "NAME" in trout_gdf.columns else (
-                "GNIS_Name" if "GNIS_Name" in trout_gdf.columns else
-                "STream_Nam" if "STream_Nam" in trout_gdf.columns else None
-            )
-            tooltip_kwargs = (
-                {"fields": [name_field], "aliases": [""], "labels": False,
-                 "style": "font-size:12px;font-weight:600;color:#0e6655;"}
-                if name_field else {}
-            )
-            folium.GeoJson(
-                trout_gdf,
-                tooltip=folium.GeoJsonTooltip(**tooltip_kwargs) if tooltip_kwargs else None,
-                style_function=lambda x: {
-                    "color": "#1abc9c",
-                    "weight": 2.5,
-                    "opacity": 0.7,
-                },
-            ).add_to(trout_streams_group)
-
-        data = await get_streams(state=st)
-        time_series = data.get("value", {}).get("timeSeries", [])
-
-        # Aggregate multiple sensor readings per site
-        sites = defaultdict(lambda: {"variables": [], "site_no": None})
-        for series in time_series:
-            source_info = series.get("sourceInfo", {})
-            site_name = source_info.get("siteName", "Unknown").capitalize()
-            site_no = source_info.get("siteCode", [{}])[0].get("value", "")
-            geo_location = source_info.get("geoLocation", {}).get("geogLocation", {})
-            latitude = geo_location.get("latitude")
-            longitude = geo_location.get("longitude")
-            variable_description = series.get("variable", {}).get("variableDescription")
-            values_list = series.get("values", [])
-            if values_list:
-                value_data = values_list[0].get("value", [])
-                if value_data:
-                    value_entry = value_data[0]
-                    key = (site_name, latitude, longitude)
-                    sites[key]["variables"].append({
-                        "variable": variable_description,
-                        "value": value_entry.get("value"),
-                        "dateTime": value_entry.get("dateTime"),
-                    })
-                    if site_no:
-                        sites[key]["site_no"] = site_no
-
-        # Fetch historical stats in bulk for sites with discharge data
-        today = datetime.now()
-        today_key = (today.month, today.day)
-
-        discharge_site_nos = []
-        for (_name, _lat, _lon), info in sites.items():
-            site_no = info.get("site_no")
-            has_discharge = any(
-                "discharge" in v.get("variable", "").lower() or "streamflow" in v.get("variable", "").lower()
-                for v in info["variables"]
-            )
-            if site_no and has_discharge:
-                discharge_site_nos.append(site_no)
-
-        if discharge_site_nos:
-            await fetch_bulk_stats(discharge_site_nos)
-
-        # Create feature groups for the trout toggle
-        trout_group = folium.FeatureGroup(name="Trout Stream Gauges")
-        other_group = folium.FeatureGroup(name="All Other Gauges")
-        trout_gdf_for_state = trout_gdfs.get(st)
-
-        for (site_name, latitude, longitude), info in sites.items():
-            if not latitude or not longitude:
-                continue
-
-            variables = info["variables"]
-            site_no = info.get("site_no")
-            historical_median = _stats_cache.get(site_no, {}).get(today_key) if site_no else None
-
-            conditions = score_conditions(variables, historical_median)
-            score = conditions["overall"]
-            color = SCORE_COLORS[score]
-
-            on_trout = False
-            if trout_gdf_for_state is not None:
-                on_trout = is_near_trout_stream(latitude, longitude, trout_gdf_for_state)
-
-            trout_badge = ""
-            if on_trout:
-                trout_badge = ' <span style="color:#1abc9c;font-size:11px">&#x1f41f; Trout Water</span>'
-
-            popup_html = build_popup_html(site_name, variables, conditions, historical_median, on_trout, site_no)
-            iframe = branca.element.IFrame(html=popup_html, width=420, height=340)
-            popup = folium.Popup(iframe, max_width=420)
-
-            marker = folium.CircleMarker(
-                location=[latitude, longitude],
-                radius=7,
-                color=color,
-                weight=2,
-                fill=True,
-                fill_color=color,
-                fill_opacity=0.8,
-                tooltip=f"<b>{site_name}</b>{trout_badge}<br><span style='color:{color}'>{SCORE_LABELS[score]}</span>",
-                popup=popup,
-            )
-
-            if on_trout:
-                marker.add_to(trout_group)
-            else:
-                marker.add_to(other_group)
-
-        trout_group.add_to(m)
-        other_group.add_to(m)
-
-    waterways_group.add_to(m)
-    trout_streams_group.add_to(m)
-    folium.LayerControl(collapsed=True).add_to(m)
-
-    map_html = m._repr_html_()
-    return HTMLResponse(content=map_html)
+        gdfs.append(await asyncio.to_thread(get_cached_shapefiles, st))
+    return _gdf_to_geojson_response(gdfs)
 
 
-@app.get("/get_MDstreams")
-async def get_MDstreams():
-    """Legacy endpoint."""
-    return await get_streams(state="MD")
+@app.get("/api/trout")
+async def api_trout(state: str = Query(default="MD", description="MD, VA, WV, or 'all'.")):
+    states_to_load = _resolve_states(state)
+    if states_to_load is None:
+        raise HTTPException(status_code=400, detail=f"Unsupported state: {state}")
+    gdfs = []
+    for st in states_to_load:
+        gdfs.append(await asyncio.to_thread(load_trout_streams, st))
+    return _gdf_to_geojson_response(gdfs)
 
 
-@app.get("/create_map")
-async def create_map_legacy():
-    """Legacy endpoint."""
-    return await create_map()
+class PinIn(BaseModel):
+    lat: float = Field(..., ge=-90, le=90)
+    lon: float = Field(..., ge=-180, le=180)
+    note: str = Field(default="", max_length=500)
+
+
+@app.get("/api/pins")
+async def api_list_pins():
+    return await asyncio.to_thread(db.list_pins)
+
+
+@app.post("/api/pins")
+async def api_add_pin(pin: PinIn):
+    return await asyncio.to_thread(db.add_pin, pin.lat, pin.lon, pin.note)
+
+
+@app.delete("/api/pins/{pin_id}")
+async def api_delete_pin(pin_id: int):
+    deleted = await asyncio.to_thread(db.delete_pin, pin_id)
+    if not deleted:
+        raise HTTPException(status_code=404, detail="Pin not found")
+    return {"ok": True}
