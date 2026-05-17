@@ -34,7 +34,11 @@ flow is too high. Green means go.
 
 - Mobile-responsive layout for checking conditions at the truck or on the water
 - Species filter -- show only stations relevant to trout, bass, or other target species
-- Historical conditions charting per station (trend over last 24-48 hours)
+- Insect hatch guidance and trout-stocking overlay per region
+- Historical conditions charting per station, served live from the USGS Daily
+  Values API (~1 year of daily data; not stored locally)
+- Saved map pins and fishing-session logs -- a "Strava for fishing" record of
+  where and when you fished, built on the local datastore
 - User-configurable alert thresholds for favorite streams
 - Push notifications when a saved stream hits ideal conditions
 
