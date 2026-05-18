@@ -149,6 +149,35 @@ def test_owner_from_device_token():
     assert ei.value.status_code == 400
 
 
+def test_arcgis_stops_when_server_ignores_paging(monkeypatch):
+    """A MapServer that ignores resultOffset must not loop _MAX_PAGES times."""
+    import arcgis
+
+    feat = {"type": "Feature",
+            "geometry": {"type": "Point", "coordinates": [-77.0, 39.0]},
+            "properties": {"OBJECTID": 1}}
+    page = {"type": "FeatureCollection", "features": [feat, feat, feat],
+            "properties": {"exceededTransferLimit": True}}
+    calls = {"n": 0}
+
+    class FakeResp:
+        def raise_for_status(self): pass
+        def json(self): return page
+
+    class FakeClient:
+        def __init__(self, *a, **k): pass
+        def __enter__(self): return self
+        def __exit__(self, *a): return False
+        def get(self, *a, **k):
+            calls["n"] += 1
+            return FakeResp()
+
+    monkeypatch.setattr(arcgis.httpx, "Client", FakeClient)
+    gdf = arcgis.fetch_geojson_gdf("https://x/y/query?where=1=1", page_size=3)
+    assert gdf is not None and len(gdf) == 3   # kept exactly one page
+    assert calls["n"] == 2                     # page0 + dup-detected page1, not 15
+
+
 def test_build_popup_html_sections():
     z = hatches.zone_for(39.6361, -76.6889)
     html = main.build_popup_html(

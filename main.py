@@ -72,11 +72,17 @@ async def fetch_bulk_stats(site_nos: list[str]) -> None:
 
     url = "https://waterservices.usgs.gov/nwis/stat/"
     batch_size = 10
+    # Bound total work: many batches must never make /api/gauges hang.
+    # Sites not reached just lack a historical median (scoring falls back
+    # to absolute thresholds) and are retried on a later request.
+    deadline = time.monotonic() + 20.0
 
     async with httpx.AsyncClient(
-        timeout=60.0, headers={"User-Agent": USER_AGENT}
+        timeout=15.0, headers={"User-Agent": USER_AGENT}
     ) as client:
         for i in range(0, len(uncached), batch_size):
+            if time.monotonic() > deadline:
+                break
             batch = uncached[i:i + batch_size]
             params = {
                 "format": "rdb",
@@ -528,7 +534,7 @@ async def get_streams(state: str = Query(default="MD", description="Two-letter s
     empty = {"value": {"timeSeries": []}}
     try:
         async with httpx.AsyncClient(
-            timeout=30.0, headers={"User-Agent": USER_AGENT}
+            timeout=25.0, headers={"User-Agent": USER_AGENT}
         ) as client:
             response = await client.get(api_url, params=params)
             response.raise_for_status()
