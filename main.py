@@ -14,7 +14,7 @@ import logging
 import os
 import time
 
-from states import STATES, get_linear_urls, get_area_urls
+from states import STATES
 from trout import load_trout_streams, is_near_trout_stream
 from arcgis import USER_AGENT
 import hatches
@@ -28,59 +28,34 @@ logging.basicConfig(
 )
 logger = logging.getLogger("bluelines")
 
-# Module-level caches populated at startup
-_shapefile_cache: dict[str, geopandas.GeoDataFrame] = {}
+# Module-level cache (USGS daily medians, populated lazily per request)
 _stats_cache: dict[str, dict] = {}
 
 STATIC_DIR = os.path.join(os.path.dirname(__file__), "static")
 
 
-def _load_shapefiles_for_state(state_code: str) -> geopandas.GeoDataFrame:
-    """Load TIGER shapefiles for a state, merge into one GeoDataFrame, and simplify."""
-    urls = get_linear_urls(state_code)
-    # Only load area water for small states -- lakes/ponds add bulk but little
-    # value for stream fishing
-    if len(STATES[state_code]["fips_codes"]) < 30:
-        urls += get_area_urls(state_code)
-
-    gdfs = []
-    for url in urls:
-        try:
-            gdfs.append(geopandas.read_file(url))
-        except Exception:
-            continue
-
-    if not gdfs:
-        return geopandas.GeoDataFrame()
-
-    merged = pd.concat(gdfs, ignore_index=True)
-    merged = merged[merged["FULLNAME"].notna() & (merged["FULLNAME"] != "")]
-    merged["geometry"] = merged["geometry"].simplify(
-        tolerance=0.001, preserve_topology=True
-    )
-    return merged
-
-
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Initialize the user-content datastore (saved pins).
+    # The pins datastore must be ready before serving -- fast: runs the
+    # idempotent migration against SQLite/Postgres.
     db.init_db()
-    # Pre-load Maryland shapefiles at startup so the first request is fast.
-    # Other states load on first request.
-    _shapefile_cache["MD"] = await asyncio.to_thread(_load_shapefiles_for_state, "MD")
-    # Warm the VA live stocking feed off the hot path (degrades gracefully).
-    await asyncio.to_thread(stocking.load_stocking, "VA")
+
+    # Warm the VA stocking feed in the background so startup (and the
+    # platform health check) never blocks on an external feed. It's cached
+    # and also loaded lazily per request, so this is only a head start.
+    async def _warm():
+        try:
+            await asyncio.to_thread(stocking.load_stocking, "VA")
+        except Exception as exc:
+            logger.warning("VA stocking warm failed: %s", exc)
+
+    warm_task = asyncio.create_task(_warm())
     yield
+    warm_task.cancel()
 
 
 app = FastAPI(lifespan=lifespan)
 app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
-
-
-def get_cached_shapefiles(state_code: str) -> geopandas.GeoDataFrame:
-    if state_code not in _shapefile_cache:
-        _shapefile_cache[state_code] = _load_shapefiles_for_state(state_code)
-    return _shapefile_cache[state_code]
 
 
 # -- Historical stats --
@@ -591,17 +566,6 @@ async def api_gauges(state: str = Query(default="MD", description="MD, VA, WV, o
         )
     gauges = await _gauges_for_states(states_to_load)
     return {"state": state.upper(), "gauges": gauges}
-
-
-@app.get("/api/waterways")
-async def api_waterways(state: str = Query(default="MD", description="MD, VA, WV, or 'all'.")):
-    states_to_load = _resolve_states(state)
-    if states_to_load is None:
-        raise HTTPException(status_code=400, detail=f"Unsupported state: {state}")
-    gdfs = []
-    for st in states_to_load:
-        gdfs.append(await asyncio.to_thread(get_cached_shapefiles, st))
-    return _gdf_to_geojson_response(gdfs)
 
 
 @app.get("/api/trout")

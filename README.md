@@ -30,7 +30,6 @@ so you can check conditions before you drive to the water.
 
 - **FastAPI** -- async JSON API backend
 - **USGS NWIS API** -- real-time stream sensor data (instantaneous values + daily statistics)
-- **U.S. Census TIGER/Line shapefiles** -- geospatial waterway boundaries
 - **State fisheries ArcGIS REST services** -- trout stream designations (VA DWR, MD DNR)
 - **GeoPandas** -- geospatial data processing and spatial joins
 - **Leaflet (vendored) + vanilla JS** -- client-side interactive map; no framework, no build step
@@ -103,7 +102,6 @@ Each monitoring station is scored based on current readings:
 - `GET /map` -- the application shell (static client; state/filters resolved in the browser)
 - `GET /streams?state=MD` -- raw live stream data from USGS NWIS for the specified state
 - `GET /api/gauges?state=MD` -- scored gauges (conditions, flow context, trout tag, hatch, stocking, popup) as JSON
-- `GET /api/waterways?state=MD` -- TIGER waterway geometry as GeoJSON
 - `GET /api/trout?state=MD` -- designated trout water as GeoJSON
 - `GET /api/stocking?state=MD` -- stocked / specially-managed trout waters as GeoJSON
 - `GET /api/history?site_no=01581920` -- ~1 year of USGS daily values (served live, not stored)
