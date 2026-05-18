@@ -32,9 +32,14 @@ function esc(s) {
   }[c]));
 }
 
-// Keep popups inside small screens.
+// Keep popups inside the screen; maxHeight makes Leaflet add an internal
+// scroll container so tall river popups (hatch + several gauges) scroll.
 function popupOpts() {
-  return { maxWidth: Math.min(420, (window.innerWidth || 420) - 32) };
+  return {
+    maxWidth: Math.min(420, (window.innerWidth || 420) - 32),
+    maxHeight: Math.round((window.innerHeight || 700) * 0.7),
+    autoPan: true,
+  };
 }
 
 const map = L.map("map");
