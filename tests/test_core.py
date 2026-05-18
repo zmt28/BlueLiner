@@ -108,6 +108,19 @@ def test_db_backend_selection_and_paramstyle(monkeypatch):
     assert db._ph("WHERE id = ? AND lat = ?") == "WHERE id = %s AND lat = %s"
 
 
+def test_states_national_and_resolve():
+    from states import STATES
+    assert len(STATES) >= 51  # 50 states + DC
+    for code, info in STATES.items():
+        assert len(code) == 2 and code.isupper()
+        assert info["usgs_code"] == code.lower()
+        assert len(info["center"]) == 2
+    assert main._resolve_states("co") == ["CO"]
+    assert main._resolve_states("WV") == ["WV"]
+    assert main._resolve_states("all") is None   # no nationwide union
+    assert main._resolve_states("ZZ") is None
+
+
 def _fake_request(ip="9.9.9.9"):
     return SimpleNamespace(headers={}, client=SimpleNamespace(host=ip))
 
