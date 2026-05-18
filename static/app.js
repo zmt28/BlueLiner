@@ -1,19 +1,16 @@
 "use strict";
 
-// Center/zoom per state (mirrors states.py STATES["center"] and US_CENTER).
-const STATES = {
-  MD: { center: [38.9784, -76.4922], zoom: 8 },
-  VA: { center: [37.4316, -78.6569], zoom: 8 },
-  WV: { center: [38.5976, -80.4549], zoom: 8 },
-  ALL: { center: [39.8283, -98.5795], zoom: 6 },
-};
+// code -> { name, center }, loaded from /api/states (states.py is the
+// single source of truth). Populated during init().
+let STATES = {};
+const STATE_ZOOM = 7;
 const MON = ["Jan", "Feb", "Mar", "Apr", "May", "Jun",
              "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
 function currentState() {
   const p = new URLSearchParams(location.search).get("state") || "MD";
   const s = p.toUpperCase();
-  return STATES[s] ? s : "MD";
+  return STATES[s] ? s : (STATES.MD ? "MD" : Object.keys(STATES)[0]);
 }
 
 // Opaque per-device token (no login). Persists in localStorage; sent on
@@ -343,8 +340,7 @@ document.getElementById("hatch-select").onchange = renderGauges;
 document.getElementById("state-select").onchange = (e) => {
   const s = e.target.value;
   history.replaceState(null, "", `/map?state=${s.toLowerCase()}`);
-  const meta = STATES[s];
-  map.setView(meta.center, meta.zoom);
+  map.setView(STATES[s].center, STATE_ZOOM);
   loadGeo(s);
   loadGauges(s);
   loadStocking(s);
@@ -371,13 +367,26 @@ legendToggle.onclick = () => {
 
 // -- Init --
 
-const state = currentState();
-document.getElementById("state-select").value = state;
-map.setView(STATES[state].center, STATES[state].zoom);
-loadGeo(state);
-loadGauges(state);
-loadStocking(state);
-loadPins();
+async function init() {
+  const list = await fetch("/api/states").then((r) => r.json());
+  const sel = document.getElementById("state-select");
+  sel.innerHTML = "";
+  for (const s of list) {
+    STATES[s.code] = { name: s.name, center: s.center };
+    const opt = document.createElement("option");
+    opt.value = s.code;
+    opt.textContent = s.name;
+    sel.appendChild(opt);
+  }
+  const state = currentState();
+  sel.value = state;
+  map.setView(STATES[state].center, STATE_ZOOM);
+  loadGeo(state);
+  loadGauges(state);
+  loadStocking(state);
+  loadPins();
+}
+init();
 
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", () => {

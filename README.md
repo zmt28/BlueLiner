@@ -21,7 +21,7 @@ so you can check conditions before you drive to the water.
 - **Hatch guidance** -- "what's hatching now" per gauge, resolved to a sub-state hatch zone and the current month
 - **Stocking overlay** -- well-known stocked / specially-managed waters (MD/VA/WV baseline + live VA DWR feed) as a toggleable layer and a per-gauge badge
 - **1-year flow trend** -- on-demand USGS daily-values sparkline in the gauge popup (served live, never stored)
-- **Multi-state support** -- Maryland, Virginia, and West Virginia with a one-click state selector
+- **National gauge coverage** -- all 50 states + DC via the state selector (conditions/trend are national; trout/stocking/hatch data are mid-Atlantic and expanding)
 - **Styled popup cards** -- condition badges, flow trends, data tables, and direct links to USGS site pages
 - **Instant filters** -- filter by condition, trout water, hatch, or stocking and switch states client-side, with no full page reload
 - **Saved pins** -- drop a pin with a note anywhere on the map; pins are private to your device via an opaque token (no login), persisted in SQLite/Postgres
@@ -101,6 +101,7 @@ Each monitoring station is scored based on current readings:
 
 - `GET /` -- redirects to the Maryland map
 - `GET /map` -- the application shell (static client; state/filters resolved in the browser)
+- `GET /api/states` -- supported states (code, name, map center); drives the selector
 - `GET /streams?state=MD` -- raw live stream data from USGS NWIS for the specified state
 - `GET /api/gauges?state=MD` -- scored gauges (conditions, flow context, trout tag, hatch, stocking, popup) as JSON
 - `GET /api/trout?state=MD` -- designated trout water as GeoJSON
@@ -108,7 +109,7 @@ Each monitoring station is scored based on current readings:
 - `GET /api/history?site_no=01581920` -- ~1 year of USGS daily values (served live, not stored)
 - `GET /api/pins` / `POST /api/pins` / `DELETE /api/pins/{id}` -- saved map pins
 
-Supported states: `MD`, `VA`, `WV`, or `all`
+Supported states: any U.S. state two-letter code (plus `DC`); see `GET /api/states`
 
 ## Roadmap
 

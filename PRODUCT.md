@@ -24,7 +24,7 @@ flow is too high. Green means go.
 
 ## V1 Scope (shipped)
 
-- Live USGS instantaneous values data for Maryland, Virginia, and West Virginia streams
+- Live USGS instantaneous values data for all 50 states + DC (selectable per state)
 - Interactive map with sensor readings per monitoring station
 - Clickable popups showing flow, temperature, and all available readings
 - Labeled rivers/streams overlay (USGS The National Map hydrography tiles)

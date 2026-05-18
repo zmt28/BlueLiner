@@ -370,12 +370,11 @@ def build_popup_html(site_name: str, variables: list[dict], conditions: dict,
 # -- Helpers --
 
 def _resolve_states(state: str) -> list[str] | None:
+    # Single state only. A nationwide "all" would fan out to ~51 USGS
+    # calls per request and blow the <10s budget -- broad/"near me"
+    # discovery is Phase 5 (viewport loading), not a 51-state union.
     state = state.upper()
-    if state == "ALL":
-        return list(STATES.keys())
-    if state in STATES:
-        return [state]
-    return None
+    return [state] if state in STATES else None
 
 
 def _gdf_to_geojson_response(gdfs: list[geopandas.GeoDataFrame]) -> Response:
@@ -556,13 +555,23 @@ async def service_worker():
     )
 
 
+@app.get("/api/states")
+async def api_states():
+    """Supported states (code, name, map center) -- the client builds the
+    selector and centering from this so states.py is the single source."""
+    return [
+        {"code": code, "name": info["name"], "center": info["center"]}
+        for code, info in sorted(STATES.items(), key=lambda kv: kv[1]["name"])
+    ]
+
+
 @app.get("/api/gauges")
-async def api_gauges(state: str = Query(default="MD", description="MD, VA, WV, or 'all'.")):
+async def api_gauges(state: str = Query(default="MD", description="Two-letter state code.")):
     states_to_load = _resolve_states(state)
     if states_to_load is None:
         raise HTTPException(
             status_code=400,
-            detail=f"Unsupported state: {state}. Supported: {', '.join(STATES.keys())}, or 'all'",
+            detail=f"Unsupported state: {state}. Supported: {', '.join(sorted(STATES))}",
         )
     gauges = await _gauges_for_states(states_to_load)
     return {"state": state.upper(), "gauges": gauges}
