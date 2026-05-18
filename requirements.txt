@@ -3,5 +3,4 @@ uvicorn
 gunicorn
 httpx
 geopandas
-pyogrio
 psycopg[binary]

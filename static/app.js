@@ -55,13 +55,18 @@ L.tileLayer("https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png", {
   maxZoom: 19,
 }).addTo(map);
 
-const waterwaysLayer = L.geoJSON(null, {
-  style: { color: "#4a90d9", weight: 1.2, opacity: 0.4 },
-  onEachFeature: (f, l) => {
-    const n = f.properties && f.properties.FULLNAME;
-    if (n) l.bindTooltip(String(n), { sticky: true });
-  },
-});
+// Labeled rivers/streams: free national USGS "Hydro Cached" overlay (no key,
+// no deps). Transparent raster designed to sit on a basemap. ArcGIS cached
+// tiles are /tile/{level}/{row}/{col} == {z}/{y}/{x}.
+const hydroLayer = L.tileLayer(
+  "https://basemap.nationalmap.gov/arcgis/rest/services/USGSHydroCached/MapServer/tile/{z}/{y}/{x}",
+  {
+    opacity: 0.85,
+    maxZoom: 19,
+    attribution: "Hydrography &copy; USGS The National Map",
+  }
+).addTo(map);
+
 const troutLayer = L.geoJSON(null, {
   style: { color: "#1abc9c", weight: 2.5, opacity: 0.7 },
   onEachFeature: (f, l) => {
@@ -75,11 +80,11 @@ const otherGaugesLayer = L.layerGroup();
 const stockingLayer = L.layerGroup();
 const pinsLayer = L.layerGroup();
 
-[waterwaysLayer, troutLayer, troutGaugesLayer, otherGaugesLayer,
+[troutLayer, troutGaugesLayer, otherGaugesLayer,
  stockingLayer, pinsLayer].forEach((g) => g.addTo(map));
 
 L.control.layers(null, {
-  "Waterways": waterwaysLayer,
+  "Streams (USGS)": hydroLayer,
   "Trout Streams": troutLayer,
   "Trout Stream Gauges": troutGaugesLayer,
   "All Other Gauges": otherGaugesLayer,
@@ -199,12 +204,7 @@ function renderGauges() {
 }
 
 async function loadGeo(state) {
-  const [w, t] = await Promise.all([
-    fetch(`/api/waterways?state=${state}`).then((r) => r.json()),
-    fetch(`/api/trout?state=${state}`).then((r) => r.json()),
-  ]);
-  waterwaysLayer.clearLayers();
-  waterwaysLayer.addData(w);
+  const t = await fetch(`/api/trout?state=${state}`).then((r) => r.json());
   troutLayer.clearLayers();
   troutLayer.addData(t);
 }
