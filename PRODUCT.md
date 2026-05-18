@@ -27,6 +27,7 @@ flow is too high. Green means go.
 - Live USGS instantaneous values data for Maryland, Virginia, and West Virginia streams
 - Interactive map with sensor readings per monitoring station
 - Clickable popups showing flow, temperature, and all available readings
+- Labeled rivers/streams overlay (USGS The National Map hydrography tiles)
 - Fishing conditions scoring (green/yellow/red) based on temperature and flow
 
 ## V2 Roadmap

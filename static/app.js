@@ -55,6 +55,18 @@ L.tileLayer("https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png", {
   maxZoom: 19,
 }).addTo(map);
 
+// Labeled rivers/streams: free national USGS "Hydro Cached" overlay (no key,
+// no deps). Transparent raster designed to sit on a basemap. ArcGIS cached
+// tiles are /tile/{level}/{row}/{col} == {z}/{y}/{x}.
+const hydroLayer = L.tileLayer(
+  "https://basemap.nationalmap.gov/arcgis/rest/services/USGSHydroCached/MapServer/tile/{z}/{y}/{x}",
+  {
+    opacity: 0.85,
+    maxZoom: 19,
+    attribution: "Hydrography &copy; USGS The National Map",
+  }
+).addTo(map);
+
 const troutLayer = L.geoJSON(null, {
   style: { color: "#1abc9c", weight: 2.5, opacity: 0.7 },
   onEachFeature: (f, l) => {
@@ -72,6 +84,7 @@ const pinsLayer = L.layerGroup();
  stockingLayer, pinsLayer].forEach((g) => g.addTo(map));
 
 L.control.layers(null, {
+  "Streams (USGS)": hydroLayer,
   "Trout Streams": troutLayer,
   "Trout Stream Gauges": troutGaugesLayer,
   "All Other Gauges": otherGaugesLayer,

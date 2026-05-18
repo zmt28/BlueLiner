@@ -30,6 +30,7 @@ so you can check conditions before you drive to the water.
 
 - **FastAPI** -- async JSON API backend
 - **USGS NWIS API** -- real-time stream sensor data (instantaneous values + daily statistics)
+- **USGS The National Map** -- labeled rivers/streams as a hydrography tile overlay (no key, national)
 - **State fisheries ArcGIS REST services** -- trout stream designations (VA DWR, MD DNR)
 - **GeoPandas** -- geospatial data processing and spatial joins
 - **Leaflet (vendored) + vanilla JS** -- client-side interactive map; no framework, no build step
