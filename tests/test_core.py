@@ -149,45 +149,109 @@ def test_owner_from_device_token():
     assert ei.value.status_code == 400
 
 
-def test_arcgis_stops_when_server_ignores_paging(monkeypatch):
-    """A MapServer that ignores resultOffset must not loop _MAX_PAGES times."""
+class _FakeResp:
+    def __init__(self, payload): self._p = payload
+    def raise_for_status(self): pass
+    def json(self): return self._p
+
+
+def test_arcgis_keyset_pagination(monkeypatch):
+    """OBJECTID keyset paging fetches every row across pages, then stops."""
+    import re as _re
     import arcgis
 
-    feat = {"type": "Feature",
-            "geometry": {"type": "Point", "coordinates": [-77.0, 39.0]},
-            "properties": {"OBJECTID": 1}}
-    page = {"type": "FeatureCollection", "features": [feat, feat, feat],
-            "properties": {"exceededTransferLimit": True}}
+    rows = [
+        {"type": "Feature",
+         "geometry": {"type": "Point", "coordinates": [-77.0, 39.0 + i / 100]},
+         "properties": {"OBJECTID": i}}
+        for i in range(1, 6)  # OBJECTID 1..5
+    ]
     calls = {"n": 0}
-
-    class FakeResp:
-        def raise_for_status(self): pass
-        def json(self): return page
 
     class FakeClient:
         def __init__(self, *a, **k): pass
         def __enter__(self): return self
         def __exit__(self, *a): return False
-        def get(self, *a, **k):
+        def get(self, url, params=None):
             calls["n"] += 1
-            return FakeResp()
+            params = params or {}
+            if params.get("f") == "json":
+                return _FakeResp({"objectIdField": "OBJECTID"})
+            m = _re.search(r">\s*(-?\d+)", params.get("where", ""))
+            bound = int(m.group(1)) if m else -1
+            n = int(params.get("resultRecordCount", 2))
+            page = [r for r in rows if r["properties"]["OBJECTID"] > bound][:n]
+            return _FakeResp({"type": "FeatureCollection", "features": page})
 
     monkeypatch.setattr(arcgis.httpx, "Client", FakeClient)
-    gdf = arcgis.fetch_geojson_gdf("https://x/y/query?where=1=1", page_size=3)
-    assert gdf is not None and len(gdf) == 3   # kept exactly one page
-    assert calls["n"] == 2                     # page0 + dup-detected page1, not 15
+    gdf = arcgis.fetch_geojson_gdf(
+        "https://x/y/MapServer/0/query?where=1=1", page_size=2)
+    assert gdf is not None and len(gdf) == 5      # full coverage, no dupes
+    assert calls["n"] == 4                         # 1 metadata + pages 2+2+1
 
 
-def test_build_popup_html_sections():
+def test_arcgis_keyset_no_progress_guard(monkeypatch):
+    """A server that ignores the keyset where-clause must not loop forever."""
+    import arcgis
+    feat = {"type": "Feature",
+            "geometry": {"type": "Point", "coordinates": [-77.0, 39.0]},
+            "properties": {"OBJECTID": 7}}
+    calls = {"n": 0}
+
+    class FakeClient:
+        def __init__(self, *a, **k): pass
+        def __enter__(self): return self
+        def __exit__(self, *a): return False
+        def get(self, url, params=None):
+            calls["n"] += 1
+            if (params or {}).get("f") == "json":
+                return _FakeResp({"objectIdField": "OBJECTID"})
+            return _FakeResp({"type": "FeatureCollection",
+                              "features": [feat, feat]})
+
+    monkeypatch.setattr(arcgis.httpx, "Client", FakeClient)
+    gdf = arcgis.fetch_geojson_gdf(
+        "https://x/y/MapServer/0/query?where=1=1", page_size=2)
+    assert gdf is not None and len(gdf) == 2   # one page kept
+    assert calls["n"] == 3                      # metadata + page0 + page1(stop)
+
+
+def test_river_key():
+    assert main._river_key("Gunpowder falls near glencoe, md")[1] == "Gunpowder Falls"
+    assert main._river_key("Patapsco river near halethorpe, md")[1] == "Patapsco River"
+    assert main._river_key(
+        "North branch potomac river at barnum, wv")[1] == "North Branch Potomac River"
+    assert main._river_key("Mossy creek, va")[1] == "Mossy Creek"
+    k1, _ = main._river_key("GUNPOWDER FALLS NEAR GLENCOE, MD")
+    k2, _ = main._river_key("Gunpowder falls at falls rd, md")
+    assert k1 == k2 == "gunpowder falls"       # stable grouping key
+
+
+def test_build_river_popup_html():
     z = hatches.zone_for(39.6361, -76.6889)
-    html = main.build_popup_html(
-        "Gunpowder falls", [], {"overall": "green", "temp": "green",
-        "flow": None, "current_flow": None}, None, on_trout=True,
-        site_no="01581920", hatch_zone=z,
-        active_hatches=hatches.active_hatches(z, 5),
-        near_stocked=True, month=5)
-    assert "Gunpowder falls" in html
+    river = {
+        "name": "Gunpowder Falls", "lat": 39.6, "lon": -76.7,
+        "overall": "green", "on_trout": True, "near_stocked": True,
+        "hatch_zone": z, "active": hatches.active_hatches(z, 5), "month": 5,
+        "stocked_waters": [{
+            "water": "Gunpowder Falls (Falls Rd / Masemore)",
+            "species": ["Brown", "Rainbow"], "category": "Tailwater",
+            "season_months": (1, 12), "agency_url": "https://example.test"}],
+        "gauges": [{
+            "site_name": "Gunpowder falls near glencoe, md",
+            "site_no": "01581920",
+            "variables": [{"variable": "Streamflow", "value": "95",
+                           "dateTime": "2026-05-17T08:00:00"}],
+            "conditions": {"overall": "green", "temp": "green",
+                           "flow": "green", "current_flow": 95.0},
+            "historical_median": 80.0}],
+    }
+    html = main.build_river_popup_html(river)
+    assert "Gunpowder Falls" in html
     assert "Hatching now" in html
-    assert "Recently Stocked" in html
-    assert "Trout Water" in html
-    assert 'data-site="01581920"' in html
+    assert "Recently Stocked" in html                       # near_stocked chip
+    assert "Trout Water" in html                            # on_trout chip
+    assert "Stocked nearby" in html                         # stocked block
+    assert "Gunpowder falls near glencoe, md" in html       # gauge sub-header
+    assert 'data-site="01581920"' in html                   # trend button
+    assert "Flow context" in html                           # median present

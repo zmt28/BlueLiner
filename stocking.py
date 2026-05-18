@@ -190,13 +190,20 @@ def stocked_points(state: str) -> list[dict]:
     return load_stocking(state)
 
 
+def nearby_stocked(lat: float, lon: float, points: list[dict],
+                   buffer_deg: float = 0.02) -> list[dict]:
+    """Stocked waters within ~buffer_deg (~2 km), nearest first."""
+    b2 = buffer_deg * buffer_deg
+    hits = []
+    for p in points:
+        d2 = (lat - p["lat"]) ** 2 + (lon - p["lon"]) ** 2
+        if d2 <= b2:
+            hits.append((d2, p))
+    hits.sort(key=lambda h: h[0])
+    return [p for _, p in hits]
+
+
 def is_near_stocked(lat: float, lon: float, points: list[dict],
                     buffer_deg: float = 0.02) -> bool:
     """True if any stocked point is within ~buffer_deg (~2 km) of the gauge."""
-    b2 = buffer_deg * buffer_deg
-    for p in points:
-        dlat = lat - p["lat"]
-        dlon = lon - p["lon"]
-        if dlat * dlat + dlon * dlon <= b2:
-            return True
-    return False
+    return bool(nearby_stocked(lat, lon, points, buffer_deg))

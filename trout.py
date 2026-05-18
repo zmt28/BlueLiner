@@ -47,6 +47,16 @@ def load_trout_streams(state_code: str) -> geopandas.GeoDataFrame | None:
     return gdf
 
 
+def is_cached(state_code: str) -> bool:
+    """True once a load attempt for this state has completed (cached)."""
+    return state_code in _trout_cache
+
+
+def cached_streams(state_code: str) -> geopandas.GeoDataFrame | None:
+    """The cached gdf (or None) without triggering a blocking load."""
+    return _trout_cache.get(state_code)
+
+
 def is_near_trout_stream(lat: float, lon: float, trout_gdf: geopandas.GeoDataFrame,
                          buffer_deg: float = 0.005) -> bool:
     """
