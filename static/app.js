@@ -16,6 +16,20 @@ function currentState() {
   return STATES[s] ? s : "MD";
 }
 
+// Opaque per-device token (no login). Persists in localStorage; sent on
+// every pins request so saved pins are scoped to this device/browser.
+function deviceToken() {
+  let t = localStorage.getItem("bl_device");
+  if (!t) {
+    t = (window.crypto && crypto.randomUUID)
+      ? crypto.randomUUID()
+      : String(Date.now()) + Math.random().toString(36).slice(2);
+    localStorage.setItem("bl_device", t);
+  }
+  return t;
+}
+const DEVICE_HEADER = { "X-Device-Token": deviceToken() };
+
 function esc(s) {
   return String(s == null ? "" : s).replace(/[&<>"']/g, (c) => ({
     "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
@@ -256,7 +270,7 @@ function addPinMarker(p) {
     const btn = e.popup.getElement().querySelector(".pin-del");
     if (btn) {
       btn.onclick = async () => {
-        await fetch(`/api/pins/${p.id}`, { method: "DELETE" });
+        await fetch(`/api/pins/${p.id}`, { method: "DELETE", headers: DEVICE_HEADER });
         pinsLayer.removeLayer(m);
         map.closePopup();
       };
@@ -266,7 +280,7 @@ function addPinMarker(p) {
 }
 
 async function loadPins() {
-  const pins = await fetch("/api/pins").then((r) => r.json());
+  const pins = await fetch("/api/pins", { headers: DEVICE_HEADER }).then((r) => r.json());
   pinsLayer.clearLayers();
   (pins || []).forEach(addPinMarker);
 }
@@ -304,7 +318,7 @@ document.getElementById("pin-save").onclick = async () => {
   if (!pendingLatLng) return;
   const res = await fetch("/api/pins", {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json", ...DEVICE_HEADER },
     body: JSON.stringify({
       lat: pendingLatLng.lat,
       lon: pendingLatLng.lng,

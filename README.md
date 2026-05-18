@@ -24,7 +24,7 @@ so you can check conditions before you drive to the water.
 - **Multi-state support** -- Maryland, Virginia, and West Virginia with a one-click state selector
 - **Styled popup cards** -- condition badges, flow trends, data tables, and direct links to USGS site pages
 - **Instant filters** -- filter by condition, trout water, hatch, or stocking and switch states client-side, with no full page reload
-- **Saved pins** -- drop a pin with a note anywhere on the map; pins persist in a local SQLite store
+- **Saved pins** -- drop a pin with a note anywhere on the map; pins are private to your device via an opaque token (no login), persisted in SQLite/Postgres
 
 ## Tech Stack
 

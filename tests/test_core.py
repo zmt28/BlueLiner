@@ -68,17 +68,23 @@ def test_stocked_points_wv_baseline_only():
 
 # -- db (temp file) --
 
-def test_db_crud(tmp_path, monkeypatch):
+def test_db_crud_and_owner_isolation(tmp_path, monkeypatch):
     monkeypatch.setattr(db, "DB_PATH", str(tmp_path / "t.db"))
     db.init_db()
+    db.init_db()  # idempotent: re-running migration must not error
     assert db.healthcheck() is True
-    assert db.list_pins() == []
-    p = db.add_pin(39.0, -77.0, "access via gravel lot")
-    assert p["id"] and p["note"] == "access via gravel lot"
-    assert len(db.list_pins()) == 1
-    assert db.delete_pin(999) is False
-    assert db.delete_pin(p["id"]) is True
-    assert db.list_pins() == []
+
+    alice, bob = "owner-alice", "owner-bob"
+    assert db.list_pins(alice) == []
+    p = db.add_pin(39.0, -77.0, "gravel lot", alice)
+    assert p["id"] and p["note"] == "gravel lot"
+
+    assert len(db.list_pins(alice)) == 1
+    assert db.list_pins(bob) == []                 # bob can't see alice's pin
+    assert db.delete_pin(p["id"], bob) is False    # bob can't delete it
+    assert db.delete_pin(999, alice) is False
+    assert db.delete_pin(p["id"], alice) is True   # owner can
+    assert db.list_pins(alice) == []
 
 
 # -- scoring --
@@ -116,6 +122,18 @@ def test_pin_rate_limit(monkeypatch):
         main._rate_limit_pins(req)          # 4th in window -> 429
     assert ei.value.status_code == 429
     assert main._rate_limit_pins(_fake_request("198.51.100.1")) is None  # other IP ok
+
+
+def test_owner_from_device_token():
+    tok = "550e8400-e29b-41d4-a716-446655440000"
+    o1 = main._owner(SimpleNamespace(headers={"x-device-token": tok}))
+    o2 = main._owner(SimpleNamespace(headers={"x-device-token": tok}))
+    other = main._owner(SimpleNamespace(headers={"x-device-token": "different-token"}))
+    assert o1 == o2 and len(o1) == 64 and o1 != other      # stable, hashed
+    assert main._owner(SimpleNamespace(headers={}), required=False) is None
+    with pytest.raises(HTTPException) as ei:
+        main._owner(SimpleNamespace(headers={}), required=True)
+    assert ei.value.status_code == 400
 
 
 def test_build_popup_html_sections():

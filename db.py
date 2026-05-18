@@ -60,6 +60,18 @@ def _conn():
         conn.close()
 
 
+def _owner_column_present(conn) -> bool:
+    cur = conn.cursor()
+    if _IS_PG:
+        cur.execute(
+            "SELECT 1 FROM information_schema.columns "
+            "WHERE table_name = 'pins' AND column_name = 'owner_token'"
+        )
+        return cur.fetchone() is not None
+    cur.execute("PRAGMA table_info(pins)")
+    return any(r["name"] == "owner_token" for r in cur.fetchall())
+
+
 def init_db() -> None:
     if _IS_PG:
         ddl = """
@@ -82,7 +94,15 @@ def init_db() -> None:
             )
         """
     with _conn() as conn:
-        conn.cursor().execute(ddl)
+        cur = conn.cursor()
+        cur.execute(ddl)
+        # Additive migration: pins predate per-device ownership. Existing
+        # rows keep owner_token = NULL (unowned -- not shown to any device).
+        if not _owner_column_present(conn):
+            cur.execute("ALTER TABLE pins ADD COLUMN owner_token TEXT")
+        cur.execute(
+            "CREATE INDEX IF NOT EXISTS idx_pins_owner ON pins (owner_token)"
+        )
 
 
 def healthcheck() -> bool:
@@ -91,24 +111,29 @@ def healthcheck() -> bool:
     return True
 
 
-def list_pins() -> list[dict]:
+def list_pins(owner: str) -> list[dict]:
     with _conn() as conn:
         cur = conn.cursor()
         cur.execute(
-            "SELECT id, lat, lon, note, created_at FROM pins ORDER BY created_at DESC"
+            _ph(
+                "SELECT id, lat, lon, note, created_at FROM pins "
+                "WHERE owner_token = ? ORDER BY created_at DESC"
+            ),
+            (owner,),
         )
         return [dict(r) for r in cur.fetchall()]
 
 
-def add_pin(lat: float, lon: float, note: str) -> dict:
+def add_pin(lat: float, lon: float, note: str, owner: str) -> dict:
     created_at = datetime.now(timezone.utc).isoformat()
     insert = _ph(
-        "INSERT INTO pins (lat, lon, note, created_at) VALUES (?, ?, ?, ?)"
+        "INSERT INTO pins (lat, lon, note, created_at, owner_token) "
+        "VALUES (?, ?, ?, ?, ?)"
         + (" RETURNING id, lat, lon, note, created_at" if _IS_PG else "")
     )
     with _conn() as conn:
         cur = conn.cursor()
-        cur.execute(insert, (lat, lon, note, created_at))
+        cur.execute(insert, (lat, lon, note, created_at, owner))
         if _IS_PG:
             return dict(cur.fetchone())
         # SQLite: fetch the row by the autoincrement id.
@@ -119,8 +144,11 @@ def add_pin(lat: float, lon: float, note: str) -> dict:
         return dict(cur.fetchone())
 
 
-def delete_pin(pin_id: int) -> bool:
+def delete_pin(pin_id: int, owner: str) -> bool:
     with _conn() as conn:
         cur = conn.cursor()
-        cur.execute(_ph("DELETE FROM pins WHERE id = ?"), (pin_id,))
+        cur.execute(
+            _ph("DELETE FROM pins WHERE id = ? AND owner_token = ?"),
+            (pin_id, owner),
+        )
         return cur.rowcount > 0
