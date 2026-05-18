@@ -4,8 +4,6 @@
 // single source of truth). Populated during init().
 let STATES = {};
 const STATE_ZOOM = 7;
-const MON = ["Jan", "Feb", "Mar", "Apr", "May", "Jun",
-             "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
 function currentState() {
   const p = new URLSearchParams(location.search).get("state") || "MD";
@@ -31,13 +29,6 @@ function esc(s) {
   return String(s == null ? "" : s).replace(/[&<>"']/g, (c) => ({
     "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
   }[c]));
-}
-
-function monthsLabel(mm) {
-  if (!mm || mm.length !== 2) return "Year-round";
-  const [s, e] = mm;
-  if (s === 1 && e === 12) return "Year-round";
-  return `${MON[s - 1]}-${MON[e - 1]}`;
 }
 
 // Keep popups inside small screens.
@@ -72,24 +63,17 @@ const troutLayer = L.geoJSON(null, {
     if (n) l.bindTooltip(String(n), { sticky: true });
   },
 });
-const troutGaugesLayer = L.layerGroup();
-const otherGaugesLayer = L.layerGroup();
-const stockingLayer = L.layerGroup();
-const pinsLayer = L.layerGroup();
+const riversLayer = L.layerGroup().addTo(map);
+const pinsLayer = L.layerGroup().addTo(map);
 
-[troutLayer, troutGaugesLayer, otherGaugesLayer,
- stockingLayer, pinsLayer].forEach((g) => g.addTo(map));
-
+// Trout-stream lines are heavy; off by default (toggle in the control).
 L.control.layers(null, {
   "Streams (USGS)": hydroLayer,
   "Trout Streams": troutLayer,
-  "Trout Stream Gauges": troutGaugesLayer,
-  "All Other Gauges": otherGaugesLayer,
-  "Recently Stocked": stockingLayer,
   "Saved Pins": pinsLayer,
 }, { collapsed: true }).addTo(map);
 
-let allGauges = [];
+let allRivers = [];
 
 // -- 1-yr USGS trend sparkline (dependency-free SVG) --
 
@@ -128,25 +112,27 @@ function sparkline(series) {
 function wireTrend(e) {
   const root = e.popup.getElement();
   if (!root) return;
-  const btn = root.querySelector(".bl-trend-btn");
-  const box = root.querySelector(".bl-trend");
-  if (!btn || !box || btn.dataset.wired) return;
-  btn.dataset.wired = "1";
-  btn.onclick = async () => {
+  // A river popup has one trend button per gauge.
+  root.querySelectorAll(".bl-trend-btn").forEach((btn) => {
+    if (btn.dataset.wired) return;
+    btn.dataset.wired = "1";
     const site = btn.getAttribute("data-site");
-    btn.disabled = true;
-    box.innerHTML = '<div class="bl-trend-msg">Loading 1-yr trend&hellip;</div>';
-    try {
-      const d = await fetch(
-        `/api/history?site_no=${encodeURIComponent(site)}`
-      ).then((r) => r.json());
-      box.innerHTML = sparkline(d.series);
-    } catch (_) {
-      box.innerHTML = '<div class="bl-trend-msg">Trend unavailable.</div>';
-    }
-    btn.style.display = "none";
-    e.popup.update();
-  };
+    const box = root.querySelector(`.bl-trend[data-site="${site}"]`);
+    btn.onclick = async () => {
+      btn.disabled = true;
+      if (box) box.innerHTML = '<div class="bl-trend-msg">Loading 1-yr trend&hellip;</div>';
+      try {
+        const d = await fetch(
+          `/api/history?site_no=${encodeURIComponent(site)}`
+        ).then((r) => r.json());
+        if (box) box.innerHTML = sparkline(d.series);
+      } catch (_) {
+        if (box) box.innerHTML = '<div class="bl-trend-msg">Trend unavailable.</div>';
+      }
+      btn.style.display = "none";
+      e.popup.update();
+    };
+  });
 }
 
 // -- Gauges --
@@ -155,7 +141,7 @@ function populateHatchOptions() {
   const sel = document.getElementById("hatch-select");
   const cur = sel.value;
   const set = new Set();
-  allGauges.forEach((g) => (g.active_hatches || []).forEach((h) => set.add(h)));
+  allRivers.forEach((r) => (r.active_hatches || []).forEach((h) => set.add(h)));
   const insects = [...set].sort();
   sel.innerHTML =
     '<option value="any">Any hatch</option>' +
@@ -164,39 +150,38 @@ function populateHatchOptions() {
   sel.value = [...sel.options].some((o) => o.value === cur) ? cur : "any";
 }
 
-function renderGauges() {
-  troutGaugesLayer.clearLayers();
-  otherGaugesLayer.clearLayers();
+function renderRivers() {
+  riversLayer.clearLayers();
   const cond = document.getElementById("cond-select").value;
   const troutOnly = document.getElementById("trout-only").checked;
   const stockedOnly = document.getElementById("stocked-only").checked;
   const hatch = document.getElementById("hatch-select").value;
 
-  for (const g of allGauges) {
-    if (troutOnly && !g.on_trout) continue;
-    if (stockedOnly && !g.near_stocked) continue;
-    if (cond !== "any" && g.conditions.overall !== cond) continue;
-    const ah = g.active_hatches || [];
+  for (const r of allRivers) {
+    if (troutOnly && !r.on_trout) continue;
+    if (stockedOnly && !r.near_stocked) continue;
+    if (cond !== "any" && r.conditions.overall !== cond) continue;
+    const ah = r.active_hatches || [];
     if (hatch === "active" && !ah.length) continue;
     if (hatch !== "any" && hatch !== "active" && !ah.includes(hatch)) continue;
 
-    const m = L.circleMarker([g.lat, g.lon], {
-      radius: 7, color: g.color, weight: 2,
-      fill: true, fillColor: g.color, fillOpacity: 0.8,
+    const m = L.circleMarker([r.lat, r.lon], {
+      radius: 8, color: r.color, weight: 2,
+      fill: true, fillColor: r.color, fillOpacity: 0.85,
     });
-    const tBadge = g.on_trout
-      ? ' <span style="color:#1abc9c;font-size:11px">&#x1f41f; Trout Water</span>'
+    const tBadge = r.on_trout
+      ? ' <span style="color:#1abc9c;font-size:11px">&#x1f41f; Trout</span>'
       : "";
-    const sBadge = g.near_stocked
+    const sBadge = r.near_stocked
       ? ' <span style="color:#e67e22;font-size:11px">Stocked</span>'
       : "";
     m.bindTooltip(
-      `<b>${esc(g.name)}</b>${tBadge}${sBadge}` +
-      `<br><span style="color:${g.color}">${esc(g.label)}</span>`
+      `<b>${esc(r.name)}</b>${tBadge}${sBadge}` +
+      `<br><span style="color:${r.color}">${esc(r.label)}</span>`
     );
-    m.bindPopup(g.popup_html, popupOpts());
+    m.bindPopup(r.popup_html, popupOpts());
     m.on("popupopen", wireTrend);
-    (g.on_trout ? troutGaugesLayer : otherGaugesLayer).addLayer(m);
+    riversLayer.addLayer(m);
   }
 }
 
@@ -206,45 +191,11 @@ async function loadGeo(state) {
   troutLayer.addData(t);
 }
 
-async function loadGauges(state) {
-  const data = await fetch(`/api/gauges?state=${state}`).then((r) => r.json());
-  allGauges = (data && data.gauges) || [];
+async function loadRivers(state) {
+  const data = await fetch(`/api/rivers?state=${state}`).then((r) => r.json());
+  allRivers = (data && data.rivers) || [];
   populateHatchOptions();
-  renderGauges();
-}
-
-// -- Recently stocked --
-
-function addStockMarker(f) {
-  const c = f.geometry && f.geometry.coordinates;
-  if (!c) return;
-  const p = f.properties || {};
-  const icon = L.divIcon({
-    className: "bl-stock",
-    html: '<div class="bl-stock-dot"></div>',
-    iconSize: [13, 13], iconAnchor: [7, 7],
-  });
-  const sp = (p.species || []).join(", ");
-  const m = L.marker([c[1], c[0]], { icon });
-  m.bindPopup(
-    `<div class="stock-popup"><div class="sp-title">${esc(p.water)}</div>` +
-    (p.category ? `<div class="sp-row">${esc(p.category)}</div>` : "") +
-    (sp ? `<div class="sp-row">Species: ${esc(sp)}</div>` : "") +
-    `<div class="sp-row">Season: ${esc(monthsLabel(p.season_months))}</div>` +
-    (p.agency_url
-      ? `<div class="sp-row"><a href="${esc(p.agency_url)}" target="_blank" ` +
-        `rel="noopener">Stocking schedule &#x2197;</a></div>`
-      : "") +
-    `</div>`,
-    popupOpts()
-  );
-  stockingLayer.addLayer(m);
-}
-
-async function loadStocking(state) {
-  const fc = await fetch(`/api/stocking?state=${state}`).then((r) => r.json());
-  stockingLayer.clearLayers();
-  (fc.features || []).forEach(addStockMarker);
+  renderRivers();
 }
 
 // -- Saved pins --
@@ -332,18 +283,17 @@ document.getElementById("pin-save").onclick = async () => {
 
 // -- Filters / state switching (no full reload) --
 
-document.getElementById("cond-select").onchange = renderGauges;
-document.getElementById("trout-only").onchange = renderGauges;
-document.getElementById("stocked-only").onchange = renderGauges;
-document.getElementById("hatch-select").onchange = renderGauges;
+document.getElementById("cond-select").onchange = renderRivers;
+document.getElementById("trout-only").onchange = renderRivers;
+document.getElementById("stocked-only").onchange = renderRivers;
+document.getElementById("hatch-select").onchange = renderRivers;
 
 document.getElementById("state-select").onchange = (e) => {
   const s = e.target.value;
   history.replaceState(null, "", `/map?state=${s.toLowerCase()}`);
   map.setView(STATES[s].center, STATE_ZOOM);
   loadGeo(s);
-  loadGauges(s);
-  loadStocking(s);
+  loadRivers(s);
 };
 
 // -- Mobile: filter sheet + collapsible legend --
@@ -382,8 +332,7 @@ async function init() {
   sel.value = state;
   map.setView(STATES[state].center, STATE_ZOOM);
   loadGeo(state);
-  loadGauges(state);
-  loadStocking(state);
+  loadRivers(state);
   loadPins();
 }
 init();

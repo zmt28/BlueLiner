@@ -15,12 +15,13 @@ so you can check conditions before you drive to the water.
 
 ## Features
 
-- **Color-coded condition markers** -- green (good), orange (fair), red (poor), gray (no data) at a glance
-- **Historical flow context** -- current discharge compared to the historical median for today's date, powered by the USGS Statistics API
-- **Trout stream overlay** -- designated trout water from Virginia DWR and Maryland DNR fisheries data (fully paginated), with spatial tagging of nearby USGS gauges
-- **Hatch guidance** -- "what's hatching now" per gauge, resolved to a sub-state hatch zone and the current month
-- **Stocking overlay** -- well-known stocked / specially-managed waters (MD/VA/WV baseline + live VA DWR feed) as a toggleable layer and a per-gauge badge
-- **1-year flow trend** -- on-demand USGS daily-values sparkline in the gauge popup (served live, never stored)
+- **One pin per river** -- gauges are grouped into rivers; a single marker per river opens a popup aggregating overall rating, every gauge's readings, hatches, and nearby stocking (far less map clutter)
+- **Color-coded markers** -- green (good), orange (fair), red (poor), gray (no data) at a glance
+- **Historical flow context** -- current discharge vs. the historical median for today's date, powered by the USGS Statistics API
+- **Trout stream overlay** -- statewide designated trout water (VA DWR / MD DNR, OBJECTID keyset-paginated for full coverage) as a toggleable layer, plus per-river spatial tagging
+- **Hatch guidance** -- "what's hatching now" per river, resolved to a sub-state hatch zone and the current month
+- **Stocking** -- well-known stocked / specially-managed waters (MD/VA/WV baseline + live VA DWR feed) surfaced in the river popup with species/season/agency link
+- **1-year flow trend** -- on-demand USGS daily-values sparkline per gauge in the river popup (served live, never stored)
 - **National gauge coverage** -- all 50 states + DC via the state selector (conditions/trend are national; trout/stocking/hatch data are mid-Atlantic and expanding)
 - **Styled popup cards** -- condition badges, flow trends, data tables, and direct links to USGS site pages
 - **Instant filters** -- filter by condition, trout water, hatch, or stocking and switch states client-side, with no full page reload
@@ -103,9 +104,8 @@ Each monitoring station is scored based on current readings:
 - `GET /map` -- the application shell (static client; state/filters resolved in the browser)
 - `GET /api/states` -- supported states (code, name, map center); drives the selector
 - `GET /streams?state=MD` -- raw live stream data from USGS NWIS for the specified state
-- `GET /api/gauges?state=MD` -- scored gauges (conditions, flow context, trout tag, hatch, stocking, popup) as JSON
-- `GET /api/trout?state=MD` -- designated trout water as GeoJSON
-- `GET /api/stocking?state=MD` -- stocked / specially-managed trout waters as GeoJSON
+- `GET /api/rivers?state=MD` -- gauges grouped into rivers (rating, hatch, stocking, aggregated popup) as JSON
+- `GET /api/trout?state=MD` -- designated trout water as GeoJSON (non-blocking; warms in the background)
 - `GET /api/history?site_no=01581920` -- ~1 year of USGS daily values (served live, not stored)
 - `GET /api/pins` / `POST /api/pins` / `DELETE /api/pins/{id}` -- saved map pins
 
