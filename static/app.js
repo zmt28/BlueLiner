@@ -3,6 +3,7 @@
 // code -> { name, center }, loaded from /api/states (states.py is the
 // single source of truth). Populated during init().
 let STATES = {};
+let currentSt = "MD";
 const STATE_ZOOM = 7;
 
 function currentState() {
@@ -185,11 +186,31 @@ function renderRivers() {
   }
 }
 
-async function loadGeo(state) {
-  const t = await fetch(`/api/trout?state=${state}`).then((r) => r.json());
-  troutLayer.clearLayers();
-  troutLayer.addData(t);
+// Trout streams cover the whole state now (large). Load lazily -- only
+// when the user toggles the layer on -- and once per state, so the
+// initial map (layer off by default) is never blocked by a multi-MB
+// GeoJSON parse.
+let troutLoadedState = null;
+let troutLoading = false;
+
+async function ensureTrout(state) {
+  if (troutLoadedState === state || troutLoading) return;
+  troutLoading = true;
+  try {
+    const t = await fetch(`/api/trout?state=${state}`).then((r) => r.json());
+    troutLayer.clearLayers();
+    troutLayer.addData(t);
+    troutLoadedState = state;
+  } catch (_) {
+    /* leave layer empty; user can re-toggle to retry */
+  } finally {
+    troutLoading = false;
+  }
 }
+
+map.on("overlayadd", (e) => {
+  if (e.layer === troutLayer) ensureTrout(currentSt);
+});
 
 async function loadRivers(state) {
   const data = await fetch(`/api/rivers?state=${state}`).then((r) => r.json());
@@ -290,10 +311,13 @@ document.getElementById("hatch-select").onchange = renderRivers;
 
 document.getElementById("state-select").onchange = (e) => {
   const s = e.target.value;
+  currentSt = s;
   history.replaceState(null, "", `/map?state=${s.toLowerCase()}`);
   map.setView(STATES[s].center, STATE_ZOOM);
-  loadGeo(s);
   loadRivers(s);
+  // Refresh trout for the new state only if the layer is currently shown.
+  troutLoadedState = null;
+  if (map.hasLayer(troutLayer)) ensureTrout(s);
 };
 
 // -- Mobile: filter sheet + collapsible legend --
@@ -329,9 +353,9 @@ async function init() {
     sel.appendChild(opt);
   }
   const state = currentState();
+  currentSt = state;
   sel.value = state;
   map.setView(STATES[state].center, STATE_ZOOM);
-  loadGeo(state);
   loadRivers(state);
   loadPins();
 }
