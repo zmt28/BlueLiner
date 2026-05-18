@@ -9,6 +9,7 @@ from collections import defaultdict
 import geopandas
 import pandas as pd
 import asyncio
+import hashlib
 import logging
 import os
 import time
@@ -725,20 +726,40 @@ def _rate_limit_pins(request: Request) -> None:
         )
 
 
+def _owner(request: Request, required: bool = True) -> str | None:
+    """Derive a stable owner id from the device token header.
+
+    The client holds an opaque random token (localStorage); the server
+    stores only its SHA-256, so a DB dump can't be replayed. No login,
+    no server secret -- the token is an unguessable bearer capability.
+    """
+    token = request.headers.get("x-device-token", "").strip()
+    if not (8 <= len(token) <= 200):
+        if required:
+            raise HTTPException(status_code=400, detail="Missing device token")
+        return None
+    return hashlib.sha256(token.encode()).hexdigest()
+
+
 @app.get("/api/pins")
-async def api_list_pins():
-    return await asyncio.to_thread(db.list_pins)
+async def api_list_pins(request: Request):
+    owner = _owner(request, required=False)
+    if owner is None:
+        return []
+    return await asyncio.to_thread(db.list_pins, owner)
 
 
 @app.post("/api/pins")
 async def api_add_pin(pin: PinIn, request: Request):
     _rate_limit_pins(request)
-    return await asyncio.to_thread(db.add_pin, pin.lat, pin.lon, pin.note)
+    owner = _owner(request, required=True)
+    return await asyncio.to_thread(db.add_pin, pin.lat, pin.lon, pin.note, owner)
 
 
 @app.delete("/api/pins/{pin_id}")
-async def api_delete_pin(pin_id: int):
-    deleted = await asyncio.to_thread(db.delete_pin, pin_id)
+async def api_delete_pin(pin_id: int, request: Request):
+    owner = _owner(request, required=True)
+    deleted = await asyncio.to_thread(db.delete_pin, pin_id, owner)
     if not deleted:
         raise HTTPException(status_code=404, detail="Pin not found")
     return {"ok": True}
