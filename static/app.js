@@ -69,6 +69,7 @@ const troutLayer = L.geoJSON(null, {
     if (n) l.bindTooltip(String(n), { sticky: true });
   },
 });
+const riverLinesLayer = L.layerGroup().addTo(map);
 const riversLayer = L.layerGroup().addTo(map);
 const pinsLayer = L.layerGroup().addTo(map);
 
@@ -217,11 +218,68 @@ map.on("overlayadd", (e) => {
   if (e.layer === troutLayer) ensureTrout(currentSt);
 });
 
+// -- Clickable river flowlines (USGS NLDI): lazy, viewport-bounded --
+// Loading every river's geometry at once is the trout-layer trap, so we
+// only fetch lines for rivers in the current view, when zoomed in,
+// debounced, concurrency-capped, and cached per site for the session.
+const riverGeomLoaded = new Set();
+const RIVER_LINE_MIN_ZOOM = 9;
+const RIVER_LINE_MAX_PER_PASS = 30;
+const RIVER_LINE_CONCURRENCY = 4;
+let riverLinePass = 0;
+
+async function fetchRiverLine(r) {
+  try {
+    const fc = await fetch(
+      `/api/river_geom?site_no=${encodeURIComponent(r.site_no)}`
+    ).then((res) => res.json());
+    if (!fc || !fc.features || !fc.features.length) return;
+    const line = L.geoJSON(fc, {
+      style: { color: r.color, weight: 5, opacity: 0.55 },
+    });
+    line.bindPopup(r.popup_html, popupOpts());
+    line.on("popupopen", wireTrend);
+    riverLinesLayer.addLayer(line);
+  } catch (_) { /* keep the marker; the line just won't appear */ }
+}
+
+async function loadVisibleRiverLines() {
+  if (map.getZoom() < RIVER_LINE_MIN_ZOOM) return;
+  const b = map.getBounds();
+  const pass = ++riverLinePass;
+  const todo = [];
+  for (const r of allRivers) {
+    if (!r.site_no || riverGeomLoaded.has(r.site_no)) continue;
+    if (!b.contains([r.lat, r.lon])) continue;
+    riverGeomLoaded.add(r.site_no);          // optimistic: never refetch
+    todo.push(r);
+    if (todo.length >= RIVER_LINE_MAX_PER_PASS) break;
+  }
+  let i = 0;
+  const worker = async () => {
+    while (i < todo.length && pass === riverLinePass) {
+      await fetchRiverLine(todo[i++]);
+    }
+  };
+  await Promise.all(
+    Array.from({ length: Math.min(RIVER_LINE_CONCURRENCY, todo.length) }, worker)
+  );
+}
+
+let _riverLineTimer = null;
+map.on("moveend", () => {
+  clearTimeout(_riverLineTimer);
+  _riverLineTimer = setTimeout(loadVisibleRiverLines, 400);
+});
+
 async function loadRivers(state) {
   const data = await fetch(`/api/rivers?state=${state}`).then((r) => r.json());
   allRivers = (data && data.rivers) || [];
   populateHatchOptions();
   renderRivers();
+  riverLinesLayer.clearLayers();
+  riverGeomLoaded.clear();
+  loadVisibleRiverLines();
 }
 
 // -- Saved pins --

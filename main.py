@@ -30,8 +30,9 @@ logging.basicConfig(
 )
 logger = logging.getLogger("bluelines")
 
-# Module-level cache (USGS daily medians, populated lazily per request)
+# Module-level caches (populated lazily per request)
 _stats_cache: dict[str, dict] = {}
+_river_geom_cache: dict[str, dict] = {}  # site_no -> NLDI flowline GeoJSON
 
 STATIC_DIR = os.path.join(os.path.dirname(__file__), "static")
 
@@ -587,9 +588,14 @@ async def _rivers_for_states(states_to_load: list[str]) -> list[dict]:
                 "stocked_waters": stocked_waters,
                 "gauges": sorted(g["gauges"], key=lambda x: x["site_name"]),
             }
+            site_no = next(
+                (gg["site_no"] for gg in river["gauges"] if gg.get("site_no")),
+                None,
+            )
             rivers.append({
                 "name": river["name"],
                 "lat": clat, "lon": clon,
+                "site_no": site_no,
                 "conditions": {"overall": overall},
                 "color": SCORE_COLORS[overall],
                 "label": SCORE_LABELS[overall],
@@ -698,6 +704,42 @@ async def api_trout(state: str = Query(default="MD", description="Two-letter sta
         raise HTTPException(status_code=400, detail=f"Unsupported state: {state}")
     # Non-blocking: cached gdf or empty until the background warm completes.
     return _gdf_to_geojson_response([_trout_for_state(st) for st in states_to_load])
+
+
+_EMPTY_FC = {"type": "FeatureCollection", "features": []}
+
+
+def _nldi_flowline(site_no: str) -> dict:
+    """Main-stem flowline around a USGS gauge from USGS NLDI, cached per
+    site (geometry is static). Returns a GeoJSON FeatureCollection, or an
+    empty one on any failure (caller degrades to just the marker)."""
+    if site_no in _river_geom_cache:
+        return _river_geom_cache[site_no]
+    base = f"https://api.water.usgs.gov/nldi/linked-data/nwissite/USGS-{site_no}/navigation"
+    feats: list[dict] = []
+    try:
+        with httpx.Client(timeout=15.0, headers={"User-Agent": USER_AGENT}) as c:
+            for nav, dist in (("UM", "75"), ("DM", "40")):
+                try:
+                    r = c.get(f"{base}/{nav}/flowlines", params={"distance": dist})
+                    r.raise_for_status()
+                    feats.extend(r.json().get("features", []))
+                except Exception:
+                    continue
+    except Exception:
+        feats = []
+    fc = {"type": "FeatureCollection", "features": feats} if feats else _EMPTY_FC
+    _river_geom_cache[site_no] = fc
+    return fc
+
+
+@app.get("/api/river_geom")
+async def api_river_geom(
+    site_no: str = Query(..., pattern=r"^[0-9A-Za-z-]{4,20}$",
+                         description="USGS site number"),
+):
+    """Clickable river flowline geometry (USGS NLDI), cached per site."""
+    return await asyncio.to_thread(_nldi_flowline, site_no)
 
 
 @app.get("/api/history")
