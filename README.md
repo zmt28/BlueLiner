@@ -81,10 +81,24 @@ Postgres they survive a free-tier cold start, so even a just-woken worker
 paints from the last snapshot instead of a 25s live fetch. Non-focused
 states are computed lazily on first visit, then persisted.
 
-Point a free scheduler (GitHub Actions cron, cron-job.org, UptimeRobot)
-at `POST /internal/refresh` (header `X-Refresh-Token: $REFRESH_TOKEN`)
-every ~30-45 min: it refreshes the snapshots *and* keeps the free web
-service from sleeping.
+Two GitHub Actions workflows in `.github/workflows/` close the loop:
+
+- `keep-warm.yml` -- `GET /healthz` every 10 min so the free Render
+  service never sleeps (its 15-min idle threshold is shorter than the
+  refresh cadence).
+- `refresh-precompute.yml` -- `POST /internal/refresh` every 30 min,
+  triggering the refresher (single-flight: no-op if a cycle is already
+  running, so the external cron and the in-process loop can't double up).
+
+Required GitHub repo secrets (Settings -> Secrets and variables -> Actions):
+
+| Secret | Value |
+|--------|-------|
+| `BLUELINES_URL` | Render service URL, e.g. `https://bluelines.onrender.com` (no trailing slash) |
+| `REFRESH_TOKEN` | The token Render generated for `REFRESH_TOKEN` (read it from the Render dashboard) |
+
+Workflows can also be triggered by hand from the Actions tab
+(`workflow_dispatch`) to test the wiring.
 
 **Scaling path (config, not rewrite):** Render web -> Starter (no sleep,
 raise `WEB_CONCURRENCY`); **Render Postgres -> a persistent paid plan**

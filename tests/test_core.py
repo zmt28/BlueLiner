@@ -603,6 +603,24 @@ def test_river_lines_payload_from_db(tmp_path, monkeypatch):
     assert len(missing) == 1 and missing[0]["site_no"] == "99999999"
 
 
+def test_refresh_focused_single_flight(monkeypatch):
+    """External cron + in-process loop both call refresh_focused; if one
+    is already running the other must skip rather than double USGS load."""
+    import asyncio
+    import precompute
+    monkeypatch.setattr(precompute, "_refresh_running", True)
+    calls = []
+
+    async def fake_refresh_state(st, *, backfill=True):
+        calls.append(st)
+        return []
+
+    monkeypatch.setattr(precompute, "refresh_state", fake_refresh_state)
+    asyncio.run(precompute.refresh_focused())
+    assert calls == []                              # early-return, no work
+    assert precompute._refresh_running is True      # flag untouched
+
+
 def test_internal_refresh_requires_token(monkeypatch):
     import asyncio
     req = SimpleNamespace(headers={})

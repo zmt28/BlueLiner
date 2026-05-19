@@ -1,0 +1,22 @@
+name: Keep Render service warm
+
+# Free Render web services sleep after ~15 min idle. The refresh cron
+# runs every 30 min (USGS update cadence), which is NOT often enough to
+# keep the service awake on its own -- so this cheap GET /healthz every
+# 10 min is what actually prevents cold starts. Together they make the
+# free tier behave like always-on.
+#
+# Required repo secret:
+#   BLUELINES_URL    e.g. https://bluelines.onrender.com
+on:
+  schedule:
+    - cron: "*/10 * * * *"
+  workflow_dispatch:
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    timeout-minutes: 1
+    steps:
+      - name: GET /healthz
+        run: curl -fsS -m 30 "${{ secrets.BLUELINES_URL }}/healthz"

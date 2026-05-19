@@ -98,20 +98,35 @@ async def refresh_state(st: str, *, backfill: bool = True) -> list[dict]:
     return rivers
 
 
+_refresh_running = False
+
+
 async def refresh_focused() -> None:
     """One full cycle over the focused states. Data first (every focused
     state's snapshot lands quickly), geometry second -- so no state's
-    clickable lines wait behind another state's slow NLDI backfill."""
-    persisted: dict[str, list[dict]] = {}
-    for st in focused_states():
-        try:
-            rivers = await refresh_state(st, backfill=False)
-            if rivers:
-                persisted[st] = rivers
-        except Exception as exc:
-            logger.warning("refresh_focused: %s data failed: %s", st, exc)
-    for st, rivers in persisted.items():
-        try:
-            await _backfill_geometry(rivers)
-        except Exception as exc:
-            logger.warning("refresh_focused: %s geometry failed: %s", st, exc)
+    clickable lines wait behind another state's slow NLDI backfill.
+
+    Single-flight: the in-process scheduler and the external GitHub
+    Actions cron both call this; if a cycle is already running we skip
+    rather than doubling the USGS load."""
+    global _refresh_running
+    if _refresh_running:
+        logger.info("refresh_focused: already running, skipping")
+        return
+    _refresh_running = True
+    try:
+        persisted: dict[str, list[dict]] = {}
+        for st in focused_states():
+            try:
+                rivers = await refresh_state(st, backfill=False)
+                if rivers:
+                    persisted[st] = rivers
+            except Exception as exc:
+                logger.warning("refresh_focused: %s data failed: %s", st, exc)
+        for st, rivers in persisted.items():
+            try:
+                await _backfill_geometry(rivers)
+            except Exception as exc:
+                logger.warning("refresh_focused: %s geometry failed: %s", st, exc)
+    finally:
+        _refresh_running = False
