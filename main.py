@@ -591,23 +591,53 @@ async def _assemble_rivers(time_series: list, trout_gdfs: list,
     return rivers
 
 
-async def _rivers_for_states(states_to_load: list[str]) -> list[dict]:
-    rivers: list[dict] = []
-    for st in states_to_load:
-        data = await _usgs_iv({"stateCd": STATES[st]["usgs_code"]}, st)
-        ts = data.get("value", {}).get("timeSeries", [])
-        trout = [_trout_for_state(st)]  # non-blocking; None until warmed
-        stocked = await asyncio.to_thread(stocking.stocked_points, st)
-        rivers += await _assemble_rivers(ts, trout, stocked)
+_STATE_RIVERS_TTL = 120.0  # USGS IV updates ~15-60 min; short cache is plenty
+_state_rivers_cache: dict[str, tuple[float, list[dict]]] = {}
+
+
+async def _rivers_for_state_cached(st: str) -> list[dict]:
+    hit = _state_rivers_cache.get(st)
+    if hit and (time.monotonic() - hit[0]) < _STATE_RIVERS_TTL:
+        return hit[1]
+    data = await _usgs_iv({"stateCd": STATES[st]["usgs_code"]}, st)
+    ts = data.get("value", {}).get("timeSeries", [])
+    trout = [_trout_for_state(st)]  # non-blocking; None until warmed
+    stocked = await asyncio.to_thread(stocking.stocked_points, st)
+    rivers = await _assemble_rivers(ts, trout, stocked)
+    # Don't cache an empty result from a transient USGS failure.
+    if rivers:
+        _state_rivers_cache[st] = (time.monotonic(), rivers)
     return rivers
 
 
+async def _rivers_for_states(states_to_load: list[str]) -> list[dict]:
+    per_state = await asyncio.gather(
+        *(_rivers_for_state_cached(st) for st in states_to_load)
+    )
+    return [r for group in per_state for r in group]
+
+
 async def _rivers_for_bbox(bbox: tuple[float, float, float, float]) -> list[dict]:
-    states = states_in_bbox(*bbox)
-    ts = await _iv_timeseries_for_bbox(bbox)
-    trout = [_trout_for_state(s) for s in states]      # cached/lazy per state
-    stocked = stocking.baseline_for(states)            # static, no network
-    return await _assemble_rivers(ts, trout, stocked)
+    # USGS's own bBox IV query proved unreliable; instead reuse the proven
+    # per-state path (cached) for the states the viewport touches and clip to
+    # the box. Same data/trout/stocking as the zoomed-out overview.
+    w, s, e, n = bbox
+    states = states_in_bbox(w, s, e, n)
+    per_state = await asyncio.gather(
+        *(_rivers_for_state_cached(st) for st in states)
+    )
+    out: list[dict] = []
+    seen: set = set()
+    for group in per_state:
+        for r in group:
+            if not (w <= r["lon"] <= e and s <= r["lat"] <= n):
+                continue
+            sid = r.get("site_no") or (r["name"], r["lat"], r["lon"])
+            if sid in seen:
+                continue
+            seen.add(sid)
+            out.append(r)
+    return out
 
 
 # -- Routes --
@@ -647,12 +677,6 @@ async def _usgs_iv(extra: dict, label: str) -> dict:
     except Exception as exc:
         logger.warning("USGS IV fetch failed for %s: %s", label, exc)
         return _EMPTY_IV
-
-
-async def _iv_timeseries_for_bbox(bbox: tuple[float, float, float, float]) -> list:
-    w, s, e, n = bbox
-    data = await _usgs_iv({"bBox": f"{w},{s},{e},{n}"}, f"bbox {w},{s},{e},{n}")
-    return data.get("value", {}).get("timeSeries", [])
 
 
 @app.get("/streams")
