@@ -254,6 +254,28 @@ def test_nldi_flowline_graceful(monkeypatch):
                                                "features": []}
 
 
+def test_states_in_bbox():
+    import states
+    md_area = states.states_in_bbox(-79.0, 38.0, -76.0, 40.0)
+    assert "MD" in md_area and "VA" in md_area
+    assert "CA" not in md_area and "FL" not in md_area
+    co_area = states.states_in_bbox(-106.0, 38.5, -104.5, 40.0)
+    assert "CO" in co_area
+    assert states.states_in_bbox(-30.0, 10.0, -29.0, 11.0) == []  # mid-Atlantic ocean
+
+
+def test_parse_bbox(monkeypatch):
+    assert main._parse_bbox("-77,38,-76,39") == (-77.0, 38.0, -76.0, 39.0)
+    for bad in ("1,2,3", "a,b,c,d", "-76,38,-77,39",      # short / nan / w>e
+                "-76,40,-75,38", "-200,38,-76,39"):        # s>n / out of range
+        with pytest.raises(HTTPException) as ei:
+            main._parse_bbox(bad)
+        assert ei.value.status_code == 400
+    with pytest.raises(HTTPException) as ei:               # too large
+        main._parse_bbox("-90,30,-80,40")
+    assert ei.value.status_code == 400
+
+
 def test_river_key():
     assert main._river_key("Gunpowder falls near glencoe, md")[1] == "Gunpowder Falls"
     assert main._river_key("Patapsco river near halethorpe, md")[1] == "Patapsco River"

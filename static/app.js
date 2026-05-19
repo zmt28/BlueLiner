@@ -287,21 +287,72 @@ async function loadVisibleRiverLines() {
   if (pass === riverLinePass) renderRivers();  // reconcile: lines replace pins
 }
 
-let _riverLineTimer = null;
+// -- Hybrid loading: state overview when zoomed out, live viewport when in --
+const VIEWPORT_MIN_ZOOM = 9;
+let stateRivers = [];               // last per-state set (zoomed-out overview)
+let viewportMode = false;
+const _viewportCache = new Map();   // rounded "w,s,e,n" -> rivers
+let _viewportSeq = 0;
+
+async function loadViewportRivers() {
+  const b = map.getBounds();
+  const round = (x) => x.toFixed(2);
+  const key = [b.getWest(), b.getSouth(), b.getEast(), b.getNorth()].map(round).join(",");
+  const seq = ++_viewportSeq;
+  let rivers = _viewportCache.get(key);
+  if (!rivers) {
+    try {
+      const q = `${b.getWest()},${b.getSouth()},${b.getEast()},${b.getNorth()}`;
+      const data = await fetch(
+        `/api/rivers?bbox=${encodeURIComponent(q)}`
+      ).then((r) => r.json());
+      rivers = (data && data.rivers) || [];
+      _viewportCache.set(key, rivers);
+      if (_viewportCache.size > 30) {
+        _viewportCache.delete(_viewportCache.keys().next().value);
+      }
+    } catch (_) { return; }   // keep current view; transient failure
+  }
+  if (seq !== _viewportSeq) return;       // a newer pan/zoom superseded us
+  viewportMode = true;
+  allRivers = rivers;
+  populateHatchOptions();
+  renderRivers();
+  loadVisibleRiverLines();
+}
+
+function refreshForView() {
+  if (map.getZoom() >= VIEWPORT_MIN_ZOOM) {
+    loadViewportRivers();
+  } else if (viewportMode) {
+    viewportMode = false;                 // zoomed back out -> state overview
+    allRivers = stateRivers;
+    populateHatchOptions();
+    renderRivers();
+  }
+}
+
+let _viewTimer = null;
 map.on("moveend", () => {
-  clearTimeout(_riverLineTimer);
-  _riverLineTimer = setTimeout(loadVisibleRiverLines, 400);
+  clearTimeout(_viewTimer);
+  _viewTimer = setTimeout(refreshForView, 400);
 });
 
 async function loadRivers(state) {
   const data = await fetch(`/api/rivers?state=${state}`).then((r) => r.json());
-  allRivers = (data && data.rivers) || [];
+  stateRivers = (data && data.rivers) || [];
   riverLinesLayer.clearLayers();
   riverLineBySite.clear();
   riverGeomLoaded.clear();
-  populateHatchOptions();
-  renderRivers();
-  loadVisibleRiverLines();
+  _viewportCache.clear();
+  if (map.getZoom() >= VIEWPORT_MIN_ZOOM) {
+    loadViewportRivers();                 // already zoomed in: viewport drives
+  } else {
+    viewportMode = false;
+    allRivers = stateRivers;
+    populateHatchOptions();
+    renderRivers();
+  }
 }
 
 // -- Saved pins --

@@ -190,6 +190,15 @@ def stocked_points(state: str) -> list[dict]:
     return load_stocking(state)
 
 
+def baseline_for(states: list[str]) -> list[dict]:
+    """Bundled baseline points for several states (no network/live feed) --
+    used by the viewport path where the area can span multiple states."""
+    pts: list[dict] = []
+    for st in states:
+        pts += [dict(p, source="baseline") for p in STOCKING_BASELINE.get(st, [])]
+    return pts
+
+
 def nearby_stocked(lat: float, lon: float, points: list[dict],
                    buffer_deg: float = 0.02) -> list[dict]:
     """Stocked waters within ~buffer_deg (~2 km), nearest first."""
