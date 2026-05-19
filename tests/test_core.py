@@ -216,6 +216,44 @@ def test_arcgis_keyset_no_progress_guard(monkeypatch):
     assert calls["n"] == 3                      # metadata + page0 + page1(stop)
 
 
+def test_nldi_flowline_merges_and_caches(monkeypatch):
+    main._river_geom_cache.clear()
+    calls = {"n": 0}
+
+    class FakeClient:
+        def __init__(self, *a, **k): pass
+        def __enter__(self): return self
+        def __exit__(self, *a): return False
+        def get(self, url, params=None):
+            calls["n"] += 1
+            seg = {"type": "Feature",
+                   "geometry": {"type": "LineString",
+                                "coordinates": [[-77, 39], [-77.1, 39.1]]},
+                   "properties": {}}
+            return _FakeResp({"type": "FeatureCollection", "features": [seg]})
+
+    monkeypatch.setattr(main.httpx, "Client", FakeClient)
+    fc = main._nldi_flowline("01589000")
+    assert fc["type"] == "FeatureCollection" and len(fc["features"]) == 2  # UM+DM
+    assert calls["n"] == 2
+    fc2 = main._nldi_flowline("01589000")           # cached -> no new calls
+    assert calls["n"] == 2 and fc2 is fc
+
+
+def test_nldi_flowline_graceful(monkeypatch):
+    main._river_geom_cache.clear()
+
+    class Boom:
+        def __init__(self, *a, **k): pass
+        def __enter__(self): return self
+        def __exit__(self, *a): return False
+        def get(self, *a, **k): raise RuntimeError("nldi down")
+
+    monkeypatch.setattr(main.httpx, "Client", Boom)
+    assert main._nldi_flowline("99999999") == {"type": "FeatureCollection",
+                                               "features": []}
+
+
 def test_river_key():
     assert main._river_key("Gunpowder falls near glencoe, md")[1] == "Gunpowder Falls"
     assert main._river_key("Patapsco river near halethorpe, md")[1] == "Patapsco River"
