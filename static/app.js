@@ -85,7 +85,8 @@ let allRivers = [];
 // a pin. riverLineBySite holds loaded line layers; riverGeomLoaded marks
 // site_nos already attempted (so we never refetch / never retry empties).
 const riverLineBySite = new Map();
-const riverGeomLoaded = new Set();
+const riverGeomLoaded = new Set();    // site_nos with a final result (or empty)
+const riverGeomInFlight = new Set();  // site_nos being fetched right now
 
 // -- 1-yr USGS trend sparkline (dependency-free SVG) --
 
@@ -242,8 +243,9 @@ map.on("overlayadd", (e) => {
 // only fetch lines for rivers in the current view, when zoomed in,
 // debounced, concurrency-capped, and cached per site for the session.
 const RIVER_LINE_MIN_ZOOM = 9;
-const RIVER_LINE_MAX_PER_PASS = 30;
-const RIVER_LINE_CONCURRENCY = 4;
+const RIVER_LINE_MAX_PER_PASS = 30;     // batch size; we loop until done
+const RIVER_LINE_CONCURRENCY = 8;
+const RIVER_LINE_MAX_TOTAL = 400;       // safety ceiling per invocation
 let riverLinePass = 0;
 
 async function fetchRiverLine(r) {
@@ -251,40 +253,66 @@ async function fetchRiverLine(r) {
     const fc = await fetch(
       `/api/river_geom?site_no=${encodeURIComponent(r.site_no)}`
     ).then((res) => res.json());
-    if (!fc || !fc.features || !fc.features.length) return;  // -> pin fallback
-    const line = L.geoJSON(fc, {
-      style: { color: r.color, weight: 5, opacity: 0.6 },
-    });
-    line.bindPopup(r.popup_html, popupOpts());
-    line.on("popupopen", wireTrend);
-    riverLineBySite.set(r.site_no, line);   // renderRivers() places it
-  } catch (_) { /* keep the pin; the line just won't appear */ }
+    // Empty geometry is a final answer (NLDI has no flowline) -> pin
+    // fallback; mark loaded so we don't refetch it.
+    if (fc && fc.features && fc.features.length) {
+      const line = L.geoJSON(fc, {
+        style: { color: r.color, weight: 5, opacity: 0.6 },
+      });
+      line.bindPopup(r.popup_html, popupOpts());
+      line.on("popupopen", wireTrend);
+      riverLineBySite.set(r.site_no, line);   // renderRivers() places it
+    }
+    riverGeomLoaded.add(r.site_no);
+  } catch (_) {
+    // Transient failure: leave it unloaded so a later pass retries it.
+  } finally {
+    riverGeomInFlight.delete(r.site_no);
+  }
 }
 
 async function loadVisibleRiverLines() {
   if (map.getZoom() < RIVER_LINE_MIN_ZOOM) return;
-  const b = map.getBounds();
   const pass = ++riverLinePass;
-  const todo = [];
-  for (const r of allRivers) {
-    if (!r.site_no || riverGeomLoaded.has(r.site_no)) continue;
-    if (!riverPasses(r)) continue;          // don't fetch filtered-out rivers
-    if (!b.contains([r.lat, r.lon])) continue;
-    riverGeomLoaded.add(r.site_no);          // optimistic: never refetch/retry
-    todo.push(r);
-    if (todo.length >= RIVER_LINE_MAX_PER_PASS) break;
-  }
-  if (!todo.length) return;
-  let i = 0;
-  const worker = async () => {
-    while (i < todo.length && pass === riverLinePass) {
-      await fetchRiverLine(todo[i++]);
+  const c = map.getCenter();
+  let fetched = 0;
+
+  while (fetched < RIVER_LINE_MAX_TOTAL && pass === riverLinePass) {
+    if (map.getZoom() < RIVER_LINE_MIN_ZOOM) return;
+    const b = map.getBounds();
+    const todo = [];
+    for (const r of allRivers) {
+      if (!r.site_no) continue;
+      if (riverGeomLoaded.has(r.site_no) || riverGeomInFlight.has(r.site_no)) continue;
+      if (!riverPasses(r)) continue;        // don't fetch filtered-out rivers
+      if (!b.contains([r.lat, r.lon])) continue;
+      todo.push(r);
     }
-  };
-  await Promise.all(
-    Array.from({ length: Math.min(RIVER_LINE_CONCURRENCY, todo.length) }, worker)
-  );
-  if (pass === riverLinePass) renderRivers();  // reconcile: lines replace pins
+    if (!todo.length) break;
+    // Center-out: the rivers the user is looking at fill in first.
+    todo.sort(
+      (a, z) =>
+        (a.lat - c.lat) ** 2 + (a.lon - c.lng) ** 2 -
+        ((z.lat - c.lat) ** 2 + (z.lon - c.lng) ** 2)
+    );
+    const batch = todo.slice(0, RIVER_LINE_MAX_PER_PASS);
+    let i = 0;
+    const worker = async () => {
+      while (i < batch.length && pass === riverLinePass) {
+        // Mark in-flight only for the one we're about to fetch, so a
+        // superseded pass can't strand markers (fetchRiverLine clears
+        // them in its finally).
+        const r = batch[i++];
+        riverGeomInFlight.add(r.site_no);
+        await fetchRiverLine(r);
+      }
+    };
+    await Promise.all(
+      Array.from({ length: Math.min(RIVER_LINE_CONCURRENCY, batch.length) }, worker)
+    );
+    fetched += batch.length;
+    if (pass === riverLinePass) renderRivers();  // lines progressively replace pins
+  }
 }
 
 // -- Hybrid loading: state overview when zoomed out, live viewport when in --
@@ -344,6 +372,7 @@ async function loadRivers(state) {
   riverLinesLayer.clearLayers();
   riverLineBySite.clear();
   riverGeomLoaded.clear();
+  riverGeomInFlight.clear();
   _viewportCache.clear();
   if (map.getZoom() >= VIEWPORT_MIN_ZOOM) {
     loadViewportRivers();                 // already zoomed in: viewport drives

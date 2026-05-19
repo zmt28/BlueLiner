@@ -20,7 +20,7 @@ services:
           name: bluelines-db
           property: connectionString
       - key: WEB_CONCURRENCY
-        value: "2"
+        value: "1"
       - key: LOG_LEVEL
         value: info
       - key: PIN_RATE_MAX

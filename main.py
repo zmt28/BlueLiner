@@ -6,6 +6,7 @@ from pydantic import BaseModel, Field
 import httpx
 from datetime import datetime
 from collections import defaultdict
+from concurrent.futures import ThreadPoolExecutor
 import geopandas
 import pandas as pd
 import asyncio
@@ -15,10 +16,11 @@ import os
 import re
 import time
 
-from states import STATES, states_in_bbox
+from states import STATES, STATE_BBOX, states_in_bbox
 from trout import load_trout_streams, is_near_trout_stream
 import trout
 from arcgis import USER_AGENT
+from cache import LruTtl
 import hatches
 import stocking
 import db
@@ -30,9 +32,14 @@ logging.basicConfig(
 )
 logger = logging.getLogger("bluelines")
 
-# Module-level caches (populated lazily per request)
-_stats_cache: dict[str, dict] = {}
-_river_geom_cache: dict[str, dict] = {}  # site_no -> NLDI flowline GeoJSON
+# Module-level caches. All bounded (LruTtl) -- unbounded per-state dicts
+# were the runtime memory growth behind the 512MB OOM. Both are also
+# persisted in Postgres (db.river_stats / db.river_geom) so this is just
+# the fast L1 in front of a durable, cross-restart store.
+_stats_cache: LruTtl = LruTtl(maxsize=2000)
+# site_no -> NLDI flowline FeatureCollection. TTL'd so a transient empty
+# (NLDI failure) retries later; successful geometry also lives in the DB.
+_river_geom_cache: LruTtl = LruTtl(maxsize=512, ttl=900.0)
 
 STATIC_DIR = os.path.join(os.path.dirname(__file__), "static")
 
@@ -67,30 +74,26 @@ app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 
 # -- Historical stats --
 
-async def fetch_bulk_stats(site_nos: list[str]) -> None:
-    """
-    Fetches daily historical median discharge for multiple sites in a single
-    USGS API call (the API accepts comma-separated site numbers). Populates
-    _stats_cache for each site.
-    """
-    uncached = [s for s in site_nos if s not in _stats_cache]
-    if not uncached:
-        return
+def _fetch_stats_network(site_nos: list[str]) -> dict[str, dict]:
+    """USGS daily-median discharge for sites -> {site_no: {(month,day): cfs}}.
 
+    Every requested site is present in the result (an empty dict when USGS
+    had no rows) so the caller can persist a "looked, found nothing"
+    marker and stop refetching it on every request. Bounded by a
+    wall-clock budget; returns whatever was gathered on timeout. Runs in a
+    background thread -- never on the request path.
+    """
+    out: dict[str, dict] = {s: {} for s in site_nos}
     url = "https://waterservices.usgs.gov/nwis/stat/"
     batch_size = 10
-    # Bound total work: many batches must never make /api/gauges hang.
-    # Sites not reached just lack a historical median (scoring falls back
-    # to absolute thresholds) and are retried on a later request.
     deadline = time.monotonic() + 20.0
-
-    async with httpx.AsyncClient(
+    with httpx.Client(
         timeout=15.0, headers={"User-Agent": USER_AGENT}
     ) as client:
-        for i in range(0, len(uncached), batch_size):
+        for i in range(0, len(site_nos), batch_size):
             if time.monotonic() > deadline:
                 break
-            batch = uncached[i:i + batch_size]
+            batch = site_nos[i:i + batch_size]
             params = {
                 "format": "rdb",
                 "sites": ",".join(batch),
@@ -98,13 +101,8 @@ async def fetch_bulk_stats(site_nos: list[str]) -> None:
                 "statTypeCd": "median",
                 "parameterCd": "00060",
             }
-            # Initialize empty dicts for all sites in this batch
-            for s in batch:
-                if s not in _stats_cache:
-                    _stats_cache[s] = {}
-
             try:
-                response = await client.get(url, params=params)
+                response = client.get(url, params=params)
                 lines = response.text.strip().split("\n")
                 header = None
                 for line in lines:
@@ -123,13 +121,61 @@ async def fetch_bulk_stats(site_nos: list[str]) -> None:
                         day = int(row.get("day_nu", 0))
                         val = float(row.get("p50_va", 0))
                         if site and month and day and val:
-                            if site not in _stats_cache:
-                                _stats_cache[site] = {}
-                            _stats_cache[site][(month, day)] = val
+                            out.setdefault(site, {})[(month, day)] = val
                     except (ValueError, KeyError):
                         continue
             except Exception:
                 continue
+    return out
+
+
+_stats_warming: set[str] = set()
+
+
+def _schedule_stats_warm(site_nos: list[str]) -> None:
+    """One-shot background fetch + persist for sites with no cached medians.
+    Coloring sharpens on a later request once the warm completes."""
+    todo = [s for s in site_nos if s not in _stats_warming]
+    if not todo:
+        return
+    _stats_warming.update(todo)
+
+    async def _warm():
+        try:
+            medians = await asyncio.to_thread(_fetch_stats_network, todo)
+            for s, md in medians.items():
+                _stats_cache[s] = md
+                await asyncio.to_thread(
+                    db.put_river_stats, s,
+                    {f"{m}-{d}": v for (m, d), v in md.items()},
+                )
+        except Exception as exc:
+            logger.warning("stats warm failed: %s", exc)
+        finally:
+            for s in todo:
+                _stats_warming.discard(s)
+
+    asyncio.create_task(_warm())
+
+
+async def _ensure_medians_cached(site_nos: list[str]) -> None:
+    """Make medians available without blocking the request: in-process ->
+    Postgres -> (background) USGS. Sites still missing score on absolute
+    thresholds now and get colored on the next request post-warm."""
+    need = [s for s in site_nos if s not in _stats_cache]
+    if not need:
+        return
+    from_db = await asyncio.to_thread(db.get_river_stats, need)
+    for s, md in from_db.items():
+        try:
+            _stats_cache[s] = {
+                tuple(int(x) for x in k.split("-")): v for k, v in md.items()
+            }
+        except (ValueError, AttributeError):
+            continue
+    missing = [s for s in need if s not in _stats_cache]
+    if missing:
+        _schedule_stats_warm(missing)
 
 
 # -- Scoring --
@@ -534,7 +580,7 @@ async def _assemble_rivers(time_series: list, trout_gdfs: list,
         ):
             discharge_site_nos.append(sn)
     if discharge_site_nos:
-        await fetch_bulk_stats(discharge_site_nos)
+        await _ensure_medians_cached(discharge_site_nos)
 
     groups: dict[str, dict] = {}
     for (site_name, latitude, longitude), info in sites.items():
@@ -592,13 +638,15 @@ async def _assemble_rivers(time_series: list, trout_gdfs: list,
 
 
 _STATE_RIVERS_TTL = 120.0  # USGS IV updates ~15-60 min; short cache is plenty
-_state_rivers_cache: dict[str, tuple[float, list[dict]]] = {}
+# Bounded + TTL'd: expired entries are actually evicted (the old soft-TTL
+# dict only ever grew, one assembled-rivers list per state).
+_state_rivers_cache: LruTtl = LruTtl(maxsize=12, ttl=_STATE_RIVERS_TTL)
 
 
 async def _rivers_for_state_cached(st: str) -> list[dict]:
     hit = _state_rivers_cache.get(st)
-    if hit and (time.monotonic() - hit[0]) < _STATE_RIVERS_TTL:
-        return hit[1]
+    if hit is not None:
+        return hit
     data = await _usgs_iv({"stateCd": STATES[st]["usgs_code"]}, st)
     ts = data.get("value", {}).get("timeSeries", [])
     trout = [_trout_for_state(st)]  # non-blocking; None until warmed
@@ -606,7 +654,7 @@ async def _rivers_for_state_cached(st: str) -> list[dict]:
     rivers = await _assemble_rivers(ts, trout, stocked)
     # Don't cache an empty result from a transient USGS failure.
     if rivers:
-        _state_rivers_cache[st] = (time.monotonic(), rivers)
+        _state_rivers_cache[st] = rivers
     return rivers
 
 
@@ -617,12 +665,33 @@ async def _rivers_for_states(states_to_load: list[str]) -> list[dict]:
     return [r for group in per_state for r in group]
 
 
+_BBOX_MAX_STATES = 4
+
+
+def _bbox_overlap_area(bbox: tuple[float, float, float, float],
+                       sb: tuple[float, float, float, float]) -> float:
+    w, s, e, n = bbox
+    la0, la1, lo0, lo1 = sb  # STATE_BBOX is (lat_min,lat_max,lon_min,lon_max)
+    ow = min(e, lo1) - max(w, lo0)
+    oh = min(n, la1) - max(s, la0)
+    return ow * oh if ow > 0 and oh > 0 else 0.0
+
+
 async def _rivers_for_bbox(bbox: tuple[float, float, float, float]) -> list[dict]:
     # USGS's own bBox IV query proved unreliable; instead reuse the proven
     # per-state path (cached) for the states the viewport touches and clip to
     # the box. Same data/trout/stocking as the zoomed-out overview.
     w, s, e, n = bbox
     states = states_in_bbox(w, s, e, n)
+    # STATE_BBOX is intentionally over-inclusive; a small box can resolve
+    # to several states and each pulls a trout gdf. Cap to the few with
+    # the largest actual overlap so one pan can't load many states' geo.
+    if len(states) > _BBOX_MAX_STATES:
+        states = sorted(
+            states,
+            key=lambda c: _bbox_overlap_area(bbox, STATE_BBOX[c]),
+            reverse=True,
+        )[:_BBOX_MAX_STATES]
     per_state = await asyncio.gather(
         *(_rivers_for_state_cached(st) for st in states)
     )
@@ -759,28 +828,56 @@ async def api_trout(state: str = Query(default="MD", description="Two-letter sta
 _EMPTY_FC = {"type": "FeatureCollection", "features": []}
 
 
+def _fetch_nav(client: httpx.Client, base: str, nav: str, dist: str) -> list:
+    try:
+        r = client.get(f"{base}/{nav}/flowlines", params={"distance": dist})
+        r.raise_for_status()
+        return r.json().get("features", [])
+    except Exception:
+        return []
+
+
 def _nldi_flowline(site_no: str) -> dict:
-    """Main-stem flowline around a USGS gauge from USGS NLDI, cached per
-    site (geometry is static). Returns a GeoJSON FeatureCollection, or an
-    empty one on any failure (caller degrades to just the marker)."""
+    """Main-stem flowline around a USGS gauge from USGS NLDI. Geometry is
+    immutable per site, so it's served from process LRU -> Postgres ->
+    NLDI (the upstream+downstream legs fetched concurrently), then
+    written through to both. Any failure -> empty FC (caller keeps the
+    pin); empties are never persisted (a deploy/restart retries them)."""
     if site_no in _river_geom_cache:
         return _river_geom_cache[site_no]
+    try:
+        stored = db.get_river_geom(site_no)
+    except Exception as exc:
+        logger.warning("river_geom read failed for %s: %s", site_no, exc)
+        stored = None
+    if stored is not None:
+        _river_geom_cache[site_no] = stored
+        return stored
+
     base = f"https://api.water.usgs.gov/nldi/linked-data/nwissite/USGS-{site_no}/navigation"
     feats: list[dict] = []
     try:
         with httpx.Client(timeout=15.0, headers={"User-Agent": USER_AGENT}) as c:
-            for nav, dist in (("UM", "75"), ("DM", "40")):
-                try:
-                    r = c.get(f"{base}/{nav}/flowlines", params={"distance": dist})
-                    r.raise_for_status()
-                    feats.extend(r.json().get("features", []))
-                except Exception:
-                    continue
+            with ThreadPoolExecutor(max_workers=2) as ex:
+                parts = list(ex.map(
+                    lambda nd: _fetch_nav(c, base, nd[0], nd[1]),
+                    (("UM", "75"), ("DM", "40")),
+                ))
+            for p in parts:
+                feats.extend(p)
     except Exception:
         feats = []
-    fc = {"type": "FeatureCollection", "features": feats} if feats else _EMPTY_FC
-    _river_geom_cache[site_no] = fc
-    return fc
+
+    if feats:
+        fc = {"type": "FeatureCollection", "features": feats}
+        _river_geom_cache[site_no] = fc
+        try:
+            db.put_river_geom(site_no, fc)
+        except Exception as exc:
+            logger.warning("river_geom persist failed for %s: %s", site_no, exc)
+        return fc
+    _river_geom_cache[site_no] = _EMPTY_FC  # transient: TTL retries later
+    return _EMPTY_FC
 
 
 @app.get("/api/river_geom")

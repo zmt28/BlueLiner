@@ -12,10 +12,11 @@ placeholders and translated per backend. Stores user-generated content
 readings, which are fetched live.
 """
 
+import json
 import os
 import sqlite3
 from contextlib import contextmanager
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 DATABASE_URL = os.environ.get("DATABASE_URL", "")
 _IS_PG = DATABASE_URL.startswith(("postgres://", "postgresql://"))
@@ -103,6 +104,23 @@ def init_db() -> None:
         cur.execute(
             "CREATE INDEX IF NOT EXISTS idx_pins_owner ON pins (owner_token)"
         )
+        # Durable cross-restart caches. site_no is a stable USGS id, so the
+        # PK doubles as the cache key. river_geom is immutable per site
+        # (NLDI flowline geometry never changes); river_stats carries a
+        # created_at so callers can treat medians as stale after ~30 days.
+        # Identical DDL on both backends (TEXT PK works everywhere).
+        cur.execute(
+            "CREATE TABLE IF NOT EXISTS river_geom ("
+            " site_no TEXT PRIMARY KEY,"
+            " geojson TEXT NOT NULL,"
+            " created_at TEXT NOT NULL)"
+        )
+        cur.execute(
+            "CREATE TABLE IF NOT EXISTS river_stats ("
+            " site_no TEXT PRIMARY KEY,"
+            " medians TEXT NOT NULL,"
+            " created_at TEXT NOT NULL)"
+        )
 
 
 def healthcheck() -> bool:
@@ -152,3 +170,84 @@ def delete_pin(pin_id: int, owner: str) -> bool:
             (pin_id, owner),
         )
         return cur.rowcount > 0
+
+
+def _upsert(table: str, key: str, payload_col: str, payload: str) -> None:
+    created_at = datetime.now(timezone.utc).isoformat()
+    if _IS_PG:
+        sql = _ph(
+            f"INSERT INTO {table} (site_no, {payload_col}, created_at) "
+            f"VALUES (?, ?, ?) ON CONFLICT (site_no) DO UPDATE SET "
+            f"{payload_col} = EXCLUDED.{payload_col}, "
+            f"created_at = EXCLUDED.created_at"
+        )
+    else:
+        sql = (
+            f"INSERT OR REPLACE INTO {table} "
+            f"(site_no, {payload_col}, created_at) VALUES (?, ?, ?)"
+        )
+    with _conn() as conn:
+        conn.cursor().execute(sql, (key, payload, created_at))
+
+
+def get_river_geom(site_no: str) -> dict | None:
+    """Cached NLDI flowline FeatureCollection for a site, or None.
+
+    Geometry is immutable per site, so there is no staleness check.
+    """
+    with _conn() as conn:
+        cur = conn.cursor()
+        cur.execute(
+            _ph("SELECT geojson FROM river_geom WHERE site_no = ?"),
+            (site_no,),
+        )
+        row = cur.fetchone()
+    if not row:
+        return None
+    try:
+        return json.loads(row["geojson"])
+    except (ValueError, TypeError):
+        return None
+
+
+def put_river_geom(site_no: str, fc: dict) -> None:
+    _upsert("river_geom", site_no, "geojson", json.dumps(fc))
+
+
+_STATS_MAX_AGE = timedelta(days=30)
+
+
+def get_river_stats(site_nos: list[str]) -> dict[str, dict]:
+    """Per-site daily median map ({"m-d": cfs}) for rows fresher than
+    ~30 days. Stale/missing sites are simply absent from the result."""
+    if not site_nos:
+        return {}
+    placeholders = ",".join("?" for _ in site_nos)
+    with _conn() as conn:
+        cur = conn.cursor()
+        cur.execute(
+            _ph(
+                "SELECT site_no, medians, created_at FROM river_stats "
+                f"WHERE site_no IN ({placeholders})"
+            ),
+            tuple(site_nos),
+        )
+        rows = cur.fetchall()
+    out: dict[str, dict] = {}
+    now = datetime.now(timezone.utc)
+    for r in rows:
+        try:
+            created = datetime.fromisoformat(r["created_at"])
+        except (ValueError, TypeError):
+            continue
+        if now - created > _STATS_MAX_AGE:
+            continue
+        try:
+            out[r["site_no"]] = json.loads(r["medians"])
+        except (ValueError, TypeError):
+            continue
+    return out
+
+
+def put_river_stats(site_no: str, medians: dict) -> None:
+    _upsert("river_stats", site_no, "medians", json.dumps(medians))

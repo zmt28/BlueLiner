@@ -10,6 +10,7 @@ import geopandas
 from shapely.geometry import Point
 
 from arcgis import fetch_geojson_gdf
+from cache import LruTtl
 
 TROUT_SOURCES = {
     "VA": {
@@ -30,12 +31,33 @@ TROUT_SOURCES = {
     # can be added when a reliable GeoJSON endpoint is confirmed.
 }
 
-_trout_cache: dict[str, geopandas.GeoDataFrame | None] = {}
+# Each cached gdf is the single largest runtime allocation (5-50MB of
+# generalized stream lines). Bound to a handful of states, LRU-evicted --
+# the key lever (after dropping to one worker) that keeps RSS under the
+# 512MB cap when the viewport fans out across states.
+_TROUT_CACHE_MAX = 4
+_trout_cache: LruTtl = LruTtl(maxsize=_TROUT_CACHE_MAX)
+
+# ~50m: well inside the ~450m proximity buffer, so near-stream tagging is
+# unaffected, but it drops a lot of redundant vertices from the cached
+# geometry.
+_SIMPLIFY_TOLERANCE_DEG = 0.0005
+
+
+def _slim(gdf: geopandas.GeoDataFrame) -> geopandas.GeoDataFrame:
+    """Geometry-only + simplified. Tagging only ever needs the lines, so
+    dropping every attribute column and decimating vertices is pure
+    memory savings with no behavior change."""
+    try:
+        geom = gdf.geometry.simplify(_SIMPLIFY_TOLERANCE_DEG)
+        return geopandas.GeoDataFrame(geometry=geom, crs=gdf.crs)
+    except Exception:
+        return gdf
 
 
 def load_trout_streams(state_code: str) -> geopandas.GeoDataFrame | None:
     if state_code in _trout_cache:
-        return _trout_cache[state_code]
+        return _trout_cache.get(state_code)
 
     source = TROUT_SOURCES.get(state_code)
     if not source:
@@ -43,6 +65,8 @@ def load_trout_streams(state_code: str) -> geopandas.GeoDataFrame | None:
         return None
 
     gdf = fetch_geojson_gdf(source["url"])
+    if gdf is not None and not gdf.empty:
+        gdf = _slim(gdf)
     _trout_cache[state_code] = gdf
     return gdf
 
