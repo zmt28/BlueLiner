@@ -70,15 +70,41 @@ plus a managed Postgres database and wires them together:
 Plans default to `free` (Render's free Postgres expires and free web
 services sleep when idle) -- bump both to a paid tier for genuine 24/7.
 
+### Why the map is fast (precompute architecture)
+
+User requests never block on USGS/NLDI/ArcGIS. A background refresher
+(`precompute.py`) periodically assembles each focused state's rivers and
+flowline geometry and persists them to Postgres; `/api/rivers` and
+`/api/river_lines` are then pure DB reads (gzipped, `ETag`/`Cache-Control`,
+service-worker stale-while-revalidate). Because snapshots live in
+Postgres they survive a free-tier cold start, so even a just-woken worker
+paints from the last snapshot instead of a 25s live fetch. Non-focused
+states are computed lazily on first visit, then persisted.
+
+Point a free scheduler (GitHub Actions cron, cron-job.org, UptimeRobot)
+at `POST /internal/refresh` (header `X-Refresh-Token: $REFRESH_TOKEN`)
+every ~30-45 min: it refreshes the snapshots *and* keeps the free web
+service from sleeping.
+
+**Scaling path (config, not rewrite):** Render web -> Starter (no sleep,
+raise `WEB_CONCURRENCY`); **Render Postgres -> a persistent paid plan**
+(the free DB expires at ~90 days and the whole design leans on it --
+the most important upgrade); put Cloudflare (free) in front to edge-cache
+the gzipped payloads globally; promote the in-process refresher to a
+Render Cron Job (it's already standalone `precompute.py`).
+
 ### Environment variables
 
 | Var | Default | Purpose |
 |-----|---------|---------|
 | `DATABASE_URL` | _(unset)_ | Postgres URL; absent ⇒ SQLite |
 | `BLUELINES_DB` | `./bluelines.db` | SQLite path (when no `DATABASE_URL`) |
-| `WEB_CONCURRENCY` | `2` | gunicorn workers (caches are per-worker) |
+| `WEB_CONCURRENCY` | `1` | gunicorn workers (caches are per-worker) |
 | `LOG_LEVEL` | `INFO` | Root log level |
 | `PIN_RATE_MAX` | `20` | Max pin creates / IP / minute |
+| `REFRESH_INTERVAL` | `2700` | Refresher cadence + snapshot staleness (seconds) |
+| `REFRESH_TOKEN` | _(unset)_ | Auth for `POST /internal/refresh` (unset ⇒ 403) |
+| `FOCUSED_STATES` | _(built-in)_ | Comma-separated states refreshed every cycle |
 
 Then open: `http://localhost:8000`
 

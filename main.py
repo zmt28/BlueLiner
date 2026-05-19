@@ -1,16 +1,19 @@
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, Query, HTTPException, Request
 from fastapi.responses import RedirectResponse, FileResponse, Response
+from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
+from shapely.geometry import shape, mapping
 import httpx
-from datetime import datetime
+from datetime import datetime, timezone
 from collections import defaultdict
 from concurrent.futures import ThreadPoolExecutor
 import geopandas
 import pandas as pd
 import asyncio
 import hashlib
+import json
 import logging
 import os
 import re
@@ -31,6 +34,13 @@ logging.basicConfig(
     format="%(asctime)s %(levelname)s %(name)s %(message)s",
 )
 logger = logging.getLogger("bluelines")
+
+# How often the background refresher re-precomputes focused states, and
+# the age past which a served snapshot is also refreshed in the
+# background (stale-while-revalidate). USGS IV updates every ~15-60 min,
+# so ~45 min is fresh enough and cheap. Override with REFRESH_INTERVAL
+# (seconds).
+_REFRESH_INTERVAL = float(os.environ.get("REFRESH_INTERVAL", str(45 * 60)))
 
 # Module-level caches. All bounded (LruTtl) -- unbounded per-state dicts
 # were the runtime memory growth behind the 512MB OOM. Both are also
@@ -63,12 +73,30 @@ async def lifespan(app: FastAPI):
         except Exception as exc:
             logger.warning("MD trout warm failed: %s", exc)
 
+    # The refresher is what makes the map instant: it keeps each focused
+    # state's snapshot + flowline geometry warm in Postgres so requests
+    # are local reads. Runs forever in the background; first cycle starts
+    # immediately but never blocks startup or the health check.
+    async def _refresher():
+        import precompute
+        while True:
+            try:
+                await precompute.refresh_focused()
+            except Exception as exc:
+                logger.warning("refresher cycle failed: %s", exc)
+            await asyncio.sleep(_REFRESH_INTERVAL)
+
     warm_task = asyncio.create_task(_warm())
+    refresh_task = asyncio.create_task(_refresher())
     yield
     warm_task.cancel()
+    refresh_task.cancel()
 
 
 app = FastAPI(lifespan=lifespan)
+# Snapshot/line payloads are large and highly compressible JSON; gzip
+# them (also lets a CDN/Cloudflare cache the compressed bytes).
+app.add_middleware(GZipMiddleware, minimum_size=1024)
 app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 
 
@@ -643,19 +671,58 @@ _STATE_RIVERS_TTL = 120.0  # USGS IV updates ~15-60 min; short cache is plenty
 _state_rivers_cache: LruTtl = LruTtl(maxsize=12, ttl=_STATE_RIVERS_TTL)
 
 
+_state_refreshing: set[str] = set()
+
+
+def _snapshot_stale(updated_at: str) -> bool:
+    try:
+        ts = datetime.fromisoformat(updated_at)
+    except (ValueError, TypeError):
+        return True
+    return (datetime.now(timezone.utc) - ts).total_seconds() > _REFRESH_INTERVAL
+
+
+def _schedule_state_refresh(st: str) -> None:
+    """Deduped background precompute for a state -- used for stale or
+    never-computed (lazy) states so the request path never blocks on
+    USGS. No-ops cleanly when there's no running loop (unit tests)."""
+    if st in _state_refreshing:
+        return
+    _state_refreshing.add(st)
+
+    async def _run():
+        try:
+            import precompute
+            await precompute.refresh_state(st)
+        except Exception as exc:
+            logger.warning("state refresh failed for %s: %s", st, exc)
+        finally:
+            _state_refreshing.discard(st)
+
+    try:
+        asyncio.create_task(_run())
+    except RuntimeError:
+        _state_refreshing.discard(st)
+
+
 async def _rivers_for_state_cached(st: str) -> list[dict]:
+    """Snapshot-first: process L1 -> Postgres snapshot -> (background)
+    precompute. Never blocks on USGS on the request path. A focused state
+    always has a fresh snapshot; a lazy state's first visitor gets [] and
+    it fills within one refresh (the client auto-retries)."""
     hit = _state_rivers_cache.get(st)
     if hit is not None:
         return hit
-    data = await _usgs_iv({"stateCd": STATES[st]["usgs_code"]}, st)
-    ts = data.get("value", {}).get("timeSeries", [])
-    trout = [_trout_for_state(st)]  # non-blocking; None until warmed
-    stocked = await asyncio.to_thread(stocking.stocked_points, st)
-    rivers = await _assemble_rivers(ts, trout, stocked)
-    # Don't cache an empty result from a transient USGS failure.
-    if rivers:
-        _state_rivers_cache[st] = rivers
-    return rivers
+    snap = await asyncio.to_thread(db.get_river_snapshot, st)
+    if snap is not None:
+        rivers, updated_at = snap
+        if rivers:
+            _state_rivers_cache[st] = rivers
+            if _snapshot_stale(updated_at):
+                _schedule_state_refresh(st)  # stale-while-revalidate
+            return rivers
+    _schedule_state_refresh(st)
+    return []
 
 
 async def _rivers_for_states(states_to_load: list[str]) -> list[dict]:
@@ -772,14 +839,34 @@ async def service_worker():
     )
 
 
+def _cached_json(request: Request, payload, *, max_age: int,
+                 swr: int = 86400) -> Response:
+    """JSON Response with ETag + Cache-Control so the browser, the
+    service worker, and any CDN/Cloudflare in front can serve repeats
+    instantly and revalidate in the background. Honors If-None-Match."""
+    body = json.dumps(payload, separators=(",", ":"))
+    etag = '"' + hashlib.sha256(body.encode()).hexdigest()[:32] + '"'
+    headers = {
+        "Cache-Control": (f"public, max-age={max_age}, "
+                          f"stale-while-revalidate={swr}"),
+        "ETag": etag,
+    }
+    if request.headers.get("if-none-match") == etag:
+        return Response(status_code=304, headers=headers)
+    return Response(content=body, media_type="application/json",
+                    headers=headers)
+
+
 @app.get("/api/states")
-async def api_states():
+async def api_states(request: Request):
     """Supported states (code, name, map center) -- the client builds the
-    selector and centering from this so states.py is the single source."""
-    return [
+    selector and centering from this so states.py is the single source.
+    Effectively static -> cache hard."""
+    payload = [
         {"code": code, "name": info["name"], "center": info["center"]}
         for code, info in sorted(STATES.items(), key=lambda kv: kv[1]["name"])
     ]
+    return _cached_json(request, payload, max_age=86400)
 
 
 def _parse_bbox(bbox: str) -> tuple[float, float, float, float]:
@@ -799,13 +886,15 @@ def _parse_bbox(bbox: str) -> tuple[float, float, float, float]:
 
 @app.get("/api/rivers")
 async def api_rivers(
+    request: Request,
     state: str = Query(default="MD", description="Two-letter state code."),
     bbox: str | None = Query(default=None, description="west,south,east,north"),
 ):
     if bbox is not None:
         wsen = _parse_bbox(bbox)
         rivers = await _rivers_for_bbox(wsen)
-        return {"bbox": list(wsen), "rivers": rivers}
+        return _cached_json(request, {"bbox": list(wsen), "rivers": rivers},
+                            max_age=300)
     states_to_load = _resolve_states(state)
     if states_to_load is None:
         raise HTTPException(
@@ -813,7 +902,63 @@ async def api_rivers(
             detail=f"Unsupported state: {state}. Supported: {', '.join(sorted(STATES))}",
         )
     rivers = await _rivers_for_states(states_to_load)
-    return {"state": state.upper(), "rivers": rivers}
+    return _cached_json(request, {"state": state.upper(), "rivers": rivers},
+                        max_age=300)
+
+
+async def _river_lines_payload(rivers: list[dict]) -> dict:
+    """Merge persisted flowlines for these rivers into one
+    FeatureCollection -- a pure Postgres read, no external calls. Each
+    feature carries site_no + color so the client styles + popups it."""
+    by_site = {r["site_no"]: r for r in rivers if r.get("site_no")}
+    if not by_site:
+        return {"type": "FeatureCollection", "features": []}
+    geoms = await asyncio.to_thread(db.get_river_geoms, list(by_site))
+    feats: list[dict] = []
+    for sn, fc in geoms.items():
+        color = by_site.get(sn, {}).get("color")
+        for f in fc.get("features", []):
+            feats.append({"type": "Feature",
+                          "properties": {"site_no": sn, "color": color},
+                          "geometry": f.get("geometry")})
+    return {"type": "FeatureCollection", "features": feats}
+
+
+@app.get("/api/river_lines")
+async def api_river_lines(
+    request: Request,
+    state: str = Query(default="MD", description="Two-letter state code."),
+    bbox: str | None = Query(default=None, description="west,south,east,north"),
+):
+    """Every precomputed clickable flowline for a state/viewport in one
+    gzipped payload -- a pure Postgres read, never blocks on NLDI. This
+    replaces the slow per-river /api/river_geom fan-out."""
+    if bbox is not None:
+        rivers = await _rivers_for_bbox(_parse_bbox(bbox))
+    else:
+        states_to_load = _resolve_states(state)
+        if states_to_load is None:
+            raise HTTPException(status_code=400,
+                                detail=f"Unsupported state: {state}")
+        rivers = await _rivers_for_states(states_to_load)
+    payload = await _river_lines_payload(rivers)
+    return _cached_json(request, payload, max_age=300)
+
+
+_REFRESH_TOKEN = os.environ.get("REFRESH_TOKEN", "")
+
+
+@app.post("/internal/refresh")
+async def internal_refresh(request: Request):
+    """Trigger a focused-states refresh. An external scheduler (GitHub
+    Actions / cron-job.org) hits this on a cadence; the same call doubles
+    as a keep-warm ping so the free-tier web service never sleeps.
+    Token-gated (set REFRESH_TOKEN; unset => always 403)."""
+    if not _REFRESH_TOKEN or request.headers.get("x-refresh-token") != _REFRESH_TOKEN:
+        raise HTTPException(status_code=403, detail="forbidden")
+    import precompute
+    asyncio.create_task(precompute.refresh_focused())
+    return {"status": "scheduled", "states": precompute.focused_states()}
 
 
 @app.get("/api/trout")
@@ -826,6 +971,24 @@ async def api_trout(state: str = Query(default="MD", description="Two-letter sta
 
 
 _EMPTY_FC = {"type": "FeatureCollection", "features": []}
+
+
+def _simplify_fc(fc: dict, tol: float = 0.0005) -> dict:
+    """Decimate flowline vertices (~50m) before persisting/serving so the
+    merged per-state /api/river_lines payload stays small. Best-effort
+    per feature; on any geometry error keep the original."""
+    out: list[dict] = []
+    for f in fc.get("features", []):
+        try:
+            g = shape(f["geometry"]).simplify(tol)
+            if g.is_empty:
+                continue
+            out.append({"type": "Feature",
+                        "properties": f.get("properties", {}),
+                        "geometry": mapping(g)})
+        except Exception:
+            out.append(f)
+    return {"type": "FeatureCollection", "features": out}
 
 
 def _fetch_nav(client: httpx.Client, base: str, nav: str, dist: str) -> list:
@@ -869,7 +1032,7 @@ def _nldi_flowline(site_no: str) -> dict:
         feats = []
 
     if feats:
-        fc = {"type": "FeatureCollection", "features": feats}
+        fc = _simplify_fc({"type": "FeatureCollection", "features": feats})
         _river_geom_cache[site_no] = fc
         try:
             db.put_river_geom(site_no, fc)

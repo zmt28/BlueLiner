@@ -346,7 +346,9 @@ async function loadViewportRivers() {
   allRivers = rivers;
   populateHatchOptions();
   renderRivers();
-  loadVisibleRiverLines();
+  const q = `${b.getWest()},${b.getSouth()},${b.getEast()},${b.getNorth()}`;
+  loadRiverLines(`bbox=${encodeURIComponent(q)}`);  // batched: instant lines
+  loadVisibleRiverLines();                          // per-site fallback (zoomed-in only)
 }
 
 function refreshForView() {
@@ -366,6 +368,47 @@ map.on("moveend", () => {
   _viewTimer = setTimeout(refreshForView, 400);
 });
 
+// Draw EVERY river as its precomputed flowline in one shot, at any zoom.
+// /api/river_lines is a single gzipped Postgres read (no per-river NLDI
+// fan-out), so lines appear immediately instead of trickling in.
+async function loadRiverLines(qs) {
+  let fc;
+  try {
+    fc = await fetch(`/api/river_lines?${qs}`).then((r) => r.json());
+  } catch (_) { return; }                 // keep pins; transient failure
+  if (!fc || !fc.features || !fc.features.length) return;
+  const bySite = new Map();
+  for (const f of fc.features) {
+    const p = f.properties || {};
+    if (!p.site_no) continue;
+    let g = bySite.get(p.site_no);
+    if (!g) { g = { type: "FeatureCollection", features: [], color: p.color }; bySite.set(p.site_no, g); }
+    g.features.push(f);
+  }
+  const riverBySite = new Map();
+  for (const r of allRivers) if (r.site_no) riverBySite.set(r.site_no, r);
+  for (const [sn, g] of bySite) {
+    if (riverLineBySite.has(sn)) continue;
+    const r = riverBySite.get(sn);
+    const color = (r && r.color) || g.color || "#2c6fbf";
+    const line = L.geoJSON(g, { style: { color, weight: 5, opacity: 0.6 } });
+    if (r) { line.bindPopup(r.popup_html, popupOpts()); line.on("popupopen", wireTrend); }
+    riverLineBySite.set(sn, line);
+    riverGeomLoaded.add(sn);              // per-site fallback now skips it
+  }
+  renderRivers();                         // lines replace pins
+}
+
+// A lazy (never-visited) state returns [] while the background precompute
+// runs; refetch once so it fills in without the user reloading.
+let _lazyRetry = null;
+function scheduleLazyRetry(state) {
+  clearTimeout(_lazyRetry);
+  _lazyRetry = setTimeout(() => {
+    if (currentSt === state && !viewportMode) loadRivers(state);
+  }, 20000);
+}
+
 async function loadRivers(state) {
   const data = await fetch(`/api/rivers?state=${state}`).then((r) => r.json());
   stateRivers = (data && data.rivers) || [];
@@ -381,6 +424,11 @@ async function loadRivers(state) {
     allRivers = stateRivers;
     populateHatchOptions();
     renderRivers();
+    if (stateRivers.length) {
+      loadRiverLines(`state=${encodeURIComponent(state)}`);
+    } else {
+      scheduleLazyRetry(state);           // not computed yet -> auto-fill
+    }
   }
 }
 

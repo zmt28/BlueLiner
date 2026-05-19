@@ -121,6 +121,17 @@ def init_db() -> None:
             " medians TEXT NOT NULL,"
             " created_at TEXT NOT NULL)"
         )
+        # Out-of-band precomputed per-state river snapshot (the exact
+        # `rivers` list /api/rivers returns). Served instantly so a user
+        # request never blocks on USGS; the background refresher keeps it
+        # fresh. Survives cold starts (Postgres), so even a just-woken
+        # free-tier worker paints from the last snapshot, not a live fetch.
+        cur.execute(
+            "CREATE TABLE IF NOT EXISTS river_snapshot ("
+            " state TEXT PRIMARY KEY,"
+            " payload TEXT NOT NULL,"
+            " updated_at TEXT NOT NULL)"
+        )
 
 
 def healthcheck() -> bool:
@@ -172,22 +183,23 @@ def delete_pin(pin_id: int, owner: str) -> bool:
         return cur.rowcount > 0
 
 
-def _upsert(table: str, key: str, payload_col: str, payload: str) -> None:
-    created_at = datetime.now(timezone.utc).isoformat()
+def _upsert(table: str, key: str, payload_col: str, payload: str,
+            key_col: str = "site_no", ts_col: str = "created_at") -> None:
+    ts = datetime.now(timezone.utc).isoformat()
     if _IS_PG:
         sql = _ph(
-            f"INSERT INTO {table} (site_no, {payload_col}, created_at) "
-            f"VALUES (?, ?, ?) ON CONFLICT (site_no) DO UPDATE SET "
+            f"INSERT INTO {table} ({key_col}, {payload_col}, {ts_col}) "
+            f"VALUES (?, ?, ?) ON CONFLICT ({key_col}) DO UPDATE SET "
             f"{payload_col} = EXCLUDED.{payload_col}, "
-            f"created_at = EXCLUDED.created_at"
+            f"{ts_col} = EXCLUDED.{ts_col}"
         )
     else:
         sql = (
             f"INSERT OR REPLACE INTO {table} "
-            f"(site_no, {payload_col}, created_at) VALUES (?, ?, ?)"
+            f"({key_col}, {payload_col}, {ts_col}) VALUES (?, ?, ?)"
         )
     with _conn() as conn:
-        conn.cursor().execute(sql, (key, payload, created_at))
+        conn.cursor().execute(sql, (key, payload, ts))
 
 
 def get_river_geom(site_no: str) -> dict | None:
@@ -212,6 +224,54 @@ def get_river_geom(site_no: str) -> dict | None:
 
 def put_river_geom(site_no: str, fc: dict) -> None:
     _upsert("river_geom", site_no, "geojson", json.dumps(fc))
+
+
+def get_river_geoms(site_nos: list[str]) -> dict[str, dict]:
+    """Batched flowline lookup for the /api/river_lines payload -- one
+    query instead of a per-site connection in a loop."""
+    if not site_nos:
+        return {}
+    placeholders = ",".join("?" for _ in site_nos)
+    with _conn() as conn:
+        cur = conn.cursor()
+        cur.execute(
+            _ph(
+                "SELECT site_no, geojson FROM river_geom "
+                f"WHERE site_no IN ({placeholders})"
+            ),
+            tuple(site_nos),
+        )
+        rows = cur.fetchall()
+    out: dict[str, dict] = {}
+    for r in rows:
+        try:
+            out[r["site_no"]] = json.loads(r["geojson"])
+        except (ValueError, TypeError):
+            continue
+    return out
+
+
+def get_river_snapshot(state: str) -> tuple[list, str] | None:
+    """(rivers, updated_at_iso) for a state's last precomputed snapshot,
+    or None if it has never been computed."""
+    with _conn() as conn:
+        cur = conn.cursor()
+        cur.execute(
+            _ph("SELECT payload, updated_at FROM river_snapshot WHERE state = ?"),
+            (state,),
+        )
+        row = cur.fetchone()
+    if not row:
+        return None
+    try:
+        return json.loads(row["payload"]), row["updated_at"]
+    except (ValueError, TypeError):
+        return None
+
+
+def put_river_snapshot(state: str, rivers: list) -> None:
+    _upsert("river_snapshot", state, "payload", json.dumps(rivers),
+            key_col="state", ts_col="updated_at")
 
 
 _STATS_MAX_AGE = timedelta(days=30)

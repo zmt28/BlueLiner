@@ -25,3 +25,14 @@ services:
         value: info
       - key: PIN_RATE_MAX
         value: "20"
+      # Background refresher cadence (seconds). The map serves precomputed
+      # snapshots from Postgres, so this is the data-freshness knob, not a
+      # latency one. ~45 min matches USGS update frequency.
+      - key: REFRESH_INTERVAL
+        value: "2700"
+      # Token for POST /internal/refresh. Point a free scheduler
+      # (GitHub Actions / cron-job.org) at it on a cadence: it refreshes
+      # the snapshots AND keeps the free web service awake. Read the
+      # generated value from the Render dashboard.
+      - key: REFRESH_TOKEN
+        generateValue: true
