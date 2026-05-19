@@ -15,7 +15,7 @@ import os
 import re
 import time
 
-from states import STATES
+from states import STATES, states_in_bbox
 from trout import load_trout_streams, is_near_trout_stream
 import trout
 from arcgis import USER_AGENT
@@ -492,121 +492,122 @@ def _gdf_to_geojson_response(gdfs: list[geopandas.GeoDataFrame]) -> Response:
     return Response(content=merged.to_json(), media_type="application/json")
 
 
-async def _rivers_for_states(states_to_load: list[str]) -> list[dict]:
+async def _assemble_rivers(time_series: list, trout_gdfs: list,
+                           stocked_pts: list) -> list[dict]:
+    """Shared core: aggregate USGS sites -> group into rivers -> popups.
+    `trout_gdfs` is a list of gdf|None (a gauge is on trout if near ANY)."""
     today = datetime.now()
     today_key = (today.month, today.day)
     month_now = today.month
+    tgs = [g for g in trout_gdfs if g is not None]
+
+    sites = defaultdict(lambda: {"variables": [], "site_no": None})
+    for series in time_series:
+        source_info = series.get("sourceInfo", {})
+        site_name = source_info.get("siteName", "Unknown").capitalize()
+        site_no = source_info.get("siteCode", [{}])[0].get("value", "")
+        geo = source_info.get("geoLocation", {}).get("geogLocation", {})
+        latitude = geo.get("latitude")
+        longitude = geo.get("longitude")
+        variable_description = series.get("variable", {}).get("variableDescription")
+        values_list = series.get("values", [])
+        if values_list:
+            value_data = values_list[0].get("value", [])
+            if value_data:
+                value_entry = value_data[0]
+                key = (site_name, latitude, longitude)
+                sites[key]["variables"].append({
+                    "variable": variable_description,
+                    "value": value_entry.get("value"),
+                    "dateTime": value_entry.get("dateTime"),
+                })
+                if site_no:
+                    sites[key]["site_no"] = site_no
+
+    discharge_site_nos = []
+    for (_name, _lat, _lon), info in sites.items():
+        sn = info.get("site_no")
+        if sn and any(
+            "discharge" in v.get("variable", "").lower() or
+            "streamflow" in v.get("variable", "").lower()
+            for v in info["variables"]
+        ):
+            discharge_site_nos.append(sn)
+    if discharge_site_nos:
+        await fetch_bulk_stats(discharge_site_nos)
+
+    groups: dict[str, dict] = {}
+    for (site_name, latitude, longitude), info in sites.items():
+        if not latitude or not longitude:
+            continue
+        variables = info["variables"]
+        site_no = info.get("site_no")
+        historical_median = _stats_cache.get(site_no, {}).get(today_key) if site_no else None
+        conditions = score_conditions(variables, historical_median)
+        on_trout = any(is_near_trout_stream(latitude, longitude, g) for g in tgs)
+        key, display = _river_key(site_name)
+        g = groups.setdefault(key, {
+            "name": display, "lats": [], "lons": [],
+            "on_trout": False, "gauges": [],
+        })
+        g["lats"].append(latitude)
+        g["lons"].append(longitude)
+        g["on_trout"] = g["on_trout"] or on_trout
+        g["gauges"].append({
+            "site_name": site_name, "site_no": site_no,
+            "variables": variables, "conditions": conditions,
+            "historical_median": historical_median,
+        })
+
     rivers: list[dict] = []
-
-    for st in states_to_load:
-        trout_gdf = _trout_for_state(st)  # non-blocking; None until warmed
-        stocked_pts = await asyncio.to_thread(stocking.stocked_points, st)
-
-        data = await get_streams(state=st)
-        time_series = data.get("value", {}).get("timeSeries", [])
-
-        # Aggregate multiple sensor readings per site
-        sites = defaultdict(lambda: {"variables": [], "site_no": None})
-        for series in time_series:
-            source_info = series.get("sourceInfo", {})
-            site_name = source_info.get("siteName", "Unknown").capitalize()
-            site_no = source_info.get("siteCode", [{}])[0].get("value", "")
-            geo_location = source_info.get("geoLocation", {}).get("geogLocation", {})
-            latitude = geo_location.get("latitude")
-            longitude = geo_location.get("longitude")
-            variable_description = series.get("variable", {}).get("variableDescription")
-            values_list = series.get("values", [])
-            if values_list:
-                value_data = values_list[0].get("value", [])
-                if value_data:
-                    value_entry = value_data[0]
-                    key = (site_name, latitude, longitude)
-                    sites[key]["variables"].append({
-                        "variable": variable_description,
-                        "value": value_entry.get("value"),
-                        "dateTime": value_entry.get("dateTime"),
-                    })
-                    if site_no:
-                        sites[key]["site_no"] = site_no
-
-        discharge_site_nos = []
-        for (_name, _lat, _lon), info in sites.items():
-            site_no = info.get("site_no")
-            has_discharge = any(
-                "discharge" in v.get("variable", "").lower() or "streamflow" in v.get("variable", "").lower()
-                for v in info["variables"]
-            )
-            if site_no and has_discharge:
-                discharge_site_nos.append(site_no)
-
-        if discharge_site_nos:
-            await fetch_bulk_stats(discharge_site_nos)
-
-        # Group sites into rivers
-        groups: dict[str, dict] = {}
-        for (site_name, latitude, longitude), info in sites.items():
-            if not latitude or not longitude:
-                continue
-            variables = info["variables"]
-            site_no = info.get("site_no")
-            historical_median = _stats_cache.get(site_no, {}).get(today_key) if site_no else None
-            conditions = score_conditions(variables, historical_median)
-            on_trout = bool(
-                trout_gdf is not None
-                and is_near_trout_stream(latitude, longitude, trout_gdf)
-            )
-            key, display = _river_key(site_name)
-            g = groups.setdefault(key, {
-                "name": display, "lats": [], "lons": [],
-                "on_trout": False, "gauges": [],
-            })
-            g["lats"].append(latitude)
-            g["lons"].append(longitude)
-            g["on_trout"] = g["on_trout"] or on_trout
-            g["gauges"].append({
-                "site_name": site_name, "site_no": site_no,
-                "variables": variables, "conditions": conditions,
-                "historical_median": historical_median,
-            })
-
-        for g in groups.values():
-            clat = sum(g["lats"]) / len(g["lats"])
-            clon = sum(g["lons"]) / len(g["lons"])
-            overall = min(
-                (gg["conditions"]["overall"] for gg in g["gauges"]),
-                key=lambda o: _RANK.get(o, 3),
-            )
-            zone = hatches.zone_for(clat, clon)
-            active = hatches.active_hatches(zone, month_now)
-            stocked_waters = stocking.nearby_stocked(clat, clon, stocked_pts)
-            river = {
-                "name": g["name"], "lat": clat, "lon": clon,
-                "overall": overall,
-                "on_trout": g["on_trout"],
-                "near_stocked": bool(stocked_waters),
-                "hatch_zone": zone, "active": active, "month": month_now,
-                "stocked_waters": stocked_waters,
-                "gauges": sorted(g["gauges"], key=lambda x: x["site_name"]),
-            }
-            site_no = next(
-                (gg["site_no"] for gg in river["gauges"] if gg.get("site_no")),
-                None,
-            )
-            rivers.append({
-                "name": river["name"],
-                "lat": clat, "lon": clon,
-                "site_no": site_no,
-                "conditions": {"overall": overall},
-                "color": SCORE_COLORS[overall],
-                "label": SCORE_LABELS[overall],
-                "on_trout": river["on_trout"],
-                "near_stocked": river["near_stocked"],
-                "hatch_zone": zone["name"],
-                "active_hatches": [e["common_name"] for e in active],
-                "popup_html": build_river_popup_html(river),
-            })
-
+    for g in groups.values():
+        clat = sum(g["lats"]) / len(g["lats"])
+        clon = sum(g["lons"]) / len(g["lons"])
+        overall = min(
+            (gg["conditions"]["overall"] for gg in g["gauges"]),
+            key=lambda o: _RANK.get(o, 3),
+        )
+        zone = hatches.zone_for(clat, clon)
+        active = hatches.active_hatches(zone, month_now)
+        stocked_waters = stocking.nearby_stocked(clat, clon, stocked_pts)
+        river = {
+            "name": g["name"], "lat": clat, "lon": clon, "overall": overall,
+            "on_trout": g["on_trout"], "near_stocked": bool(stocked_waters),
+            "hatch_zone": zone, "active": active, "month": month_now,
+            "stocked_waters": stocked_waters,
+            "gauges": sorted(g["gauges"], key=lambda x: x["site_name"]),
+        }
+        site_no = next(
+            (gg["site_no"] for gg in river["gauges"] if gg.get("site_no")), None)
+        rivers.append({
+            "name": river["name"], "lat": clat, "lon": clon, "site_no": site_no,
+            "conditions": {"overall": overall},
+            "color": SCORE_COLORS[overall], "label": SCORE_LABELS[overall],
+            "on_trout": river["on_trout"], "near_stocked": river["near_stocked"],
+            "hatch_zone": zone["name"],
+            "active_hatches": [e["common_name"] for e in active],
+            "popup_html": build_river_popup_html(river),
+        })
     return rivers
+
+
+async def _rivers_for_states(states_to_load: list[str]) -> list[dict]:
+    rivers: list[dict] = []
+    for st in states_to_load:
+        data = await _usgs_iv({"stateCd": STATES[st]["usgs_code"]}, st)
+        ts = data.get("value", {}).get("timeSeries", [])
+        trout = [_trout_for_state(st)]  # non-blocking; None until warmed
+        stocked = await asyncio.to_thread(stocking.stocked_points, st)
+        rivers += await _assemble_rivers(ts, trout, stocked)
+    return rivers
+
+
+async def _rivers_for_bbox(bbox: tuple[float, float, float, float]) -> list[dict]:
+    states = states_in_bbox(*bbox)
+    ts = await _iv_timeseries_for_bbox(bbox)
+    trout = [_trout_for_state(s) for s in states]      # cached/lazy per state
+    stocked = stocking.baseline_for(states)            # static, no network
+    return await _assemble_rivers(ts, trout, stocked)
 
 
 # -- Routes --
@@ -627,37 +628,40 @@ async def healthz():
     return {"status": "ok"}
 
 
-@app.get("/streams")
-async def get_streams(state: str = Query(default="MD", description="Two-letter state code (MD, VA, WV)")):
-    """
-    Fetches real-time stream data from the USGS NWIS instantaneous values API
-    for all active monitoring sites in the specified state.
-    """
-    state = state.upper()
-    if state not in STATES:
-        return {"error": f"Unsupported state: {state}. Supported: {', '.join(STATES.keys())}"}
+_USGS_IV_URL = "https://waterservices.usgs.gov/nwis/iv/"
+_EMPTY_IV = {"value": {"timeSeries": []}}
 
-    api_url = "https://waterservices.usgs.gov/nwis/iv/"
-    params = {
-        "format": "json",
-        "stateCd": STATES[state]["usgs_code"],
-        "siteStatus": "active",
-        "siteType": "ST,FA-WWTP,SP,ST-TS",
-    }
 
-    empty = {"value": {"timeSeries": []}}
+async def _usgs_iv(extra: dict, label: str) -> dict:
+    """USGS NWIS instantaneous-values fetch, graceful-empty on any failure
+    (a public app must never 500 because USGS is slow/down/rate-limiting)."""
+    params = {"format": "json", "siteStatus": "active",
+              "siteType": "ST,FA-WWTP,SP,ST-TS", **extra}
     try:
         async with httpx.AsyncClient(
             timeout=25.0, headers={"User-Agent": USER_AGENT}
         ) as client:
-            response = await client.get(api_url, params=params)
-            response.raise_for_status()
-            return response.json()
+            r = await client.get(_USGS_IV_URL, params=params)
+            r.raise_for_status()
+            return r.json()
     except Exception as exc:
-        # A public app must not 500 because USGS is slow/down/rate-limiting;
-        # callers treat an empty series as "no gauges right now".
-        logger.warning("USGS IV fetch failed for %s: %s", state, exc)
-        return empty
+        logger.warning("USGS IV fetch failed for %s: %s", label, exc)
+        return _EMPTY_IV
+
+
+async def _iv_timeseries_for_bbox(bbox: tuple[float, float, float, float]) -> list:
+    w, s, e, n = bbox
+    data = await _usgs_iv({"bBox": f"{w},{s},{e},{n}"}, f"bbox {w},{s},{e},{n}")
+    return data.get("value", {}).get("timeSeries", [])
+
+
+@app.get("/streams")
+async def get_streams(state: str = Query(default="MD", description="Two-letter state code")):
+    """Raw USGS NWIS instantaneous values for a state (legacy passthrough)."""
+    state = state.upper()
+    if state not in STATES:
+        return {"error": f"Unsupported state: {state}. Supported: {', '.join(STATES.keys())}"}
+    return await _usgs_iv({"stateCd": STATES[state]["usgs_code"]}, state)
 
 
 @app.get("/map")
@@ -685,8 +689,30 @@ async def api_states():
     ]
 
 
+def _parse_bbox(bbox: str) -> tuple[float, float, float, float]:
+    """'west,south,east,north' -> validated tuple. Raises HTTP 400."""
+    try:
+        w, s, e, n = (float(x) for x in bbox.split(","))
+    except (ValueError, TypeError):
+        raise HTTPException(status_code=400, detail="bbox must be 'w,s,e,n'")
+    if not (-180 <= w < e <= 180 and -90 <= s < n <= 90):
+        raise HTTPException(status_code=400, detail="bbox out of range / unordered")
+    if (e - w) > 6 or (n - s) > 6:
+        # USGS bBox is size-limited and a huge area is too slow; the client
+        # only requests bbox when zoomed in, so this is a safety net.
+        raise HTTPException(status_code=400, detail="bbox too large; zoom in")
+    return (w, s, e, n)
+
+
 @app.get("/api/rivers")
-async def api_rivers(state: str = Query(default="MD", description="Two-letter state code.")):
+async def api_rivers(
+    state: str = Query(default="MD", description="Two-letter state code."),
+    bbox: str | None = Query(default=None, description="west,south,east,north"),
+):
+    if bbox is not None:
+        wsen = _parse_bbox(bbox)
+        rivers = await _rivers_for_bbox(wsen)
+        return {"bbox": list(wsen), "rivers": rivers}
     states_to_load = _resolve_states(state)
     if states_to_load is None:
         raise HTTPException(
