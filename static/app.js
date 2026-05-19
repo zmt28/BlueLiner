@@ -81,6 +81,11 @@ L.control.layers(null, {
 }, { collapsed: true }).addTo(map);
 
 let allRivers = [];
+// One representation per river: the NLDI flowline when we have it, else
+// a pin. riverLineBySite holds loaded line layers; riverGeomLoaded marks
+// site_nos already attempted (so we never refetch / never retry empties).
+const riverLineBySite = new Map();
+const riverGeomLoaded = new Set();
 
 // -- 1-yr USGS trend sparkline (dependency-free SVG) --
 
@@ -157,21 +162,35 @@ function populateHatchOptions() {
   sel.value = [...sel.options].some((o) => o.value === cur) ? cur : "any";
 }
 
-function renderRivers() {
-  riversLayer.clearLayers();
+function riverPasses(r) {
   const cond = document.getElementById("cond-select").value;
   const troutOnly = document.getElementById("trout-only").checked;
   const stockedOnly = document.getElementById("stocked-only").checked;
   const hatch = document.getElementById("hatch-select").value;
+  if (troutOnly && !r.on_trout) return false;
+  if (stockedOnly && !r.near_stocked) return false;
+  if (cond !== "any" && r.conditions.overall !== cond) return false;
+  const ah = r.active_hatches || [];
+  if (hatch === "active" && !ah.length) return false;
+  if (hatch !== "any" && hatch !== "active" && !ah.includes(hatch)) return false;
+  return true;
+}
 
+// Exactly one clickable representation per river: the flowline if loaded,
+// otherwise a pin (fallback for low zoom / not-yet-loaded / NLDI has no
+// geometry, e.g. Bennett Creek). Centralized so the invariant holds for
+// every state, filter, and zoom.
+function renderRivers() {
+  riversLayer.clearLayers();
   for (const r of allRivers) {
-    if (troutOnly && !r.on_trout) continue;
-    if (stockedOnly && !r.near_stocked) continue;
-    if (cond !== "any" && r.conditions.overall !== cond) continue;
-    const ah = r.active_hatches || [];
-    if (hatch === "active" && !ah.length) continue;
-    if (hatch !== "any" && hatch !== "active" && !ah.includes(hatch)) continue;
-
+    const line = r.site_no ? riverLineBySite.get(r.site_no) : null;
+    const pass = riverPasses(r);
+    if (line) {
+      if (pass && !riverLinesLayer.hasLayer(line)) riverLinesLayer.addLayer(line);
+      if (!pass && riverLinesLayer.hasLayer(line)) riverLinesLayer.removeLayer(line);
+      continue;  // line represents this river -- no redundant pin
+    }
+    if (!pass) continue;
     const m = L.circleMarker([r.lat, r.lon], {
       radius: 8, color: r.color, weight: 2,
       fill: true, fillColor: r.color, fillOpacity: 0.85,
@@ -222,7 +241,6 @@ map.on("overlayadd", (e) => {
 // Loading every river's geometry at once is the trout-layer trap, so we
 // only fetch lines for rivers in the current view, when zoomed in,
 // debounced, concurrency-capped, and cached per site for the session.
-const riverGeomLoaded = new Set();
 const RIVER_LINE_MIN_ZOOM = 9;
 const RIVER_LINE_MAX_PER_PASS = 30;
 const RIVER_LINE_CONCURRENCY = 4;
@@ -233,14 +251,14 @@ async function fetchRiverLine(r) {
     const fc = await fetch(
       `/api/river_geom?site_no=${encodeURIComponent(r.site_no)}`
     ).then((res) => res.json());
-    if (!fc || !fc.features || !fc.features.length) return;
+    if (!fc || !fc.features || !fc.features.length) return;  // -> pin fallback
     const line = L.geoJSON(fc, {
-      style: { color: r.color, weight: 5, opacity: 0.55 },
+      style: { color: r.color, weight: 5, opacity: 0.6 },
     });
     line.bindPopup(r.popup_html, popupOpts());
     line.on("popupopen", wireTrend);
-    riverLinesLayer.addLayer(line);
-  } catch (_) { /* keep the marker; the line just won't appear */ }
+    riverLineBySite.set(r.site_no, line);   // renderRivers() places it
+  } catch (_) { /* keep the pin; the line just won't appear */ }
 }
 
 async function loadVisibleRiverLines() {
@@ -250,11 +268,13 @@ async function loadVisibleRiverLines() {
   const todo = [];
   for (const r of allRivers) {
     if (!r.site_no || riverGeomLoaded.has(r.site_no)) continue;
+    if (!riverPasses(r)) continue;          // don't fetch filtered-out rivers
     if (!b.contains([r.lat, r.lon])) continue;
-    riverGeomLoaded.add(r.site_no);          // optimistic: never refetch
+    riverGeomLoaded.add(r.site_no);          // optimistic: never refetch/retry
     todo.push(r);
     if (todo.length >= RIVER_LINE_MAX_PER_PASS) break;
   }
+  if (!todo.length) return;
   let i = 0;
   const worker = async () => {
     while (i < todo.length && pass === riverLinePass) {
@@ -264,6 +284,7 @@ async function loadVisibleRiverLines() {
   await Promise.all(
     Array.from({ length: Math.min(RIVER_LINE_CONCURRENCY, todo.length) }, worker)
   );
+  if (pass === riverLinePass) renderRivers();  // reconcile: lines replace pins
 }
 
 let _riverLineTimer = null;
@@ -275,10 +296,11 @@ map.on("moveend", () => {
 async function loadRivers(state) {
   const data = await fetch(`/api/rivers?state=${state}`).then((r) => r.json());
   allRivers = (data && data.rivers) || [];
+  riverLinesLayer.clearLayers();
+  riverLineBySite.clear();
+  riverGeomLoaded.clear();
   populateHatchOptions();
   renderRivers();
-  riverLinesLayer.clearLayers();
-  riverGeomLoaded.clear();
   loadVisibleRiverLines();
 }
 
@@ -367,10 +389,14 @@ document.getElementById("pin-save").onclick = async () => {
 
 // -- Filters / state switching (no full reload) --
 
-document.getElementById("cond-select").onchange = renderRivers;
-document.getElementById("trout-only").onchange = renderRivers;
-document.getElementById("stocked-only").onchange = renderRivers;
-document.getElementById("hatch-select").onchange = renderRivers;
+function onFilterChange() {
+  renderRivers();                 // re-apply filter to pins + lines
+  loadVisibleRiverLines();        // fetch lines for newly-passing in-view rivers
+}
+document.getElementById("cond-select").onchange = onFilterChange;
+document.getElementById("trout-only").onchange = onFilterChange;
+document.getElementById("stocked-only").onchange = onFilterChange;
+document.getElementById("hatch-select").onchange = onFilterChange;
 
 document.getElementById("state-select").onchange = (e) => {
   const s = e.target.value;
