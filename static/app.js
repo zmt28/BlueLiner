@@ -347,8 +347,8 @@ async function loadViewportRivers() {
   populateHatchOptions();
   renderRivers();
   const q = `${b.getWest()},${b.getSouth()},${b.getEast()},${b.getNorth()}`;
-  loadRiverLines(`bbox=${encodeURIComponent(q)}`);  // batched: instant lines
-  loadVisibleRiverLines();                          // per-site fallback (zoomed-in only)
+  startRiverLines(`bbox=${encodeURIComponent(q)}`);  // batched + re-poll
+  loadVisibleRiverLines();                           // per-site fallback (zoomed-in only)
 }
 
 function refreshForView() {
@@ -399,6 +399,30 @@ async function loadRiverLines(qs) {
   renderRivers();                         // lines replace pins
 }
 
+// Geometry is backfilled into Postgres asynchronously, so on a cold
+// state the first /api/river_lines may be partial/empty. Re-poll with
+// backoff, merging newly-ready lines, until every river has one (or we
+// give up -- some gauges genuinely have no NLDI flowline and stay pins).
+// A token cancels the loop the moment the state/viewport changes.
+let _linesToken = 0;
+async function startRiverLines(qs) {
+  const token = ++_linesToken;
+  const delays = [0, 6000, 10000, 16000, 24000, 35000, 50000];
+  for (let i = 0; i < delays.length; i++) {
+    if (token !== _linesToken) return;          // superseded by a newer view
+    if (delays[i]) {
+      await new Promise((r) => setTimeout(r, delays[i]));
+      if (token !== _linesToken) return;
+    }
+    await loadRiverLines(qs);
+    if (token !== _linesToken) return;
+    const missing = allRivers.some(
+      (r) => r.site_no && !riverLineBySite.has(r.site_no)
+    );
+    if (!missing) return;                       // fully covered -> done
+  }
+}
+
 // A lazy (never-visited) state returns [] while the background precompute
 // runs; refetch once so it fills in without the user reloading.
 let _lazyRetry = null;
@@ -425,7 +449,7 @@ async function loadRivers(state) {
     populateHatchOptions();
     renderRivers();
     if (stateRivers.length) {
-      loadRiverLines(`state=${encodeURIComponent(state)}`);
+      startRiverLines(`state=${encodeURIComponent(state)}`);
     } else {
       scheduleLazyRetry(state);           // not computed yet -> auto-fill
     }

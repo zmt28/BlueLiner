@@ -574,8 +574,8 @@ def test_precompute_refresh_state_persists(tmp_path, monkeypatch):
     monkeypatch.setattr(main, "_trout_for_state", lambda st: None)
     monkeypatch.setattr(precompute, "_backfill_geometry", no_backfill)
 
-    n = asyncio.run(precompute.refresh_state("MD"))
-    assert n == 1
+    out = asyncio.run(precompute.refresh_state("MD"))
+    assert len(out) == 1 and out[0]["name"] == "Gunpowder Falls"
     snap = db.get_river_snapshot("MD")
     assert snap is not None
     rivers, _ = snap
@@ -593,13 +593,14 @@ def test_river_lines_payload_from_db(tmp_path, monkeypatch):
                       "coordinates": [[-77, 39], [-77.1, 39.1]]}}]}
     db.put_river_geom("01581920", fc)
     rivers = [{"site_no": "01581920", "color": "#2ecc71"},
-              {"site_no": "99999999", "color": "#e74c3c"}]  # no geom -> skip
-    out = asyncio.run(main._river_lines_payload(rivers))
+              {"site_no": "99999999", "color": "#e74c3c"}]  # no geom -> miss
+    out, missing = asyncio.run(main._river_lines_payload(rivers))
     assert out["type"] == "FeatureCollection"
     assert len(out["features"]) == 1
     f = out["features"][0]
     assert f["properties"] == {"site_no": "01581920", "color": "#2ecc71"}
     assert f["geometry"]["type"] == "LineString"
+    assert len(missing) == 1 and missing[0]["site_no"] == "99999999"
 
 
 def test_internal_refresh_requires_token(monkeypatch):

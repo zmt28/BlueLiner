@@ -906,13 +906,17 @@ async def api_rivers(
                         max_age=300)
 
 
-async def _river_lines_payload(rivers: list[dict]) -> dict:
+async def _river_lines_payload(
+    rivers: list[dict],
+) -> tuple[dict, list[dict]]:
     """Merge persisted flowlines for these rivers into one
     FeatureCollection -- a pure Postgres read, no external calls. Each
-    feature carries site_no + color so the client styles + popups it."""
+    feature carries site_no + color so the client styles + popups it.
+    Also returns the rivers still missing geometry so the caller can
+    prioritize backfilling exactly what the user is looking at."""
     by_site = {r["site_no"]: r for r in rivers if r.get("site_no")}
     if not by_site:
-        return {"type": "FeatureCollection", "features": []}
+        return {"type": "FeatureCollection", "features": []}, []
     geoms = await asyncio.to_thread(db.get_river_geoms, list(by_site))
     feats: list[dict] = []
     for sn, fc in geoms.items():
@@ -921,7 +925,40 @@ async def _river_lines_payload(rivers: list[dict]) -> dict:
             feats.append({"type": "Feature",
                           "properties": {"site_no": sn, "color": color},
                           "geometry": f.get("geometry")})
-    return {"type": "FeatureCollection", "features": feats}
+    missing = [by_site[sn] for sn in by_site if sn not in geoms]
+    return {"type": "FeatureCollection", "features": feats}, missing
+
+
+_lines_backfilling: set[str] = set()
+
+
+def _schedule_lines_backfill(rivers: list[dict]) -> None:
+    """Background NLDI backfill for the rivers the user is viewing right
+    now -- prioritizes their state's geometry over the periodic
+    refresher's round-robin so clickable lines appear fast on first
+    visit. Deduped; no-ops without a running loop (unit tests)."""
+    todo = [r for r in rivers
+            if r.get("site_no") and r["site_no"] not in _lines_backfilling]
+    if not todo:
+        return
+    for r in todo:
+        _lines_backfilling.add(r["site_no"])
+
+    async def _run():
+        try:
+            import precompute
+            await precompute._backfill_geometry(todo)
+        except Exception as exc:
+            logger.warning("lines backfill failed: %s", exc)
+        finally:
+            for r in todo:
+                _lines_backfilling.discard(r["site_no"])
+
+    try:
+        asyncio.create_task(_run())
+    except RuntimeError:
+        for r in todo:
+            _lines_backfilling.discard(r["site_no"])
 
 
 @app.get("/api/river_lines")
@@ -941,7 +978,9 @@ async def api_river_lines(
             raise HTTPException(status_code=400,
                                 detail=f"Unsupported state: {state}")
         rivers = await _rivers_for_states(states_to_load)
-    payload = await _river_lines_payload(rivers)
+    payload, missing = await _river_lines_payload(rivers)
+    if missing:
+        _schedule_lines_backfill(missing)  # prioritize the viewed state
     return _cached_json(request, payload, max_age=300)
 
 
