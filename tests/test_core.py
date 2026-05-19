@@ -261,7 +261,7 @@ def test_states_in_bbox():
     assert "CA" not in md_area and "FL" not in md_area
     co_area = states.states_in_bbox(-106.0, 38.5, -104.5, 40.0)
     assert "CO" in co_area
-    assert states.states_in_bbox(-30.0, 10.0, -29.0, 11.0) == []  # mid-Atlantic ocean
+    assert states.states_in_bbox(-30.0, 10.0, -29.0, 11.0) == []  # Atlantic ocean
 
 
 def test_parse_bbox(monkeypatch):
@@ -274,6 +274,28 @@ def test_parse_bbox(monkeypatch):
     with pytest.raises(HTTPException) as ei:               # too large
         main._parse_bbox("-90,30,-80,40")
     assert ei.value.status_code == 400
+
+
+def test_rivers_for_bbox_clips_and_dedupes(monkeypatch):
+    import asyncio
+
+    async def fake(st):
+        return {
+            "MD": [
+                {"name": "In Box", "lat": 39.0, "lon": -76.7, "site_no": "1"},
+                {"name": "Too North", "lat": 39.9, "lon": -76.7, "site_no": "2"},
+            ],
+            "VA": [
+                {"name": "In Box", "lat": 39.0, "lon": -76.7, "site_no": "1"},  # dup
+                {"name": "VA One", "lat": 38.9, "lon": -76.8, "site_no": "3"},
+            ],
+        }[st]
+
+    monkeypatch.setattr(main, "_rivers_for_state_cached", fake)
+    monkeypatch.setattr(main, "states_in_bbox", lambda *a: ["MD", "VA"])
+    out = asyncio.run(main._rivers_for_bbox((-77.0, 38.8, -76.4, 39.2)))
+    names = sorted(r["name"] for r in out)
+    assert names == ["In Box", "VA One"]  # north one clipped, dup removed
 
 
 def test_river_key():
