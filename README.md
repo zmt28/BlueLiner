@@ -58,17 +58,52 @@ With no `DATABASE_URL` set, pins are stored in a local SQLite file
 
 ## Deploying (24/7 on Render)
 
-`render.yaml` is a Render Blueprint that provisions the Docker web service
-plus a managed Postgres database and wires them together:
+`render.yaml` is a Render Blueprint that provisions the Docker web
+service. **Postgres is external** (Neon free tier, persistent --
+Render's free Postgres expires at ~90 days and the whole instant-load
+architecture leans on the DB):
 
 1. Push to GitHub, then in Render: **New > Blueprint** and pick this repo.
-2. Render builds the `Dockerfile`, creates `bluelines-db`, and injects
-   `DATABASE_URL` -- `db.py` automatically uses Postgres when it's a
-   `postgres://` URL, SQLite otherwise. No code change to switch.
+2. In the Render dashboard, set `DATABASE_URL` (declared as
+   `sync: false` in `render.yaml`) to your Neon connection string -- see
+   the [Postgres cutover playbook](#postgres-cutover-playbook-neon).
+   `db.py` selects Postgres automatically for any `postgres://` /
+   `postgresql://` URL; SQLite otherwise. No code change to switch.
 3. Health checks hit `/healthz`; HTTPS and a domain are provided by Render.
 
-Plans default to `free` (Render's free Postgres expires and free web
-services sleep when idle) -- bump both to a paid tier for genuine 24/7.
+The free web service sleeps after ~15 min idle -- the keep-warm cron
+below prevents that.
+
+### Postgres cutover playbook (Neon)
+
+One-time migration off Render's expiring free Postgres onto Neon's
+persistent free tier. The script copies the only irreplaceable data
+(user pins) plus immutable flowline geometry; snapshots and stats
+regenerate from the refresher within one cycle.
+
+1. **Provision Neon.** Sign up (free, no card), create a project, pick
+   a region close to Render's (Render free runs in Oregon -- choose
+   `us-west-2` if available). Copy the **direct** connection string
+   (not the pooler URL); it looks like
+   `postgresql://USER:PW@ep-xxx.aws.neon.tech/DBNAME?sslmode=require`.
+2. **Migrate.** Locally, with the current Render free DB URL in
+   `OLD_DATABASE_URL` (read from the Render dashboard) and the Neon URL
+   in `NEW_DATABASE_URL`:
+   ```
+   OLD_DATABASE_URL=... NEW_DATABASE_URL=... python scripts/migrate_pins.py
+   ```
+   Confirm the printed row counts.
+3. **Flip the env var.** In Render dashboard → service → Environment,
+   set `DATABASE_URL` to the Neon URL. Render redeploys; `lifespan`'s
+   idempotent `db.init_db()` is a no-op since the script already
+   created the tables.
+4. **Seed snapshots on Neon.** Trigger the `refresh-precompute`
+   workflow once by hand from the Actions tab.
+5. **Smoke-test.** `/healthz` 200; `/api/pins` lists your migrated
+   pins for your usual device; `/api/rivers?state=MD` returns a
+   non-empty list; `/api/river_lines?state=MD` returns features.
+6. **Wait ~1 week**, then deprovision the old Render Postgres in the
+   dashboard (rollback window if anything's wrong).
 
 ### Why the map is fast (precompute architecture)
 
@@ -100,12 +135,11 @@ Required GitHub repo secrets (Settings -> Secrets and variables -> Actions):
 Workflows can also be triggered by hand from the Actions tab
 (`workflow_dispatch`) to test the wiring.
 
-**Scaling path (config, not rewrite):** Render web -> Starter (no sleep,
-raise `WEB_CONCURRENCY`); **Render Postgres -> a persistent paid plan**
-(the free DB expires at ~90 days and the whole design leans on it --
-the most important upgrade); put Cloudflare (free) in front to edge-cache
-the gzipped payloads globally; promote the in-process refresher to a
-Render Cron Job (it's already standalone `precompute.py`).
+**Scaling path (config, not rewrite):** Postgres -> Neon free (done; see
+playbook above). Render web -> Starter (no sleep, raise
+`WEB_CONCURRENCY`). Put Cloudflare (free) in front to edge-cache the
+gzipped payloads globally. Promote the in-process refresher to a Render
+Cron Job (already standalone `precompute.py`).
 
 ### Environment variables
 
