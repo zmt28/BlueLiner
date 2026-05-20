@@ -632,3 +632,116 @@ def test_internal_refresh_requires_token(monkeypatch):
     with pytest.raises(HTTPException) as ei:
         asyncio.run(main.internal_refresh(bad))
     assert ei.value.status_code == 403
+
+
+# -- river identity via NHD GNIS (the screenshot-bug fix) --
+
+def test_db_gauge_meta_roundtrip(tmp_path, monkeypatch):
+    monkeypatch.setattr(db, "DB_PATH", str(tmp_path / "t.db"))
+    db.init_db()
+    assert db.get_gauge_meta("01581920") is None
+    db.put_gauge_meta("01581920",
+                      {"comid": "12345", "gnis_name": "Gunpowder Falls"})
+    assert db.get_gauge_meta("01581920") == {
+        "comid": "12345", "gnis_name": "Gunpowder Falls"}
+    db.put_gauge_meta("01589000", {"comid": "67890", "gnis_name": None})
+    got = db.get_gauge_metas(["01581920", "01589000", "99999999"])
+    assert got["01581920"]["gnis_name"] == "Gunpowder Falls"
+    assert got["01589000"]["gnis_name"] is None
+    assert "99999999" not in got                     # absent, not error
+
+
+def test_nldi_gauge_meta_short_circuits_on_db(tmp_path, monkeypatch):
+    """Once a gauge's NHD identity is in Postgres, no network call."""
+    monkeypatch.setattr(db, "DB_PATH", str(tmp_path / "t.db"))
+    db.init_db()
+    main._gauge_meta_cache.clear()
+    db.put_gauge_meta("01581920",
+                      {"comid": "12345", "gnis_name": "Gunpowder Falls"})
+
+    class NoNet:
+        def __init__(self, *a, **k): pass
+        def __enter__(self): return self
+        def __exit__(self, *a): return False
+        def get(self, *a, **k):
+            raise AssertionError("DB hit should preempt the NLDI call")
+
+    monkeypatch.setattr(main.httpx, "Client", NoNet)
+    meta = main._nldi_gauge_meta("01581920")
+    assert meta == {"comid": "12345", "gnis_name": "Gunpowder Falls"}
+
+
+def test_nldi_gauge_meta_graceful(monkeypatch):
+    """NLDI down => returns {} (caller falls back to heuristic naming);
+    empties are NOT persisted to DB so they retry later."""
+    main._gauge_meta_cache.clear()
+    monkeypatch.setattr(db, "get_gauge_meta", lambda s: None)
+    persisted = {}
+    monkeypatch.setattr(db, "put_gauge_meta",
+                        lambda s, m: persisted.setdefault(s, m))
+
+    class Boom:
+        def __init__(self, *a, **k): pass
+        def __enter__(self): return self
+        def __exit__(self, *a): return False
+        def get(self, *a, **k): raise RuntimeError("nldi down")
+
+    monkeypatch.setattr(main.httpx, "Client", Boom)
+    assert main._nldi_gauge_meta("00000000") == {}
+    assert persisted == {}                            # empties never persisted
+
+
+def test_assemble_rivers_prefers_gnis_name(monkeypatch):
+    """When gauge_meta has a gnis_name, _assemble_rivers labels by NHD,
+    not by the USGS station name -- so e.g. 'Georges Run near
+    Beckleysville, MD' stops standing in for 'Gunpowder Falls'."""
+    import asyncio
+
+    async def no_medians(nos):
+        return None
+
+    monkeypatch.setattr(main, "_ensure_medians_cached", no_medians)
+    monkeypatch.setattr(
+        db, "get_gauge_metas",
+        lambda nos: {"01581920": {"comid": "1", "gnis_name": "Gunpowder Falls"}},
+    )
+    main._stats_cache.clear()
+    ts = [{
+        "sourceInfo": {
+            "siteName": "Georges Run near Beckleysville, MD",   # misleading
+            "siteCode": [{"value": "01581920"}],
+            "geoLocation": {"geogLocation": {"latitude": 39.62,
+                                             "longitude": -76.69}},
+        },
+        "variable": {"variableDescription": "Streamflow, ft3/s"},
+        "values": [{"value": [{"value": "9",
+                               "dateTime": "2026-05-19T08:00:00"}]}],
+    }]
+    rivers = asyncio.run(main._assemble_rivers(ts, [None], []))
+    assert len(rivers) == 1 and rivers[0]["name"] == "Gunpowder Falls"
+
+
+def test_assemble_rivers_falls_back_to_heuristic_without_gnis(monkeypatch):
+    """If gauge_meta lookup returns nothing, the station-name heuristic
+    is still used -- behavior unchanged for not-yet-backfilled gauges."""
+    import asyncio
+
+    async def no_medians(nos):
+        return None
+
+    monkeypatch.setattr(main, "_ensure_medians_cached", no_medians)
+    monkeypatch.setattr(db, "get_gauge_metas", lambda nos: {})
+    main._stats_cache.clear()
+    ts = [{
+        "sourceInfo": {
+            "siteName": "Gunpowder Falls near Glencoe, MD",
+            "siteCode": [{"value": "01581920"}],
+            "geoLocation": {"geogLocation": {"latitude": 39.62,
+                                             "longitude": -76.69}},
+        },
+        "variable": {"variableDescription": "Streamflow, ft3/s"},
+        "values": [{"value": [{"value": "9",
+                               "dateTime": "2026-05-19T08:00:00"}]}],
+    }]
+    rivers = asyncio.run(main._assemble_rivers(ts, [None], []))
+    assert len(rivers) == 1 and rivers[0]["name"] == "Gunpowder Falls"

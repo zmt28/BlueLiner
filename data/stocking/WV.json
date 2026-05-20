@@ -1,0 +1,50 @@
+[
+  {
+    "water": "Elk River (below Sutton Dam)",
+    "lat": 38.5100, "lon": -80.5400,
+    "species": ["Brown", "Rainbow", "Golden"],
+    "category": "Trophy tailwater",
+    "season_months": [1, 12],
+    "agency_url": "https://wvdnr.gov/fishing/trout-stocking/"
+  },
+  {
+    "water": "Williams River",
+    "lat": 38.3500, "lon": -80.4200,
+    "species": ["Brook", "Brown", "Rainbow"],
+    "category": "Stocked + catch & release",
+    "season_months": [3, 11],
+    "agency_url": "https://wvdnr.gov/fishing/trout-stocking/"
+  },
+  {
+    "water": "Cranberry River",
+    "lat": 38.2800, "lon": -80.4500,
+    "species": ["Brook", "Rainbow"],
+    "category": "Stocked wilderness",
+    "season_months": [3, 11],
+    "agency_url": "https://wvdnr.gov/fishing/trout-stocking/"
+  },
+  {
+    "water": "North Fork South Branch (Smoke Hole)",
+    "lat": 38.8300, "lon": -79.2700,
+    "species": ["Brown", "Rainbow", "Golden"],
+    "category": "Stocked",
+    "season_months": [2, 6],
+    "agency_url": "https://wvdnr.gov/fishing/trout-stocking/"
+  },
+  {
+    "water": "Seneca Creek",
+    "lat": 38.8300, "lon": -79.3800,
+    "species": ["Brook", "Rainbow"],
+    "category": "Stocked",
+    "season_months": [3, 6],
+    "agency_url": "https://wvdnr.gov/fishing/trout-stocking/"
+  },
+  {
+    "water": "Shavers Fork (Cheat)",
+    "lat": 38.7000, "lon": -79.8500,
+    "species": ["Brown", "Rainbow", "Brook"],
+    "category": "Stocked + native",
+    "season_months": [1, 12],
+    "agency_url": "https://wvdnr.gov/fishing/trout-stocking/"
+  }
+]

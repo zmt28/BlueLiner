@@ -44,31 +44,47 @@ def focused_states() -> list[str]:
 
 
 async def _backfill_geometry(rivers: list[dict]) -> None:
-    """Persist NLDI flowline geometry for any of this state's gauges not
-    already in `river_geom` (geometry is immutable, so once is enough)."""
+    """Persist NLDI flowline geometry AND authoritative NHD identity
+    (gauge_meta) for this state's gauges. Both are immutable per site,
+    so once is enough; subsequent cycles short-circuit on the DB."""
     import main
 
     site_nos = [r["site_no"] for r in rivers if r.get("site_no")]
     if not site_nos:
         return
     try:
-        have = await asyncio.to_thread(db.get_river_geoms, site_nos)
+        have_geom = await asyncio.to_thread(db.get_river_geoms, site_nos)
     except Exception:
-        have = {}
-    todo = [sn for sn in site_nos if sn not in have]
-    if not todo:
+        have_geom = {}
+    try:
+        have_meta = await asyncio.to_thread(db.get_gauge_metas, site_nos)
+    except Exception:
+        have_meta = {}
+    todo_geom = [sn for sn in site_nos if sn not in have_geom]
+    todo_meta = [sn for sn in site_nos if sn not in have_meta]
+    if not todo_geom and not todo_meta:
         return
 
     sem = asyncio.Semaphore(_GEOM_BACKFILL_CONCURRENCY)
 
-    async def _one(sn: str) -> None:
+    async def _backfill_one_geom(sn: str) -> None:
         async with sem:
             try:
                 await asyncio.to_thread(main._nldi_flowline, sn)
             except Exception as exc:
                 logger.warning("geom backfill failed for %s: %s", sn, exc)
 
-    await asyncio.gather(*(_one(sn) for sn in todo))
+    async def _backfill_one_meta(sn: str) -> None:
+        async with sem:
+            try:
+                await asyncio.to_thread(main._nldi_gauge_meta, sn)
+            except Exception as exc:
+                logger.warning("gauge_meta backfill failed for %s: %s", sn, exc)
+
+    await asyncio.gather(
+        *(_backfill_one_geom(sn) for sn in todo_geom),
+        *(_backfill_one_meta(sn) for sn in todo_meta),
+    )
 
 
 async def refresh_state(st: str, *, backfill: bool = True) -> list[dict]:

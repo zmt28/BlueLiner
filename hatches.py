@@ -1,17 +1,25 @@
 """
 Insect hatch guidance for the mid-Atlantic.
 
-Pure in-memory lookups (zero network). Hatch timing is resolved to a
-sub-state zone via an approximate bounding box, then to the current month.
-Zone boundaries are intentionally coarse and tunable -- they capture the
-broad freestone / limestone-tailwater / piedmont differences that drive fly
-selection, not exact watershed lines.
+Pure in-memory lookups (zero network). Resolution order:
+    1. Per-river override (data/hatches/overrides.json, keyed by
+       lowercased river name -- preferred for famous waters whose
+       hatches diverge from their surrounding region).
+    2. Geographic zone via approximate bounding box.
+    3. Fallback to the general mid-Atlantic chart.
 
-Each zone's chart entry:
+Zone boundaries are intentionally coarse and tunable -- they capture
+the broad freestone / limestone-tailwater / piedmont differences that
+drive fly selection, not exact watershed lines.
+
+Each chart entry:
     insect, common_name, months (start,end), peak (start,end),
     hook_sizes, time_of_day, patterns[]
 Months are 1-12. A range with start > end wraps the year (e.g. midges 10->4).
 """
+
+import json
+import os
 
 # Ordered: first zone whose bbox contains the point wins; else the fallback.
 # bbox = (lat_min, lat_max, lon_min, lon_max)
@@ -174,6 +182,44 @@ def zone_for(lat: float, lon: float) -> dict:
         if lat_min <= lat <= lat_max and lon_min <= lon <= lon_max:
             return zone
     return FALLBACK_ZONE
+
+
+def _load_overrides() -> dict[str, list[dict]]:
+    """Per-river hatch overrides; tuple-ify month ranges from JSON lists."""
+    path = os.path.join(os.path.dirname(__file__), "data", "hatches",
+                        "overrides.json")
+    if not os.path.exists(path):
+        return {}
+    with open(path) as f:
+        raw = json.load(f)
+    out: dict[str, list[dict]] = {}
+    for key, entries in raw.items():
+        if key.startswith("_") or not isinstance(entries, list):
+            continue
+        cleaned = []
+        for e in entries:
+            ent = dict(e)
+            for fld in ("months", "peak"):
+                if fld in ent and isinstance(ent[fld], list):
+                    ent[fld] = tuple(ent[fld])
+            cleaned.append(ent)
+        out[key.lower().strip()] = cleaned
+    return out
+
+
+RIVER_HATCH_OVERRIDES: dict[str, list[dict]] = _load_overrides()
+
+
+def zone_for_river(river_name: str, lat: float, lon: float) -> dict:
+    """Per-river override (curated for famous waters) if defined,
+    otherwise the geographic zone for the coordinates."""
+    if river_name:
+        ov = RIVER_HATCH_OVERRIDES.get(river_name.strip().lower())
+        if ov:
+            return {"name": f"{river_name} (curated)",
+                    "blurb": f"Curated hatch list for {river_name}.",
+                    "chart": ov}
+    return zone_for(lat, lon)
 
 
 def active_hatches(zone: dict, month: int) -> list[dict]:

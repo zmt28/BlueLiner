@@ -1,0 +1,50 @@
+[
+  {
+    "water": "Mossy Creek",
+    "lat": 38.3593, "lon": -78.8569,
+    "species": ["Brown"],
+    "category": "Trophy fly-fishing-only",
+    "season_months": [1, 12],
+    "agency_url": "https://dwr.virginia.gov/fishing/trout-stocking-schedule/"
+  },
+  {
+    "water": "Smith River (below Philpott)",
+    "lat": 36.7790, "lon": -80.0179,
+    "species": ["Brown", "Rainbow"],
+    "category": "Trophy tailwater",
+    "season_months": [1, 12],
+    "agency_url": "https://dwr.virginia.gov/fishing/trout-stocking-schedule/"
+  },
+  {
+    "water": "Jackson River (Hidden Valley)",
+    "lat": 37.9100, "lon": -79.8500,
+    "species": ["Brown", "Rainbow"],
+    "category": "Tailwater - special regs",
+    "season_months": [1, 12],
+    "agency_url": "https://dwr.virginia.gov/fishing/trout-stocking-schedule/"
+  },
+  {
+    "water": "South River (Waynesboro)",
+    "lat": 38.0696, "lon": -78.8889,
+    "species": ["Brown", "Rainbow"],
+    "category": "Special regulation",
+    "season_months": [1, 12],
+    "agency_url": "https://dwr.virginia.gov/fishing/trout-stocking-schedule/"
+  },
+  {
+    "water": "Big Tumbling Creek (Clinch Mtn.)",
+    "lat": 36.8800, "lon": -81.7600,
+    "species": ["Rainbow", "Brown", "Brook"],
+    "category": "Fee fishing - heavily stocked",
+    "season_months": [4, 9],
+    "agency_url": "https://dwr.virginia.gov/fishing/trout-stocking-schedule/"
+  },
+  {
+    "water": "Back Creek (below Gathright)",
+    "lat": 38.0600, "lon": -79.9200,
+    "species": ["Brown", "Rainbow"],
+    "category": "Tailwater",
+    "season_months": [1, 12],
+    "agency_url": "https://dwr.virginia.gov/fishing/trout-stocking-schedule/"
+  }
+]

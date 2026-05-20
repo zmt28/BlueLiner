@@ -50,6 +50,10 @@ _stats_cache: LruTtl = LruTtl(maxsize=2000)
 # site_no -> NLDI flowline FeatureCollection. TTL'd so a transient empty
 # (NLDI failure) retries later; successful geometry also lives in the DB.
 _river_geom_cache: LruTtl = LruTtl(maxsize=512, ttl=900.0)
+# site_no -> {"comid", "gnis_name"} (the authoritative NHD identity).
+# Immutable per site -- DB is the durable store; this is L1. TTL'd so
+# transient NLDI failures retry; successful meta is also in Postgres.
+_gauge_meta_cache: LruTtl = LruTtl(maxsize=2048, ttl=900.0)
 
 STATIC_DIR = os.path.join(os.path.dirname(__file__), "static")
 
@@ -610,6 +614,19 @@ async def _assemble_rivers(time_series: list, trout_gdfs: list,
     if discharge_site_nos:
         await _ensure_medians_cached(discharge_site_nos)
 
+    # Authoritative NHD identity in one batched DB read. Gauges backfilled
+    # by precompute have an entry; others fall back to the station-name
+    # heuristic in _river_key.
+    all_site_nos = [info["site_no"] for info in sites.values()
+                    if info.get("site_no")]
+    gauge_metas: dict[str, dict] = {}
+    if all_site_nos:
+        try:
+            gauge_metas = await asyncio.to_thread(
+                db.get_gauge_metas, all_site_nos)
+        except Exception as exc:
+            logger.warning("gauge_metas read failed: %s", exc)
+
     groups: dict[str, dict] = {}
     for (site_name, latitude, longitude), info in sites.items():
         if not latitude or not longitude:
@@ -619,7 +636,12 @@ async def _assemble_rivers(time_series: list, trout_gdfs: list,
         historical_median = _stats_cache.get(site_no, {}).get(today_key) if site_no else None
         conditions = score_conditions(variables, historical_median)
         on_trout = any(is_near_trout_stream(latitude, longitude, g) for g in tgs)
-        key, display = _river_key(site_name)
+        gnis = (gauge_metas.get(site_no, {}).get("gnis_name") if site_no
+                else None)
+        if gnis:
+            key, display = gnis.strip().lower(), gnis.strip()
+        else:
+            key, display = _river_key(site_name)
         g = groups.setdefault(key, {
             "name": display, "lats": [], "lons": [],
             "on_trout": False, "gauges": [],
@@ -641,7 +663,9 @@ async def _assemble_rivers(time_series: list, trout_gdfs: list,
             (gg["conditions"]["overall"] for gg in g["gauges"]),
             key=lambda o: _RANK.get(o, 3),
         )
-        zone = hatches.zone_for(clat, clon)
+        # Per-river curated override first (famous waters), else the
+        # geographic zone for the centroid.
+        zone = hatches.zone_for_river(g["name"], clat, clon)
         active = hatches.active_hatches(zone, month_now)
         stocked_waters = stocking.nearby_stocked(clat, clon, stocked_pts)
         river = {
@@ -1060,10 +1084,15 @@ def _nldi_flowline(site_no: str) -> dict:
     feats: list[dict] = []
     try:
         with httpx.Client(timeout=15.0, headers={"User-Agent": USER_AGENT}) as c:
+            # Tight walk distances: prevents a small tributary's flowline
+            # from visibly extending onto a larger main stem (the
+            # "Georges Run labels Gunpowder Falls" failure mode). Long-
+            # river gauges may show only part of their reach; the
+            # follow-up fix is per-feature GNIS filtering.
             with ThreadPoolExecutor(max_workers=2) as ex:
                 parts = list(ex.map(
                     lambda nd: _fetch_nav(c, base, nd[0], nd[1]),
-                    (("UM", "75"), ("DM", "40")),
+                    (("UM", "15"), ("DM", "10")),
                 ))
             for p in parts:
                 feats.extend(p)
@@ -1080,6 +1109,59 @@ def _nldi_flowline(site_no: str) -> dict:
         return fc
     _river_geom_cache[site_no] = _EMPTY_FC  # transient: TTL retries later
     return _EMPTY_FC
+
+
+_NLDI_BASE = "https://api.water.usgs.gov/nldi/linked-data"
+
+
+def _nldi_gauge_meta(site_no: str) -> dict:
+    """Authoritative NHD identity for a USGS gauge -- {comid, gnis_name}.
+
+    Two NLDI calls (gauge -> COMID, COMID -> reach attributes), served
+    from process LRU -> Postgres -> NLDI with write-through. Geometry is
+    immutable per site, so a successful lookup is forever; empties
+    (network/lookup failures) are NOT persisted so they retry, but stay
+    briefly in the process cache to throttle re-attempts."""
+    if site_no in _gauge_meta_cache:
+        return _gauge_meta_cache[site_no]
+    try:
+        stored = db.get_gauge_meta(site_no)
+    except Exception as exc:
+        logger.warning("gauge_meta read failed for %s: %s", site_no, exc)
+        stored = None
+    if stored is not None:
+        _gauge_meta_cache[site_no] = stored
+        return stored
+
+    meta: dict = {}
+    try:
+        with httpx.Client(timeout=10.0, headers={"User-Agent": USER_AGENT}) as c:
+            r1 = c.get(f"{_NLDI_BASE}/nwissite/USGS-{site_no}")
+            r1.raise_for_status()
+            feats = r1.json().get("features") or []
+            comid = None
+            if feats:
+                comid = feats[0].get("properties", {}).get("comid")
+            gnis = None
+            if comid:
+                r2 = c.get(f"{_NLDI_BASE}/comid/{comid}")
+                r2.raise_for_status()
+                feats2 = r2.json().get("features") or []
+                if feats2:
+                    gnis = feats2[0].get("properties", {}).get("gnis_name")
+            if comid:
+                meta = {"comid": str(comid),
+                        "gnis_name": gnis or None}
+    except Exception:
+        meta = {}
+
+    _gauge_meta_cache[site_no] = meta
+    if meta:
+        try:
+            db.put_gauge_meta(site_no, meta)
+        except Exception as exc:
+            logger.warning("gauge_meta persist failed for %s: %s", site_no, exc)
+    return meta
 
 
 @app.get("/api/river_geom")

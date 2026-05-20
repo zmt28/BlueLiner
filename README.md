@@ -141,6 +141,21 @@ playbook above). Render web -> Starter (no sleep, raise
 gzipped payloads globally. Promote the in-process refresher to a Render
 Cron Job (already standalone `precompute.py`).
 
+### Data layout (`data/`)
+
+Per-state trout/stocking/hatch data lives in JSON under `data/`. The
+contributor guide in [`CONTRIBUTING.md`](CONTRIBUTING.md) covers the
+schema and the validation step (`python scripts/validate_data.py`).
+
+| Domain | Files | Notes |
+|---|---|---|
+| Stocking baselines | `data/stocking/<STATE>.json` | Famous + heavily-stocked waters; ~2 km proximity tagging on the map |
+| Per-river hatch overrides | `data/hatches/overrides.json` | Curated lists for famous waters (Gunpowder, Penns, Letort, Mossy, Yellow Breeches, Savage, North Branch Potomac) that beat the generic regional zone |
+| Trout-stream geometry | `data/trout/<STATE>.json` (optional) | Bundled-GeoJSON fallback when a state agency's live endpoint isn't reliable |
+
+River identity uses NHD `gnis_name` (via NLDI, cached in Postgres) when
+available, falling back to the USGS station-name heuristic.
+
 ### Environment variables
 
 | Var | Default | Purpose |

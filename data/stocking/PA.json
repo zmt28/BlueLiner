@@ -1,0 +1,50 @@
+[
+  {
+    "water": "Penns Creek (Coburn / Weikert)",
+    "lat": 40.8200, "lon": -77.3500,
+    "species": ["Brown", "Rainbow"],
+    "category": "Wild + special regs (Class A in places)",
+    "season_months": [1, 12],
+    "agency_url": "https://www.fishandboat.com/Fish/Trout/Pages/default.aspx"
+  },
+  {
+    "water": "Spring Creek (Centre County)",
+    "lat": 40.8600, "lon": -77.8200,
+    "species": ["Brown"],
+    "category": "Class A wild - catch & release (state)",
+    "season_months": [1, 12],
+    "agency_url": "https://www.fishandboat.com/Fish/Trout/Pages/default.aspx"
+  },
+  {
+    "water": "Yellow Breeches Creek (Allenberry)",
+    "lat": 40.1450, "lon": -77.0250,
+    "species": ["Brown", "Rainbow"],
+    "category": "Heritage / stocked - year-round",
+    "season_months": [1, 12],
+    "agency_url": "https://www.fishandboat.com/Fish/Trout/Pages/default.aspx"
+  },
+  {
+    "water": "Letort Spring Run",
+    "lat": 40.2050, "lon": -77.1800,
+    "species": ["Brown"],
+    "category": "Limestone wild - special regs",
+    "season_months": [1, 12],
+    "agency_url": "https://www.fishandboat.com/Fish/Trout/Pages/default.aspx"
+  },
+  {
+    "water": "Falling Spring Branch",
+    "lat": 39.9500, "lon": -77.6500,
+    "species": ["Brown", "Rainbow"],
+    "category": "Limestone - special regs",
+    "season_months": [1, 12],
+    "agency_url": "https://www.fishandboat.com/Fish/Trout/Pages/default.aspx"
+  },
+  {
+    "water": "Big Spring Creek (Newville)",
+    "lat": 40.1750, "lon": -77.4100,
+    "species": ["Brook", "Brown", "Rainbow"],
+    "category": "Limestone wild - heritage",
+    "season_months": [1, 12],
+    "agency_url": "https://www.fishandboat.com/Fish/Trout/Pages/default.aspx"
+  }
+]
