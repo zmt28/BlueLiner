@@ -1,12 +1,8 @@
-# Render Blueprint -- one-click deploy of the web service + managed Postgres.
-# Plans are `free` to start; bump both to a paid tier for true 24/7 (Render's
-# free Postgres expires and free web services sleep when idle).
-databases:
-  - name: bluelines-db
-    databaseName: bluelines
-    user: bluelines
-    plan: free
-
+# Render Blueprint -- web service only. Postgres is external (Neon free
+# tier, persistent -- Render's free Postgres expires at ~90 days and the
+# whole instant-load architecture leans on the DB). Set DATABASE_URL to
+# the Neon connection string in the Render dashboard; see README.md for
+# the cutover playbook.
 services:
   - type: web
     name: bluelines
@@ -16,12 +12,21 @@ services:
     autoDeploy: true
     envVars:
       - key: DATABASE_URL
-        fromDatabase:
-          name: bluelines-db
-          property: connectionString
+        sync: false      # Neon connection string -- set in the dashboard
       - key: WEB_CONCURRENCY
-        value: "2"
+        value: "1"
       - key: LOG_LEVEL
         value: info
       - key: PIN_RATE_MAX
         value: "20"
+      # Background refresher cadence (seconds). The map serves precomputed
+      # snapshots from Postgres, so this is the data-freshness knob, not a
+      # latency one. ~45 min matches USGS update frequency.
+      - key: REFRESH_INTERVAL
+        value: "2700"
+      # Token for POST /internal/refresh. Point a free scheduler
+      # (GitHub Actions / cron-job.org) at it on a cadence: it refreshes
+      # the snapshots AND keeps the free web service awake. Read the
+      # generated value from the Render dashboard.
+      - key: REFRESH_TOKEN
+        generateValue: true

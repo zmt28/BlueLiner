@@ -13,6 +13,7 @@ agency_url, source}
 """
 
 from arcgis import fetch_geojson_gdf
+from cache import LruTtl
 
 MD_DNR_URL = "https://dnr.maryland.gov/fisheries/pages/trout/stocking.aspx"
 VA_DWR_URL = "https://dwr.virginia.gov/fishing/trout-stocking-schedule/"
@@ -133,7 +134,7 @@ _NAME_FIELDS = ("WATER", "Water", "WATERBODY", "Waterbody", "STREAM",
 _SPECIES_FIELDS = ("SPECIES", "Species", "TROUT_SPEC")
 _CATEGORY_FIELDS = ("CATEGORY", "Category", "TYPE", "Type", "CATEGO")
 
-_stocking_cache: dict[str, list[dict] | None] = {}
+_stocking_cache: LruTtl = LruTtl(maxsize=8)
 
 
 def _pick(props: dict, fields: tuple[str, ...]) -> str | None:

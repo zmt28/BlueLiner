@@ -5,7 +5,7 @@
 // deploys propagate immediately (cache-first here meant returning browsers
 // ran stale JS forever). Only the immutable vendored Leaflet + icons are
 // cache-first. Bump CACHE on any caching-strategy change.
-const CACHE = "bluelines-v2";
+const CACHE = "bluelines-v3";
 const SHELL = [
   "/map",
   "/static/app.css",
@@ -58,12 +58,31 @@ async function cacheFirst(req) {
   return resp;
 }
 
+// Map data: serve the last response instantly, refresh in the background.
+// The server already precomputes this, so "instant from cache, revalidate"
+// makes a returning user's map paint before the network even answers.
+async function staleWhileRevalidate(req) {
+  const cache = await caches.open(CACHE);
+  const cached = await cache.match(req);
+  const network = fetch(req)
+    .then((resp) => {
+      if (resp && resp.ok) cache.put(req, resp.clone());
+      return resp;
+    })
+    .catch(() => null);
+  return cached || (await network) || Response.error();
+}
+
 self.addEventListener("fetch", (e) => {
   const req = e.request;
   if (req.method !== "GET") return;
   const url = new URL(req.url);
   if (url.origin !== location.origin) return;     // tiles / CDNs: passthrough
-  if (url.pathname.startsWith("/api/")) return;   // never cache live data
+  if (url.pathname === "/api/rivers" || url.pathname === "/api/river_lines") {
+    e.respondWith(staleWhileRevalidate(req));      // precomputed -> SWR
+    return;
+  }
+  if (url.pathname.startsWith("/api/")) return;   // never cache other live data
 
   if (req.mode === "navigate") {
     e.respondWith(networkFirst(req));

@@ -17,5 +17,7 @@ USER app
 
 EXPOSE 8000
 
-# Render provides $PORT. WEB_CONCURRENCY tunes workers (caches are per-worker).
-CMD ["sh", "-c", "gunicorn main:app -k uvicorn.workers.UvicornWorker -b 0.0.0.0:${PORT:-8000} --workers ${WEB_CONCURRENCY:-2} --timeout 120 --access-logfile - --error-logfile -"]
+# Render provides $PORT. WEB_CONCURRENCY tunes workers; default 1 keeps the
+# geopandas/pandas/shapely baseline under the 512MB free-tier cap (each
+# worker loads its own copy + its own per-worker caches).
+CMD ["sh", "-c", "gunicorn main:app -k uvicorn.workers.UvicornWorker -b 0.0.0.0:${PORT:-8000} --workers ${WEB_CONCURRENCY:-1} --timeout 120 --access-logfile - --error-logfile -"]

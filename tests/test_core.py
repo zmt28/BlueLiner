@@ -218,6 +218,8 @@ def test_arcgis_keyset_no_progress_guard(monkeypatch):
 
 def test_nldi_flowline_merges_and_caches(monkeypatch):
     main._river_geom_cache.clear()
+    monkeypatch.setattr(db, "get_river_geom", lambda s: None)
+    monkeypatch.setattr(db, "put_river_geom", lambda s, fc: None)
     calls = {"n": 0}
 
     class FakeClient:
@@ -242,6 +244,8 @@ def test_nldi_flowline_merges_and_caches(monkeypatch):
 
 def test_nldi_flowline_graceful(monkeypatch):
     main._river_geom_cache.clear()
+    monkeypatch.setattr(db, "get_river_geom", lambda s: None)
+    monkeypatch.setattr(db, "put_river_geom", lambda s, fc: None)
 
     class Boom:
         def __init__(self, *a, **k): pass
@@ -337,3 +341,294 @@ def test_build_river_popup_html():
     assert "Gunpowder falls near glencoe, md" in html       # gauge sub-header
     assert 'data-site="01581920"' in html                   # trend button
     assert "Flow context" in html                           # median present
+
+
+# -- bounded cache (memory: the OOM fix) --
+
+def test_lru_ttl_evicts_by_size_and_ttl(monkeypatch):
+    import cache
+    clock = {"t": 1000.0}
+    monkeypatch.setattr(cache.time, "monotonic", lambda: clock["t"])
+    c = cache.LruTtl(maxsize=2, ttl=10.0)
+    c["a"] = 1
+    c["b"] = 2
+    assert "a" in c and c.get("b") == 2
+    c["c"] = 3                       # over maxsize -> evict LRU ("a")
+    assert "a" not in c and len(c) == 2 and c.get("a") is None
+    c.get("b")                       # touch b -> "c" becomes the LRU
+    c["d"] = 4                       # evict "c", keep "b","d"
+    assert "c" not in c and "b" in c and "d" in c
+    clock["t"] += 11                 # every entry now older than ttl
+    assert "b" not in c and c.get("d") is None and len(c) == 0
+
+
+# -- durable cross-restart caches (speed: survive deploys) --
+
+def test_db_river_geom_and_stats_roundtrip(tmp_path, monkeypatch):
+    import datetime as _dt
+    monkeypatch.setattr(db, "DB_PATH", str(tmp_path / "t.db"))
+    db.init_db()
+
+    fc = {"type": "FeatureCollection", "features": [1, 2]}
+    assert db.get_river_geom("S1") is None
+    db.put_river_geom("S1", fc)
+    assert db.get_river_geom("S1") == fc
+    db.put_river_geom("S1", {"type": "FeatureCollection", "features": [9]})
+    assert db.get_river_geom("S1")["features"] == [9]      # upsert overwrites
+
+    assert db.get_river_stats(["A", "B"]) == {}
+    db.put_river_stats("A", {"5-19": 80.0})
+    assert db.get_river_stats(["A", "B"]) == {"A": {"5-19": 80.0}}
+
+    old = (_dt.datetime.now(_dt.timezone.utc)
+           - _dt.timedelta(days=40)).isoformat()
+    with db._conn() as conn:
+        conn.cursor().execute(
+            db._ph("UPDATE river_stats SET created_at = ? WHERE site_no = ?"),
+            (old, "A"))
+    assert db.get_river_stats(["A"]) == {}                 # >30d -> excluded
+
+
+def test_nldi_flowline_uses_db_cache(tmp_path, monkeypatch):
+    monkeypatch.setattr(db, "DB_PATH", str(tmp_path / "t.db"))
+    db.init_db()
+    main._river_geom_cache.clear()
+    saved = {"type": "FeatureCollection",
+             "features": [{"type": "Feature",
+                           "geometry": {"type": "LineString",
+                                        "coordinates": [[-77, 39], [-77.1, 39.1]]},
+                           "properties": {}}]}
+    db.put_river_geom("01581920", saved)
+
+    class NoNet:
+        def __init__(self, *a, **k): pass
+        def __enter__(self): return self
+        def __exit__(self, *a): return False
+        def get(self, *a, **k):
+            raise AssertionError("DB hit should preempt the network")
+
+    monkeypatch.setattr(main.httpx, "Client", NoNet)
+    assert main._nldi_flowline("01581920") == saved       # straight from the DB
+
+
+# -- stats off the hot path (speed: no 20s stall) --
+
+def test_ensure_medians_non_blocking(monkeypatch):
+    import asyncio
+    main._stats_cache.clear()
+    scheduled = {}
+    monkeypatch.setattr(db, "get_river_stats", lambda nos: {})  # nothing persisted
+    monkeypatch.setattr(main, "_schedule_stats_warm",
+                        lambda nos: scheduled.setdefault("nos", list(nos)))
+    asyncio.run(main._ensure_medians_cached(["111", "222"]))
+    assert scheduled["nos"] == ["111", "222"]   # missing -> background warm
+    assert main._stats_cache.get("111") is None  # nothing fetched synchronously
+
+
+def test_assemble_rivers_no_block_when_no_medians(monkeypatch):
+    import asyncio
+    calls = {}
+
+    async def fake_ensure(nos):
+        calls["nos"] = list(nos)   # records, leaves _stats_cache empty
+
+    monkeypatch.setattr(main, "_ensure_medians_cached", fake_ensure)
+    main._stats_cache.clear()
+    ts = [{
+        "sourceInfo": {
+            "siteName": "Gunpowder Falls near Glencoe, MD",
+            "siteCode": [{"value": "01581920"}],
+            "geoLocation": {"geogLocation": {"latitude": 39.566,
+                                             "longitude": -76.605}},
+        },
+        "variable": {"variableDescription": "Streamflow, ft3/s"},
+        "values": [{"value": [{"value": "95",
+                               "dateTime": "2026-05-19T08:00:00"}]}],
+    }]
+    rivers = asyncio.run(main._assemble_rivers(ts, [None], []))
+    assert len(rivers) == 1 and rivers[0]["name"] == "Gunpowder Falls"
+    assert calls["nos"] == ["01581920"]          # discharge -> medians requested
+    assert rivers[0]["conditions"]["overall"] in ("green", "yellow", "red")
+
+
+def test_rivers_for_bbox_caps_state_fanout(monkeypatch):
+    import asyncio
+    seen = []
+
+    async def fake(st):
+        seen.append(st)
+        return []
+
+    # 6 candidate states; only the 4 with the largest overlap should load.
+    monkeypatch.setattr(main, "states_in_bbox",
+                        lambda *a: ["MD", "VA", "WV", "PA", "DE", "NJ"])
+    monkeypatch.setattr(main, "_rivers_for_state_cached", fake)
+    asyncio.run(main._rivers_for_bbox((-79.0, 38.0, -76.0, 40.0)))
+    assert len(seen) == main._BBOX_MAX_STATES == 4
+    assert "MD" in seen                          # biggest overlap kept
+
+
+# -- precompute + serve-from-Postgres (the instant-load architecture) --
+
+def test_db_river_snapshot_roundtrip(tmp_path, monkeypatch):
+    monkeypatch.setattr(db, "DB_PATH", str(tmp_path / "t.db"))
+    db.init_db()
+    assert db.get_river_snapshot("MD") is None
+    rivers = [{"name": "Gunpowder Falls", "site_no": "01581920",
+               "color": "#2ecc71"}]
+    db.put_river_snapshot("MD", rivers)
+    got = db.get_river_snapshot("MD")
+    assert got is not None
+    data, updated_at = got
+    assert data == rivers and isinstance(updated_at, str) and updated_at
+    db.put_river_snapshot("MD", [])                  # upsert overwrites
+    data2, _ = db.get_river_snapshot("MD")
+    assert data2 == []
+
+
+def test_snapshot_stale(monkeypatch):
+    import datetime as _dt
+    monkeypatch.setattr(main, "_REFRESH_INTERVAL", 1000)
+    now = _dt.datetime.now(_dt.timezone.utc)
+    assert main._snapshot_stale(now.isoformat()) is False
+    assert main._snapshot_stale(
+        (now - _dt.timedelta(seconds=5000)).isoformat()) is True
+    assert main._snapshot_stale("not-a-date") is True
+
+
+def test_rivers_for_state_serves_snapshot_no_usgs(tmp_path, monkeypatch):
+    import asyncio
+    monkeypatch.setattr(db, "DB_PATH", str(tmp_path / "t.db"))
+    db.init_db()
+    main._state_rivers_cache.clear()
+    seeded = [{"name": "X", "site_no": "1", "color": "#2ecc71"}]
+    db.put_river_snapshot("MD", seeded)
+
+    async def boom(*a, **k):
+        raise AssertionError("USGS must never be on the request path")
+
+    monkeypatch.setattr(main, "_usgs_iv", boom)
+    sched = []
+    monkeypatch.setattr(main, "_schedule_state_refresh",
+                        lambda st: sched.append(st))
+    out = asyncio.run(main._rivers_for_state_cached("MD"))
+    assert out == seeded and sched == []             # fresh -> no refresh
+
+
+def test_rivers_for_state_stale_serves_and_refreshes(tmp_path, monkeypatch):
+    import asyncio
+    monkeypatch.setattr(db, "DB_PATH", str(tmp_path / "t.db"))
+    db.init_db()
+    main._state_rivers_cache.clear()
+    db.put_river_snapshot("MD", [{"name": "X", "site_no": "1"}])
+    monkeypatch.setattr(main, "_REFRESH_INTERVAL", -1)   # everything stale
+    sched = []
+    monkeypatch.setattr(main, "_schedule_state_refresh",
+                        lambda st: sched.append(st))
+    out = asyncio.run(main._rivers_for_state_cached("MD"))
+    assert out and sched == ["MD"]                   # served stale + refresh
+
+
+def test_rivers_for_state_lazy_empty_and_schedules(tmp_path, monkeypatch):
+    import asyncio
+    monkeypatch.setattr(db, "DB_PATH", str(tmp_path / "t.db"))
+    db.init_db()
+    main._state_rivers_cache.clear()
+    sched = []
+    monkeypatch.setattr(main, "_schedule_state_refresh",
+                        lambda st: sched.append(st))
+    out = asyncio.run(main._rivers_for_state_cached("WY"))
+    assert out == [] and sched == ["WY"]             # lazy: fills next cycle
+
+
+def test_precompute_refresh_state_persists(tmp_path, monkeypatch):
+    import asyncio
+    import precompute
+    monkeypatch.setattr(db, "DB_PATH", str(tmp_path / "t.db"))
+    db.init_db()
+    main._state_rivers_cache.clear()
+
+    ts = [{
+        "sourceInfo": {
+            "siteName": "Gunpowder Falls near Glencoe, MD",
+            "siteCode": [{"value": "01581920"}],
+            "geoLocation": {"geogLocation": {"latitude": 39.566,
+                                             "longitude": -76.605}},
+        },
+        "variable": {"variableDescription": "Streamflow, ft3/s"},
+        "values": [{"value": [{"value": "95",
+                               "dateTime": "2026-05-19T08:00:00"}]}],
+    }]
+
+    async def fake_iv(extra, label):
+        return {"value": {"timeSeries": ts}}
+
+    async def no_medians(nos):
+        return None
+
+    async def no_backfill(rivers):
+        return None
+
+    monkeypatch.setattr(main, "_usgs_iv", fake_iv)
+    monkeypatch.setattr(main, "_ensure_medians_cached", no_medians)
+    monkeypatch.setattr(main, "_trout_for_state", lambda st: None)
+    monkeypatch.setattr(precompute, "_backfill_geometry", no_backfill)
+
+    out = asyncio.run(precompute.refresh_state("MD"))
+    assert len(out) == 1 and out[0]["name"] == "Gunpowder Falls"
+    snap = db.get_river_snapshot("MD")
+    assert snap is not None
+    rivers, _ = snap
+    assert rivers and rivers[0]["name"] == "Gunpowder Falls"
+    assert main._state_rivers_cache.get("MD") == rivers   # L1 warmed
+
+
+def test_river_lines_payload_from_db(tmp_path, monkeypatch):
+    import asyncio
+    monkeypatch.setattr(db, "DB_PATH", str(tmp_path / "t.db"))
+    db.init_db()
+    fc = {"type": "FeatureCollection", "features": [
+        {"type": "Feature", "properties": {},
+         "geometry": {"type": "LineString",
+                      "coordinates": [[-77, 39], [-77.1, 39.1]]}}]}
+    db.put_river_geom("01581920", fc)
+    rivers = [{"site_no": "01581920", "color": "#2ecc71"},
+              {"site_no": "99999999", "color": "#e74c3c"}]  # no geom -> miss
+    out, missing = asyncio.run(main._river_lines_payload(rivers))
+    assert out["type"] == "FeatureCollection"
+    assert len(out["features"]) == 1
+    f = out["features"][0]
+    assert f["properties"] == {"site_no": "01581920", "color": "#2ecc71"}
+    assert f["geometry"]["type"] == "LineString"
+    assert len(missing) == 1 and missing[0]["site_no"] == "99999999"
+
+
+def test_refresh_focused_single_flight(monkeypatch):
+    """External cron + in-process loop both call refresh_focused; if one
+    is already running the other must skip rather than double USGS load."""
+    import asyncio
+    import precompute
+    monkeypatch.setattr(precompute, "_refresh_running", True)
+    calls = []
+
+    async def fake_refresh_state(st, *, backfill=True):
+        calls.append(st)
+        return []
+
+    monkeypatch.setattr(precompute, "refresh_state", fake_refresh_state)
+    asyncio.run(precompute.refresh_focused())
+    assert calls == []                              # early-return, no work
+    assert precompute._refresh_running is True      # flag untouched
+
+
+def test_internal_refresh_requires_token(monkeypatch):
+    import asyncio
+    req = SimpleNamespace(headers={})
+    with pytest.raises(HTTPException) as ei:                  # token unset
+        asyncio.run(main.internal_refresh(req))
+    assert ei.value.status_code == 403
+    monkeypatch.setattr(main, "_REFRESH_TOKEN", "secret")
+    bad = SimpleNamespace(headers={"x-refresh-token": "nope"})
+    with pytest.raises(HTTPException) as ei:
+        asyncio.run(main.internal_refresh(bad))
+    assert ei.value.status_code == 403
