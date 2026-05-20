@@ -744,6 +744,13 @@ def _bbox_overlap_area(bbox: tuple[float, float, float, float],
     return ow * oh if ow > 0 and oh > 0 else 0.0
 
 
+async def _rivers_for_states(states_to_load: list[str]) -> list[dict]:
+    per_state = await asyncio.gather(
+        *(_rivers_for_state_cached(st) for st in states_to_load)
+    )
+    return [r for group in per_state for r in group]
+
+
 async def _rivers_for_bbox(bbox: tuple[float, float, float, float]) -> list[dict]:
     # USGS's own bBox IV query proved unreliable; instead reuse the proven
     # per-state path (cached) for the states the viewport touches and clip to
