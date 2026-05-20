@@ -54,6 +54,16 @@ _river_geom_cache: LruTtl = LruTtl(maxsize=512, ttl=900.0)
 # Immutable per site -- DB is the durable store; this is L1. TTL'd so
 # transient NLDI failures retry; successful meta is also in Postgres.
 _gauge_meta_cache: LruTtl = LruTtl(maxsize=2048, ttl=900.0)
+# comid -> {"gnis_name"} for individual NHD flowline reaches. Used to
+# trim a navigation walk so it doesn't continue past a confluence onto
+# a differently-named river. Many comids per gauge, so bigger maxsize.
+_comid_meta_cache: LruTtl = LruTtl(maxsize=8192, ttl=900.0)
+
+# Bumped when walk distances or filtering logic change -- river_geom
+# rows written under an older version are treated as cache-misses so
+# they're refetched on next access, instead of serving stale geometry
+# forever. (Geometry is otherwise immutable per site.)
+_GEOM_SCHEMA_VERSION = 2
 
 STATIC_DIR = os.path.join(os.path.dirname(__file__), "static")
 
@@ -1064,11 +1074,24 @@ def _fetch_nav(client: httpx.Client, base: str, nav: str, dist: str) -> list:
 
 
 def _nldi_flowline(site_no: str) -> dict:
-    """Main-stem flowline around a USGS gauge from USGS NLDI. Geometry is
-    immutable per site, so it's served from process LRU -> Postgres ->
-    NLDI (the upstream+downstream legs fetched concurrently), then
-    written through to both. Any failure -> empty FC (caller keeps the
-    pin); empties are never persisted (a deploy/restart retries them)."""
+    """Main-stem flowline around a USGS gauge from USGS NLDI.
+
+    Two-stage safety against the "tributary flowline visually extends
+    onto the larger main stem at the confluence" failure mode:
+
+      1. When the gauge has an authoritative NHD gnis_name, walk a full
+         reach (UM 75 / DM 40 km) then drop every flowline feature
+         whose own NHD gnis_name doesn't match (per-COMID lookup,
+         cached forever in `comid_meta`). This gives long named rivers
+         their full reach without bleeding across confluences.
+      2. When NLDI has no gnis_name for the gauge, fall back to a
+         conservative walk (UM 15 / DM 10 km) with no filter -- the
+         filter has nothing to match against.
+
+    Served from process LRU -> Postgres -> NLDI with write-through.
+    Rows written under an older walk/filter schema (no `_walk_version`,
+    or older than the current constant) are treated as misses so they
+    refetch."""
     if site_no in _river_geom_cache:
         return _river_geom_cache[site_no]
     try:
@@ -1076,31 +1099,34 @@ def _nldi_flowline(site_no: str) -> dict:
     except Exception as exc:
         logger.warning("river_geom read failed for %s: %s", site_no, exc)
         stored = None
-    if stored is not None:
+    if (stored is not None
+            and stored.get("_walk_version") == _GEOM_SCHEMA_VERSION):
         _river_geom_cache[site_no] = stored
         return stored
+
+    meta = _nldi_gauge_meta(site_no)
+    target_gnis = (meta.get("gnis_name") or "").strip().lower() if meta else ""
+    nav = (("UM", "75"), ("DM", "40")) if target_gnis \
+          else (("UM", "15"), ("DM", "10"))
 
     base = f"https://api.water.usgs.gov/nldi/linked-data/nwissite/USGS-{site_no}/navigation"
     feats: list[dict] = []
     try:
         with httpx.Client(timeout=15.0, headers={"User-Agent": USER_AGENT}) as c:
-            # Tight walk distances: prevents a small tributary's flowline
-            # from visibly extending onto a larger main stem (the
-            # "Georges Run labels Gunpowder Falls" failure mode). Long-
-            # river gauges may show only part of their reach; the
-            # follow-up fix is per-feature GNIS filtering.
             with ThreadPoolExecutor(max_workers=2) as ex:
                 parts = list(ex.map(
-                    lambda nd: _fetch_nav(c, base, nd[0], nd[1]),
-                    (("UM", "15"), ("DM", "10")),
-                ))
+                    lambda nd: _fetch_nav(c, base, nd[0], nd[1]), nav))
             for p in parts:
                 feats.extend(p)
     except Exception:
         feats = []
 
+    if target_gnis and feats:
+        feats = _filter_flowlines_by_gnis(feats, target_gnis)
+
     if feats:
         fc = _simplify_fc({"type": "FeatureCollection", "features": feats})
+        fc["_walk_version"] = _GEOM_SCHEMA_VERSION
         _river_geom_cache[site_no] = fc
         try:
             db.put_river_geom(site_no, fc)
@@ -1109,6 +1135,33 @@ def _nldi_flowline(site_no: str) -> dict:
         return fc
     _river_geom_cache[site_no] = _EMPTY_FC  # transient: TTL retries later
     return _EMPTY_FC
+
+
+def _filter_flowlines_by_gnis(features: list[dict], target: str) -> list[dict]:
+    """Drop flowline features whose NHD gnis_name doesn't equal `target`
+    (lowercased, stripped). Per-COMID lookups run in parallel and are
+    cached forever in Postgres, so once a river's COMIDs are warm,
+    subsequent gauges on that river filter for free."""
+    comids = []
+    for f in features:
+        props = f.get("properties") or {}
+        cid = props.get("nhdplus_comid") or props.get("comid") or ""
+        comids.append(str(cid) if cid else "")
+    if not any(comids):
+        return features                          # nothing to look up against
+    with ThreadPoolExecutor(max_workers=8) as ex:
+        names = list(ex.map(_comid_gnis_lower, comids))
+    kept = [f for f, n in zip(features, names) if n == target]
+    # Edge case: NLDI returned features but every COMID was unnamed or
+    # mismatched -- don't return an empty FC (the user loses the entire
+    # flowline). Keep the unfiltered set; walk-distance is the bound.
+    return kept or features
+
+
+def _comid_gnis_lower(comid: str) -> str:
+    if not comid:
+        return ""
+    return (_comid_meta(comid).get("gnis_name") or "").strip().lower()
 
 
 _NLDI_BASE = "https://api.water.usgs.gov/nldi/linked-data"
@@ -1161,6 +1214,46 @@ def _nldi_gauge_meta(site_no: str) -> dict:
             db.put_gauge_meta(site_no, meta)
         except Exception as exc:
             logger.warning("gauge_meta persist failed for %s: %s", site_no, exc)
+    return meta
+
+
+def _comid_meta(comid: str) -> dict:
+    """NHD attributes ({gnis_name}) for an individual flowline reach by
+    COMID. Same caching pattern as _nldi_gauge_meta -- process LRU ->
+    Postgres -> NLDI with write-through; empties not persisted so they
+    retry. One call per unfamiliar COMID; subsequent gauges on the
+    same river hit Postgres."""
+    if not comid:
+        return {}
+    if comid in _comid_meta_cache:
+        return _comid_meta_cache[comid]
+    try:
+        stored = db.get_comid_meta(comid)
+    except Exception as exc:
+        logger.warning("comid_meta read failed for %s: %s", comid, exc)
+        stored = None
+    if stored is not None:
+        _comid_meta_cache[comid] = stored
+        return stored
+
+    meta: dict = {}
+    try:
+        with httpx.Client(timeout=10.0, headers={"User-Agent": USER_AGENT}) as c:
+            r = c.get(f"{_NLDI_BASE}/comid/{comid}")
+            r.raise_for_status()
+            feats = r.json().get("features") or []
+            if feats:
+                gnis = feats[0].get("properties", {}).get("gnis_name")
+                meta = {"gnis_name": gnis or None}
+    except Exception:
+        meta = {}
+
+    _comid_meta_cache[comid] = meta
+    if meta:
+        try:
+            db.put_comid_meta(comid, meta)
+        except Exception as exc:
+            logger.warning("comid_meta persist failed for %s: %s", comid, exc)
     return meta
 
 

@@ -60,7 +60,13 @@ async def _backfill_geometry(rivers: list[dict]) -> None:
         have_meta = await asyncio.to_thread(db.get_gauge_metas, site_nos)
     except Exception:
         have_meta = {}
-    todo_geom = [sn for sn in site_nos if sn not in have_geom]
+    todo_geom = [
+        sn for sn in site_nos
+        if sn not in have_geom
+        # Stale-schema rows (no _walk_version, or older than current)
+        # get refetched so logic changes propagate without ops effort.
+        or have_geom[sn].get("_walk_version") != main._GEOM_SCHEMA_VERSION
+    ]
     todo_meta = [sn for sn in site_nos if sn not in have_meta]
     if not todo_geom and not todo_meta:
         return

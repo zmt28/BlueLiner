@@ -142,6 +142,16 @@ def init_db() -> None:
             " payload TEXT NOT NULL,"
             " created_at TEXT NOT NULL)"
         )
+        # Per-COMID NHD attributes (just gnis_name today). Lets us trim
+        # an NLDI flowline walk to only the segments that share the
+        # gauge's GNIS name, so a tributary gauge's downstream walk no
+        # longer continues past the confluence onto the main stem.
+        cur.execute(
+            "CREATE TABLE IF NOT EXISTS comid_meta ("
+            " comid TEXT PRIMARY KEY,"
+            " payload TEXT NOT NULL,"
+            " created_at TEXT NOT NULL)"
+        )
 
 
 def healthcheck() -> bool:
@@ -328,6 +338,26 @@ def get_gauge_metas(site_nos: list[str]) -> dict[str, dict]:
 
 def put_gauge_meta(site_no: str, meta: dict) -> None:
     _upsert("gauge_meta", site_no, "payload", json.dumps(meta))
+
+
+def get_comid_meta(comid: str) -> dict | None:
+    """gnis_name (and friends) for an NHD COMID, or None."""
+    with _conn() as conn:
+        cur = conn.cursor()
+        cur.execute(
+            _ph("SELECT payload FROM comid_meta WHERE comid = ?"), (comid,))
+        row = cur.fetchone()
+    if not row:
+        return None
+    try:
+        return json.loads(row["payload"])
+    except (ValueError, TypeError):
+        return None
+
+
+def put_comid_meta(comid: str, meta: dict) -> None:
+    _upsert("comid_meta", comid, "payload", json.dumps(meta),
+            key_col="comid")
 
 
 _STATS_MAX_AGE = timedelta(days=30)

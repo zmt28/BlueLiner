@@ -220,6 +220,8 @@ def test_nldi_flowline_merges_and_caches(monkeypatch):
     main._river_geom_cache.clear()
     monkeypatch.setattr(db, "get_river_geom", lambda s: None)
     monkeypatch.setattr(db, "put_river_geom", lambda s, fc: None)
+    # No gnis_name -> conservative walk, no per-feature filter
+    monkeypatch.setattr(main, "_nldi_gauge_meta", lambda s: {})
     calls = {"n": 0}
 
     class FakeClient:
@@ -237,6 +239,7 @@ def test_nldi_flowline_merges_and_caches(monkeypatch):
     monkeypatch.setattr(main.httpx, "Client", FakeClient)
     fc = main._nldi_flowline("01589000")
     assert fc["type"] == "FeatureCollection" and len(fc["features"]) == 2  # UM+DM
+    assert fc["_walk_version"] == main._GEOM_SCHEMA_VERSION
     assert calls["n"] == 2
     fc2 = main._nldi_flowline("01589000")           # cached -> no new calls
     assert calls["n"] == 2 and fc2 is fc
@@ -397,7 +400,9 @@ def test_nldi_flowline_uses_db_cache(tmp_path, monkeypatch):
              "features": [{"type": "Feature",
                            "geometry": {"type": "LineString",
                                         "coordinates": [[-77, 39], [-77.1, 39.1]]},
-                           "properties": {}}]}
+                           "properties": {}}],
+             # current schema version => DB hit serves directly
+             "_walk_version": main._GEOM_SCHEMA_VERSION}
     db.put_river_geom("01581920", saved)
 
     class NoNet:
@@ -409,6 +414,95 @@ def test_nldi_flowline_uses_db_cache(tmp_path, monkeypatch):
 
     monkeypatch.setattr(main.httpx, "Client", NoNet)
     assert main._nldi_flowline("01581920") == saved       # straight from the DB
+
+
+def test_nldi_flowline_refetches_stale_schema(tmp_path, monkeypatch):
+    """A row written under an older walk/filter schema is treated as a
+    cache-miss so logic changes propagate without operational cleanup."""
+    monkeypatch.setattr(db, "DB_PATH", str(tmp_path / "t.db"))
+    db.init_db()
+    main._river_geom_cache.clear()
+    monkeypatch.setattr(main, "_nldi_gauge_meta", lambda s: {})  # no filter
+    # Pre-existing row with no _walk_version: stale by definition.
+    db.put_river_geom("01589000", {"type": "FeatureCollection",
+                                   "features": [{"old": True}]})
+
+    refetched = {"n": 0}
+
+    class FakeClient:
+        def __init__(self, *a, **k): pass
+        def __enter__(self): return self
+        def __exit__(self, *a): return False
+        def get(self, *a, **k):
+            refetched["n"] += 1
+            return _FakeResp({"type": "FeatureCollection", "features": [{
+                "type": "Feature",
+                "geometry": {"type": "LineString",
+                             "coordinates": [[-77, 39], [-77.1, 39.1]]},
+                "properties": {}}]})
+
+    monkeypatch.setattr(main.httpx, "Client", FakeClient)
+    fc = main._nldi_flowline("01589000")
+    assert refetched["n"] == 2                  # UM + DM refetched
+    assert fc["_walk_version"] == main._GEOM_SCHEMA_VERSION
+
+
+def test_nldi_flowline_filters_cross_river_segments(monkeypatch):
+    """The Gunpowder/Georges-Run case: walk returns features from two
+    rivers; per-COMID gnis filter keeps only the gauge's own river."""
+    main._river_geom_cache.clear()
+    main._comid_meta_cache.clear()
+    monkeypatch.setattr(db, "get_river_geom", lambda s: None)
+    monkeypatch.setattr(db, "put_river_geom", lambda s, fc: None)
+    monkeypatch.setattr(
+        main, "_nldi_gauge_meta",
+        lambda s: {"comid": "111", "gnis_name": "Georges Run"})
+
+    # Two NLDI flowline features: one ON Georges Run, one on Gunpowder.
+    seg_own = {"type": "Feature", "properties": {"nhdplus_comid": "111"},
+               "geometry": {"type": "LineString",
+                            "coordinates": [[-76.69, 39.61], [-76.69, 39.60]]}}
+    seg_other = {"type": "Feature", "properties": {"nhdplus_comid": "222"},
+                 "geometry": {"type": "LineString",
+                              "coordinates": [[-76.69, 39.55], [-76.7, 39.5]]}}
+
+    def fake_walk(client, base, nav, dist):
+        return [seg_own] if nav == "UM" else [seg_other]
+
+    monkeypatch.setattr(main, "_fetch_nav", fake_walk)
+    monkeypatch.setattr(
+        main, "_comid_meta",
+        lambda c: {"gnis_name": "Georges Run"} if c == "111"
+                  else {"gnis_name": "Gunpowder Falls"})
+    monkeypatch.setattr(main.httpx, "Client",
+                        lambda *a, **k: _CtxNoop())
+
+    fc = main._nldi_flowline("01580000")
+    assert len(fc["features"]) == 1
+    assert fc["features"][0]["properties"]["nhdplus_comid"] == "111"
+
+
+class _CtxNoop:
+    def __enter__(self): return self
+    def __exit__(self, *a): return False
+    def get(self, *a, **k): raise AssertionError("fetcher monkeypatched")
+
+
+def test_comid_meta_short_circuits_on_db(tmp_path, monkeypatch):
+    monkeypatch.setattr(db, "DB_PATH", str(tmp_path / "t.db"))
+    db.init_db()
+    main._comid_meta_cache.clear()
+    db.put_comid_meta("111", {"gnis_name": "Gunpowder Falls"})
+
+    class NoNet:
+        def __init__(self, *a, **k): pass
+        def __enter__(self): return self
+        def __exit__(self, *a): return False
+        def get(self, *a, **k):
+            raise AssertionError("DB hit should preempt the NLDI call")
+
+    monkeypatch.setattr(main.httpx, "Client", NoNet)
+    assert main._comid_meta("111") == {"gnis_name": "Gunpowder Falls"}
 
 
 # -- stats off the hot path (speed: no 20s stall) --
