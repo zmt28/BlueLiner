@@ -599,8 +599,252 @@ async function init() {
   map.setView(STATES[state].center, STATE_ZOOM);
   loadRivers(state);
   loadPins();
+  await initAuth();
 }
 init();
+
+// -- Accounts (Phase 1) ---------------------------------------------
+
+// Auth state derived from /api/me on load. null = signed out.
+let CURRENT_USER = null;
+
+async function initAuth() {
+  await loadAuthState();
+  wireAuthHandlers();
+  if (CURRENT_USER) await maybePromptClaim();
+}
+
+async function loadAuthState() {
+  try {
+    const r = await fetch("/api/me");
+    CURRENT_USER = r.ok ? await r.json() : null;
+  } catch {
+    CURRENT_USER = null;
+  }
+  renderAuthSlot();
+}
+
+function renderAuthSlot() {
+  const slot = document.getElementById("auth-slot");
+  if (!slot) return;
+  slot.innerHTML = "";
+  const btn = document.createElement("button");
+  btn.type = "button";
+  btn.className = "ctrl";
+  if (CURRENT_USER) {
+    btn.id = "account-btn";
+    btn.textContent =
+      (CURRENT_USER.display_name || CURRENT_USER.email) + " ▾";
+    btn.addEventListener("click", toggleAccountMenu);
+  } else {
+    btn.id = "signin-btn";
+    btn.textContent = "Sign in";
+    btn.addEventListener("click", () => openModal("login-modal"));
+  }
+  slot.appendChild(btn);
+}
+
+function openModal(id) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.hidden = false;
+  // Reset login modal state if reopened
+  if (id === "login-modal") {
+    document.getElementById("login-step-1").hidden = false;
+    document.getElementById("login-step-2").hidden = true;
+    const inp = document.getElementById("login-email");
+    if (inp) inp.value = "";
+    setTimeout(() => inp && inp.focus(), 30);
+  }
+  if (id === "settings-modal") loadSettings();
+}
+
+function closeModal(id) {
+  const el = document.getElementById(id);
+  if (el) el.hidden = true;
+}
+
+function toggleAccountMenu() {
+  const menu = document.getElementById("account-menu");
+  if (!menu) return;
+  const showing = !menu.hidden;
+  menu.hidden = showing;
+  if (!showing) {
+    document.getElementById("account-menu-email").textContent =
+      CURRENT_USER ? CURRENT_USER.email : "";
+  }
+}
+
+function wireAuthHandlers() {
+  // Backdrop + [×] + data-close close their parent modal
+  document.querySelectorAll(".modal").forEach((m) => {
+    m.querySelectorAll("[data-close]").forEach((b) =>
+      b.addEventListener("click", () => (m.hidden = true)));
+  });
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") {
+      document.querySelectorAll(".modal").forEach((m) => (m.hidden = true));
+      const menu = document.getElementById("account-menu");
+      if (menu) menu.hidden = true;
+    }
+  });
+  // Close account menu on outside click
+  document.addEventListener("click", (e) => {
+    const menu = document.getElementById("account-menu");
+    if (!menu || menu.hidden) return;
+    if (e.target.closest("#account-menu") ||
+        e.target.closest("#account-btn")) return;
+    menu.hidden = true;
+  });
+
+  // Login form
+  const form = document.getElementById("login-form");
+  if (form) form.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const email = document.getElementById("login-email").value.trim();
+    if (!email) return;
+    const btn = document.getElementById("login-submit");
+    btn.disabled = true;
+    btn.textContent = "Sending…";
+    try {
+      await fetch("/api/auth/request-link", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ email }),
+      });
+    } catch {}
+    btn.disabled = false;
+    btn.textContent = "Send sign-in link";
+    document.getElementById("login-sent-to").textContent = email;
+    document.getElementById("login-step-1").hidden = true;
+    document.getElementById("login-step-2").hidden = false;
+  });
+  const retry = document.getElementById("login-retry");
+  if (retry) retry.addEventListener("click", () => {
+    document.getElementById("login-step-2").hidden = true;
+    document.getElementById("login-step-1").hidden = false;
+    document.getElementById("login-email").focus();
+  });
+
+  // Account menu actions
+  document.querySelectorAll("#account-menu button").forEach((b) => {
+    b.addEventListener("click", () => onAccountAction(b.dataset.action));
+  });
+
+  // Claim modal
+  const claimBtn = document.getElementById("claim-confirm");
+  if (claimBtn) claimBtn.addEventListener("click", confirmClaim);
+
+  // Settings
+  const saveBtn = document.getElementById("settings-save");
+  if (saveBtn) saveBtn.addEventListener("click", saveDisplayName);
+  const delBtn = document.getElementById("settings-delete");
+  if (delBtn) delBtn.addEventListener("click", deleteAccount);
+}
+
+async function onAccountAction(action) {
+  document.getElementById("account-menu").hidden = true;
+  if (action === "logout") {
+    try {
+      await fetch("/api/auth/logout", { method: "POST" });
+    } catch {}
+    location.reload();
+  } else if (action === "settings") {
+    openModal("settings-modal");
+  }
+}
+
+async function maybePromptClaim() {
+  if (!CURRENT_USER) return;
+  if (localStorage.getItem("bl_claim_dismissed") === "1") return;
+  try {
+    const r = await fetch("/api/pins/claimable", {
+      headers: DEVICE_HEADER,
+    });
+    if (!r.ok) return;
+    const list = await r.json();
+    if (!list || !list.length) return;
+    document.getElementById("claim-count").textContent = list.length;
+    const ul = document.getElementById("claim-list");
+    ul.innerHTML = "";
+    for (const p of list.slice(0, 6)) {
+      const li = document.createElement("li");
+      li.textContent = p.note || "(no note)";
+      ul.appendChild(li);
+    }
+    if (list.length > 6) {
+      const li = document.createElement("li");
+      li.textContent = `… and ${list.length - 6} more`;
+      ul.appendChild(li);
+    }
+    openModal("claim-modal");
+    // Dismiss-on-skip applies even if the modal is closed with [×]/Esc;
+    // no re-prompt for that device. Re-checks on next sign-in still
+    // honor the persisted flag (per-device by design).
+    document.getElementById("claim-modal").addEventListener("click", (e) => {
+      if (e.target.matches("[data-close]")) {
+        localStorage.setItem("bl_claim_dismissed", "1");
+      }
+    }, { once: true });
+  } catch {}
+}
+
+async function confirmClaim() {
+  const btn = document.getElementById("claim-confirm");
+  btn.disabled = true;
+  btn.textContent = "Claiming…";
+  try {
+    await fetch("/api/pins/claim", {
+      method: "POST",
+      headers: DEVICE_HEADER,
+    });
+    localStorage.setItem("bl_claim_dismissed", "1");
+  } catch {}
+  closeModal("claim-modal");
+  loadPins();
+}
+
+async function loadSettings() {
+  if (!CURRENT_USER) return;
+  document.getElementById("settings-email").textContent = CURRENT_USER.email;
+  document.getElementById("settings-name").value =
+    CURRENT_USER.display_name || "";
+  document.getElementById("settings-saved").style.opacity = 0;
+}
+
+async function saveDisplayName() {
+  const name = document.getElementById("settings-name").value.trim();
+  if (!name) return;
+  const btn = document.getElementById("settings-save");
+  btn.disabled = true;
+  try {
+    const r = await fetch("/api/me", {
+      method: "PATCH",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ display_name: name }),
+    });
+    if (r.ok) {
+      CURRENT_USER = await r.json();
+      renderAuthSlot();
+      const t = document.getElementById("settings-saved");
+      t.style.opacity = 1;
+      setTimeout(() => (t.style.opacity = 0), 1400);
+    }
+  } catch {}
+  btn.disabled = false;
+}
+
+async function deleteAccount() {
+  if (!confirm(
+    "Delete your account? Pins you've claimed will become anonymous " +
+    "again on this device. This cannot be undone."
+  )) return;
+  try {
+    await fetch("/api/me", { method: "DELETE" });
+  } catch {}
+  localStorage.removeItem("bl_claim_dismissed");
+  location.reload();
+}
 
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", () => {

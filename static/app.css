@@ -139,6 +139,182 @@ html, body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
 }
 .legend-body { display: block; }
 
+/* -- Accounts (Phase 1) -- */
+.account-menu {
+    position: fixed;
+    top: calc(56px + env(safe-area-inset-top));
+    right: 24px;
+    background: #fff;
+    color: #1a1a2e;
+    border-radius: 8px;
+    box-shadow: 0 4px 18px rgba(0,0,0,0.18);
+    min-width: 220px;
+    overflow: hidden;
+    z-index: 1100;
+    font-size: 14px;
+}
+.account-menu-email {
+    padding: 12px 16px 6px;
+    font-size: 12px;
+    color: #667;
+    border-bottom: 1px solid #eef0f3;
+    word-break: break-all;
+}
+.account-menu button {
+    display: block;
+    width: 100%;
+    border: none;
+    background: none;
+    text-align: left;
+    padding: 10px 16px;
+    font-size: 14px;
+    cursor: pointer;
+    color: #1a1a2e;
+}
+.account-menu button:hover:not(:disabled) { background: #f4f6fa; }
+.account-menu button:disabled { color: #aab1bd; cursor: default; }
+.account-menu button[data-action="logout"] {
+    border-top: 1px solid #eef0f3;
+    color: #c0392b;
+    font-weight: 600;
+}
+
+.modal {
+    position: fixed;
+    inset: 0;
+    z-index: 1200;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+}
+.modal[hidden] { display: none; }
+.modal-backdrop {
+    position: absolute;
+    inset: 0;
+    background: rgba(15, 23, 42, 0.55);
+    backdrop-filter: blur(2px);
+}
+.modal-card {
+    position: relative;
+    background: #fff;
+    color: #1a1a2e;
+    border-radius: 12px;
+    padding: 28px 28px 24px;
+    width: min(440px, calc(100vw - 32px));
+    max-height: calc(100vh - 32px);
+    overflow-y: auto;
+    box-shadow: 0 12px 40px rgba(0,0,0,0.25);
+}
+.modal-card h2 { font-size: 20px; margin-bottom: 8px; }
+.modal-close {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    width: 36px;
+    height: 36px;
+    border: none;
+    background: none;
+    font-size: 24px;
+    line-height: 1;
+    color: #94a3b8;
+    cursor: pointer;
+    border-radius: 6px;
+}
+.modal-close:hover { background: #f4f6fa; color: #1a1a2e; }
+.modal-lede {
+    font-size: 14px;
+    color: #475569;
+    margin: 8px 0 14px;
+    line-height: 1.45;
+}
+.modal-fine { font-size: 12px; color: #888; margin-top: 12px; }
+.modal-icon { font-size: 40px; text-align: center; margin: 4px 0 8px; }
+
+.modal-card input[type="email"],
+.modal-card input[type="text"] {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid #d0d5dd;
+    border-radius: 6px;
+    font: inherit;
+    font-size: 14px;
+    margin-bottom: 10px;
+}
+.modal-card input:focus { outline: 2px solid #1e6fd9; outline-offset: 0; }
+
+.modal-card button:not(.modal-close):not(.secondary):not(.danger) {
+    width: 100%;
+    padding: 11px 14px;
+    background: #1e6fd9;
+    color: #fff;
+    border: none;
+    border-radius: 6px;
+    font: inherit;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+}
+.modal-card button.secondary {
+    width: 100%;
+    padding: 10px 14px;
+    background: #eef0f3;
+    color: #1a1a2e;
+    border: none;
+    border-radius: 6px;
+    font: inherit;
+    font-size: 14px;
+    cursor: pointer;
+}
+.modal-card button.danger {
+    padding: 8px 12px;
+    background: #fdedec;
+    color: #c0392b;
+    border: 1px solid #f5c0bb;
+    border-radius: 6px;
+    font: inherit;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+}
+.modal-card button:disabled { opacity: 0.6; cursor: default; }
+
+.claim-list {
+    list-style: none;
+    padding: 0;
+    margin: 4px 0 12px;
+    max-height: 180px;
+    overflow-y: auto;
+}
+.claim-list li {
+    padding: 6px 0;
+    font-size: 14px;
+    color: #1a1a2e;
+    border-bottom: 1px solid #eef0f3;
+}
+.claim-list li:last-child { border-bottom: none; }
+
+.modal-actions { display: flex; gap: 10px; margin-top: 14px; }
+.modal-actions button { flex: 1; }
+
+.modal-row { margin: 12px 0 4px; }
+.modal-label { font-size: 12px; color: #667; margin-bottom: 4px; }
+.modal-value { font-size: 14px; color: #1a1a2e; word-break: break-all; }
+.modal-danger {
+    border-top: 1px solid #eef0f3;
+    margin-top: 18px;
+    padding-top: 14px;
+}
+
+@media (max-width: 700px) {
+    .account-menu {
+        right: 12px;
+        left: 12px;
+        min-width: auto;
+    }
+    .modal-card { padding: 22px 20px 20px; }
+}
+
 /* Fluid popups so the card never exceeds a phone screen */
 .leaflet-popup-content table { max-width: 100%; }
 /* Leaflet's maxHeight scroll container: vertical scroll only, smooth on touch */
