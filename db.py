@@ -12,6 +12,7 @@ placeholders and translated per backend. Stores user-generated content
 readings, which are fetched live.
 """
 
+import hashlib
 import json
 import os
 import sqlite3
@@ -172,6 +173,57 @@ def init_db() -> None:
         cur.execute(
             "CREATE INDEX IF NOT EXISTS idx_vaa_levelpath "
             "ON nhdplus_vaa(levelpathid)"
+        )
+        # Real user accounts (Phase 1). Magic-link auth: no passwords
+        # to manage. `display_name` defaults to the email's local part
+        # at first sign-in; `deleted_at` enables soft delete so
+        # claimed pins survive account purge.
+        if _IS_PG:
+            cur.execute(
+                "CREATE TABLE IF NOT EXISTS users ("
+                " id BIGSERIAL PRIMARY KEY,"
+                " email TEXT UNIQUE NOT NULL,"
+                " display_name TEXT,"
+                " created_at TEXT NOT NULL,"
+                " deleted_at TEXT)"
+            )
+        else:
+            cur.execute(
+                "CREATE TABLE IF NOT EXISTS users ("
+                " id INTEGER PRIMARY KEY AUTOINCREMENT,"
+                " email TEXT UNIQUE NOT NULL,"
+                " display_name TEXT,"
+                " created_at TEXT NOT NULL,"
+                " deleted_at TEXT)"
+            )
+        # Active sessions. token_hash = SHA-256 of the opaque cookie
+        # value; the plaintext exists only in the user's cookie and
+        # in transit, never at rest. Server-side row lets us revoke
+        # on logout or account deletion.
+        cur.execute(
+            "CREATE TABLE IF NOT EXISTS sessions ("
+            " token_hash TEXT PRIMARY KEY,"
+            " user_id BIGINT NOT NULL,"
+            " created_at TEXT NOT NULL,"
+            " last_seen_at TEXT NOT NULL,"
+            " user_agent TEXT,"
+            " ip TEXT)"
+        )
+        cur.execute(
+            "CREATE INDEX IF NOT EXISTS idx_sessions_user "
+            "ON sessions(user_id)"
+        )
+        # Outstanding magic links. Same hash-at-rest pattern: only the
+        # email recipient ever has the plaintext token. Single-use:
+        # consumed (`used_at` set) on first redemption, time-bounded by
+        # `expires_at`.
+        cur.execute(
+            "CREATE TABLE IF NOT EXISTS magic_links ("
+            " token_hash TEXT PRIMARY KEY,"
+            " email TEXT NOT NULL,"
+            " created_at TEXT NOT NULL,"
+            " expires_at TEXT NOT NULL,"
+            " used_at TEXT)"
         )
 
 
@@ -530,3 +582,209 @@ def get_river_stats(site_nos: list[str]) -> dict[str, dict]:
 
 def put_river_stats(site_no: str, medians: dict) -> None:
     _upsert("river_stats", site_no, "medians", json.dumps(medians))
+
+
+# -- Accounts (Phase 1) -------------------------------------------------
+
+# Magic-link tokens live ~15 min; older rows are stale and get rejected.
+MAGIC_LINK_TTL_MINUTES = 15
+
+
+def upsert_user_by_email(email: str) -> dict:
+    """Find an existing live (non-deleted) user by email, or create one.
+    Display name defaults to the email's local-part on first creation
+    (settable later in /api/me)."""
+    email = email.strip().lower()
+    now = datetime.now(timezone.utc).isoformat()
+    with _conn() as conn:
+        cur = conn.cursor()
+        cur.execute(
+            _ph("SELECT id, email, display_name, created_at"
+                " FROM users WHERE email = ? AND deleted_at IS NULL"),
+            (email,))
+        row = cur.fetchone()
+        if row:
+            return dict(row)
+        default_name = email.split("@", 1)[0]
+        if _IS_PG:
+            cur.execute(
+                _ph("INSERT INTO users (email, display_name, created_at)"
+                    " VALUES (?, ?, ?) RETURNING id"),
+                (email, default_name, now))
+            uid = cur.fetchone()["id"]
+        else:
+            cur.execute(
+                _ph("INSERT INTO users (email, display_name, created_at)"
+                    " VALUES (?, ?, ?)"),
+                (email, default_name, now))
+            uid = cur.lastrowid
+        conn.commit()
+        return {"id": uid, "email": email,
+                "display_name": default_name, "created_at": now}
+
+
+def get_user(user_id: int) -> dict | None:
+    with _conn() as conn:
+        cur = conn.cursor()
+        cur.execute(
+            _ph("SELECT id, email, display_name, created_at"
+                " FROM users WHERE id = ? AND deleted_at IS NULL"),
+            (user_id,))
+        row = cur.fetchone()
+    return dict(row) if row else None
+
+
+def update_user_display_name(user_id: int, name: str) -> None:
+    name = (name or "").strip()
+    if not name:
+        return
+    with _conn() as conn:
+        cur = conn.cursor()
+        cur.execute(
+            _ph("UPDATE users SET display_name = ?"
+                " WHERE id = ? AND deleted_at IS NULL"),
+            (name, user_id))
+        conn.commit()
+
+
+def soft_delete_user(user_id: int) -> None:
+    """Mark account deleted; scrub PII; revoke all sessions. Row stays
+    for foreign-key sanity on legacy pins/catches owned by this user."""
+    now = datetime.now(timezone.utc).isoformat()
+    with _conn() as conn:
+        cur = conn.cursor()
+        cur.execute(
+            _ph("UPDATE users SET email = ?, display_name = NULL,"
+                " deleted_at = ? WHERE id = ?"),
+            (f"deleted-{user_id}-{now}", now, user_id))
+        cur.execute(
+            _ph("DELETE FROM sessions WHERE user_id = ?"), (user_id,))
+        conn.commit()
+
+
+# Magic links --------------------------------------------------------
+
+def _hash(token: str) -> str:
+    return hashlib.sha256(token.encode()).hexdigest()
+
+
+def create_magic_link(email: str, token: str) -> None:
+    """Persist the SHA-256 of the link token. Plaintext is emailed and
+    never stored. Idempotent by token_hash collision (effectively never)."""
+    now = datetime.now(timezone.utc)
+    expires = now + timedelta(minutes=MAGIC_LINK_TTL_MINUTES)
+    with _conn() as conn:
+        cur = conn.cursor()
+        cur.execute(
+            _ph("INSERT INTO magic_links (token_hash, email, created_at,"
+                " expires_at) VALUES (?, ?, ?, ?)"),
+            (_hash(token), email.strip().lower(),
+             now.isoformat(), expires.isoformat()))
+        conn.commit()
+
+
+def consume_magic_link(token: str) -> str | None:
+    """Single-use redemption. Returns the email on success, None on
+    expired/used/unknown. Marks the row used atomically."""
+    now = datetime.now(timezone.utc)
+    th = _hash(token)
+    with _conn() as conn:
+        cur = conn.cursor()
+        cur.execute(
+            _ph("SELECT email, expires_at, used_at FROM magic_links"
+                " WHERE token_hash = ?"),
+            (th,))
+        row = cur.fetchone()
+        if not row:
+            return None
+        if row["used_at"]:
+            return None
+        try:
+            if datetime.fromisoformat(row["expires_at"]) < now:
+                return None
+        except (TypeError, ValueError):
+            return None
+        cur.execute(
+            _ph("UPDATE magic_links SET used_at = ?"
+                " WHERE token_hash = ? AND used_at IS NULL"),
+            (now.isoformat(), th))
+        # If another worker raced us, rowcount will be 0; treat as miss.
+        if cur.rowcount == 0:
+            return None
+        conn.commit()
+        return row["email"]
+
+
+# Sessions -----------------------------------------------------------
+
+def create_session(user_id: int, token: str,
+                   user_agent: str | None, ip: str | None) -> None:
+    now = datetime.now(timezone.utc).isoformat()
+    with _conn() as conn:
+        cur = conn.cursor()
+        cur.execute(
+            _ph("INSERT INTO sessions (token_hash, user_id, created_at,"
+                " last_seen_at, user_agent, ip)"
+                " VALUES (?, ?, ?, ?, ?, ?)"),
+            (_hash(token), user_id, now, now, user_agent, ip))
+        conn.commit()
+
+
+def user_from_session(token: str) -> dict | None:
+    """Validate a session cookie's token and return the owning user.
+    Touches `last_seen_at` opportunistically (best-effort, ignore
+    update failures so reads stay fast)."""
+    if not token:
+        return None
+    th = _hash(token)
+    with _conn() as conn:
+        cur = conn.cursor()
+        cur.execute(
+            _ph("SELECT u.id, u.email, u.display_name, u.created_at"
+                " FROM sessions s JOIN users u ON u.id = s.user_id"
+                " WHERE s.token_hash = ? AND u.deleted_at IS NULL"),
+            (th,))
+        row = cur.fetchone()
+        if not row:
+            return None
+        try:
+            cur.execute(
+                _ph("UPDATE sessions SET last_seen_at = ?"
+                    " WHERE token_hash = ?"),
+                (datetime.now(timezone.utc).isoformat(), th))
+            conn.commit()
+        except Exception:
+            pass
+    return dict(row)
+
+
+def delete_session(token: str) -> None:
+    if not token:
+        return
+    with _conn() as conn:
+        cur = conn.cursor()
+        cur.execute(
+            _ph("DELETE FROM sessions WHERE token_hash = ?"),
+            (_hash(token),))
+        conn.commit()
+
+
+# Pin claim flow -----------------------------------------------------
+
+def list_pins_for_device_token(device_owner: str) -> list[dict]:
+    """Pins anonymously owned by a specific device-token hash.
+    Used to populate the post-sign-in 'claim your pins' prompt."""
+    return list_pins(device_owner)
+
+
+def claim_pins(device_owner: str, user_owner: str) -> int:
+    """Relink anonymous device-token-owned pins to the user-namespaced
+    owner. Returns the number of rows relinked."""
+    with _conn() as conn:
+        cur = conn.cursor()
+        cur.execute(
+            _ph("UPDATE pins SET owner_token = ? WHERE owner_token = ?"),
+            (user_owner, device_owner))
+        n = cur.rowcount or 0
+        conn.commit()
+    return int(n)

@@ -43,12 +43,105 @@
                 <label class="ctrl ctrl-check"><input type="checkbox" id="trout-only"> Trout only</label>
                 <label class="ctrl ctrl-check"><input type="checkbox" id="stocked-only"> Stocked only</label>
                 <button id="drop-pin" class="ctrl" type="button">Drop a pin</button>
+                <span id="auth-slot"><!-- filled by JS: Sign in OR account button --></span>
                 <button id="controls-done" class="ctrl" type="button">Done</button>
             </div>
         </div>
     </div>
 
     <div id="map"></div>
+
+    <!-- Account menu (dropdown under the email button) -->
+    <div id="account-menu" class="account-menu" hidden>
+        <div class="account-menu-email" id="account-menu-email"></div>
+        <button type="button" data-action="settings">Settings</button>
+        <button type="button" data-action="my-catches" disabled
+                title="Coming in Phase 2">My catches</button>
+        <button type="button" data-action="logout">Sign out</button>
+    </div>
+
+    <!-- Login modal -->
+    <div id="login-modal" class="modal" hidden>
+        <div class="modal-backdrop" data-close></div>
+        <div class="modal-card" role="dialog" aria-labelledby="login-title">
+            <button class="modal-close" type="button" data-close
+                    aria-label="Close">&times;</button>
+            <div id="login-step-1">
+                <h2 id="login-title">Sign in to BlueLines</h2>
+                <p class="modal-lede">Enter your email -- we'll send a
+                    one-tap sign-in link.</p>
+                <form id="login-form">
+                    <input id="login-email" type="email" required
+                           autocomplete="email"
+                           placeholder="you@email.com">
+                    <button id="login-submit" type="submit">
+                        Send sign-in link</button>
+                </form>
+                <p class="modal-fine">No password needed. The link
+                    expires in 15 minutes.</p>
+            </div>
+            <div id="login-step-2" hidden>
+                <div class="modal-icon">&#x1F4EC;</div>
+                <h2>Check your inbox</h2>
+                <p class="modal-lede">We sent a sign-in link to
+                    <strong id="login-sent-to"></strong>.</p>
+                <p class="modal-lede">Open it on this device to finish
+                    signing in.</p>
+                <button id="login-retry" type="button" class="secondary">
+                    Use a different email</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Claim-pins modal -->
+    <div id="claim-modal" class="modal" hidden>
+        <div class="modal-backdrop" data-close></div>
+        <div class="modal-card">
+            <button class="modal-close" type="button" data-close
+                    aria-label="Close">&times;</button>
+            <h2>Claim your saved pins?</h2>
+            <p class="modal-lede">
+                We found <strong id="claim-count">0</strong> pins saved
+                on this device:
+            </p>
+            <ul id="claim-list" class="claim-list"></ul>
+            <p class="modal-lede">
+                Link them to your account so they're available on
+                every device you sign in on?
+            </p>
+            <div class="modal-actions">
+                <button id="claim-confirm" type="button">Claim pins</button>
+                <button id="claim-skip" type="button" class="secondary"
+                        data-close>Skip</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Settings modal -->
+    <div id="settings-modal" class="modal" hidden>
+        <div class="modal-backdrop" data-close></div>
+        <div class="modal-card">
+            <button class="modal-close" type="button" data-close
+                    aria-label="Close">&times;</button>
+            <h2>Settings</h2>
+            <div class="modal-row">
+                <div class="modal-label">Signed in as</div>
+                <div class="modal-value" id="settings-email">&mdash;</div>
+            </div>
+            <div class="modal-row">
+                <label class="modal-label" for="settings-name">Display name</label>
+                <input id="settings-name" type="text" maxlength="60">
+                <button id="settings-save" type="button">Save</button>
+                <div id="settings-saved" class="modal-fine"
+                     style="opacity:0;transition:opacity .3s">Saved.</div>
+            </div>
+            <div class="modal-danger">
+                <div class="modal-label">Danger zone</div>
+                <button id="settings-delete" type="button" class="danger">
+                    Delete account</button>
+            </div>
+        </div>
+    </div>
 
     <div id="pin-form" class="pin-form" hidden>
         <div class="pin-form-title">New pin</div>

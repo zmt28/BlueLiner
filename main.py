@@ -1,8 +1,12 @@
 from contextlib import asynccontextmanager
+import secrets
+
 from fastapi import FastAPI, Query, HTTPException, Request
-from fastapi.responses import RedirectResponse, FileResponse, Response
+from fastapi.responses import (RedirectResponse, FileResponse, Response,
+                               HTMLResponse, JSONResponse)
 from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.staticfiles import StaticFiles
+from pydantic import BaseModel, EmailStr
 from pydantic import BaseModel, Field
 from shapely.geometry import shape, mapping
 import httpx
@@ -1440,17 +1444,50 @@ def _rate_limit_pins(request: Request) -> None:
         )
 
 
-def _owner(request: Request, required: bool = True) -> str | None:
-    """Derive a stable owner id from the device token header.
+_SESSION_COOKIE = "bl_session"
 
-    The client holds an opaque random token (localStorage); the server
-    stores only its SHA-256, so a DB dump can't be replayed. No login,
-    no server secret -- the token is an unguessable bearer capability.
+
+def _session_user(request: Request) -> dict | None:
+    """Validated session-cookie user, or None. Lookup is one indexed
+    DB hit (token_hash PK); negligible per-request cost."""
+    cookies = getattr(request, "cookies", None) or {}
+    token = (cookies.get(_SESSION_COOKIE) or "").strip()
+    if not token:
+        return None
+    try:
+        return db.user_from_session(token)
+    except Exception:
+        return None
+
+
+def _owner(request: Request, required: bool = True) -> str | None:
+    """Derive a stable owner id for write-scoped resources.
+
+    Resolution order:
+      1. Authenticated session cookie -> `user:{id}` (the "real" owner).
+      2. Legacy device-token header -> SHA-256(token) (anonymous flow).
+
+    Keeps anonymous pins working while accounts roll out; signed-in
+    users own pins under a stable user-namespaced id even across
+    devices.
     """
+    user = _session_user(request)
+    if user:
+        return f"user:{user['id']}"
     token = request.headers.get("x-device-token", "").strip()
     if not (8 <= len(token) <= 200):
         if required:
-            raise HTTPException(status_code=400, detail="Missing device token")
+            raise HTTPException(status_code=400, detail="Missing identity")
+        return None
+    return hashlib.sha256(token.encode()).hexdigest()
+
+
+def _device_owner(request: Request) -> str | None:
+    """Just the device-token-derived owner (no session fallback).
+    Used by the pin-claim flow: 'what anonymous pins does this device
+    have that we could relink to the freshly-signed-in user?'"""
+    token = request.headers.get("x-device-token", "").strip()
+    if not (8 <= len(token) <= 200):
         return None
     return hashlib.sha256(token.encode()).hexdigest()
 
@@ -1477,3 +1514,206 @@ async def api_delete_pin(pin_id: int, request: Request):
     if not deleted:
         raise HTTPException(status_code=404, detail="Pin not found")
     return {"ok": True}
+
+
+# -- Accounts (Phase 1) ------------------------------------------------
+
+class _MagicLinkIn(BaseModel):
+    email: EmailStr
+
+
+class _DisplayNameIn(BaseModel):
+    display_name: str
+
+
+_AUTH_RATE_MAX = 10              # per IP per window
+_AUTH_RATE_WINDOW = 600.0         # 10 min
+_auth_hits: dict[str, list[float]] = {}
+
+
+def _rate_limit_auth(request: Request) -> None:
+    """Cheap per-IP rate-limit on magic-link issuance. Same pattern as
+    `_rate_limit_pins`; protects Resend's free-tier budget + slows
+    enumeration attempts."""
+    ip = (request.client.host if request.client else "unknown") or "unknown"
+    now = time.time()
+    bucket = [t for t in _auth_hits.get(ip, []) if now - t < _AUTH_RATE_WINDOW]
+    if len(bucket) >= _AUTH_RATE_MAX:
+        raise HTTPException(status_code=429, detail="Too many requests")
+    bucket.append(now)
+    _auth_hits[ip] = bucket
+
+
+def _set_session_cookie(response: Response, token: str) -> None:
+    """30-day session cookie. HttpOnly + SameSite=Lax + Secure-in-prod."""
+    response.set_cookie(
+        key=_SESSION_COOKIE,
+        value=token,
+        max_age=30 * 24 * 3600,
+        httponly=True,
+        samesite="lax",
+        secure=bool(os.environ.get("RENDER")),   # auto-true on Render
+        path="/",
+    )
+
+
+@app.post("/api/auth/request-link", status_code=204)
+async def api_request_magic_link(body: _MagicLinkIn, request: Request):
+    """Issue a magic-link to the supplied email. Always returns 204 --
+    no account-enumeration leak (the UI shows 'Check your inbox' state
+    unconditionally)."""
+    _rate_limit_auth(request)
+    email = body.email.strip().lower()
+    token = secrets.token_urlsafe(24)             # 192 bits, URL-safe
+    consume_url = (
+        f"{str(request.base_url).rstrip('/')}/auth/consume?token={token}")
+    try:
+        await asyncio.to_thread(db.create_magic_link, email, token)
+    except Exception as exc:
+        logger.warning("create_magic_link failed for %s: %s", email, exc)
+        return Response(status_code=204)         # still no enumeration
+    import email_send                              # local import: optional dep
+    try:
+        await asyncio.to_thread(
+            email_send.send_magic_link, email, consume_url,
+            db.MAGIC_LINK_TTL_MINUTES)
+    except Exception as exc:
+        logger.warning("send_magic_link failed for %s: %s", email, exc)
+    return Response(status_code=204)
+
+
+@app.get("/auth/consume", response_class=HTMLResponse)
+async def auth_consume(token: str = Query(..., min_length=8, max_length=64)):
+    """Validate the magic-link token, mint a session, set cookie,
+    redirect to /. On failure, render a small error page with a link
+    to request a fresh one. Server-rendered HTML keeps this independent
+    of the SPA so first-time users don't hit a blank page mid-load."""
+    email = await asyncio.to_thread(db.consume_magic_link, token)
+    if not email:
+        return HTMLResponse(_consume_error_html(), status_code=400)
+
+    user = await asyncio.to_thread(db.upsert_user_by_email, email)
+    sess_token = secrets.token_urlsafe(32)
+    # Best-effort persist of UA/IP for the session row.
+    # (Not asked here; just no client context to capture cleanly.)
+    await asyncio.to_thread(db.create_session, user["id"], sess_token,
+                            None, None)
+    resp = HTMLResponse(_consume_success_html(user["email"]))
+    _set_session_cookie(resp, sess_token)
+    return resp
+
+
+def _consume_success_html(email: str) -> str:
+    safe = email.replace("<", "&lt;").replace(">", "&gt;")
+    return (
+        "<!doctype html><meta charset='utf-8'>"
+        "<meta http-equiv='refresh' content='0; url=/'>"
+        "<title>Signed in</title>"
+        "<style>body{font-family:system-ui,sans-serif;display:flex;"
+        "align-items:center;justify-content:center;height:100vh;margin:0;"
+        "background:#f7f9fc;color:#222}"
+        ".card{background:#fff;padding:24px 32px;border-radius:10px;"
+        "box-shadow:0 1px 6px rgba(0,0,0,.08);text-align:center}"
+        ".ok{font-size:48px;color:#27ae60;line-height:1}"
+        "</style>"
+        "<div class='card'>"
+        "<div class='ok'>&#10003;</div>"
+        f"<h3 style='margin:12px 0 4px'>Signed in as {safe}</h3>"
+        "<p style='color:#666;margin:0'>Redirecting&hellip;</p>"
+        "</div>")
+
+
+def _consume_error_html() -> str:
+    return (
+        "<!doctype html><meta charset='utf-8'>"
+        "<title>Link expired</title>"
+        "<style>body{font-family:system-ui,sans-serif;display:flex;"
+        "align-items:center;justify-content:center;height:100vh;margin:0;"
+        "background:#f7f9fc;color:#222}"
+        ".card{background:#fff;padding:24px 32px;border-radius:10px;"
+        "box-shadow:0 1px 6px rgba(0,0,0,.08);text-align:center;"
+        "max-width:380px}"
+        ".warn{font-size:48px;color:#e67e22;line-height:1}"
+        "a.btn{display:inline-block;background:#1e6fd9;color:#fff;"
+        "text-decoration:none;padding:10px 18px;border-radius:6px;"
+        "margin-top:12px;font-weight:600}"
+        "</style>"
+        "<div class='card'>"
+        "<div class='warn'>&#9888;</div>"
+        "<h3 style='margin:12px 0 8px'>This sign-in link is no longer valid</h3>"
+        "<p style='color:#666'>It may have expired or already been used.</p>"
+        "<a class='btn' href='/'>Back to BlueLines</a>"
+        "</div>")
+
+
+@app.post("/api/auth/logout", status_code=204)
+async def api_logout(request: Request):
+    token = request.cookies.get(_SESSION_COOKIE, "").strip()
+    if token:
+        await asyncio.to_thread(db.delete_session, token)
+    resp = Response(status_code=204)
+    resp.delete_cookie(_SESSION_COOKIE, path="/")
+    return resp
+
+
+@app.get("/api/me")
+async def api_me(request: Request):
+    user = _session_user(request)
+    if not user:
+        raise HTTPException(status_code=401, detail="Not signed in")
+    return {"id": user["id"], "email": user["email"],
+            "display_name": user.get("display_name")}
+
+
+@app.patch("/api/me")
+async def api_me_update(body: _DisplayNameIn, request: Request):
+    user = _session_user(request)
+    if not user:
+        raise HTTPException(status_code=401, detail="Not signed in")
+    await asyncio.to_thread(
+        db.update_user_display_name, user["id"], body.display_name)
+    refreshed = await asyncio.to_thread(db.get_user, user["id"])
+    return {"id": refreshed["id"], "email": refreshed["email"],
+            "display_name": refreshed.get("display_name")}
+
+
+@app.delete("/api/me", status_code=204)
+async def api_me_delete(request: Request):
+    user = _session_user(request)
+    if not user:
+        raise HTTPException(status_code=401, detail="Not signed in")
+    await asyncio.to_thread(db.soft_delete_user, user["id"])
+    resp = Response(status_code=204)
+    resp.delete_cookie(_SESSION_COOKIE, path="/")
+    return resp
+
+
+@app.get("/api/pins/claimable")
+async def api_pins_claimable(request: Request):
+    """List the device-token-owned pins this signed-in user could
+    claim. Empty when no device token, no anonymous pins, or none
+    that belong solely to the device (already-claimed ones don't
+    show here because they're under the user owner now)."""
+    user = _session_user(request)
+    if not user:
+        raise HTTPException(status_code=401, detail="Not signed in")
+    device = _device_owner(request)
+    if not device:
+        return []
+    return await asyncio.to_thread(db.list_pins_for_device_token, device)
+
+
+@app.post("/api/pins/claim")
+async def api_pins_claim(request: Request):
+    """Relink the device-token-owned anonymous pins to the signed-in
+    user. One-shot: subsequent calls find no anonymous pins and do
+    nothing (returns claimed=0)."""
+    user = _session_user(request)
+    if not user:
+        raise HTTPException(status_code=401, detail="Not signed in")
+    device = _device_owner(request)
+    if not device:
+        return {"claimed": 0}
+    n = await asyncio.to_thread(
+        db.claim_pins, device, f"user:{user['id']}")
+    return {"claimed": n}
