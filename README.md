@@ -152,9 +152,13 @@ schema and the validation step (`python scripts/validate_data.py`).
 | Stocking baselines | `data/stocking/<STATE>.json` | Famous + heavily-stocked waters; ~2 km proximity tagging on the map |
 | Per-river hatch overrides | `data/hatches/overrides.json` | Curated lists for famous waters (Gunpowder, Penns, Letort, Mossy, Yellow Breeches, Savage, North Branch Potomac) that beat the generic regional zone |
 | Trout-stream geometry | `data/trout/<STATE>.json` (optional) | Bundled-GeoJSON fallback when a state agency's live endpoint isn't reliable |
+| NHDPlusV2 VAA | `data/nhdplus/vaa.csv.gz` | ~300K NHD reach routing attributes (COMID, LevelPathID, gnis_name, ...) for HUC-02 + HUC-05 (mid-Atlantic). Loaded into Postgres once at first boot. Drives the LevelPathID-based flowline filter that keeps a tributary gauge's flowline from extending past the confluence onto the receiving river. Regenerate with `python scripts/build_nhdplus_vaa.py`. |
 
-River identity uses NHD `gnis_name` (via NLDI, cached in Postgres) when
-available, falling back to the USGS station-name heuristic.
+River identity comes from NHDPlusV2's `LevelPathID` (topologically
+correct, language-agnostic) when the gauge's COMID is in the loaded
+VAA region, falling back to NHD `gnis_name` via NLDI for COMIDs
+outside loaded regions, and the USGS station-name heuristic as a last
+resort.
 
 ### Environment variables
 

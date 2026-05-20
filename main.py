@@ -42,6 +42,10 @@ logger = logging.getLogger("bluelines")
 # (seconds).
 _REFRESH_INTERVAL = float(os.environ.get("REFRESH_INTERVAL", str(45 * 60)))
 
+# NHDPlusV2 VAA lookup -- bundled with the repo, loaded once at startup.
+_VAA_BUNDLED_PATH = os.path.join(os.path.dirname(__file__), "data",
+                                 "nhdplus", "vaa.csv.gz")
+
 # Module-level caches. All bounded (LruTtl) -- unbounded per-state dicts
 # were the runtime memory growth behind the 512MB OOM. Both are also
 # persisted in Postgres (db.river_stats / db.river_geom) so this is just
@@ -63,7 +67,7 @@ _comid_meta_cache: LruTtl = LruTtl(maxsize=8192, ttl=900.0)
 # rows written under an older version are treated as cache-misses so
 # they're refetched on next access, instead of serving stale geometry
 # forever. (Geometry is otherwise immutable per site.)
-_GEOM_SCHEMA_VERSION = 2
+_GEOM_SCHEMA_VERSION = 3
 
 STATIC_DIR = os.path.join(os.path.dirname(__file__), "static")
 
@@ -86,6 +90,18 @@ async def lifespan(app: FastAPI):
             await asyncio.to_thread(load_trout_streams, "MD")
         except Exception as exc:
             logger.warning("MD trout warm failed: %s", exc)
+        # NHDPlusV2 VAA: ~300K rows from data/nhdplus/vaa.csv.gz on
+        # first boot. Idempotent (skips if already loaded), so this is
+        # a no-op on warm restarts. Drives the LevelPathID flowline
+        # filter that prevents cross-confluence bleed.
+        try:
+            n = await asyncio.to_thread(
+                db.bulk_load_vaa, _VAA_BUNDLED_PATH)
+            if n:
+                logger.info("NHDPlus VAA loaded: %d rows", n)
+        except Exception as exc:
+            logger.warning("NHDPlus VAA load failed: %s "
+                           "(falling back to gnis filter)", exc)
 
     # The refresher is what makes the map instant: it keeps each focused
     # state's snapshot + flowline geometry warm in Postgres so requests
@@ -1076,17 +1092,23 @@ def _fetch_nav(client: httpx.Client, base: str, nav: str, dist: str) -> list:
 def _nldi_flowline(site_no: str) -> dict:
     """Main-stem flowline around a USGS gauge from USGS NLDI.
 
-    Two-stage safety against the "tributary flowline visually extends
+    Three-tier filter against the "tributary flowline visually extends
     onto the larger main stem at the confluence" failure mode:
 
-      1. When the gauge has an authoritative NHD gnis_name, walk a full
-         reach (UM 75 / DM 40 km) then drop every flowline feature
-         whose own NHD gnis_name doesn't match (per-COMID lookup,
-         cached forever in `comid_meta`). This gives long named rivers
-         their full reach without bleeding across confluences.
-      2. When NLDI has no gnis_name for the gauge, fall back to a
-         conservative walk (UM 15 / DM 10 km) with no filter -- the
-         filter has nothing to match against.
+      1. **LevelPathID** (preferred). The gauge's COMID has a NHDPlusV2
+         LevelPathID -- a deterministic ID for the river's main path
+         through confluences. Walk the full reach (UM 75 / DM 40 km),
+         then drop any feature whose LevelPathID disagrees. No string
+         matching, no fallback to unfiltered: an empty result means
+         "we couldn't identify the same river," which is honest.
+      2. **gnis_name** (degraded). For gauges outside the loaded VAA
+         regions (i.e. nhdplus_vaa has no row for the COMID), fall
+         back to NHD's name field via per-COMID NLDI lookups. Less
+         reliable because NHD's name attribution is incomplete; the
+         no-fallback rule still applies.
+      3. **No filter** (last resort). No gnis_name either -> conservative
+         short walk (UM 15 / DM 10 km), no filter; just bounded by
+         walk distance.
 
     Served from process LRU -> Postgres -> NLDI with write-through.
     Rows written under an older walk/filter schema (no `_walk_version`,
@@ -1105,8 +1127,10 @@ def _nldi_flowline(site_no: str) -> dict:
         return stored
 
     meta = _nldi_gauge_meta(site_no)
+    target_lpid = meta.get("levelpathid") if meta else None
     target_gnis = (meta.get("gnis_name") or "").strip().lower() if meta else ""
-    nav = (("UM", "75"), ("DM", "40")) if target_gnis \
+    have_identity = bool(target_lpid or target_gnis)
+    nav = (("UM", "75"), ("DM", "40")) if have_identity \
           else (("UM", "15"), ("DM", "10"))
 
     base = f"https://api.water.usgs.gov/nldi/linked-data/nwissite/USGS-{site_no}/navigation"
@@ -1121,8 +1145,11 @@ def _nldi_flowline(site_no: str) -> dict:
     except Exception:
         feats = []
 
-    if target_gnis and feats:
-        feats = _filter_flowlines_by_gnis(feats, target_gnis)
+    if feats:
+        if target_lpid is not None:
+            feats = _filter_flowlines_by_levelpath(feats, int(target_lpid))
+        elif target_gnis:
+            feats = _filter_flowlines_by_gnis(feats, target_gnis)
 
     if feats:
         fc = _simplify_fc({"type": "FeatureCollection", "features": feats})
@@ -1137,25 +1164,58 @@ def _nldi_flowline(site_no: str) -> dict:
     return _EMPTY_FC
 
 
+def _extract_comid(feature: dict) -> int | None:
+    """Pull NHDPlus COMID from a flowline feature's properties.
+    NLDI returns it under `nhdplus_comid`; some older responses
+    used `comid`."""
+    props = feature.get("properties") or {}
+    cid = props.get("nhdplus_comid") or props.get("comid")
+    if cid is None or cid == "":
+        return None
+    try:
+        return int(cid)
+    except (TypeError, ValueError):
+        return None
+
+
+def _filter_flowlines_by_levelpath(features: list[dict],
+                                   target_lpid: int) -> list[dict]:
+    """Keep only flowline features sharing the gauge's NHDPlusV2
+    LevelPathID. One batched DB query for the COMIDs in the walk.
+    No fallback to unfiltered: empty is honest. If the bundled VAA
+    doesn't cover the walked COMIDs at all (e.g. an out-of-region
+    walk hop), the caller's tier-2 gnis filter still won't run --
+    so geometry can disappear entirely if filtering wipes it,
+    which is intentional ("never wrong, sometimes empty")."""
+    comids = [_extract_comid(f) for f in features]
+    have = [c for c in comids if c is not None]
+    if not have:
+        return features                          # nothing to look up
+    try:
+        vaas = db.get_vaas(have)
+    except Exception as exc:
+        logger.warning("get_vaas failed (%d comids): %s", len(have), exc)
+        return features                          # degrade to unfiltered
+    return [f for f, c in zip(features, comids)
+            if c is not None
+            and (vaas.get(c) or {}).get("levelpathid") == target_lpid]
+
+
 def _filter_flowlines_by_gnis(features: list[dict], target: str) -> list[dict]:
-    """Drop flowline features whose NHD gnis_name doesn't equal `target`
-    (lowercased, stripped). Per-COMID lookups run in parallel and are
-    cached forever in Postgres, so once a river's COMIDs are warm,
-    subsequent gauges on that river filter for free."""
+    """Tier-2 fallback when no LevelPathID is available: filter by
+    NHD gnis_name. Per-COMID lookups run in parallel and are cached
+    forever in Postgres. No fallback to unfiltered (previous safety
+    net was exactly what re-introduced the cross-river bleed)."""
     comids = []
     for f in features:
         props = f.get("properties") or {}
         cid = props.get("nhdplus_comid") or props.get("comid") or ""
         comids.append(str(cid) if cid else "")
     if not any(comids):
-        return features                          # nothing to look up against
+        return features                          # nothing to filter against
     with ThreadPoolExecutor(max_workers=8) as ex:
         names = list(ex.map(_comid_gnis_lower, comids))
-    kept = [f for f, n in zip(features, names) if n == target]
-    # Edge case: NLDI returned features but every COMID was unnamed or
-    # mismatched -- don't return an empty FC (the user loses the entire
-    # flowline). Keep the unfiltered set; walk-distance is the bound.
-    return kept or features
+    return [f for f, n in zip(features, names) if n == target]
 
 
 def _comid_gnis_lower(comid: str) -> str:
@@ -1168,13 +1228,17 @@ _NLDI_BASE = "https://api.water.usgs.gov/nldi/linked-data"
 
 
 def _nldi_gauge_meta(site_no: str) -> dict:
-    """Authoritative NHD identity for a USGS gauge -- {comid, gnis_name}.
+    """Authoritative NHD identity for a USGS gauge.
 
-    Two NLDI calls (gauge -> COMID, COMID -> reach attributes), served
-    from process LRU -> Postgres -> NLDI with write-through. Geometry is
-    immutable per site, so a successful lookup is forever; empties
-    (network/lookup failures) are NOT persisted so they retry, but stay
-    briefly in the process cache to throttle re-attempts."""
+    Returns {comid, gnis_name, levelpathid}:
+      - `comid`/`gnis_name` from NLDI (two calls: gauge -> COMID,
+        COMID -> reach attributes).
+      - `levelpathid` from the local NHDPlusV2 VAA table when available
+        (drives the topologically-correct flowline filter).
+
+    Process LRU -> Postgres -> NLDI/VAA with write-through. Empties
+    (network/lookup failures) are NOT persisted so they retry, but
+    stay briefly in the process cache to throttle re-attempts."""
     if site_no in _gauge_meta_cache:
         return _gauge_meta_cache[site_no]
     try:
@@ -1183,6 +1247,21 @@ def _nldi_gauge_meta(site_no: str) -> dict:
         logger.warning("gauge_meta read failed for %s: %s", site_no, exc)
         stored = None
     if stored is not None:
+        # Backfill levelpathid on older rows (written before VAA landed)
+        # without an extra NLDI roundtrip. Cheap local lookup; persist
+        # so the next read short-circuits.
+        if "levelpathid" not in stored and stored.get("comid"):
+            try:
+                vaa = db.get_vaa(int(stored["comid"]))
+            except Exception:
+                vaa = None
+            stored = dict(stored,
+                          levelpathid=(vaa or {}).get("levelpathid"))
+            try:
+                db.put_gauge_meta(site_no, stored)
+            except Exception as exc:
+                logger.warning("gauge_meta backfill failed for %s: %s",
+                               site_no, exc)
         _gauge_meta_cache[site_no] = stored
         return stored
 
@@ -1203,8 +1282,16 @@ def _nldi_gauge_meta(site_no: str) -> dict:
                 if feats2:
                     gnis = feats2[0].get("properties", {}).get("gnis_name")
             if comid:
+                lpid = None
+                try:
+                    vaa = db.get_vaa(int(comid))
+                    if vaa:
+                        lpid = vaa.get("levelpathid")
+                except Exception:
+                    pass
                 meta = {"comid": str(comid),
-                        "gnis_name": gnis or None}
+                        "gnis_name": gnis or None,
+                        "levelpathid": lpid}
     except Exception:
         meta = {}
 

@@ -72,6 +72,30 @@ fallback when no live state agency endpoint is available. See
 `trout.BUNDLED_TROUT_STATES` (TODO) once a file is in place so the
 loader picks it up.
 
+## NHDPlusV2 VAA (`data/nhdplus/vaa.csv.gz`)
+
+This is the routing-attribute table that drives the LevelPathID-based
+flowline filter -- it's what stops a tributary gauge's clickable river
+from extending past the confluence onto the receiving river. Bundled
+in the repo; loaded into Postgres once at first boot.
+
+Don't hand-edit. Regenerate by running:
+
+```sh
+pip install dbfread py7zr httpx       # dev-only deps
+python scripts/build_nhdplus_vaa.py
+```
+
+The script downloads NHDPlusV2 `NHDPlusAttributes` + `NHDSnapshot`
+archives for the configured regions (HUC-02 + HUC-05 today), extracts
+`PlusFlowlineVAA.dbf` and `NHDFlowline.dbf`, joins on ComID, and
+writes the gzipped CSV. Re-run only when expanding coverage to new
+regions -- the data itself is frozen at NHDPlusV2's release.
+
+To add a region, edit `REGIONS` at the top of
+`scripts/build_nhdplus_vaa.py` (entries are `(id, label, vaa_url,
+snap_url)`), rerun the script, and commit the new CSV.
+
 ## Validating
 
 ```sh
