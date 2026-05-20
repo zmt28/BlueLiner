@@ -152,6 +152,27 @@ def init_db() -> None:
             " payload TEXT NOT NULL,"
             " created_at TEXT NOT NULL)"
         )
+        # NHDPlusV2 Value-Added Attributes -- the authoritative routing
+        # topology for every NHD flowline in the loaded regions. Used to
+        # filter NLDI walks by LevelPathID so flowlines geometrically
+        # cannot bleed across river identities at confluences.
+        # Bulk-loaded once from data/nhdplus/vaa.csv.gz on first boot;
+        # ~300K rows for HUC-02 + HUC-05 (mid-Atlantic). The data is
+        # frozen at the NHDPlusV2 release so this table never needs to
+        # refresh; expand by re-running scripts/build_nhdplus_vaa.py.
+        cur.execute(
+            "CREATE TABLE IF NOT EXISTS nhdplus_vaa ("
+            " comid BIGINT PRIMARY KEY,"
+            " hydroseq BIGINT,"
+            " levelpathid BIGINT,"
+            " streamlevel INTEGER,"
+            " gnis_name TEXT,"
+            " lengthkm REAL)"
+        )
+        cur.execute(
+            "CREATE INDEX IF NOT EXISTS idx_vaa_levelpath "
+            "ON nhdplus_vaa(levelpathid)"
+        )
 
 
 def healthcheck() -> bool:
@@ -358,6 +379,118 @@ def get_comid_meta(comid: str) -> dict | None:
 def put_comid_meta(comid: str, meta: dict) -> None:
     _upsert("comid_meta", comid, "payload", json.dumps(meta),
             key_col="comid")
+
+
+_VAA_COLS = ("comid", "hydroseq", "levelpathid", "streamlevel",
+             "gnis_name", "lengthkm")
+
+
+def get_vaa(comid: int) -> dict | None:
+    """NHDPlusV2 attributes for a single COMID, or None."""
+    with _conn() as conn:
+        cur = conn.cursor()
+        cur.execute(
+            _ph(f"SELECT {','.join(_VAA_COLS)} FROM nhdplus_vaa "
+                "WHERE comid = ?"),
+            (int(comid),))
+        row = cur.fetchone()
+    if not row:
+        return None
+    return {k: row[k] for k in _VAA_COLS}
+
+
+def get_vaas(comids: list[int]) -> dict[int, dict]:
+    """Batched NHDPlusV2 attribute lookup -- one query for many COMIDs.
+    Used by the per-flowline LevelPathID filter in _nldi_flowline."""
+    if not comids:
+        return {}
+    ints = [int(c) for c in comids if c]
+    placeholders = ",".join("?" for _ in ints)
+    with _conn() as conn:
+        cur = conn.cursor()
+        cur.execute(
+            _ph(f"SELECT {','.join(_VAA_COLS)} FROM nhdplus_vaa "
+                f"WHERE comid IN ({placeholders})"),
+            tuple(ints))
+        rows = cur.fetchall()
+    return {r["comid"]: {k: r[k] for k in _VAA_COLS} for r in rows}
+
+
+def vaa_loaded() -> bool:
+    """True iff `nhdplus_vaa` has at least one row. Used by the startup
+    loader to short-circuit on warm boots."""
+    with _conn() as conn:
+        cur = conn.cursor()
+        cur.execute("SELECT 1 FROM nhdplus_vaa LIMIT 1")
+        return cur.fetchone() is not None
+
+
+def bulk_load_vaa(csv_gz_path: str) -> int:
+    """Ingest NHDPlusV2 VAA rows from the bundled gzipped CSV. Skips
+    silently if already loaded. Postgres uses COPY (~5s for 300K rows);
+    SQLite falls back to batched executemany. Returns rows inserted."""
+    import csv
+    import gzip
+
+    if vaa_loaded():
+        return 0
+    if not os.path.exists(csv_gz_path):
+        return 0
+    if _IS_PG:
+        return _bulk_load_vaa_pg(csv_gz_path)
+    return _bulk_load_vaa_sqlite(csv_gz_path)
+
+
+def _bulk_load_vaa_pg(csv_gz_path: str) -> int:
+    import csv
+    import gzip
+    with _conn() as conn, conn.cursor() as cur, \
+            gzip.open(csv_gz_path, "rt") as f:
+        # psycopg COPY: feed CSV directly, no row-by-row roundtrip
+        with cur.copy(
+                f"COPY nhdplus_vaa ({','.join(_VAA_COLS)}) "
+                "FROM STDIN WITH (FORMAT CSV, HEADER TRUE, NULL '')") as copy:
+            for chunk in iter(lambda: f.read(65536), ""):
+                copy.write(chunk)
+        cur.execute("SELECT COUNT(*) AS n FROM nhdplus_vaa")
+        n = cur.fetchone()["n"]
+        conn.commit()
+        return int(n)
+
+
+def _bulk_load_vaa_sqlite(csv_gz_path: str) -> int:
+    import csv
+    import gzip
+    with _conn() as conn, gzip.open(csv_gz_path, "rt") as f:
+        reader = csv.DictReader(f)
+        batch: list[tuple] = []
+        total = 0
+
+        def _flush():
+            nonlocal total
+            if not batch:
+                return
+            conn.executemany(
+                f"INSERT OR IGNORE INTO nhdplus_vaa "
+                f"({','.join(_VAA_COLS)}) VALUES (?,?,?,?,?,?)",
+                batch)
+            total += len(batch)
+            batch.clear()
+
+        for row in reader:
+            batch.append((
+                int(row["comid"]),
+                int(row["hydroseq"]) if row["hydroseq"] else None,
+                int(row["levelpathid"]) if row["levelpathid"] else None,
+                int(row["streamlevel"]) if row["streamlevel"] else None,
+                row["gnis_name"] or None,
+                float(row["lengthkm"]) if row["lengthkm"] else None,
+            ))
+            if len(batch) >= 5000:
+                _flush()
+        _flush()
+        conn.commit()
+        return total
 
 
 _STATS_MAX_AGE = timedelta(days=30)

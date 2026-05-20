@@ -762,7 +762,11 @@ def test_nldi_gauge_meta_short_circuits_on_db(tmp_path, monkeypatch):
 
     monkeypatch.setattr(main.httpx, "Client", NoNet)
     meta = main._nldi_gauge_meta("01581920")
-    assert meta == {"comid": "12345", "gnis_name": "Gunpowder Falls"}
+    # gauge_meta written without levelpathid (pre-VAA) gets it
+    # backfilled (None when VAA isn't loaded), all without a net call.
+    assert meta["comid"] == "12345"
+    assert meta["gnis_name"] == "Gunpowder Falls"
+    assert meta.get("levelpathid") is None
 
 
 def test_nldi_gauge_meta_graceful(monkeypatch):
@@ -839,3 +843,169 @@ def test_assemble_rivers_falls_back_to_heuristic_without_gnis(monkeypatch):
     }]
     rivers = asyncio.run(main._assemble_rivers(ts, [None], []))
     assert len(rivers) == 1 and rivers[0]["name"] == "Gunpowder Falls"
+
+
+# -- NHDPlusV2 LevelPathID filter (the topological flowline filter) --
+
+def _seed_vaa(tmp_path, monkeypatch, rows):
+    """Wire a fresh sqlite to db.DB_PATH and seed nhdplus_vaa rows.
+    Returns the DB path so callers can keep using it."""
+    monkeypatch.setattr(db, "DB_PATH", str(tmp_path / "t.db"))
+    db.init_db()
+    for r in rows:
+        with db._conn() as conn:                                  # noqa: SLF001
+            conn.execute(
+                "INSERT INTO nhdplus_vaa (comid, hydroseq, levelpathid,"
+                " streamlevel, gnis_name, lengthkm) VALUES (?,?,?,?,?,?)",
+                (r["comid"], r.get("hydroseq"), r["levelpathid"],
+                 r.get("streamlevel"), r.get("gnis_name"),
+                 r.get("lengthkm")))
+            conn.commit()
+
+
+def test_db_vaa_lookup_single_and_batched(tmp_path, monkeypatch):
+    _seed_vaa(tmp_path, monkeypatch, [
+        {"comid": 100, "levelpathid": 5000, "gnis_name": "Gunpowder Falls"},
+        {"comid": 200, "levelpathid": 6000, "gnis_name": "Minebank Run"},
+        {"comid": 300, "levelpathid": 5000, "gnis_name": "Gunpowder Falls"},
+    ])
+    assert db.get_vaa(100)["levelpathid"] == 5000
+    assert db.get_vaa(999) is None                                # absent
+    got = db.get_vaas([100, 200, 999])
+    assert set(got) == {100, 200}
+    assert got[100]["gnis_name"] == "Gunpowder Falls"
+
+
+def test_bulk_load_vaa_idempotent(tmp_path, monkeypatch):
+    """Loader runs once, then short-circuits."""
+    monkeypatch.setattr(db, "DB_PATH", str(tmp_path / "t.db"))
+    db.init_db()
+    # Tiny bundled CSV fixture
+    import csv, gzip
+    fixture = tmp_path / "vaa.csv.gz"
+    with gzip.open(fixture, "wt", newline="") as f:
+        w = csv.DictWriter(f, fieldnames=["comid", "hydroseq", "levelpathid",
+                                          "streamlevel", "gnis_name", "lengthkm"])
+        w.writeheader()
+        w.writerow({"comid": 100, "hydroseq": 1, "levelpathid": 5000,
+                    "streamlevel": 3, "gnis_name": "Gunpowder Falls",
+                    "lengthkm": 1.5})
+        w.writerow({"comid": 200, "hydroseq": 2, "levelpathid": 6000,
+                    "streamlevel": 4, "gnis_name": "Minebank Run",
+                    "lengthkm": 0.3})
+
+    n = db.bulk_load_vaa(str(fixture))
+    assert n == 2
+    n2 = db.bulk_load_vaa(str(fixture))               # already loaded
+    assert n2 == 0
+    assert db.get_vaa(100)["gnis_name"] == "Gunpowder Falls"
+
+
+def test_filter_flowlines_by_levelpath_keeps_only_matching(tmp_path, monkeypatch):
+    """The Georges-Run-onto-Gunpowder case, by LevelPathID this time:
+    walked features span two LevelPathIDs; filter keeps only the
+    gauge's path."""
+    _seed_vaa(tmp_path, monkeypatch, [
+        {"comid": 111, "levelpathid": 5000, "gnis_name": "Georges Run"},
+        {"comid": 222, "levelpathid": 9999, "gnis_name": "Gunpowder Falls"},
+        {"comid": 333, "levelpathid": 9999, "gnis_name": "Gunpowder Falls"},
+    ])
+    feats = [
+        {"type": "Feature", "properties": {"nhdplus_comid": "111"},
+         "geometry": {"type": "LineString",
+                      "coordinates": [[-76.69, 39.61], [-76.69, 39.60]]}},
+        {"type": "Feature", "properties": {"nhdplus_comid": "222"},
+         "geometry": {"type": "LineString",
+                      "coordinates": [[-76.69, 39.55], [-76.70, 39.50]]}},
+        {"type": "Feature", "properties": {"nhdplus_comid": "333"},
+         "geometry": {"type": "LineString",
+                      "coordinates": [[-76.71, 39.45], [-76.72, 39.40]]}},
+    ]
+    kept = main._filter_flowlines_by_levelpath(feats, target_lpid=5000)
+    assert len(kept) == 1
+    assert kept[0]["properties"]["nhdplus_comid"] == "111"
+
+
+def test_filter_flowlines_by_levelpath_no_fallback_on_mismatch(tmp_path, monkeypatch):
+    """Critical: when no features share the target LevelPathID, return
+    empty -- never fall back to the unfiltered set. (That fallback is
+    exactly what re-introduced the cross-confluence bleed previously.)"""
+    _seed_vaa(tmp_path, monkeypatch, [
+        {"comid": 222, "levelpathid": 9999, "gnis_name": "Gunpowder Falls"},
+    ])
+    feats = [
+        {"type": "Feature", "properties": {"nhdplus_comid": "222"},
+         "geometry": {"type": "LineString",
+                      "coordinates": [[-76.69, 39.55], [-76.70, 39.50]]}},
+    ]
+    kept = main._filter_flowlines_by_levelpath(feats, target_lpid=5000)
+    assert kept == []
+
+
+def test_nldi_gauge_meta_includes_levelpath_when_vaa_loaded(tmp_path, monkeypatch):
+    """gauge_meta carries `levelpathid` pulled from the local VAA when
+    the gauge's COMID is present."""
+    _seed_vaa(tmp_path, monkeypatch, [
+        {"comid": 12345, "levelpathid": 5000, "gnis_name": "Gunpowder Falls"},
+    ])
+    main._gauge_meta_cache.clear()
+
+    class FakeClient:
+        def __init__(self, *a, **k): pass
+        def __enter__(self): return self
+        def __exit__(self, *a): return False
+        def get(self, url, params=None):
+            if "/nwissite/" in url:
+                return _FakeResp({"features": [
+                    {"properties": {"comid": 12345}}]})
+            return _FakeResp({"features": [
+                {"properties": {"gnis_name": "Gunpowder Falls"}}]})
+
+    monkeypatch.setattr(main.httpx, "Client", FakeClient)
+    meta = main._nldi_gauge_meta("01581920")
+    assert meta["comid"] == "12345"
+    assert meta["gnis_name"] == "Gunpowder Falls"
+    assert meta["levelpathid"] == 5000
+
+
+def test_nldi_flowline_prefers_levelpath_filter(tmp_path, monkeypatch):
+    """When VAA covers the gauge AND the walked features, the
+    LevelPathID filter runs (not the gnis fallback)."""
+    _seed_vaa(tmp_path, monkeypatch, [
+        {"comid": 12345, "levelpathid": 5000, "gnis_name": "Gunpowder Falls"},
+        {"comid": 111, "levelpathid": 5000, "gnis_name": "Gunpowder Falls"},
+        {"comid": 222, "levelpathid": 9999, "gnis_name": "Long Green Creek"},
+    ])
+    main._river_geom_cache.clear()
+    monkeypatch.setattr(
+        main, "_nldi_gauge_meta",
+        lambda s: {"comid": "12345", "gnis_name": "Gunpowder Falls",
+                   "levelpathid": 5000})
+    gnis_called = {"n": 0}
+
+    def fake_gnis_filter(feats, target):
+        gnis_called["n"] += 1
+        return feats
+
+    monkeypatch.setattr(main, "_filter_flowlines_by_gnis", fake_gnis_filter)
+
+    seg_own = {"type": "Feature", "properties": {"nhdplus_comid": "111"},
+               "geometry": {"type": "LineString",
+                            "coordinates": [[-76.69, 39.61], [-76.69, 39.60]]}}
+    seg_other = {"type": "Feature", "properties": {"nhdplus_comid": "222"},
+                 "geometry": {"type": "LineString",
+                              "coordinates": [[-76.69, 39.55], [-76.7, 39.5]]}}
+
+    monkeypatch.setattr(
+        main, "_fetch_nav",
+        lambda c, b, nav, dist: [seg_own] if nav == "UM" else [seg_other])
+
+    class CtxNoop:
+        def __enter__(self): return self
+        def __exit__(self, *a): return False
+        def get(self, *a, **k): raise AssertionError("fetcher monkeypatched")
+    monkeypatch.setattr(main.httpx, "Client", lambda *a, **k: CtxNoop())
+
+    fc = main._nldi_flowline("01581920")
+    assert gnis_called["n"] == 0                         # gnis tier didn't run
+    assert [f["properties"]["nhdplus_comid"] for f in fc["features"]] == ["111"]
