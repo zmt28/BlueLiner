@@ -132,6 +132,26 @@ def init_db() -> None:
             " payload TEXT NOT NULL,"
             " updated_at TEXT NOT NULL)"
         )
+        # Authoritative per-gauge NHD identity: comid + gnis_name from
+        # NLDI. Used to label rivers by their real NHD name (so a small
+        # tributary's gauge doesn't visually label the larger river its
+        # flowline reaches). Immutable per site -- once cached, forever.
+        cur.execute(
+            "CREATE TABLE IF NOT EXISTS gauge_meta ("
+            " site_no TEXT PRIMARY KEY,"
+            " payload TEXT NOT NULL,"
+            " created_at TEXT NOT NULL)"
+        )
+        # Per-COMID NHD attributes (just gnis_name today). Lets us trim
+        # an NLDI flowline walk to only the segments that share the
+        # gauge's GNIS name, so a tributary gauge's downstream walk no
+        # longer continues past the confluence onto the main stem.
+        cur.execute(
+            "CREATE TABLE IF NOT EXISTS comid_meta ("
+            " comid TEXT PRIMARY KEY,"
+            " payload TEXT NOT NULL,"
+            " created_at TEXT NOT NULL)"
+        )
 
 
 def healthcheck() -> bool:
@@ -272,6 +292,72 @@ def get_river_snapshot(state: str) -> tuple[list, str] | None:
 def put_river_snapshot(state: str, rivers: list) -> None:
     _upsert("river_snapshot", state, "payload", json.dumps(rivers),
             key_col="state", ts_col="updated_at")
+
+
+def get_gauge_meta(site_no: str) -> dict | None:
+    """NHD identity ({comid, gnis_name}) for a USGS gauge, or None."""
+    with _conn() as conn:
+        cur = conn.cursor()
+        cur.execute(
+            _ph("SELECT payload FROM gauge_meta WHERE site_no = ?"),
+            (site_no,),
+        )
+        row = cur.fetchone()
+    if not row:
+        return None
+    try:
+        return json.loads(row["payload"])
+    except (ValueError, TypeError):
+        return None
+
+
+def get_gauge_metas(site_nos: list[str]) -> dict[str, dict]:
+    """Batched NHD-identity lookup -- one query for many sites, used by
+    the per-request `_assemble_rivers` path to label rivers by GNIS."""
+    if not site_nos:
+        return {}
+    placeholders = ",".join("?" for _ in site_nos)
+    with _conn() as conn:
+        cur = conn.cursor()
+        cur.execute(
+            _ph(
+                "SELECT site_no, payload FROM gauge_meta "
+                f"WHERE site_no IN ({placeholders})"
+            ),
+            tuple(site_nos),
+        )
+        rows = cur.fetchall()
+    out: dict[str, dict] = {}
+    for r in rows:
+        try:
+            out[r["site_no"]] = json.loads(r["payload"])
+        except (ValueError, TypeError):
+            continue
+    return out
+
+
+def put_gauge_meta(site_no: str, meta: dict) -> None:
+    _upsert("gauge_meta", site_no, "payload", json.dumps(meta))
+
+
+def get_comid_meta(comid: str) -> dict | None:
+    """gnis_name (and friends) for an NHD COMID, or None."""
+    with _conn() as conn:
+        cur = conn.cursor()
+        cur.execute(
+            _ph("SELECT payload FROM comid_meta WHERE comid = ?"), (comid,))
+        row = cur.fetchone()
+    if not row:
+        return None
+    try:
+        return json.loads(row["payload"])
+    except (ValueError, TypeError):
+        return None
+
+
+def put_comid_meta(comid: str, meta: dict) -> None:
+    _upsert("comid_meta", comid, "payload", json.dumps(meta),
+            key_col="comid")
 
 
 _STATS_MAX_AGE = timedelta(days=30)

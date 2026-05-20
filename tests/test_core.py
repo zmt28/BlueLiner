@@ -220,6 +220,8 @@ def test_nldi_flowline_merges_and_caches(monkeypatch):
     main._river_geom_cache.clear()
     monkeypatch.setattr(db, "get_river_geom", lambda s: None)
     monkeypatch.setattr(db, "put_river_geom", lambda s, fc: None)
+    # No gnis_name -> conservative walk, no per-feature filter
+    monkeypatch.setattr(main, "_nldi_gauge_meta", lambda s: {})
     calls = {"n": 0}
 
     class FakeClient:
@@ -237,6 +239,7 @@ def test_nldi_flowline_merges_and_caches(monkeypatch):
     monkeypatch.setattr(main.httpx, "Client", FakeClient)
     fc = main._nldi_flowline("01589000")
     assert fc["type"] == "FeatureCollection" and len(fc["features"]) == 2  # UM+DM
+    assert fc["_walk_version"] == main._GEOM_SCHEMA_VERSION
     assert calls["n"] == 2
     fc2 = main._nldi_flowline("01589000")           # cached -> no new calls
     assert calls["n"] == 2 and fc2 is fc
@@ -397,7 +400,9 @@ def test_nldi_flowline_uses_db_cache(tmp_path, monkeypatch):
              "features": [{"type": "Feature",
                            "geometry": {"type": "LineString",
                                         "coordinates": [[-77, 39], [-77.1, 39.1]]},
-                           "properties": {}}]}
+                           "properties": {}}],
+             # current schema version => DB hit serves directly
+             "_walk_version": main._GEOM_SCHEMA_VERSION}
     db.put_river_geom("01581920", saved)
 
     class NoNet:
@@ -409,6 +414,95 @@ def test_nldi_flowline_uses_db_cache(tmp_path, monkeypatch):
 
     monkeypatch.setattr(main.httpx, "Client", NoNet)
     assert main._nldi_flowline("01581920") == saved       # straight from the DB
+
+
+def test_nldi_flowline_refetches_stale_schema(tmp_path, monkeypatch):
+    """A row written under an older walk/filter schema is treated as a
+    cache-miss so logic changes propagate without operational cleanup."""
+    monkeypatch.setattr(db, "DB_PATH", str(tmp_path / "t.db"))
+    db.init_db()
+    main._river_geom_cache.clear()
+    monkeypatch.setattr(main, "_nldi_gauge_meta", lambda s: {})  # no filter
+    # Pre-existing row with no _walk_version: stale by definition.
+    db.put_river_geom("01589000", {"type": "FeatureCollection",
+                                   "features": [{"old": True}]})
+
+    refetched = {"n": 0}
+
+    class FakeClient:
+        def __init__(self, *a, **k): pass
+        def __enter__(self): return self
+        def __exit__(self, *a): return False
+        def get(self, *a, **k):
+            refetched["n"] += 1
+            return _FakeResp({"type": "FeatureCollection", "features": [{
+                "type": "Feature",
+                "geometry": {"type": "LineString",
+                             "coordinates": [[-77, 39], [-77.1, 39.1]]},
+                "properties": {}}]})
+
+    monkeypatch.setattr(main.httpx, "Client", FakeClient)
+    fc = main._nldi_flowline("01589000")
+    assert refetched["n"] == 2                  # UM + DM refetched
+    assert fc["_walk_version"] == main._GEOM_SCHEMA_VERSION
+
+
+def test_nldi_flowline_filters_cross_river_segments(monkeypatch):
+    """The Gunpowder/Georges-Run case: walk returns features from two
+    rivers; per-COMID gnis filter keeps only the gauge's own river."""
+    main._river_geom_cache.clear()
+    main._comid_meta_cache.clear()
+    monkeypatch.setattr(db, "get_river_geom", lambda s: None)
+    monkeypatch.setattr(db, "put_river_geom", lambda s, fc: None)
+    monkeypatch.setattr(
+        main, "_nldi_gauge_meta",
+        lambda s: {"comid": "111", "gnis_name": "Georges Run"})
+
+    # Two NLDI flowline features: one ON Georges Run, one on Gunpowder.
+    seg_own = {"type": "Feature", "properties": {"nhdplus_comid": "111"},
+               "geometry": {"type": "LineString",
+                            "coordinates": [[-76.69, 39.61], [-76.69, 39.60]]}}
+    seg_other = {"type": "Feature", "properties": {"nhdplus_comid": "222"},
+                 "geometry": {"type": "LineString",
+                              "coordinates": [[-76.69, 39.55], [-76.7, 39.5]]}}
+
+    def fake_walk(client, base, nav, dist):
+        return [seg_own] if nav == "UM" else [seg_other]
+
+    monkeypatch.setattr(main, "_fetch_nav", fake_walk)
+    monkeypatch.setattr(
+        main, "_comid_meta",
+        lambda c: {"gnis_name": "Georges Run"} if c == "111"
+                  else {"gnis_name": "Gunpowder Falls"})
+    monkeypatch.setattr(main.httpx, "Client",
+                        lambda *a, **k: _CtxNoop())
+
+    fc = main._nldi_flowline("01580000")
+    assert len(fc["features"]) == 1
+    assert fc["features"][0]["properties"]["nhdplus_comid"] == "111"
+
+
+class _CtxNoop:
+    def __enter__(self): return self
+    def __exit__(self, *a): return False
+    def get(self, *a, **k): raise AssertionError("fetcher monkeypatched")
+
+
+def test_comid_meta_short_circuits_on_db(tmp_path, monkeypatch):
+    monkeypatch.setattr(db, "DB_PATH", str(tmp_path / "t.db"))
+    db.init_db()
+    main._comid_meta_cache.clear()
+    db.put_comid_meta("111", {"gnis_name": "Gunpowder Falls"})
+
+    class NoNet:
+        def __init__(self, *a, **k): pass
+        def __enter__(self): return self
+        def __exit__(self, *a): return False
+        def get(self, *a, **k):
+            raise AssertionError("DB hit should preempt the NLDI call")
+
+    monkeypatch.setattr(main.httpx, "Client", NoNet)
+    assert main._comid_meta("111") == {"gnis_name": "Gunpowder Falls"}
 
 
 # -- stats off the hot path (speed: no 20s stall) --
@@ -632,3 +726,116 @@ def test_internal_refresh_requires_token(monkeypatch):
     with pytest.raises(HTTPException) as ei:
         asyncio.run(main.internal_refresh(bad))
     assert ei.value.status_code == 403
+
+
+# -- river identity via NHD GNIS (the screenshot-bug fix) --
+
+def test_db_gauge_meta_roundtrip(tmp_path, monkeypatch):
+    monkeypatch.setattr(db, "DB_PATH", str(tmp_path / "t.db"))
+    db.init_db()
+    assert db.get_gauge_meta("01581920") is None
+    db.put_gauge_meta("01581920",
+                      {"comid": "12345", "gnis_name": "Gunpowder Falls"})
+    assert db.get_gauge_meta("01581920") == {
+        "comid": "12345", "gnis_name": "Gunpowder Falls"}
+    db.put_gauge_meta("01589000", {"comid": "67890", "gnis_name": None})
+    got = db.get_gauge_metas(["01581920", "01589000", "99999999"])
+    assert got["01581920"]["gnis_name"] == "Gunpowder Falls"
+    assert got["01589000"]["gnis_name"] is None
+    assert "99999999" not in got                     # absent, not error
+
+
+def test_nldi_gauge_meta_short_circuits_on_db(tmp_path, monkeypatch):
+    """Once a gauge's NHD identity is in Postgres, no network call."""
+    monkeypatch.setattr(db, "DB_PATH", str(tmp_path / "t.db"))
+    db.init_db()
+    main._gauge_meta_cache.clear()
+    db.put_gauge_meta("01581920",
+                      {"comid": "12345", "gnis_name": "Gunpowder Falls"})
+
+    class NoNet:
+        def __init__(self, *a, **k): pass
+        def __enter__(self): return self
+        def __exit__(self, *a): return False
+        def get(self, *a, **k):
+            raise AssertionError("DB hit should preempt the NLDI call")
+
+    monkeypatch.setattr(main.httpx, "Client", NoNet)
+    meta = main._nldi_gauge_meta("01581920")
+    assert meta == {"comid": "12345", "gnis_name": "Gunpowder Falls"}
+
+
+def test_nldi_gauge_meta_graceful(monkeypatch):
+    """NLDI down => returns {} (caller falls back to heuristic naming);
+    empties are NOT persisted to DB so they retry later."""
+    main._gauge_meta_cache.clear()
+    monkeypatch.setattr(db, "get_gauge_meta", lambda s: None)
+    persisted = {}
+    monkeypatch.setattr(db, "put_gauge_meta",
+                        lambda s, m: persisted.setdefault(s, m))
+
+    class Boom:
+        def __init__(self, *a, **k): pass
+        def __enter__(self): return self
+        def __exit__(self, *a): return False
+        def get(self, *a, **k): raise RuntimeError("nldi down")
+
+    monkeypatch.setattr(main.httpx, "Client", Boom)
+    assert main._nldi_gauge_meta("00000000") == {}
+    assert persisted == {}                            # empties never persisted
+
+
+def test_assemble_rivers_prefers_gnis_name(monkeypatch):
+    """When gauge_meta has a gnis_name, _assemble_rivers labels by NHD,
+    not by the USGS station name -- so e.g. 'Georges Run near
+    Beckleysville, MD' stops standing in for 'Gunpowder Falls'."""
+    import asyncio
+
+    async def no_medians(nos):
+        return None
+
+    monkeypatch.setattr(main, "_ensure_medians_cached", no_medians)
+    monkeypatch.setattr(
+        db, "get_gauge_metas",
+        lambda nos: {"01581920": {"comid": "1", "gnis_name": "Gunpowder Falls"}},
+    )
+    main._stats_cache.clear()
+    ts = [{
+        "sourceInfo": {
+            "siteName": "Georges Run near Beckleysville, MD",   # misleading
+            "siteCode": [{"value": "01581920"}],
+            "geoLocation": {"geogLocation": {"latitude": 39.62,
+                                             "longitude": -76.69}},
+        },
+        "variable": {"variableDescription": "Streamflow, ft3/s"},
+        "values": [{"value": [{"value": "9",
+                               "dateTime": "2026-05-19T08:00:00"}]}],
+    }]
+    rivers = asyncio.run(main._assemble_rivers(ts, [None], []))
+    assert len(rivers) == 1 and rivers[0]["name"] == "Gunpowder Falls"
+
+
+def test_assemble_rivers_falls_back_to_heuristic_without_gnis(monkeypatch):
+    """If gauge_meta lookup returns nothing, the station-name heuristic
+    is still used -- behavior unchanged for not-yet-backfilled gauges."""
+    import asyncio
+
+    async def no_medians(nos):
+        return None
+
+    monkeypatch.setattr(main, "_ensure_medians_cached", no_medians)
+    monkeypatch.setattr(db, "get_gauge_metas", lambda nos: {})
+    main._stats_cache.clear()
+    ts = [{
+        "sourceInfo": {
+            "siteName": "Gunpowder Falls near Glencoe, MD",
+            "siteCode": [{"value": "01581920"}],
+            "geoLocation": {"geogLocation": {"latitude": 39.62,
+                                             "longitude": -76.69}},
+        },
+        "variable": {"variableDescription": "Streamflow, ft3/s"},
+        "values": [{"value": [{"value": "9",
+                               "dateTime": "2026-05-19T08:00:00"}]}],
+    }]
+    rivers = asyncio.run(main._assemble_rivers(ts, [None], []))
+    assert len(rivers) == 1 and rivers[0]["name"] == "Gunpowder Falls"

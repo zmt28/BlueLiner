@@ -1,0 +1,90 @@
+[
+  {
+    "water": "Gunpowder Falls (Prettyboy tailwater)",
+    "lat": 39.6116, "lon": -76.7290,
+    "species": ["Brown", "Rainbow"],
+    "category": "Tailwater - wild + stocked",
+    "season_months": [1, 12],
+    "agency_url": "https://dnr.maryland.gov/fisheries/pages/trout/stocking.aspx"
+  },
+  {
+    "water": "Gunpowder Falls (Falls Rd / Masemore)",
+    "lat": 39.6361, "lon": -76.6889,
+    "species": ["Brown", "Rainbow"],
+    "category": "Tailwater - wild + stocked",
+    "season_months": [1, 12],
+    "agency_url": "https://dnr.maryland.gov/fisheries/pages/trout/stocking.aspx"
+  },
+  {
+    "water": "Gunpowder Falls (Glencoe / Monkton)",
+    "lat": 39.5760, "lon": -76.6130,
+    "species": ["Brown", "Rainbow"],
+    "category": "Tailwater - wild + stocked",
+    "season_months": [1, 12],
+    "agency_url": "https://dnr.maryland.gov/fisheries/pages/trout/stocking.aspx"
+  },
+  {
+    "water": "Gunpowder Falls (Phoenix / Loch Raven)",
+    "lat": 39.5180, "lon": -76.5950,
+    "species": ["Brown", "Rainbow"],
+    "category": "Tailwater - wild + stocked",
+    "season_months": [1, 12],
+    "agency_url": "https://dnr.maryland.gov/fisheries/pages/trout/stocking.aspx"
+  },
+  {
+    "water": "Big Hunting Creek",
+    "lat": 39.6206, "lon": -77.4569,
+    "species": ["Brook", "Brown", "Rainbow"],
+    "category": "Fly-fishing-only - catch & return",
+    "season_months": [3, 11],
+    "agency_url": "https://dnr.maryland.gov/fisheries/pages/trout/stocking.aspx"
+  },
+  {
+    "water": "Morgan Run",
+    "lat": 39.4007, "lon": -77.0006,
+    "species": ["Brown", "Rainbow"],
+    "category": "Delayed harvest",
+    "season_months": [10, 5],
+    "agency_url": "https://dnr.maryland.gov/fisheries/pages/trout/stocking.aspx"
+  },
+  {
+    "water": "Patapsco River (Avalon / Daniels)",
+    "lat": 39.2510, "lon": -76.7820,
+    "species": ["Rainbow", "Brown"],
+    "category": "Put-and-take",
+    "season_months": [3, 5],
+    "agency_url": "https://dnr.maryland.gov/fisheries/pages/trout/stocking.aspx"
+  },
+  {
+    "water": "North Branch Potomac (Barnum)",
+    "lat": 39.4869, "lon": -79.1003,
+    "species": ["Brown", "Rainbow", "Cutthroat"],
+    "category": "Trophy tailwater",
+    "season_months": [1, 12],
+    "agency_url": "https://dnr.maryland.gov/fisheries/pages/trout/stocking.aspx"
+  },
+  {
+    "water": "Savage River Tailwater",
+    "lat": 39.5036, "lon": -79.1206,
+    "species": ["Brown", "Brook"],
+    "category": "Trophy - special regs",
+    "season_months": [1, 12],
+    "agency_url": "https://dnr.maryland.gov/fisheries/pages/trout/stocking.aspx"
+  },
+  {
+    "water": "Beaver Creek (Washington Co.)",
+    "lat": 39.5446, "lon": -77.6386,
+    "species": ["Brown", "Rainbow"],
+    "category": "Limestone - special regs",
+    "season_months": [1, 12],
+    "agency_url": "https://dnr.maryland.gov/fisheries/pages/trout/stocking.aspx"
+  },
+  {
+    "water": "Owens Creek",
+    "lat": 39.6600, "lon": -77.4500,
+    "species": ["Rainbow", "Brown"],
+    "category": "Put-and-take",
+    "season_months": [3, 5],
+    "agency_url": "https://dnr.maryland.gov/fisheries/pages/trout/stocking.aspx"
+  }
+]

@@ -27,8 +27,18 @@ TROUT_SOURCES = {
             "DesignatedUse_Trout/MapServer/0/query?where=1%3D1"
         ),
     },
-    # WV DNR endpoint structure is less predictable. Skipping for now --
-    # can be added when a reliable GeoJSON endpoint is confirmed.
+    # TODO PA -- Pennsylvania Fish & Boat Commission publishes Class A
+    # Wild Trout Streams. When a stable ArcGIS query URL is confirmed,
+    # add:
+    #   "PA": {"name": "PA Class A Wild Trout Streams (PFBC)",
+    #          "url": "https://<verified-pfbc-arcgis>/query?where=1%3D1"},
+    # Until then, PA gauges still load + serve fine; they just don't get
+    # the trout-water tag.
+    #
+    # TODO WV -- WV DEP/DNR endpoint history has been unreliable. The
+    # `data/trout/WV.json` bundled-fallback pattern (see
+    # data/trout/README.md) is the safer path; we'll wire it up once we
+    # have a vetted GeoJSON for WV.
 }
 
 # Each cached gdf is the single largest runtime allocation (5-50MB of

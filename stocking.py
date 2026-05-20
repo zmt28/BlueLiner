@@ -1,120 +1,53 @@
 """
 Trout stocking data.
 
-A bundled, curated baseline of well-known stocked / specially-managed trout
-waters for MD, VA, and WV (in-memory, zero network), overlaid for VA with
-the live VA DWR ArcGIS feed when reachable. Baseline coordinates are
-approximate access points -- precise enough for the ~1 km proximity tag, and
-they guarantee famous waters (e.g. Gunpowder Falls) are surfaced even if a
-state's wild-trout layer is incomplete.
+Per-state baselines of well-known stocked / specially-managed trout
+waters live in `data/stocking/<STATE>.json` (in-memory, zero network).
+For VA we also overlay the live VA DWR ArcGIS feed when reachable.
+Baseline coordinates are approximate access points -- precise enough
+for the ~1 km proximity tag, and they guarantee famous waters
+(e.g. Gunpowder Falls) are surfaced even if a state's wild-trout layer
+is incomplete.
 
 Point shape: {water, lat, lon, species[], category, season_months (s,e),
 agency_url, source}
 """
 
+import json
+import os
+
 from arcgis import fetch_geojson_gdf
 from cache import LruTtl
+
+_DATA_DIR = os.path.join(os.path.dirname(__file__), "data", "stocking")
+
+
+def _load_baseline(state: str) -> list[dict]:
+    """Read data/stocking/<STATE>.json and coerce season_months to a tuple.
+    Returns [] if the file is absent -- many states legitimately have none."""
+    path = os.path.join(_DATA_DIR, f"{state}.json")
+    if not os.path.exists(path):
+        return []
+    with open(path) as f:
+        rows = json.load(f)
+    out: list[dict] = []
+    for r in rows:
+        if "season_months" in r and isinstance(r["season_months"], list):
+            r = dict(r, season_months=tuple(r["season_months"]))
+        out.append(r)
+    return out
+
+
+# Loaded once at import (cheap, in-memory, <100 entries per state).
+STOCKING_BASELINE: dict[str, list[dict]] = {
+    state: _load_baseline(state)
+    for state in ("MD", "VA", "WV", "PA")
+}
 
 MD_DNR_URL = "https://dnr.maryland.gov/fisheries/pages/trout/stocking.aspx"
 VA_DWR_URL = "https://dwr.virginia.gov/fishing/trout-stocking-schedule/"
 WV_DNR_URL = "https://wvdnr.gov/fishing/trout-stocking/"
-
-STOCKING_BASELINE: dict[str, list[dict]] = {
-    "MD": [
-        # The Gunpowder Falls trophy tailwater runs ~13 mi from Prettyboy Dam
-        # to Loch Raven. Several points along the reach so gauges anywhere on
-        # it get tagged (a single point + ~2 km buffer cannot cover it).
-        {"water": "Gunpowder Falls (Prettyboy tailwater)", "lat": 39.6116,
-         "lon": -76.7290, "species": ["Brown", "Rainbow"],
-         "category": "Tailwater - wild + stocked", "season_months": (1, 12),
-         "agency_url": MD_DNR_URL},
-        {"water": "Gunpowder Falls (Falls Rd / Masemore)", "lat": 39.6361,
-         "lon": -76.6889, "species": ["Brown", "Rainbow"],
-         "category": "Tailwater - wild + stocked", "season_months": (1, 12),
-         "agency_url": MD_DNR_URL},
-        {"water": "Gunpowder Falls (Glencoe / Monkton)", "lat": 39.5760,
-         "lon": -76.6130, "species": ["Brown", "Rainbow"],
-         "category": "Tailwater - wild + stocked", "season_months": (1, 12),
-         "agency_url": MD_DNR_URL},
-        {"water": "Gunpowder Falls (Phoenix / Loch Raven)", "lat": 39.5180,
-         "lon": -76.5950, "species": ["Brown", "Rainbow"],
-         "category": "Tailwater - wild + stocked", "season_months": (1, 12),
-         "agency_url": MD_DNR_URL},
-        {"water": "Big Hunting Creek", "lat": 39.6206, "lon": -77.4569,
-         "species": ["Brook", "Brown", "Rainbow"],
-         "category": "Fly-fishing-only - catch & return", "season_months": (3, 11),
-         "agency_url": MD_DNR_URL},
-        {"water": "Morgan Run", "lat": 39.4007, "lon": -77.0006,
-         "species": ["Brown", "Rainbow"], "category": "Delayed harvest",
-         "season_months": (10, 5), "agency_url": MD_DNR_URL},
-        {"water": "Patapsco River (Avalon / Daniels)", "lat": 39.2510,
-         "lon": -76.7820, "species": ["Rainbow", "Brown"],
-         "category": "Put-and-take", "season_months": (3, 5),
-         "agency_url": MD_DNR_URL},
-        {"water": "North Branch Potomac (Barnum)", "lat": 39.4869,
-         "lon": -79.1003, "species": ["Brown", "Rainbow", "Cutthroat"],
-         "category": "Trophy tailwater", "season_months": (1, 12),
-         "agency_url": MD_DNR_URL},
-        {"water": "Savage River Tailwater", "lat": 39.5036, "lon": -79.1206,
-         "species": ["Brown", "Brook"], "category": "Trophy - special regs",
-         "season_months": (1, 12), "agency_url": MD_DNR_URL},
-        {"water": "Beaver Creek (Washington Co.)", "lat": 39.5446,
-         "lon": -77.6386, "species": ["Brown", "Rainbow"],
-         "category": "Limestone - special regs", "season_months": (1, 12),
-         "agency_url": MD_DNR_URL},
-        {"water": "Owens Creek", "lat": 39.6600, "lon": -77.4500,
-         "species": ["Rainbow", "Brown"], "category": "Put-and-take",
-         "season_months": (3, 5), "agency_url": MD_DNR_URL},
-    ],
-    "VA": [
-        {"water": "Mossy Creek", "lat": 38.3593, "lon": -78.8569,
-         "species": ["Brown"], "category": "Trophy fly-fishing-only",
-         "season_months": (1, 12), "agency_url": VA_DWR_URL},
-        {"water": "Smith River (below Philpott)", "lat": 36.7790,
-         "lon": -80.0179, "species": ["Brown", "Rainbow"],
-         "category": "Trophy tailwater", "season_months": (1, 12),
-         "agency_url": VA_DWR_URL},
-        {"water": "Jackson River (Hidden Valley)", "lat": 37.9100,
-         "lon": -79.8500, "species": ["Brown", "Rainbow"],
-         "category": "Tailwater - special regs", "season_months": (1, 12),
-         "agency_url": VA_DWR_URL},
-        {"water": "South River (Waynesboro)", "lat": 38.0696, "lon": -78.8889,
-         "species": ["Brown", "Rainbow"], "category": "Special regulation",
-         "season_months": (1, 12), "agency_url": VA_DWR_URL},
-        {"water": "Big Tumbling Creek (Clinch Mtn.)", "lat": 36.8800,
-         "lon": -81.7600, "species": ["Rainbow", "Brown", "Brook"],
-         "category": "Fee fishing - heavily stocked", "season_months": (4, 9),
-         "agency_url": VA_DWR_URL},
-        {"water": "Back Creek (below Gathright)", "lat": 38.0600,
-         "lon": -79.9200, "species": ["Brown", "Rainbow"],
-         "category": "Tailwater", "season_months": (1, 12),
-         "agency_url": VA_DWR_URL},
-    ],
-    "WV": [
-        {"water": "Elk River (below Sutton Dam)", "lat": 38.5100,
-         "lon": -80.5400, "species": ["Brown", "Rainbow", "Golden"],
-         "category": "Trophy tailwater", "season_months": (1, 12),
-         "agency_url": WV_DNR_URL},
-        {"water": "Williams River", "lat": 38.3500, "lon": -80.4200,
-         "species": ["Brook", "Brown", "Rainbow"],
-         "category": "Stocked + catch & release", "season_months": (3, 11),
-         "agency_url": WV_DNR_URL},
-        {"water": "Cranberry River", "lat": 38.2800, "lon": -80.4500,
-         "species": ["Brook", "Rainbow"], "category": "Stocked wilderness",
-         "season_months": (3, 11), "agency_url": WV_DNR_URL},
-        {"water": "North Fork South Branch (Smoke Hole)", "lat": 38.8300,
-         "lon": -79.2700, "species": ["Brown", "Rainbow", "Golden"],
-         "category": "Stocked", "season_months": (2, 6),
-         "agency_url": WV_DNR_URL},
-        {"water": "Seneca Creek", "lat": 38.8300, "lon": -79.3800,
-         "species": ["Brook", "Rainbow"], "category": "Stocked",
-         "season_months": (3, 6), "agency_url": WV_DNR_URL},
-        {"water": "Shavers Fork (Cheat)", "lat": 38.7000, "lon": -79.8500,
-         "species": ["Brown", "Rainbow", "Brook"],
-         "category": "Stocked + native", "season_months": (1, 12),
-         "agency_url": WV_DNR_URL},
-    ],
-}
+PA_PFBC_URL = "https://www.fishandboat.com/Fish/Trout/Pages/default.aspx"
 
 # Live overlay. The exact VA DWR stocking REST URL is not verifiable from
 # this environment; the loader degrades gracefully to the baseline if the
