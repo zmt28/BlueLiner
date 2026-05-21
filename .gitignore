@@ -3,3 +3,12 @@ __pycache__/
 .claude/
 blueliner.db*
 bluelines.db*
+
+# OS / editor cruft
+.DS_Store
+.idea/
+.vscode/
+
+# Test + tooling caches
+.pytest_cache/
+*.egg-info/
