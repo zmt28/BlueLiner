@@ -14,6 +14,13 @@ jobs:
         with:
           python-version: "3.11"
           cache: pip
+          # Scope the cache-key hash to the literal requirements files.
+          # Without this, setup-python globs the whole working tree and
+          # can race with git's loose objects -> intermittent
+          # "ENOENT scandir .git/objects/XX" failures.
+          cache-dependency-path: |
+            requirements.txt
+            requirements-dev.txt
       - name: Install dependencies
         run: pip install -r requirements-dev.txt
       - name: Run tests

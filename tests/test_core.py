@@ -342,8 +342,52 @@ def test_build_river_popup_html():
     assert "Trout Water" in html                            # on_trout chip
     assert "Stocked nearby" in html                         # stocked block
     assert "Gunpowder falls near glencoe, md" in html       # gauge sub-header
-    assert 'data-site="01581920"' in html                   # trend button
+    assert 'data-site="01581920"' in html                   # chart placeholder
     assert "Flow context" in html                           # median present
+    # Redesign: collapsible sections, summary, chart placeholder, and the
+    # catch CTA hoisted above the gauge sections.
+    assert "<details" in html and "<summary>" in html
+    assert 'class="bl-flow-chart"' in html
+    assert "bl-summary" in html
+    assert html.index("bl-catch-cta") < html.index("bl-gauge")  # CTA first
+
+
+def test_score_conditions_returns_temp_f():
+    out = main.score_conditions(
+        [{"variable": "Temperature, water, C", "value": "15"}], None)
+    assert out["temp_f"] == 59.0                            # 15C -> 59F
+    assert main.score_conditions([], None)["temp_f"] is None
+
+
+def test_ranking_summary_phrasing():
+    def river(cur_flow, median, temp_c):
+        variables = []
+        cond = {"current_flow": cur_flow}
+        if temp_c is not None:
+            tf = round(temp_c * 9 / 5 + 32, 1)
+            cond["temp_f"] = tf
+        else:
+            cond["temp_f"] = None
+        return {"gauges": [{
+            "site_no": "X", "variables": [{"variable": "Streamflow",
+                                            "value": str(cur_flow or 0)}],
+            "conditions": cond, "historical_median": median}]}
+
+    # 60 vs 80 median -> 25% below; 13C -> 55.4F ideal
+    s = main._ranking_summary_html(river(60.0, 80.0, 13))
+    assert "25% below average" in s and "ideal" in s
+    # 160 vs 80 -> 100% above; 21C -> 69.8F too warm
+    s = main._ranking_summary_html(river(160.0, 80.0, 21))
+    assert "100% above average" in s and "too warm" in s
+    # within 15% -> near normal
+    s = main._ranking_summary_html(river(85.0, 80.0, 10))
+    assert "near normal" in s
+    # no median -> raw cfs; no temp
+    s = main._ranking_summary_html(river(42.0, None, None))
+    assert "42 cfs" in s
+    # nothing -> graceful
+    s = main._ranking_summary_html(river(None, None, None))
+    assert "Limited live data" in s
 
 
 # -- bounded cache (memory: the OOM fix) --

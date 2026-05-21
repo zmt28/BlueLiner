@@ -281,6 +281,7 @@ def score_conditions(variables: list[dict], historical_median: float | None = No
     temp_score = None
     flow_score = None
     current_flow = None
+    temp_f = None
 
     for var in variables:
         description = var.get("variable", "").lower()
@@ -335,6 +336,7 @@ def score_conditions(variables: list[dict], historical_median: float | None = No
         "temp": temp_score,
         "flow": flow_score,
         "current_flow": current_flow,
+        "temp_f": round(temp_f, 1) if temp_f is not None else None,
     }
 
 
@@ -385,10 +387,10 @@ def _hatch_section_html(zone: dict | None, active: list[dict] | None,
                     <div style="font-size:11px;color:#1e8449">Try: {patterns}</div>
                 </div>"""
     return f"""
-        <div style="margin-top:10px;padding:8px 12px;background:#eef7f2;border:1px solid #d1f2eb;border-radius:6px">
-            <div style="font-size:13px;font-weight:700;color:#0e6655">{title}</div>
-            {body}
-        </div>"""
+        <details class="bl-section bl-hatch">
+            <summary>{title}</summary>
+            <div class="bl-section-body">{body}</div>
+        </details>"""
 
 
 def _trend_html(site_no: str | None) -> str:
@@ -486,6 +488,63 @@ def _stocked_block_html(waters: list[dict]) -> str:
         </div>"""
 
 
+def _primary_gauge(gauges: list[dict]) -> dict | None:
+    """The gauge that best represents the river: first one with a site_no
+    that reports discharge, else the first gauge. Drives the top-of-card
+    summary + auto-loaded flow chart."""
+    for g in gauges:
+        if g.get("site_no") and any(
+            "discharge" in v.get("variable", "").lower() or
+            "streamflow" in v.get("variable", "").lower()
+            for v in g.get("variables", [])
+        ):
+            return g
+    return gauges[0] if gauges else None
+
+
+def _ranking_summary_html(river: dict) -> str:
+    """One-line plain-English read on why the river is rated as it is,
+    e.g. 'Flow is 20% below average and water temp is ideal.' Built from
+    the primary gauge's flow-vs-median ratio + water temperature."""
+    primary = _primary_gauge(river["gauges"])
+    if not primary:
+        return ""
+    cond = primary.get("conditions", {})
+    median = primary.get("historical_median")
+    parts: list[str] = []
+
+    cf = cond.get("current_flow")
+    if cf is not None and median and median > 0:
+        pct = round((cf / median - 1) * 100)
+        if abs(pct) <= 15:
+            parts.append("flow is near normal")
+        elif pct < 0:
+            parts.append(f"flow is {abs(pct)}% below average")
+        else:
+            parts.append(f"flow is {pct}% above average")
+    elif cf is not None:
+        parts.append(f"flow is {cf:.0f} cfs")
+
+    tf = cond.get("temp_f")
+    if tf is not None:
+        if tf < 40:
+            parts.append("water is very cold")
+        elif tf < 48:
+            parts.append("water is cool")
+        elif tf <= 65:
+            parts.append("water temp is ideal")
+        elif tf <= 68:
+            parts.append("water is slightly warm")
+        else:
+            parts.append("water is too warm")
+
+    if not parts:
+        return '<div class="bl-summary">Limited live data right now.</div>'
+    sentence = " and ".join(parts)
+    sentence = sentence[0].upper() + sentence[1:] + "."
+    return f'<div class="bl-summary">{sentence}</div>'
+
+
 def build_river_popup_html(river: dict) -> str:
     overall = river["overall"]
     badge_color = SCORE_COLORS[overall]
@@ -494,38 +553,53 @@ def build_river_popup_html(river: dict) -> str:
     trout_html = _CHIP_TROUT if river["on_trout"] else ""
     stocked_html = _CHIP_STOCKED if river["near_stocked"] else ""
 
+    primary = _primary_gauge(river["gauges"])
+    chart_html = ""
+    if primary and primary.get("site_no"):
+        chart_html = (f'<div class="bl-flow-chart" '
+                      f'data-site="{primary["site_no"]}"></div>')
+
     gauges_html = ""
     for g in river["gauges"]:
+        is_primary = g is primary
         usgs = (
             f'<div style="padding:4px 0 2px;text-align:right">'
             f'<a href="https://waterdata.usgs.gov/nwis/uv?site_no={g["site_no"]}" '
             f'target="_blank" style="color:#3498db;font-size:12px;text-decoration:none">'
             f'View on USGS &#x2197;</a></div>'
         ) if g.get("site_no") else ""
+        # The primary gauge's chart is rendered up top, so skip its inline
+        # on-demand trend button; secondary gauges keep theirs.
+        trend = "" if is_primary else _trend_html(g.get("site_no"))
+        open_attr = " open" if is_primary else ""
         gauges_html += f"""
-            <div style="border-top:1px solid #e5e7eb;padding-top:8px;margin-top:10px">
-                <div style="font-size:14px;font-weight:600;color:#1a1a2e">{g["site_name"]}</div>
-                {_flow_context_html(g["conditions"], g["historical_median"])}
-                {_readings_table_html(g["variables"])}
-                {_trend_html(g.get("site_no"))}
-                {usgs}
-            </div>"""
+            <details class="bl-section bl-gauge"{open_attr}>
+                <summary>{g["site_name"]}</summary>
+                <div class="bl-section-body">
+                    {_flow_context_html(g["conditions"], g["historical_median"])}
+                    {_readings_table_html(g["variables"])}
+                    {trend}
+                    {usgs}
+                </div>
+            </details>"""
 
     return f"""
-        <div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;max-width:380px">
-            <div style="padding:12px 14px 8px">
+        <div class="bl-card" style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif">
+            <div class="bl-card-head">
                 <div style="font-size:18px;font-weight:700;color:#1a1a2e;margin-bottom:6px">{river["name"]}</div>
                 <span style="display:inline-block;padding:3px 10px;border-radius:12px;font-size:12px;font-weight:700;
                     color:{badge_color};background:{badge_bg};border:1.5px solid {badge_color};letter-spacing:0.5px">
                     {badge_label}
                 </span>{trout_html}{stocked_html}
                 <div style="font-size:11px;color:#888;margin-top:5px">{len(river["gauges"])} gauge(s) on this water</div>
+                {_ranking_summary_html(river)}
             </div>
-            <div style="padding:6px 14px 12px">
+            <div class="bl-card-body">
+                <div class="bl-catch-cta"></div>
+                {chart_html}
                 {_hatch_section_html(river["hatch_zone"], river["active"], river["month"])}
                 {_stocked_block_html(river["stocked_waters"])}
                 {gauges_html}
-                <div class="bl-catch-cta"></div>
             </div>
         </div>
     """

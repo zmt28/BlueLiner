@@ -51,6 +51,17 @@
 
     <div id="map"></div>
 
+    <!-- River detail panel (drawer on desktop, bottom sheet on mobile) -->
+    <div id="river-panel" class="river-panel" hidden>
+        <div class="river-panel-backdrop" data-close></div>
+        <aside class="river-panel-card" role="dialog" aria-label="River details">
+            <div class="river-panel-grip" data-close></div>
+            <button class="river-panel-close" type="button" data-close
+                    aria-label="Close">&times;</button>
+            <div id="river-panel-body"></div>
+        </aside>
+    </div>
+
     <!-- Account menu (dropdown under the email button) -->
     <div id="account-menu" class="account-menu" hidden>
         <div class="account-menu-email" id="account-menu-email"></div>
