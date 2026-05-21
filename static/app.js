@@ -1160,6 +1160,19 @@ function wireCatchUI() {
 }
 
 if ("serviceWorker" in navigator) {
+  // Auto-reload once when a new service worker takes control, so a deploy
+  // propagates fresh JS/CSS without a manual cache clear. Only armed when
+  // the page is already controlled (a returning visit) -- on the very
+  // first visit there's no controller yet and no stale assets to replace,
+  // so we skip the reload to avoid a pointless first-load refresh.
+  if (navigator.serviceWorker.controller) {
+    let refreshing = false;
+    navigator.serviceWorker.addEventListener("controllerchange", () => {
+      if (refreshing) return;
+      refreshing = true;
+      window.location.reload();
+    });
+  }
   window.addEventListener("load", () => {
     navigator.serviceWorker.register("/sw.js").catch(() => {});
   });
