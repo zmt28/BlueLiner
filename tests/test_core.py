@@ -376,6 +376,7 @@ def test_ranking_summary_phrasing():
     # 60 vs 80 median -> 25% below; 13C -> 55.4F ideal
     s = main._ranking_summary_html(river(60.0, 80.0, 13))
     assert "25% below average" in s and "ideal" in s
+    assert "for this time of year" in s        # time-bound comparison
     # 160 vs 80 -> 100% above; 21C -> 69.8F too warm
     s = main._ranking_summary_html(river(160.0, 80.0, 21))
     assert "100% above average" in s and "too warm" in s

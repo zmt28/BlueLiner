@@ -513,15 +513,19 @@ def _ranking_summary_html(river: dict) -> str:
     median = primary.get("historical_median")
     parts: list[str] = []
 
+    # The median is the historical daily median for today's date, so the
+    # comparison is explicitly time-of-year-bound, not an annual average.
     cf = cond.get("current_flow")
     if cf is not None and median and median > 0:
         pct = round((cf / median - 1) * 100)
         if abs(pct) <= 15:
-            parts.append("flow is near normal")
+            parts.append("flow is near normal for this time of year")
         elif pct < 0:
-            parts.append(f"flow is {abs(pct)}% below average")
+            parts.append(
+                f"flow is {abs(pct)}% below average for this time of year")
         else:
-            parts.append(f"flow is {pct}% above average")
+            parts.append(
+                f"flow is {pct}% above average for this time of year")
     elif cf is not None:
         parts.append(f"flow is {cf:.0f} cfs")
 
