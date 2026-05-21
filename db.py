@@ -225,6 +225,55 @@ def init_db() -> None:
             " expires_at TEXT NOT NULL,"
             " used_at TEXT)"
         )
+        # Catch log (Phase 2). Private by default; the visibility /
+        # share_geom / share_token columns are inert until Phase 3
+        # turns on sharing. `env` is an immutable JSON snapshot of the
+        # auto-captured conditions at log time (flow, water/air temp,
+        # pressure, moon, hatches).
+        if _IS_PG:
+            cur.execute(
+                "CREATE TABLE IF NOT EXISTS catches ("
+                " id BIGSERIAL PRIMARY KEY,"
+                " user_id BIGINT NOT NULL,"
+                " created_at TEXT NOT NULL,"
+                " occurred_at TEXT NOT NULL,"
+                " river_name TEXT,"
+                " river_site_no TEXT,"
+                " lat DOUBLE PRECISION,"
+                " lon DOUBLE PRECISION,"
+                " species TEXT,"
+                " length_in REAL,"
+                " fly_used TEXT,"
+                " notes TEXT,"
+                " visibility TEXT NOT NULL DEFAULT 'private',"
+                " share_geom TEXT,"
+                " share_token TEXT,"
+                " env TEXT)"
+            )
+        else:
+            cur.execute(
+                "CREATE TABLE IF NOT EXISTS catches ("
+                " id INTEGER PRIMARY KEY AUTOINCREMENT,"
+                " user_id INTEGER NOT NULL,"
+                " created_at TEXT NOT NULL,"
+                " occurred_at TEXT NOT NULL,"
+                " river_name TEXT,"
+                " river_site_no TEXT,"
+                " lat REAL,"
+                " lon REAL,"
+                " species TEXT,"
+                " length_in REAL,"
+                " fly_used TEXT,"
+                " notes TEXT,"
+                " visibility TEXT NOT NULL DEFAULT 'private',"
+                " share_geom TEXT,"
+                " share_token TEXT,"
+                " env TEXT)"
+            )
+        cur.execute(
+            "CREATE INDEX IF NOT EXISTS idx_catches_user_time "
+            "ON catches(user_id, occurred_at)"
+        )
 
 
 def healthcheck() -> bool:
@@ -788,3 +837,141 @@ def claim_pins(device_owner: str, user_owner: str) -> int:
         n = cur.rowcount or 0
         conn.commit()
     return int(n)
+
+
+# -- Catch log (Phase 2) ----------------------------------------------
+
+_CATCH_COLS = ("id", "user_id", "created_at", "occurred_at", "river_name",
+               "river_site_no", "lat", "lon", "species", "length_in",
+               "fly_used", "notes", "visibility", "share_geom",
+               "share_token", "env")
+
+# User-editable fields (everything except identity, timestamps that are
+# set server-side, and the immutable env snapshot).
+_CATCH_EDITABLE = ("occurred_at", "river_name", "river_site_no", "lat",
+                   "lon", "species", "length_in", "fly_used", "notes")
+
+
+def _row_to_catch(row) -> dict:
+    out = {k: row[k] for k in _CATCH_COLS}
+    if out.get("env"):
+        try:
+            out["env"] = json.loads(out["env"])
+        except (ValueError, TypeError):
+            out["env"] = None
+    return out
+
+
+def add_catch(user_id: int, data: dict, env: dict | None) -> dict:
+    """Insert a catch for a user. `data` carries the user-supplied
+    fields; `env` is the server-built conditions snapshot."""
+    now = datetime.now(timezone.utc).isoformat()
+    cols = ["user_id", "created_at", "occurred_at", "river_name",
+            "river_site_no", "lat", "lon", "species", "length_in",
+            "fly_used", "notes", "visibility", "env"]
+    vals = [
+        user_id, now,
+        data.get("occurred_at") or now,
+        data.get("river_name"), data.get("river_site_no"),
+        data.get("lat"), data.get("lon"),
+        data.get("species"), data.get("length_in"),
+        data.get("fly_used"), data.get("notes"),
+        data.get("visibility") or "private",
+        json.dumps(env) if env is not None else None,
+    ]
+    placeholders = ",".join("?" for _ in cols)
+    with _conn() as conn:
+        cur = conn.cursor()
+        if _IS_PG:
+            cur.execute(
+                _ph(f"INSERT INTO catches ({','.join(cols)}) "
+                    f"VALUES ({placeholders}) RETURNING id"),
+                tuple(vals))
+            cid = cur.fetchone()["id"]
+        else:
+            cur.execute(
+                _ph(f"INSERT INTO catches ({','.join(cols)}) "
+                    f"VALUES ({placeholders})"),
+                tuple(vals))
+            cid = cur.lastrowid
+        conn.commit()
+    return get_catch(cid)
+
+
+def get_catch(catch_id: int) -> dict | None:
+    with _conn() as conn:
+        cur = conn.cursor()
+        cur.execute(
+            _ph(f"SELECT {','.join(_CATCH_COLS)} FROM catches WHERE id = ?"),
+            (catch_id,))
+        row = cur.fetchone()
+    return _row_to_catch(row) if row else None
+
+
+def list_catches(user_id: int, *, species: str | None = None,
+                 date_from: str | None = None, date_to: str | None = None,
+                 limit: int = 200) -> list[dict]:
+    """A user's catches, newest first, with optional filters."""
+    where = ["user_id = ?"]
+    params: list = [user_id]
+    if species:
+        where.append("species = ?")
+        params.append(species)
+    if date_from:
+        where.append("occurred_at >= ?")
+        params.append(date_from)
+    if date_to:
+        where.append("occurred_at <= ?")
+        params.append(date_to)
+    params.append(int(limit))
+    with _conn() as conn:
+        cur = conn.cursor()
+        cur.execute(
+            _ph(f"SELECT {','.join(_CATCH_COLS)} FROM catches "
+                f"WHERE {' AND '.join(where)} "
+                "ORDER BY occurred_at DESC, id DESC LIMIT ?"),
+            tuple(params))
+        rows = cur.fetchall()
+    return [_row_to_catch(r) for r in rows]
+
+
+def update_catch(catch_id: int, user_id: int, data: dict) -> dict | None:
+    """Update user-editable fields on a catch the user owns. The `env`
+    snapshot is immutable and never touched here. Returns the updated
+    catch, or None if it doesn't exist / isn't theirs."""
+    fields = [k for k in _CATCH_EDITABLE if k in data]
+    if not fields:
+        return get_catch(catch_id)
+    sets = ", ".join(f"{f} = ?" for f in fields)
+    params = [data[f] for f in fields] + [catch_id, user_id]
+    with _conn() as conn:
+        cur = conn.cursor()
+        cur.execute(
+            _ph(f"UPDATE catches SET {sets} "
+                "WHERE id = ? AND user_id = ?"),
+            tuple(params))
+        changed = cur.rowcount
+        conn.commit()
+    if not changed:
+        return None
+    return get_catch(catch_id)
+
+
+def delete_catch(catch_id: int, user_id: int) -> bool:
+    with _conn() as conn:
+        cur = conn.cursor()
+        cur.execute(
+            _ph("DELETE FROM catches WHERE id = ? AND user_id = ?"),
+            (catch_id, user_id))
+        deleted = cur.rowcount
+        conn.commit()
+    return bool(deleted)
+
+
+def count_catches(user_id: int) -> int:
+    with _conn() as conn:
+        cur = conn.cursor()
+        cur.execute(
+            _ph("SELECT COUNT(*) AS n FROM catches WHERE user_id = ?"),
+            (user_id,))
+        return int(cur.fetchone()["n"])

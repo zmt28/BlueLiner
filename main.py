@@ -31,6 +31,7 @@ from cache import LruTtl
 import hatches
 import stocking
 import db
+import enrichment
 
 
 logging.basicConfig(
@@ -524,6 +525,7 @@ def build_river_popup_html(river: dict) -> str:
                 {_hatch_section_html(river["hatch_zone"], river["active"], river["month"])}
                 {_stocked_block_html(river["stocked_waters"])}
                 {gauges_html}
+                <div class="bl-catch-cta"></div>
             </div>
         </div>
     """
@@ -1717,3 +1719,131 @@ async def api_pins_claim(request: Request):
     n = await asyncio.to_thread(
         db.claim_pins, device, f"user:{user['id']}")
     return {"claimed": n}
+
+
+# -- Catch log (Phase 2) ----------------------------------------------
+
+class _CatchIn(BaseModel):
+    occurred_at: str | None = None
+    river_name: str | None = None
+    river_site_no: str | None = None
+    lat: float | None = None
+    lon: float | None = None
+    species: str
+    length_in: float | None = None
+    fly_used: str | None = None
+    notes: str | None = None
+
+
+class _CatchPatch(BaseModel):
+    occurred_at: str | None = None
+    river_name: str | None = None
+    species: str | None = None
+    length_in: float | None = None
+    fly_used: str | None = None
+    notes: str | None = None
+
+
+def _require_user(request: Request) -> dict:
+    user = _session_user(request)
+    if not user:
+        raise HTTPException(status_code=401, detail="Sign in to log catches")
+    return user
+
+
+def _parse_when(occurred_at: str | None) -> datetime:
+    """Parse the client's occurred_at (ISO) into an aware UTC datetime;
+    fall back to now on anything unparseable."""
+    if occurred_at:
+        try:
+            dt = datetime.fromisoformat(occurred_at.replace("Z", "+00:00"))
+            return dt if dt.tzinfo else dt.replace(tzinfo=timezone.utc)
+        except (ValueError, TypeError):
+            pass
+    return datetime.now(timezone.utc)
+
+
+@app.get("/api/catches/enrichment-preview")
+async def api_enrichment_preview(
+    request: Request,
+    lat: float = Query(...), lon: float = Query(...),
+    site_no: str | None = Query(default=None),
+    river_name: str | None = Query(default=None),
+    occurred_at: str | None = Query(default=None),
+):
+    """Live conditions snapshot for the catch form's 'auto-captured'
+    block, before save. Requires sign-in (same surface as logging)."""
+    _require_user(request)
+    when = _parse_when(occurred_at)
+    env = await asyncio.to_thread(
+        enrichment.build_env, lat, lon, site_no, river_name, when)
+    return env
+
+
+@app.post("/api/catches", status_code=201)
+async def api_add_catch(body: _CatchIn, request: Request):
+    user = _require_user(request)
+    if not (body.species or "").strip():
+        raise HTTPException(status_code=422, detail="Species is required")
+    when = _parse_when(body.occurred_at)
+    # Build the authoritative env snapshot server-side at save time.
+    env = None
+    if body.lat is not None and body.lon is not None:
+        env = await asyncio.to_thread(
+            enrichment.build_env, body.lat, body.lon,
+            body.river_site_no, body.river_name, when)
+    data = body.model_dump()
+    data["occurred_at"] = when.isoformat()
+    data["species"] = body.species.strip()
+    catch = await asyncio.to_thread(db.add_catch, user["id"], data, env)
+    return catch
+
+
+@app.get("/api/catches")
+async def api_list_catches(
+    request: Request,
+    species: str | None = Query(default=None),
+    date_from: str | None = Query(default=None),
+    date_to: str | None = Query(default=None),
+    limit: int = Query(default=200, le=500),
+):
+    user = _require_user(request)
+    items = await asyncio.to_thread(
+        db.list_catches, user["id"], species=species,
+        date_from=date_from, date_to=date_to, limit=limit)
+    total = await asyncio.to_thread(db.count_catches, user["id"])
+    return {"total": total, "catches": items}
+
+
+@app.get("/api/catches/{catch_id}")
+async def api_get_catch(catch_id: int, request: Request):
+    user = _require_user(request)
+    catch = await asyncio.to_thread(db.get_catch, catch_id)
+    if not catch or catch["user_id"] != user["id"]:
+        raise HTTPException(status_code=404, detail="Catch not found")
+    return catch
+
+
+@app.patch("/api/catches/{catch_id}")
+async def api_update_catch(catch_id: int, body: _CatchPatch,
+                           request: Request):
+    user = _require_user(request)
+    data = {k: v for k, v in body.model_dump().items() if v is not None}
+    if "species" in data:
+        data["species"] = (data["species"] or "").strip()
+    if "occurred_at" in data:
+        data["occurred_at"] = _parse_when(data["occurred_at"]).isoformat()
+    updated = await asyncio.to_thread(
+        db.update_catch, catch_id, user["id"], data)
+    if not updated:
+        raise HTTPException(status_code=404, detail="Catch not found")
+    return updated
+
+
+@app.delete("/api/catches/{catch_id}", status_code=204)
+async def api_delete_catch(catch_id: int, request: Request):
+    user = _require_user(request)
+    ok = await asyncio.to_thread(db.delete_catch, catch_id, user["id"])
+    if not ok:
+        raise HTTPException(status_code=404, detail="Catch not found")
+    return Response(status_code=204)

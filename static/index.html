@@ -55,8 +55,7 @@
     <div id="account-menu" class="account-menu" hidden>
         <div class="account-menu-email" id="account-menu-email"></div>
         <button type="button" data-action="settings">Settings</button>
-        <button type="button" data-action="my-catches" disabled
-                title="Coming in Phase 2">My catches</button>
+        <button type="button" data-action="my-catches">My catches</button>
         <button type="button" data-action="logout">Sign out</button>
     </div>
 
@@ -115,6 +114,64 @@
                         data-close>Skip</button>
             </div>
         </div>
+    </div>
+
+    <!-- Catch form modal -->
+    <div id="catch-modal" class="modal" hidden>
+        <div class="modal-backdrop" data-close></div>
+        <div class="modal-card">
+            <button class="modal-close" type="button" data-close
+                    aria-label="Close">&times;</button>
+            <h2>Log a catch</h2>
+            <form id="catch-form">
+                <label class="cf-label" for="cf-river">River</label>
+                <input id="cf-river" type="text" maxlength="120" required>
+
+                <label class="cf-label" for="cf-when">When</label>
+                <input id="cf-when" type="datetime-local">
+
+                <div class="cf-row">
+                    <div class="cf-grow">
+                        <label class="cf-label" for="cf-species">Species</label>
+                        <input id="cf-species" type="text" list="cf-species-list"
+                               maxlength="60" required placeholder="Brown Trout">
+                        <datalist id="cf-species-list"></datalist>
+                    </div>
+                    <div class="cf-len">
+                        <label class="cf-label" for="cf-length">Length (in)</label>
+                        <input id="cf-length" type="number" step="0.1" min="0"
+                               max="120" inputmode="decimal">
+                    </div>
+                </div>
+
+                <label class="cf-label" for="cf-fly">Fly / lure</label>
+                <input id="cf-fly" type="text" maxlength="80"
+                       placeholder="Olive Woolly Bugger #10">
+
+                <label class="cf-label" for="cf-notes">Notes</label>
+                <textarea id="cf-notes" rows="2" maxlength="500"></textarea>
+
+                <div class="cf-enrich">
+                    <div class="cf-enrich-title">Auto-captured</div>
+                    <div id="cf-enrich-body" class="cf-enrich-body"></div>
+                    <div class="modal-fine">Saved automatically so you can spot
+                        what conditions produce fish.</div>
+                </div>
+
+                <div id="cf-error" class="cf-error"></div>
+                <button id="cf-save" type="submit">Save catch</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- My catches (full-screen panel) -->
+    <div id="catches-panel" class="catches-panel" hidden>
+        <div class="catches-head">
+            <button id="catches-back" type="button" class="catches-back">&larr; Map</button>
+            <div class="catches-title">My catches</div>
+            <div id="catches-count" class="catches-count"></div>
+        </div>
+        <div id="catches-list" class="catches-list"></div>
     </div>
 
     <!-- Settings modal -->
