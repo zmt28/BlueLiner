@@ -122,10 +122,11 @@ function sparkline(series) {
   );
 }
 
-function wireTrend(e) {
-  const root = e.popup.getElement();
+// Wire each gauge's on-demand "show flow trend" button within `root`
+// (the river detail panel body). The primary gauge's chart is loaded
+// eagerly elsewhere; this covers secondary gauges.
+function wireTrend(root) {
   if (!root) return;
-  // A river popup has one trend button per gauge.
   root.querySelectorAll(".bl-trend-btn").forEach((btn) => {
     if (btn.dataset.wired) return;
     btn.dataset.wired = "1";
@@ -143,33 +144,20 @@ function wireTrend(e) {
         if (box) box.innerHTML = '<div class="bl-trend-msg">Trend unavailable.</div>';
       }
       btn.style.display = "none";
-      e.popup.update();
     };
   });
 }
 
-// Combined popup-open handler: existing trend wiring + the catch CTA.
-function onPopupOpen(e) {
-  wireTrend(e);
-  wireCatch(e);
-}
-
-// Inject the "Log a catch" CTA into a river popup, wired to that
-// river's context. Signed-out users get a sign-in nudge instead.
-function wireCatch(e) {
-  const root = e.popup.getElement();
-  if (!root) return;
-  const river = e.target && e.target._blRiver;
-  if (!river) return;
+// Inject the "Log a catch" CTA into the detail panel `root`, wired to
+// `river`. Signed-out users get a sign-in nudge instead.
+function wireCatch(root, river) {
+  if (!root || !river) return;
   let slot = root.querySelector(".bl-catch-cta");
   if (!slot) {
-    // Older cached popup HTML without the placeholder: append one so
-    // the feature still works before snapshots refresh.
-    const content = root.querySelector(".leaflet-popup-content");
-    if (!content) return;
+    // Older cached popup HTML without the placeholder: append one.
     slot = document.createElement("div");
     slot.className = "bl-catch-cta";
-    content.appendChild(slot);
+    root.appendChild(slot);
   }
   if (slot.dataset.wired) return;
   slot.dataset.wired = "1";
@@ -189,6 +177,81 @@ function wireCatch(e) {
     a.onclick = () => openModal("login-modal");
     slot.appendChild(a);
   }
+}
+
+// -- River detail panel (drawer / bottom sheet) ----------------------
+
+let _panelHideTimer = null;
+let _selectedRiver = null;        // { layer, base } for highlight restore
+let _lastPanelOpenTs = 0;
+
+function openRiverPanel(river, layer, baseStyle) {
+  const panel = document.getElementById("river-panel");
+  const body = document.getElementById("river-panel-body");
+  if (!panel || !body) return;
+  clearTimeout(_panelHideTimer);
+  body.innerHTML = river.popup_html || "";
+  body.scrollTop = 0;
+  panel.hidden = false;
+  requestAnimationFrame(() => panel.classList.add("open"));
+  _lastPanelOpenTs = Date.now();
+  wireTrend(body);
+  wireCatch(body, river);
+  autoLoadFlowChart(body);
+  highlightRiver(layer, baseStyle);
+}
+
+function closeRiverPanel() {
+  const panel = document.getElementById("river-panel");
+  if (!panel || panel.hidden) return;
+  panel.classList.remove("open");
+  _panelHideTimer = setTimeout(() => { panel.hidden = true; }, 240);
+  clearRiverHighlight();
+}
+
+async function autoLoadFlowChart(root) {
+  const box = root.querySelector(".bl-flow-chart[data-site]");
+  if (!box || box.dataset.loaded) return;
+  box.dataset.loaded = "1";
+  const site = box.getAttribute("data-site");
+  box.innerHTML = '<div class="bl-trend-msg">Loading flow chart&hellip;</div>';
+  try {
+    const d = await fetch(
+      `/api/history?site_no=${encodeURIComponent(site)}`
+    ).then((r) => r.json());
+    box.innerHTML = sparkline(d.series);
+  } catch (_) {
+    box.innerHTML = '<div class="bl-trend-msg">Flow chart unavailable.</div>';
+  }
+}
+
+function highlightRiver(layer, baseStyle) {
+  clearRiverHighlight();
+  if (!layer || !layer.setStyle) return;
+  _selectedRiver = { layer, base: baseStyle || null };
+  layer.setStyle({ weight: 8, opacity: 0.95 });
+}
+
+function clearRiverHighlight() {
+  if (_selectedRiver && _selectedRiver.layer.setStyle && _selectedRiver.base) {
+    _selectedRiver.layer.setStyle(_selectedRiver.base);
+  }
+  _selectedRiver = null;
+}
+
+function wireRiverPanel() {
+  const panel = document.getElementById("river-panel");
+  if (!panel) return;
+  panel.querySelectorAll("[data-close]").forEach((el) =>
+    el.addEventListener("click", closeRiverPanel));
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") closeRiverPanel();
+  });
+  // Clicking empty map closes the panel. Guarded so the same click that
+  // opened it (via a layer) doesn't immediately close it.
+  map.on("click", () => {
+    if (Date.now() - _lastPanelOpenTs > 300) closeRiverPanel();
+  });
 }
 
 // -- Gauges --
@@ -250,8 +313,8 @@ function renderRivers() {
       `<br><span style="color:${r.color}">${esc(r.label)}</span>`
     );
     m._blRiver = r;
-    m.bindPopup(r.popup_html, popupOpts());
-    m.on("popupopen", onPopupOpen);
+    m.on("click", () => openRiverPanel(
+      r, m, { weight: 2, opacity: 1 }));
     riversLayer.addLayer(m);
   }
 }
@@ -304,8 +367,8 @@ async function fetchRiverLine(r) {
         style: { color: r.color, weight: 5, opacity: 0.6 },
       });
       line._blRiver = r;
-      line.bindPopup(r.popup_html, popupOpts());
-      line.on("popupopen", onPopupOpen);
+      line.on("click", () => openRiverPanel(
+        r, line, { color: r.color, weight: 5, opacity: 0.6 }));
       riverLineBySite.set(r.site_no, line);   // renderRivers() places it
     }
     riverGeomLoaded.add(r.site_no);
@@ -437,7 +500,11 @@ async function loadRiverLines(qs) {
     const r = riverBySite.get(sn);
     const color = (r && r.color) || g.color || "#2c6fbf";
     const line = L.geoJSON(g, { style: { color, weight: 5, opacity: 0.6 } });
-    if (r) { line._blRiver = r; line.bindPopup(r.popup_html, popupOpts()); line.on("popupopen", onPopupOpen); }
+    if (r) {
+      line._blRiver = r;
+      line.on("click", () => openRiverPanel(
+        r, line, { color, weight: 5, opacity: 0.6 }));
+    }
     riverLineBySite.set(sn, line);
     riverGeomLoaded.add(sn);              // per-site fallback now skips it
   }
@@ -642,6 +709,7 @@ async function init() {
   currentSt = state;
   sel.value = state;
   map.setView(STATES[state].center, STATE_ZOOM);
+  wireRiverPanel();
   loadRivers(state);
   loadPins();
   await initAuth();
