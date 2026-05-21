@@ -37,7 +37,7 @@ logging.basicConfig(
     level=os.environ.get("LOG_LEVEL", "INFO").upper(),
     format="%(asctime)s %(levelname)s %(name)s %(message)s",
 )
-logger = logging.getLogger("bluelines")
+logger = logging.getLogger("blueliner")
 
 # How often the background refresher re-precomputes focused states, and
 # the age past which a served snapshot is also refreshed in the
@@ -1642,7 +1642,7 @@ def _consume_error_html() -> str:
         "<div class='warn'>&#9888;</div>"
         "<h3 style='margin:12px 0 8px'>This sign-in link is no longer valid</h3>"
         "<p style='color:#666'>It may have expired or already been used.</p>"
-        "<a class='btn' href='/'>Back to BlueLines</a>"
+        "<a class='btn' href='/'>Back to Blueliner</a>"
         "</div>")
 
 

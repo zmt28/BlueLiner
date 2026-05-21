@@ -20,7 +20,7 @@ from urllib.parse import urlsplit, parse_qs
 import geopandas
 import httpx
 
-USER_AGENT = "BlueLines/1.0 (+https://github.com/zmt28/BlueLines)"
+USER_AGENT = "Blueliner/1.0 (+https://blueliner.app)"
 
 _REQUEST_TIMEOUT = 15.0   # per HTTP request
 _TOTAL_BUDGET = 90.0      # whole pagination loop (cached + backgrounded)

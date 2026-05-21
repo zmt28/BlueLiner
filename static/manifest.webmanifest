@@ -1,6 +1,6 @@
 {
-  "name": "BlueLines -- Stream Conditions",
-  "short_name": "BlueLines",
+  "name": "Blueliner -- Stream Conditions",
+  "short_name": "Blueliner",
   "description": "Real-time stream conditions for fly fishermen.",
   "start_url": "/map",
   "scope": "/",
