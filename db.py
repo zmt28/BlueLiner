@@ -1,5 +1,5 @@
 """
-User-content datastore for BlueLines.
+User-content datastore for Blueliner.
 
 The *only* place that holds SQL. Two backends, selected at import time:
 
@@ -25,8 +25,8 @@ _IS_PG = DATABASE_URL.startswith(("postgres://", "postgresql://"))
 # SQLite path (used only when not on Postgres). Kept as a module global so
 # tests can monkeypatch it.
 DB_PATH = os.environ.get(
-    "BLUELINES_DB",
-    os.path.join(os.path.dirname(__file__), "bluelines.db"),
+    "BLUELINER_DB",
+    os.path.join(os.path.dirname(__file__), "blueliner.db"),
 )
 
 if _IS_PG:

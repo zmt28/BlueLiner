@@ -1,15 +1,15 @@
-# BlueLines
+# Blueliner
 
 A real-time stream condition monitor for fly fishermen.
 
-![BlueLines Demo](bluelines-demo.gif)
+![Blueliner Demo](blueliner-demo.gif)
 
 ## The Problem
 
 Fly fishing is deeply condition-dependent. Flow rate, water temperature, and discharge
 levels determine whether a river is worth fishing on any given day. Current tools for
 checking conditions -- the USGS water data website, scattered fishing forums -- are
-fragmented, slow, and not designed for quick decision-making. BlueLines consolidates
+fragmented, slow, and not designed for quick decision-making. Blueliner consolidates
 live sensor data from USGS monitoring stations into a single, fast, map-based view
 so you can check conditions before you drive to the water.
 
@@ -41,7 +41,7 @@ so you can check conditions before you drive to the water.
 
 ## Built with AI
 
-BlueLines was built using Claude Code as a development accelerator. Every line of code
+Blueliner was built using Claude Code as a development accelerator. Every line of code
 was written and reviewed by hand -- Claude Code was used to navigate unfamiliar APIs,
 debug geospatial data processing, and iterate faster. The result is code I understand
 and own completely.
@@ -54,7 +54,7 @@ uvicorn main:app --reload
 ```
 
 With no `DATABASE_URL` set, pins are stored in a local SQLite file
-(`bluelines.db`, override with `BLUELINES_DB`).
+(`blueliner.db`, override with `BLUELINER_DB`).
 
 ## Deploying (24/7 on Render)
 
@@ -129,7 +129,7 @@ Required GitHub repo secrets (Settings -> Secrets and variables -> Actions):
 
 | Secret | Value |
 |--------|-------|
-| `BLUELINES_URL` | Render service URL, e.g. `https://bluelines.onrender.com` (no trailing slash) |
+| `BLUELINES_URL` | Render service URL, e.g. `https://blueliner.app` (no trailing slash). _(Secret name kept as-is to avoid breaking the existing Actions secret; rename to `BLUELINER_URL` only if you also recreate the repo secret.)_ |
 | `REFRESH_TOKEN` | The token Render generated for `REFRESH_TOKEN` (read it from the Render dashboard) |
 
 Workflows can also be triggered by hand from the Actions tab
@@ -165,7 +165,7 @@ resort.
 | Var | Default | Purpose |
 |-----|---------|---------|
 | `DATABASE_URL` | _(unset)_ | Postgres URL; absent ⇒ SQLite |
-| `BLUELINES_DB` | `./bluelines.db` | SQLite path (when no `DATABASE_URL`) |
+| `BLUELINER_DB` | `./blueliner.db` | SQLite path (when no `DATABASE_URL`) |
 | `WEB_CONCURRENCY` | `1` | gunicorn workers (caches are per-worker) |
 | `LOG_LEVEL` | `INFO` | Root log level |
 | `PIN_RATE_MAX` | `20` | Max pin creates / IP / minute |
