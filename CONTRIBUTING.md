@@ -98,12 +98,17 @@ snap_url)`), rerun the script, and commit the new CSV.
 
 ## Clickable-streams network (`data/nhdplus/clickable_streams.geojson.gz`)
 
-The geometry layer of fishing-relevant streams ("bluelining" network):
-NHDPlusV2 flowlines at `StreamOrder >= 3`, simplified, in EPSG:4326,
-each feature carrying `comid`, `levelpathid`, `gnis_name`,
-`streamorder`, `lengthkm`. Grouped by `levelpathid` at runtime so a
-whole named river (the entire Monocacy, not just a gauge reach) is one
-clickable unit. ~74K flowlines / ~4 MB gzipped for HUC-02 + HUC-05.
+The geometry layer of fishing-relevant streams ("bluelining" network).
+A reach is clickable if any of: StreamOrder >= 3; state-designated
+trout water (any order); order >= 3 tributary of trout water; named
+river order >= 5. Each feature carries `comid`, `levelpathid`,
+`gnis_name`, `streamorder`, `lengthkm`, `trout_class`. Grouped by
+`levelpathid` at runtime so a whole named river is one clickable unit.
+~104K flowlines / ~6 MB gzipped for HUC-02 + HUC-05.
+
+`trout_class` values: `wild_reproduction` (PA PASDA "With Tributaries"
++ VA DWR), `class_a` (PA), `wilderness` (PA), `stocked` (PA),
+`designated` (MD DNR), or `null` when no trout designation applies.
 
 Don't hand-edit. Regenerate by running:
 
@@ -112,12 +117,12 @@ pip install dbfread py7zr httpx geopandas shapely   # dev-only deps
 python scripts/build_clickable_streams.py
 ```
 
-It downloads the NHDPlusV2 `NHDSnapshot` (flowline geometry) +
-`NHDPlusAttributes` (StreamOrder / LevelPathID) for the configured
-regions, filters + simplifies, and writes the gzipped GeoJSON. Tune
-`MIN_ORDER` / `SIMPLIFY_TOL` or add a region via `REGIONS` at the top
-of the script. A later pass folds in state-designated wild-trout
-streams below `MIN_ORDER` (PASDA / VA DWR / MD DNR) with trout class.
+The script downloads NHDPlusV2 flowline geometry + routing attributes
+(Hydroseq / DnHydroseq / StreamOrder / LevelPathID), fetches state
+trout-stream GIS from PA PASDA, VA DWR, and MD DNR, spatial-joins
+trout polylines to NHD COMIDs, computes upstream tributaries via the
+NHDPlus topology graph, and writes the gzipped GeoJSON. A PA
+wild-trout validation report prints at the end.
 
 ## Validating
 
