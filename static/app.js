@@ -220,6 +220,7 @@ function closeRiverPanel() {
   panel.classList.remove("open");
   _panelHideTimer = setTimeout(() => { panel.hidden = true; }, 240);
   clearRiverHighlight();
+  clearStreamHighlight();
 }
 
 async function autoLoadFlowChart(root) {
@@ -288,7 +289,9 @@ function streamColor(p) {
   return STREAM_CLASS_COLORS[p.trout_class] || "#8a9bb0";
 }
 function streamWeight(p) {
-  return Math.max(2, Math.min(6.5, (p.streamorder || 3) * 0.85));
+  // Floor of 4px keeps even order-1 headwaters a tappable target (a 2px
+  // line is nearly impossible to hit on touch). Scales up with order.
+  return Math.max(4, Math.min(7, (p.streamorder || 3) * 0.9));
 }
 function streamStyle(p) {
   return { color: streamColor(p), weight: streamWeight(p), opacity: 0.8 };
@@ -337,8 +340,33 @@ function clearStreamHighlight() {
   _selStreamLpid = null;
 }
 
+function _normName(s) { return (s || "").trim().toLowerCase(); }
+
+// A clickable-network reach belongs to a gauged river when a loaded river
+// shares its name. Gauged rivers are keyed by gnis name (not levelpathid),
+// so we match on name; when several rivers share a name (common creek
+// names), pick the one whose representative point is nearest the click.
+function _gaugedRiverFor(p, latlng) {
+  const name = _normName(p.gnis_name);
+  if (!name) return null;
+  const matches = allRivers.filter((r) => r.site_no && _normName(r.name) === name);
+  if (matches.length <= 1 || !latlng) return matches[0] || null;
+  let best = matches[0], bestD = Infinity;
+  for (const r of matches) {
+    const dy = r.lat - latlng.lat, dx = r.lon - latlng.lng;
+    const d = dy * dy + dx * dx;
+    if (d < bestD) { bestD = d; best = r; }
+  }
+  return best;
+}
+
 function onStreamClick(p, latlng) {
-  highlightStream(p.levelpathid);
+  highlightStream(p.levelpathid);   // whole-river emphasis, gauged or not
+  // Unify the two layers: if this reach is part of a gauged river, open
+  // that river's rich panel instead of the generic ungauged card, so the
+  // whole river behaves as one thing regardless of where you click.
+  const gauged = _gaugedRiverFor(p, latlng);
+  if (gauged) { openRiverPanel(gauged, null, null); return; }
   const panel = document.getElementById("river-panel");
   const body = document.getElementById("river-panel-body");
   clearTimeout(_panelHideTimer);

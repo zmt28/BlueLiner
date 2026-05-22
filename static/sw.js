@@ -5,7 +5,7 @@
 // deploys propagate immediately (cache-first here meant returning browsers
 // ran stale JS forever). Only the immutable vendored Leaflet + icons are
 // cache-first. Bump CACHE on any caching-strategy change.
-const CACHE = "blueliner-v5";
+const CACHE = "blueliner-v6";
 const SHELL = [
   "/map",
   "/static/app.css",
