@@ -50,6 +50,8 @@ _REFRESH_INTERVAL = float(os.environ.get("REFRESH_INTERVAL", str(45 * 60)))
 # NHDPlusV2 VAA lookup -- bundled with the repo, loaded once at startup.
 _VAA_BUNDLED_PATH = os.path.join(os.path.dirname(__file__), "data",
                                  "nhdplus", "vaa.csv.gz")
+_CLICKABLE_BUNDLED_PATH = os.path.join(os.path.dirname(__file__), "data",
+                                       "nhdplus", "clickable_streams.geojson.gz")
 
 # Module-level caches. All bounded (LruTtl) -- unbounded per-state dicts
 # were the runtime memory growth behind the 512MB OOM. Both are also
@@ -107,6 +109,15 @@ async def lifespan(app: FastAPI):
         except Exception as exc:
             logger.warning("NHDPlus VAA load failed: %s "
                            "(falling back to gnis filter)", exc)
+        # Clickable-stream network (Phase B). ~100K flowlines from the
+        # bundled GeoJSON, served by viewport bbox + zoom tier. Idempotent.
+        try:
+            n = await asyncio.to_thread(
+                db.bulk_load_clickable_streams, _CLICKABLE_BUNDLED_PATH)
+            if n:
+                logger.info("Clickable streams loaded: %d rows", n)
+        except Exception as exc:
+            logger.warning("Clickable-streams load failed: %s", exc)
 
     # The refresher is what makes the map instant: it keeps each focused
     # state's snapshot + flowline geometry warm in Postgres so requests
@@ -1116,6 +1127,51 @@ async def api_river_lines(
     if missing:
         _schedule_lines_backfill(missing)  # prioritize the viewed state
     return _cached_json(request, payload, max_age=300)
+
+
+# Per-zoom StreamOrder floor for the clickable network: zoomed out shows
+# only big rivers; zooming in reveals progressively smaller streams down
+# to the order-1/2 wild-trout headwaters. Mirrors the prototype tiers.
+def _min_order_for_zoom(zoom: int) -> int:
+    if zoom >= 13:
+        return 1
+    if zoom >= 12:
+        return 2
+    if zoom >= 10:
+        return 3
+    if zoom >= 9:
+        return 4
+    if zoom >= 8:
+        return 5
+    return 6
+
+
+@app.get("/api/clickable_streams")
+async def api_clickable_streams(
+    request: Request,
+    bbox: str = Query(..., description="west,south,east,north"),
+    zoom: int = Query(default=11, ge=0, le=22),
+):
+    """Clickable-stream network for the viewport, filtered to the zoom's
+    StreamOrder tier. A pure DB read of the bundled network; returns a
+    GeoJSON FeatureCollection with per-stream props (name, order, trout
+    class, levelpathid). The client groups by levelpathid for whole-river
+    selection."""
+    w, s, e, n = _parse_bbox(bbox)
+    min_order = _min_order_for_zoom(zoom)
+    rows = await asyncio.to_thread(
+        db.query_clickable_streams, w, s, e, n, min_order)
+    features = [{
+        "type": "Feature",
+        "geometry": r["geometry"],
+        "properties": {
+            "comid": r["comid"], "levelpathid": r["levelpathid"],
+            "gnis_name": r["gnis_name"], "streamorder": r["streamorder"],
+            "trout_class": r["trout_class"],
+        },
+    } for r in rows]
+    payload = {"type": "FeatureCollection", "features": features}
+    return _cached_json(request, payload, max_age=600)
 
 
 _REFRESH_TOKEN = os.environ.get("REFRESH_TOKEN", "")

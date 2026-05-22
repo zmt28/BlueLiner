@@ -174,6 +174,34 @@ def init_db() -> None:
             "CREATE INDEX IF NOT EXISTS idx_vaa_levelpath "
             "ON nhdplus_vaa(levelpathid)"
         )
+        # Clickable-stream network (the "bluelining" layer). One row per
+        # NHDPlus flowline that's fishing-relevant (StreamOrder >= 3, a
+        # state-designated trout water, an order-3 tributary of trout
+        # water, or a named order-5+ river). Bulk-loaded once from
+        # data/nhdplus/clickable_streams.geojson.gz. Served by viewport
+        # bbox + zoom tier so the client never pulls all ~100K at once
+        # (the 512MB free tier can't hold them, and the client can't
+        # render them). geom is the GeoJSON geometry as a JSON string;
+        # min/max lon/lat are the precomputed bounding box for the
+        # overlap query.
+        cur.execute(
+            "CREATE TABLE IF NOT EXISTS clickable_streams ("
+            " comid BIGINT PRIMARY KEY,"
+            " levelpathid BIGINT,"
+            " gnis_name TEXT,"
+            " streamorder INTEGER,"
+            " trout_class TEXT,"
+            " min_lon REAL, min_lat REAL, max_lon REAL, max_lat REAL,"
+            " geom TEXT NOT NULL)"
+        )
+        cur.execute(
+            "CREATE INDEX IF NOT EXISTS idx_clk_order "
+            "ON clickable_streams(streamorder)"
+        )
+        cur.execute(
+            "CREATE INDEX IF NOT EXISTS idx_clk_lon "
+            "ON clickable_streams(min_lon, max_lon)"
+        )
         # Real user accounts (Phase 1). Magic-link auth: no passwords
         # to manage. `display_name` defaults to the email's local part
         # at first sign-in; `deleted_at` enables soft delete so
@@ -592,6 +620,124 @@ def _bulk_load_vaa_sqlite(csv_gz_path: str) -> int:
         _flush()
         conn.commit()
         return total
+
+
+# -- Clickable-stream network (Phase B) -------------------------------
+
+_CLK_COLS = ("comid", "levelpathid", "gnis_name", "streamorder",
+             "trout_class", "min_lon", "min_lat", "max_lon", "max_lat",
+             "geom")
+
+
+def clickable_loaded() -> bool:
+    with _conn() as conn:
+        cur = conn.cursor()
+        cur.execute("SELECT 1 FROM clickable_streams LIMIT 1")
+        return cur.fetchone() is not None
+
+
+def _feature_bbox(coords, gtype) -> tuple:
+    pts = coords if gtype == "LineString" else [p for part in coords for p in part]
+    lons = [p[0] for p in pts]
+    lats = [p[1] for p in pts]
+    return min(lons), min(lats), max(lons), max(lats)
+
+
+def bulk_load_clickable_streams(geojson_gz_path: str) -> int:
+    """Ingest the clickable-stream network from the bundled gzipped
+    GeoJSON. Idempotent (skips when populated). One-time parse of the
+    FeatureCollection at first boot, then batched inserts. Returns rows
+    inserted."""
+    import gzip
+    import json
+
+    if clickable_loaded():
+        return 0
+    if not os.path.exists(geojson_gz_path):
+        return 0
+    with gzip.open(geojson_gz_path, "rt", encoding="utf-8") as f:
+        fc = json.load(f)
+    feats = fc.get("features", [])
+
+    placeholders = ",".join("?" for _ in _CLK_COLS)
+    insert = (f"INSERT OR IGNORE INTO clickable_streams "
+              f"({','.join(_CLK_COLS)}) VALUES ({placeholders})") if not _IS_PG \
+        else (f"INSERT INTO clickable_streams ({','.join(_CLK_COLS)}) "
+              f"VALUES ({placeholders}) ON CONFLICT (comid) DO NOTHING")
+    insert = _ph(insert)
+
+    batch: list[tuple] = []
+    total = 0
+    with _conn() as conn:
+        cur = conn.cursor()
+
+        def _flush():
+            nonlocal total
+            if not batch:
+                return
+            cur.executemany(insert, batch)
+            total += len(batch)
+            batch.clear()
+
+        for feat in feats:
+            geom = feat.get("geometry") or {}
+            coords = geom.get("coordinates")
+            gtype = geom.get("type")
+            if not coords or gtype not in ("LineString", "MultiLineString"):
+                continue
+            p = feat.get("properties", {})
+            comid = p.get("comid")
+            if comid is None:
+                continue
+            try:
+                w, s, e, n = _feature_bbox(coords, gtype)
+            except (ValueError, TypeError, IndexError):
+                continue
+            batch.append((
+                int(comid),
+                int(p["levelpathid"]) if p.get("levelpathid") else None,
+                p.get("gnis_name"),
+                int(p["streamorder"]) if p.get("streamorder") is not None else None,
+                p.get("trout_class"),
+                w, s, e, n,
+                json.dumps(geom, separators=(",", ":")),
+            ))
+            if len(batch) >= 4000:
+                _flush()
+        _flush()
+        conn.commit()
+    return total
+
+
+def query_clickable_streams(west: float, south: float, east: float,
+                            north: float, min_order: int = 1,
+                            limit: int = 4000) -> list[dict]:
+    """Clickable streams whose bounding box overlaps the viewport and
+    whose StreamOrder >= min_order (the zoom tier). Capped for safety."""
+    import json
+    with _conn() as conn:
+        cur = conn.cursor()
+        cur.execute(
+            _ph("SELECT comid, levelpathid, gnis_name, streamorder,"
+                " trout_class, geom FROM clickable_streams"
+                " WHERE streamorder >= ?"
+                " AND max_lon >= ? AND min_lon <= ?"
+                " AND max_lat >= ? AND min_lat <= ?"
+                " ORDER BY streamorder DESC LIMIT ?"),
+            (int(min_order), west, east, south, north, int(limit)))
+        rows = cur.fetchall()
+    out = []
+    for r in rows:
+        try:
+            geom = json.loads(r["geom"])
+        except (ValueError, TypeError):
+            continue
+        out.append({
+            "comid": r["comid"], "levelpathid": r["levelpathid"],
+            "gnis_name": r["gnis_name"], "streamorder": r["streamorder"],
+            "trout_class": r["trout_class"], "geometry": geom,
+        })
+    return out
 
 
 _STATS_MAX_AGE = timedelta(days=30)
