@@ -73,8 +73,21 @@ const riverLinesLayer = L.layerGroup().addTo(map);
 const riversLayer = L.layerGroup().addTo(map);
 const pinsLayer = L.layerGroup().addTo(map);
 
+// The "bluelining" clickable-stream network: fishing-relevant streams
+// (trout water + their tributaries + named rivers) served per-viewport
+// and zoom tier from /api/clickable_streams. Styled by streamStyle()
+// (declaration-hoisted, so referencing it here is fine).
+const clickableLayer = L.geoJSON(null, {
+  style: (f) => streamStyle(f.properties),
+  onEachFeature: (f, l) => l.on("click", (e) => {
+    L.DomEvent.stop(e);
+    onStreamClick(f.properties, e.latlng);
+  }),
+}).addTo(map);
+
 // Trout-stream lines are heavy; off by default (toggle in the control).
 L.control.layers(null, {
+  "Fishable streams": clickableLayer,
   "Streams (USGS)": hydroLayer,
   "Trout Streams": troutLayer,
   "Saved Pins": pinsLayer,
@@ -253,6 +266,141 @@ function wireRiverPanel() {
     if (Date.now() - _lastPanelOpenTs > 300) closeRiverPanel();
   });
 }
+
+// -- Clickable-stream network (Phase B) ------------------------------
+
+const STREAM_MIN_ZOOM = 9;          // below this, viewport is too large
+const STREAM_CLASS_COLORS = {
+  class_a: "#b8860b", wilderness: "#117a65", wild_reproduction: "#1e8449",
+  stocked: "#2c6fbf", designated: "#27ae60",
+};
+const STREAM_CLASS_LABEL = {
+  class_a: "Class A wild trout", wilderness: "Wilderness trout",
+  wild_reproduction: "Wild reproduction", stocked: "Stocked trout",
+  designated: "Designated trout",
+};
+// "trout" colors by class; "conditions" greys the network so the
+// gauged condition colors (green/yellow/red) read on top (Decision C).
+let streamColorMode = "trout";
+
+function streamColor(p) {
+  if (streamColorMode === "conditions") return "#9aa7b8";
+  return STREAM_CLASS_COLORS[p.trout_class] || "#8a9bb0";
+}
+function streamWeight(p) {
+  return Math.max(2, Math.min(6.5, (p.streamorder || 3) * 0.85));
+}
+function streamStyle(p) {
+  return { color: streamColor(p), weight: streamWeight(p), opacity: 0.8 };
+}
+
+let _streamReqId = 0;
+async function loadClickableStreams() {
+  if (!map.hasLayer(clickableLayer)) return;       // toggled off
+  if (map.getZoom() < STREAM_MIN_ZOOM) { clickableLayer.clearLayers(); return; }
+  const b = map.getBounds();
+  if (b.getEast() - b.getWest() > 6 || b.getNorth() - b.getSouth() > 6) return;
+  const bbox = [b.getWest(), b.getSouth(), b.getEast(), b.getNorth()]
+    .map((x) => x.toFixed(4)).join(",");
+  const reqId = ++_streamReqId;
+  try {
+    const fc = await fetch(
+      `/api/clickable_streams?bbox=${bbox}&zoom=${map.getZoom()}`
+    ).then((r) => r.json());
+    if (reqId !== _streamReqId) return;            // a newer move superseded us
+    clickableLayer.clearLayers();
+    clickableLayer.addData(fc);
+  } catch (_) { /* transient; next moveend retries */ }
+}
+
+function restyleStreams() {
+  clickableLayer.setStyle((f) => streamStyle(f.properties));
+}
+
+// Highlight every rendered reach sharing the clicked stream's LevelPathID
+// (whole-river emphasis), restoring on the next selection / close.
+let _selStreamLpid = null;
+function highlightStream(lpid) {
+  clearStreamHighlight();
+  _selStreamLpid = lpid;
+  clickableLayer.eachLayer((l) => {
+    if (l.feature && l.feature.properties.levelpathid === lpid) {
+      l.setStyle({ weight: 8, color: "#e74c3c", opacity: 0.95 });
+    }
+  });
+}
+function clearStreamHighlight() {
+  if (_selStreamLpid == null) return;
+  clickableLayer.eachLayer((l) => {
+    if (l.feature) l.setStyle(streamStyle(l.feature.properties));
+  });
+  _selStreamLpid = null;
+}
+
+function onStreamClick(p, latlng) {
+  highlightStream(p.levelpathid);
+  const panel = document.getElementById("river-panel");
+  const body = document.getElementById("river-panel-body");
+  clearTimeout(_panelHideTimer);
+  const cls = p.trout_class;
+  const label = STREAM_CLASS_LABEL[cls] || "No trout designation";
+  body.innerHTML =
+    `<div class="bl-card"><div class="bl-card-head">` +
+    `<div style="font-size:18px;font-weight:700;color:#1a1a2e">${esc(p.gnis_name || "Unnamed stream")}</div>` +
+    `<span class="stream-badge" style="background:${esc(streamColor(p))}">${esc(label)}</span>` +
+    `<span class="stream-badge" style="background:#64748b">Order ${esc(p.streamorder)}</span>` +
+    `<div class="bl-summary">Ungauged reach &mdash; no live USGS flow here. Showing what we know.</div>` +
+    `</div><div class="bl-card-body">` +
+    `<div class="bl-catch-cta"></div>` +
+    `<details class="bl-section bl-hatch"><summary>Hatching now</summary>` +
+    `<div class="bl-section-body">Hatch guidance for this reach's zone lands with the ungauged-card data wire-up.</div></details>` +
+    `<details class="bl-section" open><summary>Trout</summary>` +
+    `<div class="bl-section-body">${esc(label)}${cls ? " (state designation)" : ""}.</div></details>` +
+    `<details class="bl-section"><summary>Access &amp; land</summary>` +
+    `<div class="bl-section-body">Access points + public/private land coming in the TroutRoutes-depth phase.</div></details>` +
+    `<details class="bl-section"><summary>Conditions</summary>` +
+    `<div class="bl-section-body">No gauge on this reach. Nearest downstream gauge could provide context.</div></details>` +
+    `</div></div>`;
+  body.scrollTop = 0;
+  panel.hidden = false;
+  requestAnimationFrame(() => panel.classList.add("open"));
+  _lastPanelOpenTs = Date.now();
+  // Catch CTA: the clicked point is a reasonable catch location for an
+  // ungauged stream (no representative gauge to attach to).
+  wireCatch(body, {
+    name: p.gnis_name, site_no: null,
+    lat: latlng ? latlng.lat : null, lon: latlng ? latlng.lng : null,
+  });
+}
+
+// Coloring-mode toggle (Decision C): Conditions vs Trout class.
+const StreamModeControl = L.Control.extend({
+  options: { position: "topright" },
+  onAdd() {
+    const div = L.DomUtil.create("div", "stream-mode");
+    div.innerHTML =
+      `<button data-mode="trout" class="on">Trout class</button>` +
+      `<button data-mode="conditions">Conditions</button>`;
+    L.DomEvent.disableClickPropagation(div);
+    div.querySelectorAll("button").forEach((b) =>
+      b.addEventListener("click", () => {
+        streamColorMode = b.dataset.mode;
+        div.querySelectorAll("button").forEach((x) =>
+          x.classList.toggle("on", x === b));
+        restyleStreams();
+      }));
+    return div;
+  },
+});
+map.addControl(new StreamModeControl());
+
+// Re-fetch the network whenever the view settles or the layer is toggled.
+let _streamTimer = null;
+map.on("moveend", () => {
+  clearTimeout(_streamTimer);
+  _streamTimer = setTimeout(loadClickableStreams, 350);
+});
+map.on("overlayadd", (e) => { if (e.layer === clickableLayer) loadClickableStreams(); });
 
 // -- Gauges --
 
