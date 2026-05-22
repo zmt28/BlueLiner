@@ -289,7 +289,9 @@ function streamColor(p) {
   return STREAM_CLASS_COLORS[p.trout_class] || "#8a9bb0";
 }
 function streamWeight(p) {
-  return Math.max(2, Math.min(6.5, (p.streamorder || 3) * 0.85));
+  // Floor of 4px keeps even order-1 headwaters a tappable target (a 2px
+  // line is nearly impossible to hit on touch). Scales up with order.
+  return Math.max(4, Math.min(7, (p.streamorder || 3) * 0.9));
 }
 function streamStyle(p) {
   return { color: streamColor(p), weight: streamWeight(p), opacity: 0.8 };
