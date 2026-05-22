@@ -143,6 +143,27 @@ app = FastAPI(lifespan=lifespan)
 # Snapshot/line payloads are large and highly compressible JSON; gzip
 # them (also lets a CDN/Cloudflare cache the compressed bytes).
 app.add_middleware(GZipMiddleware, minimum_size=1024)
+
+# The app shell (HTML + app.js/app.css/sw.js/manifest) changes every
+# deploy. A CDN that caches by file extension (Cloudflare's default)
+# will otherwise serve a stale app.js even to fresh/incognito clients,
+# stranding them on an old build. `no-cache` tells the browser AND any
+# intermediary cache to revalidate before serving -- Cloudflare won't
+# edge-cache a response with no-cache -- so deploys propagate. The
+# immutable vendored assets (/static/vendor, /static/icons) keep their
+# default long-lived caching.
+_NO_CACHE_PATHS = {"/", "/map", "/sw.js", "/static/app.js",
+                   "/static/app.css", "/static/manifest.webmanifest"}
+
+
+@app.middleware("http")
+async def _shell_no_cache(request: Request, call_next):
+    response = await call_next(request)
+    if request.url.path in _NO_CACHE_PATHS:
+        response.headers["Cache-Control"] = "no-cache, must-revalidate"
+    return response
+
+
 app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 
 

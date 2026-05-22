@@ -5,3 +5,4 @@ httpx
 geopandas
 psycopg[binary]
 email-validator
+ijson

@@ -1054,3 +1054,26 @@ def test_nldi_flowline_prefers_levelpath_filter(tmp_path, monkeypatch):
     fc = main._nldi_flowline("01581920")
     assert gnis_called["n"] == 0                         # gnis tier didn't run
     assert [f["properties"]["nhdplus_comid"] for f in fc["features"]] == ["111"]
+
+
+def test_shell_no_cache_middleware():
+    """App-shell paths get no-cache so a CDN can't strand clients on a
+    stale build; immutable vendored assets are unaffected."""
+    import asyncio
+    from types import SimpleNamespace
+
+    class _Resp:
+        def __init__(self): self.headers = {}
+
+    async def _call_next(_req):
+        return _Resp()
+
+    def cc(path):
+        req = SimpleNamespace(url=SimpleNamespace(path=path))
+        resp = asyncio.run(main._shell_no_cache(req, _call_next))
+        return resp.headers.get("Cache-Control")
+
+    for p in ("/", "/map", "/sw.js", "/static/app.js", "/static/app.css"):
+        assert cc(p) == "no-cache, must-revalidate", p
+    for p in ("/static/vendor/leaflet/leaflet.js", "/api/rivers"):
+        assert cc(p) is None, p

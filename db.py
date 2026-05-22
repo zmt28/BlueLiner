@@ -645,19 +645,19 @@ def _feature_bbox(coords, gtype) -> tuple:
 
 def bulk_load_clickable_streams(geojson_gz_path: str) -> int:
     """Ingest the clickable-stream network from the bundled gzipped
-    GeoJSON. Idempotent (skips when populated). One-time parse of the
-    FeatureCollection at first boot, then batched inserts. Returns rows
-    inserted."""
+    GeoJSON. Idempotent (skips when populated). **Streams** the
+    FeatureCollection with ijson so the ~26 MB file is never fully held
+    in memory -- a json.load() here spiked ~285 MB and OOM-killed the
+    512 MB free-tier worker. Returns rows inserted."""
     import gzip
     import json
+
+    import ijson
 
     if clickable_loaded():
         return 0
     if not os.path.exists(geojson_gz_path):
         return 0
-    with gzip.open(geojson_gz_path, "rt", encoding="utf-8") as f:
-        fc = json.load(f)
-    feats = fc.get("features", [])
 
     placeholders = ",".join("?" for _ in _CLK_COLS)
     insert = (f"INSERT OR IGNORE INTO clickable_streams "
@@ -679,31 +679,35 @@ def bulk_load_clickable_streams(geojson_gz_path: str) -> int:
             total += len(batch)
             batch.clear()
 
-        for feat in feats:
-            geom = feat.get("geometry") or {}
-            coords = geom.get("coordinates")
-            gtype = geom.get("type")
-            if not coords or gtype not in ("LineString", "MultiLineString"):
-                continue
-            p = feat.get("properties", {})
-            comid = p.get("comid")
-            if comid is None:
-                continue
-            try:
-                w, s, e, n = _feature_bbox(coords, gtype)
-            except (ValueError, TypeError, IndexError):
-                continue
-            batch.append((
-                int(comid),
-                int(p["levelpathid"]) if p.get("levelpathid") else None,
-                p.get("gnis_name"),
-                int(p["streamorder"]) if p.get("streamorder") is not None else None,
-                p.get("trout_class"),
-                w, s, e, n,
-                json.dumps(geom, separators=(",", ":")),
-            ))
-            if len(batch) >= 4000:
-                _flush()
+        with gzip.open(geojson_gz_path, "rb") as f:
+            # ijson yields each feature as it's parsed (numbers as Decimal);
+            # only the current feature + batch live in memory at once.
+            for feat in ijson.items(f, "features.item"):
+                geom = feat.get("geometry") or {}
+                coords = geom.get("coordinates")
+                gtype = geom.get("type")
+                if not coords or gtype not in ("LineString", "MultiLineString"):
+                    continue
+                p = feat.get("properties", {})
+                comid = p.get("comid")
+                if comid is None:
+                    continue
+                try:
+                    w, s, e, n = _feature_bbox(coords, gtype)
+                except (ValueError, TypeError, IndexError):
+                    continue
+                batch.append((
+                    int(comid),
+                    int(p["levelpathid"]) if p.get("levelpathid") is not None else None,
+                    str(p["gnis_name"]) if p.get("gnis_name") else None,
+                    int(p["streamorder"]) if p.get("streamorder") is not None else None,
+                    str(p["trout_class"]) if p.get("trout_class") else None,
+                    float(w), float(s), float(e), float(n),
+                    # default=float coerces ijson Decimals so json can serialize
+                    json.dumps(geom, separators=(",", ":"), default=float),
+                ))
+                if len(batch) >= 2000:
+                    _flush()
         _flush()
         conn.commit()
     return total
