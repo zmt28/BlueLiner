@@ -184,9 +184,9 @@ def test_arcgis_keyset_pagination(monkeypatch):
             return _FakeResp({"type": "FeatureCollection", "features": page})
 
     monkeypatch.setattr(arcgis.httpx, "Client", FakeClient)
-    gdf = arcgis.fetch_geojson_gdf(
+    feats = arcgis.fetch_geojson_features(
         "https://x/y/MapServer/0/query?where=1=1", page_size=2)
-    assert gdf is not None and len(gdf) == 5      # full coverage, no dupes
+    assert feats is not None and len(feats) == 5  # full coverage, no dupes
     assert calls["n"] == 4                         # 1 metadata + pages 2+2+1
 
 
@@ -210,9 +210,9 @@ def test_arcgis_keyset_no_progress_guard(monkeypatch):
                               "features": [feat, feat]})
 
     monkeypatch.setattr(arcgis.httpx, "Client", FakeClient)
-    gdf = arcgis.fetch_geojson_gdf(
+    feats = arcgis.fetch_geojson_features(
         "https://x/y/MapServer/0/query?where=1=1", page_size=2)
-    assert gdf is not None and len(gdf) == 2   # one page kept
+    assert feats is not None and len(feats) == 2   # one page kept
     assert calls["n"] == 3                      # metadata + page0 + page1(stop)
 
 
@@ -1077,3 +1077,64 @@ def test_shell_no_cache_middleware():
         assert cc(p) == "no-cache, must-revalidate", p
     for p in ("/static/vendor/leaflet/leaflet.js", "/api/rivers"):
         assert cc(p) is None, p
+
+
+# -- geopandas-trim: shapely-only trout proximity + data-download seam --
+
+def test_trout_layer_proximity_shapely():
+    """TroutLayer.near uses a shapely STRtree (no geopandas). A gauge
+    within ~450m of a stream line tags on-trout; one well away doesn't."""
+    import trout
+    line = {"type": "Feature", "properties": {},
+            "geometry": {"type": "LineString",
+                         "coordinates": [[-76.70, 39.60], [-76.70, 39.66]]}}
+    layer = trout.TroutLayer([line])
+    assert trout.is_near_trout_stream(39.63, -76.701, layer) is True   # ~85m off
+    assert trout.is_near_trout_stream(39.63, -76.90, layer) is False   # ~17km off
+    assert trout.is_near_trout_stream(39.63, -76.70, None) is False    # no layer
+
+
+def test_trout_slim_simplifies_and_strips(monkeypatch):
+    """load_trout_streams turns fetched features into a geometry-only
+    TroutLayer via shapely (attributes dropped, vertices decimated)."""
+    import trout
+    trout._trout_cache.clear()
+    raw = [{"type": "Feature", "properties": {"NAME": "X", "junk": 1},
+            "geometry": {"type": "LineString",
+                         "coordinates": [[-76.7, 39.6], [-76.7, 39.61],
+                                         [-76.7, 39.62]]}}]
+    monkeypatch.setattr(trout, "fetch_geojson_features", lambda url: raw)
+    monkeypatch.setitem(trout.TROUT_SOURCES, "ZZ", {"name": "t", "url": "http://x"})
+    layer = trout.load_trout_streams("ZZ")
+    assert isinstance(layer, trout.TroutLayer)
+    assert layer.features[0]["properties"] == {}          # stripped
+    assert layer.features[0]["geometry"]["type"] == "LineString"
+
+
+def test_resolve_data_file_local_first(tmp_path, monkeypatch):
+    import data_source
+    local = tmp_path / "vaa.csv.gz"
+    local.write_bytes(b"local")
+    monkeypatch.setattr(data_source, "DATA_BASE_URL", "")
+    assert data_source.resolve_data_file(str(local), "vaa.csv.gz") == str(local)
+    # missing local + no base URL -> returns the (absent) local path unchanged
+    missing = str(tmp_path / "nope.gz")
+    assert data_source.resolve_data_file(missing, "nope.gz") == missing
+
+
+def test_resolve_data_file_downloads_when_configured(tmp_path, monkeypatch):
+    import data_source
+
+    class _Stream:
+        def __init__(self, *a, **k): pass
+        def __enter__(self): return self
+        def __exit__(self, *a): return False
+        def raise_for_status(self): pass
+        def iter_bytes(self): yield b"remote-bytes"
+
+    monkeypatch.setattr(data_source, "DATA_BASE_URL", "https://data.example")
+    monkeypatch.setattr(data_source, "_CACHE_DIR", str(tmp_path / "cache"))
+    monkeypatch.setattr(data_source.httpx, "stream", lambda *a, **k: _Stream())
+    missing = str(tmp_path / "absent.gz")
+    out = data_source.resolve_data_file(missing, "absent.gz")
+    assert out != missing and open(out, "rb").read() == b"remote-bytes"

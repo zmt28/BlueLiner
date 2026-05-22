@@ -5,8 +5,9 @@ ENV PYTHONUNBUFFERED=1 \
 
 WORKDIR /app
 
-# geopandas/pyogrio/shapely/psycopg[binary] ship manylinux wheels with their
-# native libs bundled -- no apt build/runtime deps needed on slim.
+# shapely/psycopg[binary] ship manylinux wheels with their native libs
+# bundled -- no apt build/runtime deps needed on slim. (geopandas is a
+# build-only dep now; the app uses shapely directly to stay lean.)
 COPY requirements.txt .
 RUN pip install -r requirements.txt
 
@@ -17,7 +18,7 @@ USER app
 
 EXPOSE 8000
 
-# Render provides $PORT. WEB_CONCURRENCY tunes workers; default 1 keeps the
-# geopandas/pandas/shapely baseline under the 512MB free-tier cap (each
-# worker loads its own copy + its own per-worker caches).
+# Render provides $PORT. WEB_CONCURRENCY tunes workers; default 1. Now that
+# geopandas is gone the per-worker baseline is ~30MB (was ~106MB), so the
+# free tier has room to raise this if needed.
 CMD ["sh", "-c", "gunicorn main:app -k uvicorn.workers.UvicornWorker -b 0.0.0.0:${PORT:-8000} --workers ${WEB_CONCURRENCY:-1} --timeout 120 --access-logfile - --error-logfile -"]

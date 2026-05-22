@@ -17,7 +17,6 @@ background, never on the hot request path.
 import time
 from urllib.parse import urlsplit, parse_qs
 
-import geopandas
 import httpx
 
 USER_AGENT = "Blueliner/1.0 (+https://blueliner.app)"
@@ -48,10 +47,13 @@ def _oid_of(feature: dict, oid_field: str):
         return None
 
 
-def fetch_geojson_gdf(query_url: str, page_size: int = 1000):
+def fetch_geojson_features(query_url: str, page_size: int = 1000):
     """
     Fetch every feature from an ArcGIS `.../query` URL via OBJECTID keyset
-    paging. Returns a GeoDataFrame (EPSG:4326) or None.
+    paging. Returns a list of GeoJSON Feature dicts (EPSG:4326) or None.
+    Callers turn these into shapely geometries; we deliberately avoid
+    geopandas here -- importing it costs ~83 MB of RSS the free tier can't
+    spare.
     """
     split = urlsplit(query_url)
     base = f"{split.scheme}://{split.netloc}{split.path}"
@@ -113,10 +115,4 @@ def fetch_geojson_gdf(query_url: str, page_size: int = 1000):
     except Exception:
         return None
 
-    if not features:
-        return None
-    try:
-        gdf = geopandas.GeoDataFrame.from_features(features, crs="EPSG:4326")
-    except Exception:
-        return None
-    return gdf if not gdf.empty else None
+    return features or None

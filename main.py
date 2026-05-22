@@ -13,8 +13,6 @@ import httpx
 from datetime import datetime, timezone
 from collections import defaultdict
 from concurrent.futures import ThreadPoolExecutor
-import geopandas
-import pandas as pd
 import asyncio
 import hashlib
 import json
@@ -32,6 +30,7 @@ import hatches
 import stocking
 import db
 import enrichment
+import data_source
 
 
 logging.basicConfig(
@@ -103,7 +102,8 @@ async def lifespan(app: FastAPI):
         # filter that prevents cross-confluence bleed.
         try:
             n = await asyncio.to_thread(
-                db.bulk_load_vaa, _VAA_BUNDLED_PATH)
+                lambda: db.bulk_load_vaa(data_source.resolve_data_file(
+                    _VAA_BUNDLED_PATH, "vaa.csv.gz")))
             if n:
                 logger.info("NHDPlus VAA loaded: %d rows", n)
         except Exception as exc:
@@ -113,7 +113,10 @@ async def lifespan(app: FastAPI):
         # bundled GeoJSON, served by viewport bbox + zoom tier. Idempotent.
         try:
             n = await asyncio.to_thread(
-                db.bulk_load_clickable_streams, _CLICKABLE_BUNDLED_PATH)
+                lambda: db.bulk_load_clickable_streams(
+                    data_source.resolve_data_file(
+                        _CLICKABLE_BUNDLED_PATH,
+                        "clickable_streams.geojson.gz")))
             if n:
                 logger.info("Clickable streams loaded: %d rows", n)
         except Exception as exc:
@@ -696,30 +699,27 @@ def _trout_for_state(st: str):
     return None
 
 
-def _gdf_to_geojson_response(gdfs: list[geopandas.GeoDataFrame]) -> Response:
-    valid = [g for g in gdfs if g is not None and not g.empty]
-    if not valid:
-        return Response(
-            content='{"type":"FeatureCollection","features":[]}',
-            media_type="application/json",
-        )
-    if len(valid) == 1:
-        merged = valid[0]
-    else:
-        merged = geopandas.GeoDataFrame(
-            pd.concat(valid, ignore_index=True), crs=valid[0].crs
-        )
-    return Response(content=merged.to_json(), media_type="application/json")
+def _trout_geojson_response(layers: list) -> Response:
+    """Merge per-state TroutLayer feature lists into one GeoJSON
+    FeatureCollection. GZipMiddleware compresses the body."""
+    features: list[dict] = []
+    for layer in layers:
+        if layer is not None:
+            features.extend(layer.features)
+    body = json.dumps({"type": "FeatureCollection", "features": features},
+                      separators=(",", ":"))
+    return Response(content=body, media_type="application/json")
 
 
-async def _assemble_rivers(time_series: list, trout_gdfs: list,
+async def _assemble_rivers(time_series: list, trout_layers: list,
                            stocked_pts: list) -> list[dict]:
     """Shared core: aggregate USGS sites -> group into rivers -> popups.
-    `trout_gdfs` is a list of gdf|None (a gauge is on trout if near ANY)."""
+    `trout_layers` is a list of TroutLayer|None (a gauge is on trout if
+    near ANY)."""
     today = datetime.now()
     today_key = (today.month, today.day)
     month_now = today.month
-    tgs = [g for g in trout_gdfs if g is not None]
+    tgs = [g for g in trout_layers if g is not None]
 
     sites = defaultdict(lambda: {"variables": [], "site_no": None})
     for series in time_series:
@@ -1216,8 +1216,8 @@ async def api_trout(state: str = Query(default="MD", description="Two-letter sta
     states_to_load = _resolve_states(state)
     if states_to_load is None:
         raise HTTPException(status_code=400, detail=f"Unsupported state: {state}")
-    # Non-blocking: cached gdf or empty until the background warm completes.
-    return _gdf_to_geojson_response([_trout_for_state(st) for st in states_to_load])
+    # Non-blocking: cached layer or empty until the background warm completes.
+    return _trout_geojson_response([_trout_for_state(st) for st in states_to_load])
 
 
 _EMPTY_FC = {"type": "FeatureCollection", "features": []}

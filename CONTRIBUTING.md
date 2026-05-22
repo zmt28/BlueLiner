@@ -124,6 +124,23 @@ trout polylines to NHD COMIDs, computes upstream tributaries via the
 NHDPlus topology graph, and writes the gzipped GeoJSON. A PA
 wild-trout validation report prints at the end.
 
+### Hosting the data files externally (national scale)
+
+Today's `vaa.csv.gz` + `clickable_streams.geojson.gz` (~9 MB) are
+committed and baked into the image. At national scale they grow to
+~50-150 MB -- too big to ship in the repo. When that happens:
+
+1. Host the files at a public base URL (Cloudflare R2 bucket or a
+   GitHub release asset), keeping the same filenames.
+2. Set the `DATA_BASE_URL` env var to that base (e.g.
+   `https://data.blueliner.app`). On boot the app downloads any file
+   it doesn't find locally (`data_source.resolve_data_file`), then
+   bulk-loads it into Postgres as usual.
+3. Add the big files to `.dockerignore` / drop them from git.
+
+No code change required -- `DATA_BASE_URL` unset means "use the bundled
+local files," which is the current behavior.
+
 ## Validating
 
 ```sh
