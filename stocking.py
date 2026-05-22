@@ -16,7 +16,9 @@ agency_url, source}
 import json
 import os
 
-from arcgis import fetch_geojson_gdf
+from shapely.geometry import shape
+
+from arcgis import fetch_geojson_features
 from cache import LruTtl
 
 _DATA_DIR = os.path.join(os.path.dirname(__file__), "data", "stocking")
@@ -78,15 +80,18 @@ def _pick(props: dict, fields: tuple[str, ...]) -> str | None:
     return None
 
 
-def _gdf_to_points(gdf, agency_url: str) -> list[dict]:
+def _features_to_points(features: list[dict], agency_url: str) -> list[dict]:
     points: list[dict] = []
-    for _, row in gdf.iterrows():
+    for f in features:
         try:
-            geom = row.geometry
-            if geom is None or geom.is_empty:
+            g = f.get("geometry")
+            if not g:
+                continue
+            geom = shape(g)
+            if geom.is_empty:
                 continue
             c = geom.centroid
-            props = {k: row[k] for k in gdf.columns if k != "geometry"}
+            props = f.get("properties") or {}
             species = _pick(props, _SPECIES_FIELDS)
             points.append({
                 "water": _pick(props, _NAME_FIELDS) or "Stocked water",
@@ -111,9 +116,9 @@ def load_stocking(state: str) -> list[dict]:
 
     source = STOCKING_SOURCES.get(state)
     if source:
-        gdf = fetch_geojson_gdf(source["url"])
-        if gdf is not None and not gdf.empty:
-            for p in _gdf_to_points(gdf, VA_DWR_URL):
+        features = fetch_geojson_features(source["url"])
+        if features:
+            for p in _features_to_points(features, VA_DWR_URL):
                 points.append(dict(p, source="live"))
 
     _stocking_cache[state] = points
