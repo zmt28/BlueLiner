@@ -60,8 +60,8 @@ def test_overrides_json_loads_without_internal_keys_leaking():
 
 def test_clickable_streams_bundle_structure_and_coverage():
     """The bundled clickable-streams layer parses, carries the expected
-    per-flowline attributes, holds only StreamOrder >= 3, and gives
-    famous mid-Atlantic waters whole-river coverage (one LevelPathID).
+    per-flowline attributes, and gives famous mid-Atlantic waters
+    whole-river coverage (one LevelPathID).
     Regenerate with scripts/build_clickable_streams.py."""
     import gzip
     path = os.path.join(ROOT, "data", "nhdplus",
@@ -70,16 +70,16 @@ def test_clickable_streams_bundle_structure_and_coverage():
     with gzip.open(path, "rt", encoding="utf-8") as f:
         fc = json.load(f)
     feats = fc.get("features", [])
-    assert len(feats) > 50_000, f"unexpectedly few flowlines: {len(feats)}"
+    assert len(feats) > 90_000, f"unexpectedly few flowlines: {len(feats)}"
 
+    required_props = {"comid", "levelpathid", "streamorder",
+                      "lengthkm", "trout_class"}
     for feat in feats[:50]:
         p = feat["properties"]
-        assert {"comid", "levelpathid", "streamorder"} <= set(p)
-        assert p["streamorder"] >= 3
+        assert required_props <= set(p), (
+            f"missing props: {required_props - set(p)}")
         assert feat["geometry"]["type"] in ("LineString", "MultiLineString")
 
-    # Famous waters: each should resolve to a single LevelPathID so the
-    # whole river is one clickable unit (the Monocacy fragmentation fix).
     by_name: dict[str, set] = {}
     for feat in feats:
         nm = feat["properties"].get("gnis_name")
@@ -89,3 +89,39 @@ def test_clickable_streams_bundle_structure_and_coverage():
         assert name in by_name, f"{name} missing from clickable bundle"
         assert len(by_name[name]) == 1, (
             f"{name} spans {len(by_name[name])} LevelPathIDs, expected 1")
+
+
+def test_clickable_streams_trout_class():
+    """The bundle carries trout_class tags and includes well-known PA
+    wild-trout streams."""
+    import gzip
+    path = os.path.join(ROOT, "data", "nhdplus",
+                        "clickable_streams.geojson.gz")
+    with gzip.open(path, "rt", encoding="utf-8") as f:
+        fc = json.load(f)
+    feats = fc["features"]
+
+    trout_feats = [f for f in feats if f["properties"]["trout_class"]]
+    assert len(trout_feats) > 20_000, (
+        f"too few trout-tagged flowlines: {len(trout_feats)}")
+
+    valid_classes = {"wild_reproduction", "class_a", "wilderness",
+                     "stocked", "designated"}
+    classes_seen = set()
+    for f in trout_feats:
+        tc = f["properties"]["trout_class"]
+        assert tc in valid_classes, f"unexpected trout_class: {tc}"
+        classes_seen.add(tc)
+    assert len(classes_seen) >= 3, (
+        f"expected >=3 trout classes, got {classes_seen}")
+
+    by_name: dict[str, set] = {}
+    for f in feats:
+        nm = f["properties"].get("gnis_name")
+        tc = f["properties"].get("trout_class")
+        if nm and tc:
+            by_name.setdefault(nm, set()).add(tc)
+    for name in ("Penns Creek", "Kettle Creek", "Spruce Creek",
+                 "Pine Creek", "Slate Run"):
+        assert name in by_name, (
+            f"PA wild-trout stream {name} missing trout tag")
