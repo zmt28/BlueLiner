@@ -54,3 +54,38 @@ def test_overrides_json_loads_without_internal_keys_leaking():
     """The `_comment` and similar meta keys must not become river entries."""
     for key in hatches.RIVER_HATCH_OVERRIDES:
         assert not key.startswith("_"), f"meta key leaked: {key}"
+
+
+# -- clickable-streams geometry bundle (the "bluelining" network base) --
+
+def test_clickable_streams_bundle_structure_and_coverage():
+    """The bundled clickable-streams layer parses, carries the expected
+    per-flowline attributes, holds only StreamOrder >= 3, and gives
+    famous mid-Atlantic waters whole-river coverage (one LevelPathID).
+    Regenerate with scripts/build_clickable_streams.py."""
+    import gzip
+    path = os.path.join(ROOT, "data", "nhdplus",
+                        "clickable_streams.geojson.gz")
+    assert os.path.exists(path), "clickable_streams.geojson.gz missing"
+    with gzip.open(path, "rt", encoding="utf-8") as f:
+        fc = json.load(f)
+    feats = fc.get("features", [])
+    assert len(feats) > 50_000, f"unexpectedly few flowlines: {len(feats)}"
+
+    for feat in feats[:50]:
+        p = feat["properties"]
+        assert {"comid", "levelpathid", "streamorder"} <= set(p)
+        assert p["streamorder"] >= 3
+        assert feat["geometry"]["type"] in ("LineString", "MultiLineString")
+
+    # Famous waters: each should resolve to a single LevelPathID so the
+    # whole river is one clickable unit (the Monocacy fragmentation fix).
+    by_name: dict[str, set] = {}
+    for feat in feats:
+        nm = feat["properties"].get("gnis_name")
+        if nm:
+            by_name.setdefault(nm, set()).add(feat["properties"]["levelpathid"])
+    for name in ("Monocacy River", "Gunpowder Falls", "Penns Creek"):
+        assert name in by_name, f"{name} missing from clickable bundle"
+        assert len(by_name[name]) == 1, (
+            f"{name} spans {len(by_name[name])} LevelPathIDs, expected 1")
