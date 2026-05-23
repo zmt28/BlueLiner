@@ -643,6 +643,24 @@ def _feature_bbox(coords, gtype) -> tuple:
     return min(lons), min(lats), max(lons), max(lats)
 
 
+# Drop the [x, y, z] Z dimension (NHD geometry is 3D but we only need 2D
+# centerlines on the map) and round to 5 decimals (~1m precision -- well
+# below stream-width resolution). Cuts the served GeoJSON payload by
+# roughly 60% raw / 30% gzipped per /api/clickable_streams response,
+# which is the biggest egress lever in the app.
+def _trim_geom(geom: dict) -> dict:
+    gtype = geom.get("type")
+    coords = geom.get("coordinates")
+    if not coords:
+        return geom
+    if gtype == "LineString":
+        geom["coordinates"] = [[round(c[0], 5), round(c[1], 5)] for c in coords]
+    elif gtype == "MultiLineString":
+        geom["coordinates"] = [
+            [[round(c[0], 5), round(c[1], 5)] for c in line] for line in coords]
+    return geom
+
+
 def bulk_load_clickable_streams(geojson_gz_path: str) -> int:
     """Ingest the clickable-stream network from the bundled gzipped
     GeoJSON. Idempotent (skips when populated). **Streams** the
@@ -703,8 +721,11 @@ def bulk_load_clickable_streams(geojson_gz_path: str) -> int:
                     int(p["streamorder"]) if p.get("streamorder") is not None else None,
                     str(p["trout_class"]) if p.get("trout_class") else None,
                     float(w), float(s), float(e), float(n),
-                    # default=float coerces ijson Decimals so json can serialize
-                    json.dumps(geom, separators=(",", ":"), default=float),
+                    # Trim before persisting so fresh loads bake the savings into
+                    # the DB; query_clickable_streams also trims at read to cover
+                    # already-loaded rows. default=float coerces ijson Decimals.
+                    json.dumps(_trim_geom(geom), separators=(",", ":"),
+                               default=float),
                 ))
                 if len(batch) >= 2000:
                     _flush()
@@ -739,7 +760,8 @@ def query_clickable_streams(west: float, south: float, east: float,
         out.append({
             "comid": r["comid"], "levelpathid": r["levelpathid"],
             "gnis_name": r["gnis_name"], "streamorder": r["streamorder"],
-            "trout_class": r["trout_class"], "geometry": geom,
+            "trout_class": r["trout_class"],
+            "geometry": _trim_geom(geom),    # idempotent on already-trimmed rows
         })
     return out
 
