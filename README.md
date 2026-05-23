@@ -45,14 +45,6 @@ so you can check conditions before you drive to the water.
 - **gunicorn + uvicorn workers** -- production server (Docker, deployable to Render)
 - **httpx** -- async HTTP client
 
-## Built with AI
-
-Blueliner was designed and directed by me and built in close collaboration with
-Claude Code. I own the product decisions, the architecture, and the review;
-Claude Code did much of the implementation across the stack. It's an honest
-reflection of how I build today -- using AI as a serious force multiplier rather
-than writing every line by hand.
-
 ## Getting Started
 
 ```bash
