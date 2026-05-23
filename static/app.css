@@ -130,6 +130,15 @@ html, body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
 }
 .bl-trend svg { display: block; width: 100%; height: auto; }
 .bl-trend-msg { font-size: 11px; color: #888; }
+.bl-spark { position: relative; }
+.bl-spark svg { display: block; width: 100%; height: auto; touch-action: none; }
+.bl-spark-tip {
+  position: absolute; pointer-events: none;
+  background: rgba(26, 26, 46, 0.92); color: #fff;
+  font-size: 11px; font-weight: 600; padding: 3px 7px; border-radius: 4px;
+  white-space: nowrap; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
+}
+.bl-spark-tip[hidden] { display: none; }
 .pin-popup { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; min-width: 180px; }
 .pin-popup .pin-note { font-size: 14px; color: #1a1a2e; white-space: pre-wrap; }
 .pin-popup .pin-meta { font-size: 11px; color: #888; margin: 6px 0 8px; }
