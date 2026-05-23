@@ -88,3 +88,26 @@ def test_endpoint_returns_filtered_featurecollection(tmp_path, monkeypatch):
     resp2 = asyncio.run(main.api_clickable_streams(
         req, bbox="-78.0,40.6,-77.3,41.0", zoom=9))
     assert len(json.loads(resp2.body)["features"]) == 2
+
+
+def test_query_strips_z_and_rounds(tmp_path, monkeypatch):
+    """Served geometry drops the NHD Z dimension and rounds coords to
+    5 decimals (the egress trim)."""
+    import gzip, json
+    _fresh(tmp_path, monkeypatch)
+    fc = {"type": "FeatureCollection", "features": [{
+        "type": "Feature",
+        "properties": {"comid": 9, "levelpathid": 9, "gnis_name": "Z River",
+                       "streamorder": 5, "trout_class": None},
+        "geometry": {"type": "LineString", "coordinates": [
+            [-77.391410000000001, 39.505370000000006, 0.0],
+            [-77.39304000000001, 39.504940000000005, 0.0]]},
+    }]}
+    path = tmp_path / "z.geojson.gz"
+    with gzip.open(path, "wt", encoding="utf-8") as f:
+        json.dump(fc, f)
+    db.bulk_load_clickable_streams(str(path))
+    r = db.query_clickable_streams(-78, 39, -77, 40, min_order=1)[0]
+    coords = r["geometry"]["coordinates"]
+    assert all(len(c) == 2 for c in coords)            # Z stripped
+    assert coords[0] == [-77.39141, 39.50537]          # rounded to 5 decimals
