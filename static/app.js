@@ -73,17 +73,23 @@ const riverLinesLayer = L.layerGroup().addTo(map);
 const riversLayer = L.layerGroup().addTo(map);
 const pinsLayer = L.layerGroup().addTo(map);
 
-// The "bluelining" clickable-stream network: fishing-relevant streams
-// (trout water + their tributaries + named rivers) served per-viewport
-// and zoom tier from /api/clickable_streams. Styled by streamStyle()
-// (declaration-hoisted, so referencing it here is fine).
-const clickableLayer = L.geoJSON(null, {
+// Two stacked layers per feature: a thin styled visible line and a
+// transparent fat "hit casing" on top to catch finger taps on mobile
+// (a 4px line is still a poor touch target). Visible is non-interactive
+// so clicks unambiguously go to the casing; both render the same FC.
+const clickableVisible = L.geoJSON(null, {
   style: (f) => streamStyle(f.properties),
+  interactive: false,
+});
+const clickableHit = L.geoJSON(null, {
+  style: () => ({ color: "#000", weight: 16, opacity: 0, lineCap: "round" }),
   onEachFeature: (f, l) => l.on("click", (e) => {
     L.DomEvent.stop(e);
     onStreamClick(f.properties, e.latlng);
   }),
-}).addTo(map);
+});
+const clickableLayer = L.featureGroup(
+  [clickableVisible, clickableHit]).addTo(map);
 
 // Trout-stream lines are heavy; off by default (toggle in the control).
 L.control.layers(null, {
@@ -300,7 +306,9 @@ function streamStyle(p) {
 let _streamReqId = 0;
 async function loadClickableStreams() {
   if (!map.hasLayer(clickableLayer)) return;       // toggled off
-  if (map.getZoom() < STREAM_MIN_ZOOM) { clickableLayer.clearLayers(); return; }
+  if (map.getZoom() < STREAM_MIN_ZOOM) {
+    clickableVisible.clearLayers(); clickableHit.clearLayers(); return;
+  }
   const b = map.getBounds();
   if (b.getEast() - b.getWest() > 6 || b.getNorth() - b.getSouth() > 6) return;
   const bbox = [b.getWest(), b.getSouth(), b.getEast(), b.getNorth()]
@@ -311,13 +319,13 @@ async function loadClickableStreams() {
       `/api/clickable_streams?bbox=${bbox}&zoom=${map.getZoom()}`
     ).then((r) => r.json());
     if (reqId !== _streamReqId) return;            // a newer move superseded us
-    clickableLayer.clearLayers();
-    clickableLayer.addData(fc);
+    clickableVisible.clearLayers(); clickableHit.clearLayers();
+    clickableVisible.addData(fc); clickableHit.addData(fc);
   } catch (_) { /* transient; next moveend retries */ }
 }
 
 function restyleStreams() {
-  clickableLayer.setStyle((f) => streamStyle(f.properties));
+  clickableVisible.setStyle((f) => streamStyle(f.properties));
 }
 
 // Highlight every rendered reach sharing the clicked stream's LevelPathID
@@ -326,7 +334,7 @@ let _selStreamLpid = null;
 function highlightStream(lpid) {
   clearStreamHighlight();
   _selStreamLpid = lpid;
-  clickableLayer.eachLayer((l) => {
+  clickableVisible.eachLayer((l) => {
     if (l.feature && l.feature.properties.levelpathid === lpid) {
       l.setStyle({ weight: 8, color: "#e74c3c", opacity: 0.95 });
     }
@@ -334,7 +342,7 @@ function highlightStream(lpid) {
 }
 function clearStreamHighlight() {
   if (_selStreamLpid == null) return;
-  clickableLayer.eachLayer((l) => {
+  clickableVisible.eachLayer((l) => {
     if (l.feature) l.setStyle(streamStyle(l.feature.properties));
   });
   _selStreamLpid = null;
