@@ -437,7 +437,22 @@ function _normName(s) { return (s || "").trim().toLowerCase(); }
 function _gaugedRiverFor(p, latlng) {
   const name = _normName(p.gnis_name);
   if (!name) return null;
-  const matches = allRivers.filter((r) => r.site_no && _normName(r.name) === name);
+  // Search BOTH the current set (viewport rivers when zoomed in) and the
+  // full state snapshot, deduped by site_no. Without the stateRivers
+  // fallback, clicking an upstream reach of a river whose gauges sit
+  // outside the current bbox (e.g., the Gunpowder above Glencoe) wouldn't
+  // find a match and would wrongly render as ungauged.
+  const seen = new Set();
+  const matches = [];
+  for (const list of [allRivers, stateRivers]) {
+    if (!list) continue;
+    for (const r of list) {
+      if (r.site_no && !seen.has(r.site_no)
+          && _normName(r.name) === name) {
+        seen.add(r.site_no); matches.push(r);
+      }
+    }
+  }
   if (matches.length <= 1 || !latlng) return matches[0] || null;
   let best = matches[0], bestD = Infinity;
   for (const r of matches) {
