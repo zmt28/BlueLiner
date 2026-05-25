@@ -204,8 +204,8 @@ function wireSparkHover(root) {
       dot.setAttribute("cx", px); dot.setAttribute("cy", py);
       dot.setAttribute("visibility", "visible");
       tip.textContent = unit
-        ? `${date}  ${val.toFixed(0)} ${unit}`
-        : `${date}  ${val.toFixed(0)}`;
+        ? `${val.toFixed(0)} ${unit} (${date})`
+        : `${val.toFixed(0)} (${date})`;
       tip.hidden = false;
       // Place tip in container px (svg viewBox -> rendered ratio).
       const tipX = (px / W) * rect.width;
