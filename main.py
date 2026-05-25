@@ -699,16 +699,15 @@ def _trout_for_state(st: str):
     return None
 
 
-def _trout_geojson_response(layers: list) -> Response:
+def _trout_geojson_str(layers: list) -> str:
     """Merge per-state TroutLayer feature lists into one GeoJSON
-    FeatureCollection. GZipMiddleware compresses the body."""
+    FeatureCollection string. GZipMiddleware compresses the body."""
     features: list[dict] = []
     for layer in layers:
         if layer is not None:
             features.extend(layer.features)
-    body = json.dumps({"type": "FeatureCollection", "features": features},
+    return json.dumps({"type": "FeatureCollection", "features": features},
                       separators=(",", ":"))
-    return Response(content=body, media_type="application/json")
 
 
 async def _assemble_rivers(time_series: list, trout_layers: list,
@@ -1005,22 +1004,36 @@ async def service_worker():
     )
 
 
-def _cached_json(request: Request, payload, *, max_age: int,
-                 swr: int = 86400) -> Response:
-    """JSON Response with ETag + Cache-Control so the browser, the
-    service worker, and any CDN/Cloudflare in front can serve repeats
-    instantly and revalidate in the background. Honors If-None-Match."""
-    body = json.dumps(payload, separators=(",", ":"))
-    etag = '"' + hashlib.sha256(body.encode()).hexdigest()[:32] + '"'
+def _cached_response(request: Request, body: str | bytes, *, max_age: int,
+                     s_max_age: int | None = None, swr: int = 86400,
+                     media_type: str = "application/json") -> Response:
+    """Response with ETag + Cache-Control so the browser, the service
+    worker, and any CDN/Cloudflare in front can serve repeats instantly
+    and revalidate in the background. Honors If-None-Match.
+
+    `s_max_age` lets the shared cache (Cloudflare) hold longer than the
+    browser when an endpoint's payload is stabler at the edge than the
+    per-tab freshness contract -- defaults to `max_age`."""
+    body_bytes = body.encode() if isinstance(body, str) else body
+    etag = '"' + hashlib.sha256(body_bytes).hexdigest()[:32] + '"'
+    s = s_max_age if s_max_age is not None else max_age
     headers = {
-        "Cache-Control": (f"public, max-age={max_age}, "
+        "Cache-Control": (f"public, max-age={max_age}, s-maxage={s}, "
                           f"stale-while-revalidate={swr}"),
         "ETag": etag,
     }
     if request.headers.get("if-none-match") == etag:
         return Response(status_code=304, headers=headers)
-    return Response(content=body, media_type="application/json",
-                    headers=headers)
+    return Response(content=body_bytes, media_type=media_type, headers=headers)
+
+
+def _cached_json(request: Request, payload, *, max_age: int,
+                 s_max_age: int | None = None, swr: int = 86400) -> Response:
+    """JSON-encode `payload` and serve through `_cached_response`."""
+    return _cached_response(
+        request, json.dumps(payload, separators=(",", ":")),
+        max_age=max_age, s_max_age=s_max_age, swr=swr,
+    )
 
 
 @app.get("/api/states")
@@ -1212,12 +1225,22 @@ async def internal_refresh(request: Request):
 
 
 @app.get("/api/trout")
-async def api_trout(state: str = Query(default="MD", description="Two-letter state code.")):
+async def api_trout(request: Request,
+                    state: str = Query(default="MD",
+                                       description="Two-letter state code.")):
     states_to_load = _resolve_states(state)
     if states_to_load is None:
         raise HTTPException(status_code=400, detail=f"Unsupported state: {state}")
     # Non-blocking: cached layer or empty until the background warm completes.
-    return _trout_geojson_response([_trout_for_state(st) for st in states_to_load])
+    layers = [_trout_for_state(st) for st in states_to_load]
+    body = _trout_geojson_str(layers)
+    # While warming, the response is the empty FC string -- short TTL so
+    # Cloudflare doesn't pin an empty layer for the day. Real responses
+    # change rarely (upstream dataset refreshes), so cache them hard.
+    warming = all(layer is None for layer in layers)
+    if warming:
+        return _cached_response(request, body, max_age=60, s_max_age=300)
+    return _cached_response(request, body, max_age=3600, s_max_age=86400)
 
 
 _EMPTY_FC = {"type": "FeatureCollection", "features": []}
@@ -1507,15 +1530,24 @@ def _comid_meta(comid: str) -> dict:
 
 @app.get("/api/river_geom")
 async def api_river_geom(
+    request: Request,
     site_no: str = Query(..., pattern=r"^[0-9A-Za-z-]{4,20}$",
                          description="USGS site number"),
 ):
-    """Clickable river flowline geometry (USGS NLDI), cached per site."""
-    return await asyncio.to_thread(_nldi_flowline, site_no)
+    """Clickable river flowline geometry (USGS NLDI), cached per site.
+
+    Real geometry is ~immutable per site (invalidated only by bumping
+    `_GEOM_SCHEMA_VERSION`), so cache hard. Empty results mean NLDI
+    failed transiently -- short TTL so the edge retries soon."""
+    fc = await asyncio.to_thread(_nldi_flowline, site_no)
+    if not fc.get("features"):
+        return _cached_json(request, fc, max_age=60, s_max_age=300)
+    return _cached_json(request, fc, max_age=86400, s_max_age=604800)
 
 
 @app.get("/api/history")
 async def api_history(
+    request: Request,
     site_no: str = Query(..., pattern=r"^[0-9A-Za-z-]{4,20}$",
                          description="USGS site number"),
 ):
@@ -1557,7 +1589,12 @@ async def api_history(
         if points:
             series.append({"parameter": code, "name": name, "unit": unit,
                             "points": points})
-    return {"site_no": site_no, "series": series}
+    payload = {"site_no": site_no, "series": series}
+    # Daily values update ~daily; hold ~hour at edge, less when empty so
+    # a transient USGS gap doesn't pin no-data for an hour.
+    if not series:
+        return _cached_json(request, payload, max_age=60, s_max_age=300)
+    return _cached_json(request, payload, max_age=900, s_max_age=3600)
 
 
 class PinIn(BaseModel):
@@ -1649,12 +1686,18 @@ def _device_owner(request: Request) -> str | None:
     return hashlib.sha256(token.encode()).hexdigest()
 
 
+_PINS_NO_CACHE = {"Cache-Control": "private, no-store"}
+
+
 @app.get("/api/pins")
 async def api_list_pins(request: Request):
+    """Per-device pins (keyed by x-device-token). Explicit `private,
+    no-store` so a future CDN cache rule can't accidentally cross-serve
+    one device's pins to another."""
     owner = _owner(request, required=False)
-    if owner is None:
-        return []
-    return await asyncio.to_thread(db.list_pins, owner)
+    pins = [] if owner is None else await asyncio.to_thread(db.list_pins, owner)
+    return Response(content=json.dumps(pins), media_type="application/json",
+                    headers=_PINS_NO_CACHE)
 
 
 @app.post("/api/pins")
