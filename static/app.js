@@ -392,10 +392,22 @@ function streamStyle(p) {
 }
 
 let _streamReqId = 0;
+// Names + levelpathids currently rendered in clickableVisible. The
+// dot-suppression logic below uses these to skip a gauge marker when
+// the same river is already reachable as a clickable line -- avoids
+// the "Antietam Creek dot on an unnamed tributary" surprise and the
+// Susquehanna's redundant dot-over-line.
+let _loadedClkNames = new Set();
+let _loadedClkLpids = new Set();
+
 async function loadClickableStreams() {
   if (!map.hasLayer(clickableLayer)) return;       // toggled off
   if (map.getZoom() < STREAM_MIN_ZOOM) {
-    clickableVisible.clearLayers(); clickableHit.clearLayers(); return;
+    clickableVisible.clearLayers(); clickableHit.clearLayers();
+    _loadedClkNames = new Set();
+    _loadedClkLpids = new Set();
+    renderRivers();
+    return;
   }
   const b = map.getBounds();
   if (b.getEast() - b.getWest() > 6 || b.getNorth() - b.getSouth() > 6) return;
@@ -410,7 +422,33 @@ async function loadClickableStreams() {
     clickableVisible.clearLayers(); clickableHit.clearLayers();
     clickableVisible.addData(fc); clickableHit.addData(fc);
     if (_selStreamLpid != null) _paintHighlight(_selStreamLpid);
+    _loadedClkNames = new Set();
+    _loadedClkLpids = new Set();
+    for (const feat of (fc.features || [])) {
+      const p = feat.properties || {};
+      if (p.gnis_name) _loadedClkNames.add(p.gnis_name.trim().toLowerCase());
+      if (p.levelpathid != null) _loadedClkLpids.add(p.levelpathid);
+    }
+    renderRivers();          // dot vs line decision depends on these sets
   } catch (_) { /* transient; next moveend retries */ }
+}
+
+// True when this river has at least one reach currently drawn in the
+// clickable network -- if so, the user can already click the line to
+// open the river panel, so a redundant gauge dot adds noise (and, for
+// rivers like Antietam Creek, lands the dot on an unrelated tributary
+// at the gauge-centroid). Falls back to false when the clickable layer
+// is off or zoomed below STREAM_MIN_ZOOM -- the dot is the only access
+// point then.
+function _riverHasClickableReach(r) {
+  if (!map.hasLayer(clickableLayer)) return false;
+  if (r.name && _loadedClkNames.has(r.name.trim().toLowerCase())) return true;
+  if (Array.isArray(r.levelpathids)) {
+    for (const lpid of r.levelpathids) {
+      if (_loadedClkLpids.has(lpid)) return true;
+    }
+  }
+  return false;
 }
 
 function restyleStreams() {
@@ -577,10 +615,14 @@ function riverPasses(r) {
   return true;
 }
 
-// Exactly one clickable representation per river: the flowline if loaded,
-// otherwise a pin (fallback for low zoom / not-yet-loaded / NLDI has no
-// geometry, e.g. Bennett Creek). Centralized so the invariant holds for
-// every state, filter, and zoom.
+// Exactly one clickable representation per river:
+//   1. The NLDI flowline if loaded (riverLinesLayer), else
+//   2. Skip if the clickable-stream network already draws this river
+//      somewhere in the viewport -- the user can click the line, so a
+//      gauge dot here would just be a redundant target landing on the
+//      gauge centroid (which can fall on an unrelated tributary), else
+//   3. A pin (fallback for low zoom / clickable layer off / no matching
+//      NHD reach, e.g. tiny named creeks the network filters out).
 function renderRivers() {
   riversLayer.clearLayers();
   for (const r of allRivers) {
@@ -592,6 +634,7 @@ function renderRivers() {
       continue;  // line represents this river -- no redundant pin
     }
     if (!pass) continue;
+    if (_riverHasClickableReach(r)) continue;  // clickable network has it
     const m = L.circleMarker([r.lat, r.lon], {
       radius: 8, color: r.color, weight: 2,
       fill: true, fillColor: r.color, fillOpacity: 0.85,
@@ -1001,6 +1044,11 @@ function wireLayerToggle(id, layer, onAdd) {
   });
 }
 wireLayerToggle("lyr-fishable", clickableLayer, loadClickableStreams);
+// Toggling the clickable layer off needs to bring the gauge dots back
+// (since _riverHasClickableReach now returns false), so re-render.
+document.getElementById("lyr-fishable").addEventListener("change", (e) => {
+  if (!e.target.checked) renderRivers();
+});
 wireLayerToggle("lyr-usgs", hydroLayer);
 wireLayerToggle("lyr-trout", troutLayer, () => ensureTrout(currentSt));
 wireLayerToggle("lyr-pins", pinsLayer);
