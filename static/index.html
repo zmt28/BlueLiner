@@ -24,32 +24,91 @@
             </div>
         </div>
         <div class="header-right">
-            <button id="filters-toggle" class="ctrl" type="button" aria-expanded="false">Filters</button>
             <div id="controls">
                 <select id="state-select" class="ctrl" aria-label="State">
                     <option value="MD">Loading states&hellip;</option>
                 </select>
-                <select id="cond-select" class="ctrl" title="Filter by condition">
-                    <option value="any">Any condition</option>
-                    <option value="green">Good</option>
-                    <option value="yellow">Fair</option>
-                    <option value="red">Poor</option>
-                    <option value="gray">No Data</option>
-                </select>
-                <select id="hatch-select" class="ctrl" title="Filter by hatch">
-                    <option value="any">Any hatch</option>
-                    <option value="active">Active hatch now</option>
-                </select>
-                <label class="ctrl ctrl-check"><input type="checkbox" id="trout-only"> Trout only</label>
-                <label class="ctrl ctrl-check"><input type="checkbox" id="stocked-only"> Stocked only</label>
                 <button id="drop-pin" class="ctrl" type="button">Drop a pin</button>
                 <span id="auth-slot"><!-- filled by JS: Sign in OR account button --></span>
-                <button id="controls-done" class="ctrl" type="button">Done</button>
             </div>
+            <button id="filters-toggle" class="ctrl" type="button"
+                    aria-expanded="false" aria-controls="filter-panel">
+                <span class="filters-toggle-icon" aria-hidden="true">&#9776;</span>
+                Filters
+            </button>
         </div>
     </div>
 
     <div id="map"></div>
+
+    <!-- Unified filter popover: visibility + filters + color mode -->
+    <div id="filter-panel" class="filter-panel" hidden role="dialog"
+         aria-label="Map filters">
+        <div class="filter-panel-card">
+            <div class="filter-panel-head">
+                <div class="filter-panel-title">Filters</div>
+                <button id="filter-panel-close" class="filter-panel-close"
+                        type="button" aria-label="Close">&times;</button>
+            </div>
+            <section class="filter-section">
+                <h4 class="filter-section-title">Show on map</h4>
+                <label class="filter-check">
+                    <input type="checkbox" id="lyr-fishable" checked>
+                    Fishable streams
+                </label>
+                <label class="filter-check">
+                    <input type="checkbox" id="lyr-trout">
+                    State trout streams
+                </label>
+                <label class="filter-check">
+                    <input type="checkbox" id="lyr-usgs" checked>
+                    USGS basemap streams
+                </label>
+                <label class="filter-check">
+                    <input type="checkbox" id="lyr-pins" checked>
+                    Saved pins
+                </label>
+                <div class="filter-sub">
+                    <div class="filter-sub-label">Color streams by</div>
+                    <div class="filter-segment" id="color-mode" role="group">
+                        <button type="button" data-mode="trout" class="on">Trout class</button>
+                        <button type="button" data-mode="conditions">Conditions</button>
+                    </div>
+                </div>
+            </section>
+            <section class="filter-section">
+                <h4 class="filter-section-title">Show rivers that are&hellip;</h4>
+                <label class="filter-row">
+                    <span>Condition</span>
+                    <select id="cond-select">
+                        <option value="any">Any</option>
+                        <option value="green">Good</option>
+                        <option value="yellow">Fair</option>
+                        <option value="red">Poor</option>
+                        <option value="gray">No Data</option>
+                    </select>
+                </label>
+                <label class="filter-row">
+                    <span>Active hatch</span>
+                    <select id="hatch-select">
+                        <option value="any">Any</option>
+                        <option value="active">Active now</option>
+                    </select>
+                </label>
+                <label class="filter-check">
+                    <input type="checkbox" id="trout-only">
+                    On a trout stream
+                </label>
+                <label class="filter-check">
+                    <input type="checkbox" id="stocked-only">
+                    Near stocked water
+                </label>
+            </section>
+            <button id="filter-reset" type="button" class="filter-reset">
+                Reset filters
+            </button>
+        </div>
+    </div>
 
     <!-- River detail panel (drawer on desktop, bottom sheet on mobile) -->
     <div id="river-panel" class="river-panel" hidden>

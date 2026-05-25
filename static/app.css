@@ -45,7 +45,152 @@ html, body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
 .ctrl-check input { cursor: pointer; }
 #drop-pin.active { background: #8e44ad; border-color: #8e44ad; }
 #controls { display: flex; align-items: center; gap: 10px; }
-#filters-toggle, #controls-done, .legend-toggle { display: none; }
+.legend-toggle { display: none; }
+#filters-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+#filters-toggle .filters-toggle-icon { font-size: 14px; line-height: 1; }
+#filters-toggle.active {
+    background: #4fc3f7;
+    color: #0b2233;
+    border-color: #4fc3f7;
+}
+
+/* -- Unified filter popover (visibility + filters + color mode) -- */
+.filter-panel {
+    position: fixed;
+    top: calc(60px + env(safe-area-inset-top));
+    right: 12px;
+    width: 340px;
+    max-width: calc(100vw - 24px);
+    max-height: calc(100vh - 80px - env(safe-area-inset-top));
+    z-index: 1100;
+    overflow: auto;
+    border-radius: 12px;
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.18);
+    background: #fff;
+    transform: translateY(-6px);
+    opacity: 0;
+    transition: transform 0.18s ease, opacity 0.18s ease;
+    pointer-events: none;
+}
+.filter-panel.open {
+    transform: none;
+    opacity: 1;
+    pointer-events: auto;
+}
+.filter-panel[hidden] { display: none; }
+.filter-panel-card { padding: 14px 16px 16px; }
+.filter-panel-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 6px;
+}
+.filter-panel-title {
+    font-size: 16px;
+    font-weight: 700;
+    color: #1a1a2e;
+}
+.filter-panel-close {
+    background: none;
+    border: none;
+    font-size: 22px;
+    line-height: 1;
+    color: #64748b;
+    cursor: pointer;
+    padding: 2px 6px;
+}
+.filter-panel-close:hover { color: #1a1a2e; }
+.filter-section {
+    border-top: 1px solid #e2e8f0;
+    padding: 12px 0 4px;
+}
+.filter-section:first-of-type { border-top: none; padding-top: 4px; }
+.filter-section-title {
+    margin: 0 0 8px;
+    font-size: 12px;
+    font-weight: 700;
+    color: #64748b;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+.filter-check {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 0;
+    font-size: 14px;
+    color: #1a1a2e;
+    cursor: pointer;
+    user-select: none;
+}
+.filter-check input { cursor: pointer; }
+.filter-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 6px 0;
+    font-size: 14px;
+    color: #1a1a2e;
+}
+.filter-row select {
+    min-width: 140px;
+    padding: 6px 10px;
+    border: 1px solid #cbd5e1;
+    border-radius: 6px;
+    background: #fff;
+    color: #1a1a2e;
+    font-size: 14px;
+    cursor: pointer;
+}
+.filter-sub {
+    margin-top: 10px;
+    padding-top: 8px;
+    border-top: 1px dashed #e2e8f0;
+}
+.filter-sub-label {
+    font-size: 12px;
+    color: #64748b;
+    margin-bottom: 6px;
+}
+.filter-segment {
+    display: flex;
+    border: 1px solid #cbd5e1;
+    border-radius: 8px;
+    overflow: hidden;
+    font-size: 12px;
+}
+.filter-segment button {
+    flex: 1;
+    border: none;
+    background: #fff;
+    color: #475569;
+    padding: 7px 10px;
+    cursor: pointer;
+    font: inherit;
+}
+.filter-segment button.on {
+    background: #1e6fd9;
+    color: #fff;
+    font-weight: 700;
+}
+.filter-reset {
+    width: 100%;
+    margin-top: 12px;
+    padding: 10px;
+    background: #f1f5f9;
+    border: 1px solid #cbd5e1;
+    border-radius: 8px;
+    color: #1a1a2e;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+}
+.filter-reset:hover { background: #e2e8f0; }
 #map {
     position: fixed;
     top: calc(56px + env(safe-area-inset-top));
@@ -424,23 +569,6 @@ html, body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
 }
 
 /* -- Clickable-stream network (Phase B) -- */
-.stream-mode {
-    background: #fff;
-    border-radius: 8px;
-    box-shadow: 0 1px 5px rgba(0,0,0,0.3);
-    overflow: hidden;
-    display: flex;
-    font-size: 12px;
-}
-.stream-mode button {
-    border: none;
-    background: #fff;
-    color: #475569;
-    padding: 6px 10px;
-    cursor: pointer;
-    font: inherit;
-}
-.stream-mode button.on { background: #1e6fd9; color: #fff; font-weight: 700; }
 .stream-badge {
     display: inline-block;
     padding: 3px 9px;
@@ -648,37 +776,19 @@ html, body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
     .logo { font-size: 20px; }
     #map { top: calc(50px + env(safe-area-inset-top)); }
 
-    #filters-toggle { display: inline-block; }
-    #filters-toggle.active { background: #4fc3f7; color: #0b2233; border-color: #4fc3f7; }
-    #controls {
-        position: fixed;
-        left: 0; right: 0; bottom: 0;
-        flex-direction: column;
-        align-items: stretch;
-        gap: 10px;
-        background: rgba(20, 20, 40, 0.98);
-        backdrop-filter: blur(8px);
-        padding: 16px 16px calc(16px + env(safe-area-inset-bottom));
-        border-radius: 14px 14px 0 0;
-        box-shadow: 0 -4px 22px rgba(0,0,0,0.45);
-        transform: translateY(115%);
-        transition: transform 0.25s ease;
-        z-index: 1003;
-        max-height: 72vh;
-        overflow: auto;
+    /* On phones the filter popover takes the whole right edge. The
+       narrow nav-only header stays inline (state, drop-pin, auth,
+       filters) and wraps if needed. */
+    .filter-panel {
+        top: calc(54px + env(safe-area-inset-top));
+        right: 6px;
+        left: 6px;
+        width: auto;
+        max-width: none;
     }
-    #controls.open { transform: none; }
-    #controls .ctrl {
-        width: 100%;
-        font-size: 16px;   /* >=16px stops iOS focus zoom */
-        padding: 12px 14px;
-    }
-    #controls .ctrl-check { justify-content: space-between; }
-    #controls-done {
-        display: block;
-        background: #4fc3f7; color: #0b2233; border-color: #4fc3f7;
-        font-weight: 700;
-    }
+    .filter-panel-card { padding: 12px 14px calc(16px + env(safe-area-inset-bottom)); }
+    .filter-check, .filter-row { font-size: 16px; padding: 8px 0; }
+    .filter-segment button { font-size: 14px; padding: 9px 10px; }
 
     .legend {
         bottom: calc(12px + env(safe-area-inset-bottom));
