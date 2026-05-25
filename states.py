@@ -1,5 +1,5 @@
 """
-State configuration for BlueLines.
+State configuration for Blueliner.
 
 Every U.S. state (plus DC) -> its USGS NWIS state code (lowercase postal
 abbreviation, used to query the USGS API) plus a display name and an

@@ -2,5 +2,7 @@ fastapi
 uvicorn
 gunicorn
 httpx
-geopandas
+shapely
 psycopg[binary]
+email-validator
+ijson

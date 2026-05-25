@@ -23,7 +23,7 @@ from states import STATES
 import db
 import stocking
 
-logger = logging.getLogger("bluelines.precompute")
+logger = logging.getLogger("blueliner.precompute")
 
 # Refreshed every cycle. The rest of the 51 states are computed lazily on
 # first visit, then persisted. Override with FOCUSED_STATES="MD,VA,...".

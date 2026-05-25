@@ -72,6 +72,75 @@ fallback when no live state agency endpoint is available. See
 `trout.BUNDLED_TROUT_STATES` (TODO) once a file is in place so the
 loader picks it up.
 
+## NHDPlusV2 VAA (`data/nhdplus/vaa.csv.gz`)
+
+This is the routing-attribute table that drives the LevelPathID-based
+flowline filter -- it's what stops a tributary gauge's clickable river
+from extending past the confluence onto the receiving river. Bundled
+in the repo; loaded into Postgres once at first boot.
+
+Don't hand-edit. Regenerate by running:
+
+```sh
+pip install dbfread py7zr httpx       # dev-only deps
+python scripts/build_nhdplus_vaa.py
+```
+
+The script downloads NHDPlusV2 `NHDPlusAttributes` + `NHDSnapshot`
+archives for the configured regions (HUC-02 + HUC-05 today), extracts
+`PlusFlowlineVAA.dbf` and `NHDFlowline.dbf`, joins on ComID, and
+writes the gzipped CSV. Re-run only when expanding coverage to new
+regions -- the data itself is frozen at NHDPlusV2's release.
+
+To add a region, edit `REGIONS` at the top of
+`scripts/build_nhdplus_vaa.py` (entries are `(id, label, vaa_url,
+snap_url)`), rerun the script, and commit the new CSV.
+
+## Clickable-streams network (`data/nhdplus/clickable_streams.geojson.gz`)
+
+The geometry layer of fishing-relevant streams ("bluelining" network).
+A reach is clickable if any of: StreamOrder >= 3; state-designated
+trout water (any order); order >= 3 tributary of trout water; named
+river order >= 5. Each feature carries `comid`, `levelpathid`,
+`gnis_name`, `streamorder`, `lengthkm`, `trout_class`. Grouped by
+`levelpathid` at runtime so a whole named river is one clickable unit.
+~104K flowlines / ~6 MB gzipped for HUC-02 + HUC-05.
+
+`trout_class` values: `wild_reproduction` (PA PASDA "With Tributaries"
++ VA DWR), `class_a` (PA), `wilderness` (PA), `stocked` (PA),
+`designated` (MD DNR), or `null` when no trout designation applies.
+
+Don't hand-edit. Regenerate by running:
+
+```sh
+pip install dbfread py7zr httpx geopandas shapely   # dev-only deps
+python scripts/build_clickable_streams.py
+```
+
+The script downloads NHDPlusV2 flowline geometry + routing attributes
+(Hydroseq / DnHydroseq / StreamOrder / LevelPathID), fetches state
+trout-stream GIS from PA PASDA, VA DWR, and MD DNR, spatial-joins
+trout polylines to NHD COMIDs, computes upstream tributaries via the
+NHDPlus topology graph, and writes the gzipped GeoJSON. A PA
+wild-trout validation report prints at the end.
+
+### Hosting the data files externally (national scale)
+
+Today's `vaa.csv.gz` + `clickable_streams.geojson.gz` (~9 MB) are
+committed and baked into the image. At national scale they grow to
+~50-150 MB -- too big to ship in the repo. When that happens:
+
+1. Host the files at a public base URL (Cloudflare R2 bucket or a
+   GitHub release asset), keeping the same filenames.
+2. Set the `DATA_BASE_URL` env var to that base (e.g.
+   `https://data.blueliner.app`). On boot the app downloads any file
+   it doesn't find locally (`data_source.resolve_data_file`), then
+   bulk-loads it into Postgres as usual.
+3. Add the big files to `.dockerignore` / drop them from git.
+
+No code change required -- `DATA_BASE_URL` unset means "use the bundled
+local files," which is the current behavior.
+
 ## Validating
 
 ```sh

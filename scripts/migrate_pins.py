@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 One-shot migration: copy user content from OLD_DATABASE_URL into
-NEW_DATABASE_URL. Used to move BlueLines off Render's free Postgres
+NEW_DATABASE_URL. Used to move Blueliner off Render's free Postgres
 (which expires at ~90 days) onto Neon free tier (persistent).
 
 Copies:

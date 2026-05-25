@@ -1,11 +1,11 @@
-// BlueLines service worker -- offline app shell only.
+// Blueliner service worker -- offline app shell only.
 // Live data (/api/*) and map tiles are always fetched from the network.
 //
 // App code (app.js/app.css/manifest) and navigations are NETWORK-FIRST so
 // deploys propagate immediately (cache-first here meant returning browsers
 // ran stale JS forever). Only the immutable vendored Leaflet + icons are
 // cache-first. Bump CACHE on any caching-strategy change.
-const CACHE = "bluelines-v3";
+const CACHE = "blueliner-v8";
 const SHELL = [
   "/map",
   "/static/app.css",

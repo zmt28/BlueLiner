@@ -184,9 +184,9 @@ def test_arcgis_keyset_pagination(monkeypatch):
             return _FakeResp({"type": "FeatureCollection", "features": page})
 
     monkeypatch.setattr(arcgis.httpx, "Client", FakeClient)
-    gdf = arcgis.fetch_geojson_gdf(
+    feats = arcgis.fetch_geojson_features(
         "https://x/y/MapServer/0/query?where=1=1", page_size=2)
-    assert gdf is not None and len(gdf) == 5      # full coverage, no dupes
+    assert feats is not None and len(feats) == 5  # full coverage, no dupes
     assert calls["n"] == 4                         # 1 metadata + pages 2+2+1
 
 
@@ -210,9 +210,9 @@ def test_arcgis_keyset_no_progress_guard(monkeypatch):
                               "features": [feat, feat]})
 
     monkeypatch.setattr(arcgis.httpx, "Client", FakeClient)
-    gdf = arcgis.fetch_geojson_gdf(
+    feats = arcgis.fetch_geojson_features(
         "https://x/y/MapServer/0/query?where=1=1", page_size=2)
-    assert gdf is not None and len(gdf) == 2   # one page kept
+    assert feats is not None and len(feats) == 2   # one page kept
     assert calls["n"] == 3                      # metadata + page0 + page1(stop)
 
 
@@ -342,8 +342,53 @@ def test_build_river_popup_html():
     assert "Trout Water" in html                            # on_trout chip
     assert "Stocked nearby" in html                         # stocked block
     assert "Gunpowder falls near glencoe, md" in html       # gauge sub-header
-    assert 'data-site="01581920"' in html                   # trend button
+    assert 'data-site="01581920"' in html                   # chart placeholder
     assert "Flow context" in html                           # median present
+    # Redesign: collapsible sections, summary, chart placeholder, and the
+    # catch CTA hoisted above the gauge sections.
+    assert "<details" in html and "<summary>" in html
+    assert 'class="bl-flow-chart"' in html
+    assert "bl-summary" in html
+    assert html.index("bl-catch-cta") < html.index("bl-gauge")  # CTA first
+
+
+def test_score_conditions_returns_temp_f():
+    out = main.score_conditions(
+        [{"variable": "Temperature, water, C", "value": "15"}], None)
+    assert out["temp_f"] == 59.0                            # 15C -> 59F
+    assert main.score_conditions([], None)["temp_f"] is None
+
+
+def test_ranking_summary_phrasing():
+    def river(cur_flow, median, temp_c):
+        variables = []
+        cond = {"current_flow": cur_flow}
+        if temp_c is not None:
+            tf = round(temp_c * 9 / 5 + 32, 1)
+            cond["temp_f"] = tf
+        else:
+            cond["temp_f"] = None
+        return {"gauges": [{
+            "site_no": "X", "variables": [{"variable": "Streamflow",
+                                            "value": str(cur_flow or 0)}],
+            "conditions": cond, "historical_median": median}]}
+
+    # 60 vs 80 median -> 25% below; 13C -> 55.4F ideal
+    s = main._ranking_summary_html(river(60.0, 80.0, 13))
+    assert "25% below average" in s and "ideal" in s
+    assert "for this time of year" in s        # time-bound comparison
+    # 160 vs 80 -> 100% above; 21C -> 69.8F too warm
+    s = main._ranking_summary_html(river(160.0, 80.0, 21))
+    assert "100% above average" in s and "too warm" in s
+    # within 15% -> near normal
+    s = main._ranking_summary_html(river(85.0, 80.0, 10))
+    assert "near normal" in s
+    # no median -> raw cfs; no temp
+    s = main._ranking_summary_html(river(42.0, None, None))
+    assert "42 cfs" in s
+    # nothing -> graceful
+    s = main._ranking_summary_html(river(None, None, None))
+    assert "Limited live data" in s
 
 
 # -- bounded cache (memory: the OOM fix) --
@@ -762,7 +807,11 @@ def test_nldi_gauge_meta_short_circuits_on_db(tmp_path, monkeypatch):
 
     monkeypatch.setattr(main.httpx, "Client", NoNet)
     meta = main._nldi_gauge_meta("01581920")
-    assert meta == {"comid": "12345", "gnis_name": "Gunpowder Falls"}
+    # gauge_meta written without levelpathid (pre-VAA) gets it
+    # backfilled (None when VAA isn't loaded), all without a net call.
+    assert meta["comid"] == "12345"
+    assert meta["gnis_name"] == "Gunpowder Falls"
+    assert meta.get("levelpathid") is None
 
 
 def test_nldi_gauge_meta_graceful(monkeypatch):
@@ -839,3 +888,253 @@ def test_assemble_rivers_falls_back_to_heuristic_without_gnis(monkeypatch):
     }]
     rivers = asyncio.run(main._assemble_rivers(ts, [None], []))
     assert len(rivers) == 1 and rivers[0]["name"] == "Gunpowder Falls"
+
+
+# -- NHDPlusV2 LevelPathID filter (the topological flowline filter) --
+
+def _seed_vaa(tmp_path, monkeypatch, rows):
+    """Wire a fresh sqlite to db.DB_PATH and seed nhdplus_vaa rows.
+    Returns the DB path so callers can keep using it."""
+    monkeypatch.setattr(db, "DB_PATH", str(tmp_path / "t.db"))
+    db.init_db()
+    for r in rows:
+        with db._conn() as conn:                                  # noqa: SLF001
+            conn.execute(
+                "INSERT INTO nhdplus_vaa (comid, hydroseq, levelpathid,"
+                " streamlevel, gnis_name, lengthkm) VALUES (?,?,?,?,?,?)",
+                (r["comid"], r.get("hydroseq"), r["levelpathid"],
+                 r.get("streamlevel"), r.get("gnis_name"),
+                 r.get("lengthkm")))
+            conn.commit()
+
+
+def test_db_vaa_lookup_single_and_batched(tmp_path, monkeypatch):
+    _seed_vaa(tmp_path, monkeypatch, [
+        {"comid": 100, "levelpathid": 5000, "gnis_name": "Gunpowder Falls"},
+        {"comid": 200, "levelpathid": 6000, "gnis_name": "Minebank Run"},
+        {"comid": 300, "levelpathid": 5000, "gnis_name": "Gunpowder Falls"},
+    ])
+    assert db.get_vaa(100)["levelpathid"] == 5000
+    assert db.get_vaa(999) is None                                # absent
+    got = db.get_vaas([100, 200, 999])
+    assert set(got) == {100, 200}
+    assert got[100]["gnis_name"] == "Gunpowder Falls"
+
+
+def test_bulk_load_vaa_idempotent(tmp_path, monkeypatch):
+    """Loader runs once, then short-circuits."""
+    monkeypatch.setattr(db, "DB_PATH", str(tmp_path / "t.db"))
+    db.init_db()
+    # Tiny bundled CSV fixture
+    import csv, gzip
+    fixture = tmp_path / "vaa.csv.gz"
+    with gzip.open(fixture, "wt", newline="") as f:
+        w = csv.DictWriter(f, fieldnames=["comid", "hydroseq", "levelpathid",
+                                          "streamlevel", "gnis_name", "lengthkm"])
+        w.writeheader()
+        w.writerow({"comid": 100, "hydroseq": 1, "levelpathid": 5000,
+                    "streamlevel": 3, "gnis_name": "Gunpowder Falls",
+                    "lengthkm": 1.5})
+        w.writerow({"comid": 200, "hydroseq": 2, "levelpathid": 6000,
+                    "streamlevel": 4, "gnis_name": "Minebank Run",
+                    "lengthkm": 0.3})
+
+    n = db.bulk_load_vaa(str(fixture))
+    assert n == 2
+    n2 = db.bulk_load_vaa(str(fixture))               # already loaded
+    assert n2 == 0
+    assert db.get_vaa(100)["gnis_name"] == "Gunpowder Falls"
+
+
+def test_filter_flowlines_by_levelpath_keeps_only_matching(tmp_path, monkeypatch):
+    """The Georges-Run-onto-Gunpowder case, by LevelPathID this time:
+    walked features span two LevelPathIDs; filter keeps only the
+    gauge's path."""
+    _seed_vaa(tmp_path, monkeypatch, [
+        {"comid": 111, "levelpathid": 5000, "gnis_name": "Georges Run"},
+        {"comid": 222, "levelpathid": 9999, "gnis_name": "Gunpowder Falls"},
+        {"comid": 333, "levelpathid": 9999, "gnis_name": "Gunpowder Falls"},
+    ])
+    feats = [
+        {"type": "Feature", "properties": {"nhdplus_comid": "111"},
+         "geometry": {"type": "LineString",
+                      "coordinates": [[-76.69, 39.61], [-76.69, 39.60]]}},
+        {"type": "Feature", "properties": {"nhdplus_comid": "222"},
+         "geometry": {"type": "LineString",
+                      "coordinates": [[-76.69, 39.55], [-76.70, 39.50]]}},
+        {"type": "Feature", "properties": {"nhdplus_comid": "333"},
+         "geometry": {"type": "LineString",
+                      "coordinates": [[-76.71, 39.45], [-76.72, 39.40]]}},
+    ]
+    kept = main._filter_flowlines_by_levelpath(feats, target_lpid=5000)
+    assert len(kept) == 1
+    assert kept[0]["properties"]["nhdplus_comid"] == "111"
+
+
+def test_filter_flowlines_by_levelpath_no_fallback_on_mismatch(tmp_path, monkeypatch):
+    """Critical: when no features share the target LevelPathID, return
+    empty -- never fall back to the unfiltered set. (That fallback is
+    exactly what re-introduced the cross-confluence bleed previously.)"""
+    _seed_vaa(tmp_path, monkeypatch, [
+        {"comid": 222, "levelpathid": 9999, "gnis_name": "Gunpowder Falls"},
+    ])
+    feats = [
+        {"type": "Feature", "properties": {"nhdplus_comid": "222"},
+         "geometry": {"type": "LineString",
+                      "coordinates": [[-76.69, 39.55], [-76.70, 39.50]]}},
+    ]
+    kept = main._filter_flowlines_by_levelpath(feats, target_lpid=5000)
+    assert kept == []
+
+
+def test_nldi_gauge_meta_includes_levelpath_when_vaa_loaded(tmp_path, monkeypatch):
+    """gauge_meta carries `levelpathid` pulled from the local VAA when
+    the gauge's COMID is present."""
+    _seed_vaa(tmp_path, monkeypatch, [
+        {"comid": 12345, "levelpathid": 5000, "gnis_name": "Gunpowder Falls"},
+    ])
+    main._gauge_meta_cache.clear()
+
+    class FakeClient:
+        def __init__(self, *a, **k): pass
+        def __enter__(self): return self
+        def __exit__(self, *a): return False
+        def get(self, url, params=None):
+            if "/nwissite/" in url:
+                return _FakeResp({"features": [
+                    {"properties": {"comid": 12345}}]})
+            return _FakeResp({"features": [
+                {"properties": {"gnis_name": "Gunpowder Falls"}}]})
+
+    monkeypatch.setattr(main.httpx, "Client", FakeClient)
+    meta = main._nldi_gauge_meta("01581920")
+    assert meta["comid"] == "12345"
+    assert meta["gnis_name"] == "Gunpowder Falls"
+    assert meta["levelpathid"] == 5000
+
+
+def test_nldi_flowline_prefers_levelpath_filter(tmp_path, monkeypatch):
+    """When VAA covers the gauge AND the walked features, the
+    LevelPathID filter runs (not the gnis fallback)."""
+    _seed_vaa(tmp_path, monkeypatch, [
+        {"comid": 12345, "levelpathid": 5000, "gnis_name": "Gunpowder Falls"},
+        {"comid": 111, "levelpathid": 5000, "gnis_name": "Gunpowder Falls"},
+        {"comid": 222, "levelpathid": 9999, "gnis_name": "Long Green Creek"},
+    ])
+    main._river_geom_cache.clear()
+    monkeypatch.setattr(
+        main, "_nldi_gauge_meta",
+        lambda s: {"comid": "12345", "gnis_name": "Gunpowder Falls",
+                   "levelpathid": 5000})
+    gnis_called = {"n": 0}
+
+    def fake_gnis_filter(feats, target):
+        gnis_called["n"] += 1
+        return feats
+
+    monkeypatch.setattr(main, "_filter_flowlines_by_gnis", fake_gnis_filter)
+
+    seg_own = {"type": "Feature", "properties": {"nhdplus_comid": "111"},
+               "geometry": {"type": "LineString",
+                            "coordinates": [[-76.69, 39.61], [-76.69, 39.60]]}}
+    seg_other = {"type": "Feature", "properties": {"nhdplus_comid": "222"},
+                 "geometry": {"type": "LineString",
+                              "coordinates": [[-76.69, 39.55], [-76.7, 39.5]]}}
+
+    monkeypatch.setattr(
+        main, "_fetch_nav",
+        lambda c, b, nav, dist: [seg_own] if nav == "UM" else [seg_other])
+
+    class CtxNoop:
+        def __enter__(self): return self
+        def __exit__(self, *a): return False
+        def get(self, *a, **k): raise AssertionError("fetcher monkeypatched")
+    monkeypatch.setattr(main.httpx, "Client", lambda *a, **k: CtxNoop())
+
+    fc = main._nldi_flowline("01581920")
+    assert gnis_called["n"] == 0                         # gnis tier didn't run
+    assert [f["properties"]["nhdplus_comid"] for f in fc["features"]] == ["111"]
+
+
+def test_shell_no_cache_middleware():
+    """App-shell paths get no-cache so a CDN can't strand clients on a
+    stale build; immutable vendored assets are unaffected."""
+    import asyncio
+    from types import SimpleNamespace
+
+    class _Resp:
+        def __init__(self): self.headers = {}
+
+    async def _call_next(_req):
+        return _Resp()
+
+    def cc(path):
+        req = SimpleNamespace(url=SimpleNamespace(path=path))
+        resp = asyncio.run(main._shell_no_cache(req, _call_next))
+        return resp.headers.get("Cache-Control")
+
+    for p in ("/", "/map", "/sw.js", "/static/app.js", "/static/app.css"):
+        assert cc(p) == "no-cache, must-revalidate", p
+    for p in ("/static/vendor/leaflet/leaflet.js", "/api/rivers"):
+        assert cc(p) is None, p
+
+
+# -- geopandas-trim: shapely-only trout proximity + data-download seam --
+
+def test_trout_layer_proximity_shapely():
+    """TroutLayer.near uses a shapely STRtree (no geopandas). A gauge
+    within ~450m of a stream line tags on-trout; one well away doesn't."""
+    import trout
+    line = {"type": "Feature", "properties": {},
+            "geometry": {"type": "LineString",
+                         "coordinates": [[-76.70, 39.60], [-76.70, 39.66]]}}
+    layer = trout.TroutLayer([line])
+    assert trout.is_near_trout_stream(39.63, -76.701, layer) is True   # ~85m off
+    assert trout.is_near_trout_stream(39.63, -76.90, layer) is False   # ~17km off
+    assert trout.is_near_trout_stream(39.63, -76.70, None) is False    # no layer
+
+
+def test_trout_slim_simplifies_and_strips(monkeypatch):
+    """load_trout_streams turns fetched features into a geometry-only
+    TroutLayer via shapely (attributes dropped, vertices decimated)."""
+    import trout
+    trout._trout_cache.clear()
+    raw = [{"type": "Feature", "properties": {"NAME": "X", "junk": 1},
+            "geometry": {"type": "LineString",
+                         "coordinates": [[-76.7, 39.6], [-76.7, 39.61],
+                                         [-76.7, 39.62]]}}]
+    monkeypatch.setattr(trout, "fetch_geojson_features", lambda url: raw)
+    monkeypatch.setitem(trout.TROUT_SOURCES, "ZZ", {"name": "t", "url": "http://x"})
+    layer = trout.load_trout_streams("ZZ")
+    assert isinstance(layer, trout.TroutLayer)
+    assert layer.features[0]["properties"] == {}          # stripped
+    assert layer.features[0]["geometry"]["type"] == "LineString"
+
+
+def test_resolve_data_file_local_first(tmp_path, monkeypatch):
+    import data_source
+    local = tmp_path / "vaa.csv.gz"
+    local.write_bytes(b"local")
+    monkeypatch.setattr(data_source, "DATA_BASE_URL", "")
+    assert data_source.resolve_data_file(str(local), "vaa.csv.gz") == str(local)
+    # missing local + no base URL -> returns the (absent) local path unchanged
+    missing = str(tmp_path / "nope.gz")
+    assert data_source.resolve_data_file(missing, "nope.gz") == missing
+
+
+def test_resolve_data_file_downloads_when_configured(tmp_path, monkeypatch):
+    import data_source
+
+    class _Stream:
+        def __init__(self, *a, **k): pass
+        def __enter__(self): return self
+        def __exit__(self, *a): return False
+        def raise_for_status(self): pass
+        def iter_bytes(self): yield b"remote-bytes"
+
+    monkeypatch.setattr(data_source, "DATA_BASE_URL", "https://data.example")
+    monkeypatch.setattr(data_source, "_CACHE_DIR", str(tmp_path / "cache"))
+    monkeypatch.setattr(data_source.httpx, "stream", lambda *a, **k: _Stream())
+    missing = str(tmp_path / "absent.gz")
+    out = data_source.resolve_data_file(missing, "absent.gz")
+    assert out != missing and open(out, "rb").read() == b"remote-bytes"

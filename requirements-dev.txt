@@ -1,2 +1,6 @@
 -r requirements.txt
 pytest
+# Build-only (scripts/build_*.py); NOT imported by the running app.
+geopandas
+dbfread
+py7zr

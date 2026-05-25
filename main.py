@@ -1,16 +1,18 @@
 from contextlib import asynccontextmanager
+import secrets
+
 from fastapi import FastAPI, Query, HTTPException, Request
-from fastapi.responses import RedirectResponse, FileResponse, Response
+from fastapi.responses import (RedirectResponse, FileResponse, Response,
+                               HTMLResponse, JSONResponse)
 from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.staticfiles import StaticFiles
+from pydantic import BaseModel, EmailStr
 from pydantic import BaseModel, Field
 from shapely.geometry import shape, mapping
 import httpx
 from datetime import datetime, timezone
 from collections import defaultdict
 from concurrent.futures import ThreadPoolExecutor
-import geopandas
-import pandas as pd
 import asyncio
 import hashlib
 import json
@@ -27,13 +29,15 @@ from cache import LruTtl
 import hatches
 import stocking
 import db
+import enrichment
+import data_source
 
 
 logging.basicConfig(
     level=os.environ.get("LOG_LEVEL", "INFO").upper(),
     format="%(asctime)s %(levelname)s %(name)s %(message)s",
 )
-logger = logging.getLogger("bluelines")
+logger = logging.getLogger("blueliner")
 
 # How often the background refresher re-precomputes focused states, and
 # the age past which a served snapshot is also refreshed in the
@@ -41,6 +45,12 @@ logger = logging.getLogger("bluelines")
 # so ~45 min is fresh enough and cheap. Override with REFRESH_INTERVAL
 # (seconds).
 _REFRESH_INTERVAL = float(os.environ.get("REFRESH_INTERVAL", str(45 * 60)))
+
+# NHDPlusV2 VAA lookup -- bundled with the repo, loaded once at startup.
+_VAA_BUNDLED_PATH = os.path.join(os.path.dirname(__file__), "data",
+                                 "nhdplus", "vaa.csv.gz")
+_CLICKABLE_BUNDLED_PATH = os.path.join(os.path.dirname(__file__), "data",
+                                       "nhdplus", "clickable_streams.geojson.gz")
 
 # Module-level caches. All bounded (LruTtl) -- unbounded per-state dicts
 # were the runtime memory growth behind the 512MB OOM. Both are also
@@ -63,7 +73,7 @@ _comid_meta_cache: LruTtl = LruTtl(maxsize=8192, ttl=900.0)
 # rows written under an older version are treated as cache-misses so
 # they're refetched on next access, instead of serving stale geometry
 # forever. (Geometry is otherwise immutable per site.)
-_GEOM_SCHEMA_VERSION = 2
+_GEOM_SCHEMA_VERSION = 3
 
 STATIC_DIR = os.path.join(os.path.dirname(__file__), "static")
 
@@ -86,6 +96,31 @@ async def lifespan(app: FastAPI):
             await asyncio.to_thread(load_trout_streams, "MD")
         except Exception as exc:
             logger.warning("MD trout warm failed: %s", exc)
+        # NHDPlusV2 VAA: ~300K rows from data/nhdplus/vaa.csv.gz on
+        # first boot. Idempotent (skips if already loaded), so this is
+        # a no-op on warm restarts. Drives the LevelPathID flowline
+        # filter that prevents cross-confluence bleed.
+        try:
+            n = await asyncio.to_thread(
+                lambda: db.bulk_load_vaa(data_source.resolve_data_file(
+                    _VAA_BUNDLED_PATH, "vaa.csv.gz")))
+            if n:
+                logger.info("NHDPlus VAA loaded: %d rows", n)
+        except Exception as exc:
+            logger.warning("NHDPlus VAA load failed: %s "
+                           "(falling back to gnis filter)", exc)
+        # Clickable-stream network (Phase B). ~100K flowlines from the
+        # bundled GeoJSON, served by viewport bbox + zoom tier. Idempotent.
+        try:
+            n = await asyncio.to_thread(
+                lambda: db.bulk_load_clickable_streams(
+                    data_source.resolve_data_file(
+                        _CLICKABLE_BUNDLED_PATH,
+                        "clickable_streams.geojson.gz")))
+            if n:
+                logger.info("Clickable streams loaded: %d rows", n)
+        except Exception as exc:
+            logger.warning("Clickable-streams load failed: %s", exc)
 
     # The refresher is what makes the map instant: it keeps each focused
     # state's snapshot + flowline geometry warm in Postgres so requests
@@ -111,6 +146,27 @@ app = FastAPI(lifespan=lifespan)
 # Snapshot/line payloads are large and highly compressible JSON; gzip
 # them (also lets a CDN/Cloudflare cache the compressed bytes).
 app.add_middleware(GZipMiddleware, minimum_size=1024)
+
+# The app shell (HTML + app.js/app.css/sw.js/manifest) changes every
+# deploy. A CDN that caches by file extension (Cloudflare's default)
+# will otherwise serve a stale app.js even to fresh/incognito clients,
+# stranding them on an old build. `no-cache` tells the browser AND any
+# intermediary cache to revalidate before serving -- Cloudflare won't
+# edge-cache a response with no-cache -- so deploys propagate. The
+# immutable vendored assets (/static/vendor, /static/icons) keep their
+# default long-lived caching.
+_NO_CACHE_PATHS = {"/", "/map", "/sw.js", "/static/app.js",
+                   "/static/app.css", "/static/manifest.webmanifest"}
+
+
+@app.middleware("http")
+async def _shell_no_cache(request: Request, call_next):
+    response = await call_next(request)
+    if request.url.path in _NO_CACHE_PATHS:
+        response.headers["Cache-Control"] = "no-cache, must-revalidate"
+    return response
+
+
 app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 
 
@@ -260,6 +316,7 @@ def score_conditions(variables: list[dict], historical_median: float | None = No
     temp_score = None
     flow_score = None
     current_flow = None
+    temp_f = None
 
     for var in variables:
         description = var.get("variable", "").lower()
@@ -314,6 +371,7 @@ def score_conditions(variables: list[dict], historical_median: float | None = No
         "temp": temp_score,
         "flow": flow_score,
         "current_flow": current_flow,
+        "temp_f": round(temp_f, 1) if temp_f is not None else None,
     }
 
 
@@ -364,10 +422,10 @@ def _hatch_section_html(zone: dict | None, active: list[dict] | None,
                     <div style="font-size:11px;color:#1e8449">Try: {patterns}</div>
                 </div>"""
     return f"""
-        <div style="margin-top:10px;padding:8px 12px;background:#eef7f2;border:1px solid #d1f2eb;border-radius:6px">
-            <div style="font-size:13px;font-weight:700;color:#0e6655">{title}</div>
-            {body}
-        </div>"""
+        <details class="bl-section bl-hatch">
+            <summary>{title}</summary>
+            <div class="bl-section-body">{body}</div>
+        </details>"""
 
 
 def _trend_html(site_no: str | None) -> str:
@@ -465,6 +523,67 @@ def _stocked_block_html(waters: list[dict]) -> str:
         </div>"""
 
 
+def _primary_gauge(gauges: list[dict]) -> dict | None:
+    """The gauge that best represents the river: first one with a site_no
+    that reports discharge, else the first gauge. Drives the top-of-card
+    summary + auto-loaded flow chart."""
+    for g in gauges:
+        if g.get("site_no") and any(
+            "discharge" in v.get("variable", "").lower() or
+            "streamflow" in v.get("variable", "").lower()
+            for v in g.get("variables", [])
+        ):
+            return g
+    return gauges[0] if gauges else None
+
+
+def _ranking_summary_html(river: dict) -> str:
+    """One-line plain-English read on why the river is rated as it is,
+    e.g. 'Flow is 20% below average and water temp is ideal.' Built from
+    the primary gauge's flow-vs-median ratio + water temperature."""
+    primary = _primary_gauge(river["gauges"])
+    if not primary:
+        return ""
+    cond = primary.get("conditions", {})
+    median = primary.get("historical_median")
+    parts: list[str] = []
+
+    # The median is the historical daily median for today's date, so the
+    # comparison is explicitly time-of-year-bound, not an annual average.
+    cf = cond.get("current_flow")
+    if cf is not None and median and median > 0:
+        pct = round((cf / median - 1) * 100)
+        if abs(pct) <= 15:
+            parts.append("flow is near normal for this time of year")
+        elif pct < 0:
+            parts.append(
+                f"flow is {abs(pct)}% below average for this time of year")
+        else:
+            parts.append(
+                f"flow is {pct}% above average for this time of year")
+    elif cf is not None:
+        parts.append(f"flow is {cf:.0f} cfs")
+
+    tf = cond.get("temp_f")
+    if tf is not None:
+        if tf < 40:
+            parts.append("water is very cold")
+        elif tf < 48:
+            parts.append("water is cool")
+        elif tf <= 65:
+            parts.append("water temp is ideal")
+        elif tf <= 68:
+            parts.append("water is slightly warm")
+        else:
+            parts.append("water is too warm")
+
+    if not parts:
+        return '<div class="bl-summary">Limited live data right now.</div>'
+    sentence = " and ".join(parts)
+    sentence = sentence[0].upper() + sentence[1:] + "."
+    return f'<div class="bl-summary">{sentence}</div>'
+
+
 def build_river_popup_html(river: dict) -> str:
     overall = river["overall"]
     badge_color = SCORE_COLORS[overall]
@@ -473,34 +592,50 @@ def build_river_popup_html(river: dict) -> str:
     trout_html = _CHIP_TROUT if river["on_trout"] else ""
     stocked_html = _CHIP_STOCKED if river["near_stocked"] else ""
 
+    primary = _primary_gauge(river["gauges"])
+    chart_html = ""
+    if primary and primary.get("site_no"):
+        chart_html = (f'<div class="bl-flow-chart" '
+                      f'data-site="{primary["site_no"]}"></div>')
+
     gauges_html = ""
     for g in river["gauges"]:
+        is_primary = g is primary
         usgs = (
             f'<div style="padding:4px 0 2px;text-align:right">'
             f'<a href="https://waterdata.usgs.gov/nwis/uv?site_no={g["site_no"]}" '
             f'target="_blank" style="color:#3498db;font-size:12px;text-decoration:none">'
             f'View on USGS &#x2197;</a></div>'
         ) if g.get("site_no") else ""
+        # The primary gauge's chart is rendered up top, so skip its inline
+        # on-demand trend button; secondary gauges keep theirs.
+        trend = "" if is_primary else _trend_html(g.get("site_no"))
+        open_attr = " open" if is_primary else ""
         gauges_html += f"""
-            <div style="border-top:1px solid #e5e7eb;padding-top:8px;margin-top:10px">
-                <div style="font-size:14px;font-weight:600;color:#1a1a2e">{g["site_name"]}</div>
-                {_flow_context_html(g["conditions"], g["historical_median"])}
-                {_readings_table_html(g["variables"])}
-                {_trend_html(g.get("site_no"))}
-                {usgs}
-            </div>"""
+            <details class="bl-section bl-gauge"{open_attr}>
+                <summary>{g["site_name"]}</summary>
+                <div class="bl-section-body">
+                    {_flow_context_html(g["conditions"], g["historical_median"])}
+                    {_readings_table_html(g["variables"])}
+                    {trend}
+                    {usgs}
+                </div>
+            </details>"""
 
     return f"""
-        <div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;max-width:380px">
-            <div style="padding:12px 14px 8px">
+        <div class="bl-card" style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif">
+            <div class="bl-card-head">
                 <div style="font-size:18px;font-weight:700;color:#1a1a2e;margin-bottom:6px">{river["name"]}</div>
                 <span style="display:inline-block;padding:3px 10px;border-radius:12px;font-size:12px;font-weight:700;
                     color:{badge_color};background:{badge_bg};border:1.5px solid {badge_color};letter-spacing:0.5px">
                     {badge_label}
                 </span>{trout_html}{stocked_html}
                 <div style="font-size:11px;color:#888;margin-top:5px">{len(river["gauges"])} gauge(s) on this water</div>
+                {_ranking_summary_html(river)}
             </div>
-            <div style="padding:6px 14px 12px">
+            <div class="bl-card-body">
+                <div class="bl-catch-cta"></div>
+                {chart_html}
                 {_hatch_section_html(river["hatch_zone"], river["active"], river["month"])}
                 {_stocked_block_html(river["stocked_waters"])}
                 {gauges_html}
@@ -564,29 +699,26 @@ def _trout_for_state(st: str):
     return None
 
 
-def _gdfs_to_geojson_str(gdfs: list[geopandas.GeoDataFrame]) -> str:
-    """Merge gdfs into one GeoJSON FeatureCollection string, skipping
-    Nones (still warming) and empties. Empty input -> empty FC string."""
-    valid = [g for g in gdfs if g is not None and not g.empty]
-    if not valid:
-        return '{"type":"FeatureCollection","features":[]}'
-    if len(valid) == 1:
-        merged = valid[0]
-    else:
-        merged = geopandas.GeoDataFrame(
-            pd.concat(valid, ignore_index=True), crs=valid[0].crs
-        )
-    return merged.to_json()
+def _trout_geojson_str(layers: list) -> str:
+    """Merge per-state TroutLayer feature lists into one GeoJSON
+    FeatureCollection string. GZipMiddleware compresses the body."""
+    features: list[dict] = []
+    for layer in layers:
+        if layer is not None:
+            features.extend(layer.features)
+    return json.dumps({"type": "FeatureCollection", "features": features},
+                      separators=(",", ":"))
 
 
-async def _assemble_rivers(time_series: list, trout_gdfs: list,
+async def _assemble_rivers(time_series: list, trout_layers: list,
                            stocked_pts: list) -> list[dict]:
     """Shared core: aggregate USGS sites -> group into rivers -> popups.
-    `trout_gdfs` is a list of gdf|None (a gauge is on trout if near ANY)."""
+    `trout_layers` is a list of TroutLayer|None (a gauge is on trout if
+    near ANY)."""
     today = datetime.now()
     today_key = (today.month, today.day)
     month_now = today.month
-    tgs = [g for g in trout_gdfs if g is not None]
+    tgs = [g for g in trout_layers if g is not None]
 
     sites = defaultdict(lambda: {"variables": [], "site_no": None})
     for series in time_series:
@@ -1031,6 +1163,51 @@ async def api_river_lines(
     return _cached_json(request, payload, max_age=300)
 
 
+# Per-zoom StreamOrder floor for the clickable network: zoomed out shows
+# only big rivers; zooming in reveals progressively smaller streams down
+# to the order-1/2 wild-trout headwaters. Mirrors the prototype tiers.
+def _min_order_for_zoom(zoom: int) -> int:
+    if zoom >= 13:
+        return 1
+    if zoom >= 12:
+        return 2
+    if zoom >= 10:
+        return 3
+    if zoom >= 9:
+        return 4
+    if zoom >= 8:
+        return 5
+    return 6
+
+
+@app.get("/api/clickable_streams")
+async def api_clickable_streams(
+    request: Request,
+    bbox: str = Query(..., description="west,south,east,north"),
+    zoom: int = Query(default=11, ge=0, le=22),
+):
+    """Clickable-stream network for the viewport, filtered to the zoom's
+    StreamOrder tier. A pure DB read of the bundled network; returns a
+    GeoJSON FeatureCollection with per-stream props (name, order, trout
+    class, levelpathid). The client groups by levelpathid for whole-river
+    selection."""
+    w, s, e, n = _parse_bbox(bbox)
+    min_order = _min_order_for_zoom(zoom)
+    rows = await asyncio.to_thread(
+        db.query_clickable_streams, w, s, e, n, min_order)
+    features = [{
+        "type": "Feature",
+        "geometry": r["geometry"],
+        "properties": {
+            "comid": r["comid"], "levelpathid": r["levelpathid"],
+            "gnis_name": r["gnis_name"], "streamorder": r["streamorder"],
+            "trout_class": r["trout_class"],
+        },
+    } for r in rows]
+    payload = {"type": "FeatureCollection", "features": features}
+    return _cached_json(request, payload, max_age=600)
+
+
 _REFRESH_TOKEN = os.environ.get("REFRESH_TOKEN", "")
 
 
@@ -1054,13 +1231,13 @@ async def api_trout(request: Request,
     states_to_load = _resolve_states(state)
     if states_to_load is None:
         raise HTTPException(status_code=400, detail=f"Unsupported state: {state}")
-    # Non-blocking: cached gdf or empty until the background warm completes.
-    gdfs = [_trout_for_state(st) for st in states_to_load]
-    body = _gdfs_to_geojson_str(gdfs)
+    # Non-blocking: cached layer or empty until the background warm completes.
+    layers = [_trout_for_state(st) for st in states_to_load]
+    body = _trout_geojson_str(layers)
     # While warming, the response is the empty FC string -- short TTL so
     # Cloudflare doesn't pin an empty layer for the day. Real responses
     # change rarely (upstream dataset refreshes), so cache them hard.
-    warming = all(g is None or g.empty for g in gdfs)
+    warming = all(layer is None for layer in layers)
     if warming:
         return _cached_response(request, body, max_age=60, s_max_age=300)
     return _cached_response(request, body, max_age=3600, s_max_age=86400)
@@ -1099,17 +1276,23 @@ def _fetch_nav(client: httpx.Client, base: str, nav: str, dist: str) -> list:
 def _nldi_flowline(site_no: str) -> dict:
     """Main-stem flowline around a USGS gauge from USGS NLDI.
 
-    Two-stage safety against the "tributary flowline visually extends
+    Three-tier filter against the "tributary flowline visually extends
     onto the larger main stem at the confluence" failure mode:
 
-      1. When the gauge has an authoritative NHD gnis_name, walk a full
-         reach (UM 75 / DM 40 km) then drop every flowline feature
-         whose own NHD gnis_name doesn't match (per-COMID lookup,
-         cached forever in `comid_meta`). This gives long named rivers
-         their full reach without bleeding across confluences.
-      2. When NLDI has no gnis_name for the gauge, fall back to a
-         conservative walk (UM 15 / DM 10 km) with no filter -- the
-         filter has nothing to match against.
+      1. **LevelPathID** (preferred). The gauge's COMID has a NHDPlusV2
+         LevelPathID -- a deterministic ID for the river's main path
+         through confluences. Walk the full reach (UM 75 / DM 40 km),
+         then drop any feature whose LevelPathID disagrees. No string
+         matching, no fallback to unfiltered: an empty result means
+         "we couldn't identify the same river," which is honest.
+      2. **gnis_name** (degraded). For gauges outside the loaded VAA
+         regions (i.e. nhdplus_vaa has no row for the COMID), fall
+         back to NHD's name field via per-COMID NLDI lookups. Less
+         reliable because NHD's name attribution is incomplete; the
+         no-fallback rule still applies.
+      3. **No filter** (last resort). No gnis_name either -> conservative
+         short walk (UM 15 / DM 10 km), no filter; just bounded by
+         walk distance.
 
     Served from process LRU -> Postgres -> NLDI with write-through.
     Rows written under an older walk/filter schema (no `_walk_version`,
@@ -1128,8 +1311,10 @@ def _nldi_flowline(site_no: str) -> dict:
         return stored
 
     meta = _nldi_gauge_meta(site_no)
+    target_lpid = meta.get("levelpathid") if meta else None
     target_gnis = (meta.get("gnis_name") or "").strip().lower() if meta else ""
-    nav = (("UM", "75"), ("DM", "40")) if target_gnis \
+    have_identity = bool(target_lpid or target_gnis)
+    nav = (("UM", "75"), ("DM", "40")) if have_identity \
           else (("UM", "15"), ("DM", "10"))
 
     base = f"https://api.water.usgs.gov/nldi/linked-data/nwissite/USGS-{site_no}/navigation"
@@ -1144,8 +1329,11 @@ def _nldi_flowline(site_no: str) -> dict:
     except Exception:
         feats = []
 
-    if target_gnis and feats:
-        feats = _filter_flowlines_by_gnis(feats, target_gnis)
+    if feats:
+        if target_lpid is not None:
+            feats = _filter_flowlines_by_levelpath(feats, int(target_lpid))
+        elif target_gnis:
+            feats = _filter_flowlines_by_gnis(feats, target_gnis)
 
     if feats:
         fc = _simplify_fc({"type": "FeatureCollection", "features": feats})
@@ -1160,25 +1348,58 @@ def _nldi_flowline(site_no: str) -> dict:
     return _EMPTY_FC
 
 
+def _extract_comid(feature: dict) -> int | None:
+    """Pull NHDPlus COMID from a flowline feature's properties.
+    NLDI returns it under `nhdplus_comid`; some older responses
+    used `comid`."""
+    props = feature.get("properties") or {}
+    cid = props.get("nhdplus_comid") or props.get("comid")
+    if cid is None or cid == "":
+        return None
+    try:
+        return int(cid)
+    except (TypeError, ValueError):
+        return None
+
+
+def _filter_flowlines_by_levelpath(features: list[dict],
+                                   target_lpid: int) -> list[dict]:
+    """Keep only flowline features sharing the gauge's NHDPlusV2
+    LevelPathID. One batched DB query for the COMIDs in the walk.
+    No fallback to unfiltered: empty is honest. If the bundled VAA
+    doesn't cover the walked COMIDs at all (e.g. an out-of-region
+    walk hop), the caller's tier-2 gnis filter still won't run --
+    so geometry can disappear entirely if filtering wipes it,
+    which is intentional ("never wrong, sometimes empty")."""
+    comids = [_extract_comid(f) for f in features]
+    have = [c for c in comids if c is not None]
+    if not have:
+        return features                          # nothing to look up
+    try:
+        vaas = db.get_vaas(have)
+    except Exception as exc:
+        logger.warning("get_vaas failed (%d comids): %s", len(have), exc)
+        return features                          # degrade to unfiltered
+    return [f for f, c in zip(features, comids)
+            if c is not None
+            and (vaas.get(c) or {}).get("levelpathid") == target_lpid]
+
+
 def _filter_flowlines_by_gnis(features: list[dict], target: str) -> list[dict]:
-    """Drop flowline features whose NHD gnis_name doesn't equal `target`
-    (lowercased, stripped). Per-COMID lookups run in parallel and are
-    cached forever in Postgres, so once a river's COMIDs are warm,
-    subsequent gauges on that river filter for free."""
+    """Tier-2 fallback when no LevelPathID is available: filter by
+    NHD gnis_name. Per-COMID lookups run in parallel and are cached
+    forever in Postgres. No fallback to unfiltered (previous safety
+    net was exactly what re-introduced the cross-river bleed)."""
     comids = []
     for f in features:
         props = f.get("properties") or {}
         cid = props.get("nhdplus_comid") or props.get("comid") or ""
         comids.append(str(cid) if cid else "")
     if not any(comids):
-        return features                          # nothing to look up against
+        return features                          # nothing to filter against
     with ThreadPoolExecutor(max_workers=8) as ex:
         names = list(ex.map(_comid_gnis_lower, comids))
-    kept = [f for f, n in zip(features, names) if n == target]
-    # Edge case: NLDI returned features but every COMID was unnamed or
-    # mismatched -- don't return an empty FC (the user loses the entire
-    # flowline). Keep the unfiltered set; walk-distance is the bound.
-    return kept or features
+    return [f for f, n in zip(features, names) if n == target]
 
 
 def _comid_gnis_lower(comid: str) -> str:
@@ -1191,13 +1412,17 @@ _NLDI_BASE = "https://api.water.usgs.gov/nldi/linked-data"
 
 
 def _nldi_gauge_meta(site_no: str) -> dict:
-    """Authoritative NHD identity for a USGS gauge -- {comid, gnis_name}.
+    """Authoritative NHD identity for a USGS gauge.
 
-    Two NLDI calls (gauge -> COMID, COMID -> reach attributes), served
-    from process LRU -> Postgres -> NLDI with write-through. Geometry is
-    immutable per site, so a successful lookup is forever; empties
-    (network/lookup failures) are NOT persisted so they retry, but stay
-    briefly in the process cache to throttle re-attempts."""
+    Returns {comid, gnis_name, levelpathid}:
+      - `comid`/`gnis_name` from NLDI (two calls: gauge -> COMID,
+        COMID -> reach attributes).
+      - `levelpathid` from the local NHDPlusV2 VAA table when available
+        (drives the topologically-correct flowline filter).
+
+    Process LRU -> Postgres -> NLDI/VAA with write-through. Empties
+    (network/lookup failures) are NOT persisted so they retry, but
+    stay briefly in the process cache to throttle re-attempts."""
     if site_no in _gauge_meta_cache:
         return _gauge_meta_cache[site_no]
     try:
@@ -1206,6 +1431,21 @@ def _nldi_gauge_meta(site_no: str) -> dict:
         logger.warning("gauge_meta read failed for %s: %s", site_no, exc)
         stored = None
     if stored is not None:
+        # Backfill levelpathid on older rows (written before VAA landed)
+        # without an extra NLDI roundtrip. Cheap local lookup; persist
+        # so the next read short-circuits.
+        if "levelpathid" not in stored and stored.get("comid"):
+            try:
+                vaa = db.get_vaa(int(stored["comid"]))
+            except Exception:
+                vaa = None
+            stored = dict(stored,
+                          levelpathid=(vaa or {}).get("levelpathid"))
+            try:
+                db.put_gauge_meta(site_no, stored)
+            except Exception as exc:
+                logger.warning("gauge_meta backfill failed for %s: %s",
+                               site_no, exc)
         _gauge_meta_cache[site_no] = stored
         return stored
 
@@ -1226,8 +1466,16 @@ def _nldi_gauge_meta(site_no: str) -> dict:
                 if feats2:
                     gnis = feats2[0].get("properties", {}).get("gnis_name")
             if comid:
+                lpid = None
+                try:
+                    vaa = db.get_vaa(int(comid))
+                    if vaa:
+                        lpid = vaa.get("levelpathid")
+                except Exception:
+                    pass
                 meta = {"comid": str(comid),
-                        "gnis_name": gnis or None}
+                        "gnis_name": gnis or None,
+                        "levelpathid": lpid}
     except Exception:
         meta = {}
 
@@ -1390,17 +1638,50 @@ def _rate_limit_pins(request: Request) -> None:
         )
 
 
-def _owner(request: Request, required: bool = True) -> str | None:
-    """Derive a stable owner id from the device token header.
+_SESSION_COOKIE = "bl_session"
 
-    The client holds an opaque random token (localStorage); the server
-    stores only its SHA-256, so a DB dump can't be replayed. No login,
-    no server secret -- the token is an unguessable bearer capability.
+
+def _session_user(request: Request) -> dict | None:
+    """Validated session-cookie user, or None. Lookup is one indexed
+    DB hit (token_hash PK); negligible per-request cost."""
+    cookies = getattr(request, "cookies", None) or {}
+    token = (cookies.get(_SESSION_COOKIE) or "").strip()
+    if not token:
+        return None
+    try:
+        return db.user_from_session(token)
+    except Exception:
+        return None
+
+
+def _owner(request: Request, required: bool = True) -> str | None:
+    """Derive a stable owner id for write-scoped resources.
+
+    Resolution order:
+      1. Authenticated session cookie -> `user:{id}` (the "real" owner).
+      2. Legacy device-token header -> SHA-256(token) (anonymous flow).
+
+    Keeps anonymous pins working while accounts roll out; signed-in
+    users own pins under a stable user-namespaced id even across
+    devices.
     """
+    user = _session_user(request)
+    if user:
+        return f"user:{user['id']}"
     token = request.headers.get("x-device-token", "").strip()
     if not (8 <= len(token) <= 200):
         if required:
-            raise HTTPException(status_code=400, detail="Missing device token")
+            raise HTTPException(status_code=400, detail="Missing identity")
+        return None
+    return hashlib.sha256(token.encode()).hexdigest()
+
+
+def _device_owner(request: Request) -> str | None:
+    """Just the device-token-derived owner (no session fallback).
+    Used by the pin-claim flow: 'what anonymous pins does this device
+    have that we could relink to the freshly-signed-in user?'"""
+    token = request.headers.get("x-device-token", "").strip()
+    if not (8 <= len(token) <= 200):
         return None
     return hashlib.sha256(token.encode()).hexdigest()
 
@@ -1433,3 +1714,334 @@ async def api_delete_pin(pin_id: int, request: Request):
     if not deleted:
         raise HTTPException(status_code=404, detail="Pin not found")
     return {"ok": True}
+
+
+# -- Accounts (Phase 1) ------------------------------------------------
+
+class _MagicLinkIn(BaseModel):
+    email: EmailStr
+
+
+class _DisplayNameIn(BaseModel):
+    display_name: str
+
+
+_AUTH_RATE_MAX = 10              # per IP per window
+_AUTH_RATE_WINDOW = 600.0         # 10 min
+_auth_hits: dict[str, list[float]] = {}
+
+
+def _rate_limit_auth(request: Request) -> None:
+    """Cheap per-IP rate-limit on magic-link issuance. Same pattern as
+    `_rate_limit_pins`; protects Resend's free-tier budget + slows
+    enumeration attempts."""
+    ip = (request.client.host if request.client else "unknown") or "unknown"
+    now = time.time()
+    bucket = [t for t in _auth_hits.get(ip, []) if now - t < _AUTH_RATE_WINDOW]
+    if len(bucket) >= _AUTH_RATE_MAX:
+        raise HTTPException(status_code=429, detail="Too many requests")
+    bucket.append(now)
+    _auth_hits[ip] = bucket
+
+
+def _set_session_cookie(response: Response, token: str) -> None:
+    """30-day session cookie. HttpOnly + SameSite=Lax + Secure-in-prod."""
+    response.set_cookie(
+        key=_SESSION_COOKIE,
+        value=token,
+        max_age=30 * 24 * 3600,
+        httponly=True,
+        samesite="lax",
+        secure=bool(os.environ.get("RENDER")),   # auto-true on Render
+        path="/",
+    )
+
+
+@app.post("/api/auth/request-link", status_code=204)
+async def api_request_magic_link(body: _MagicLinkIn, request: Request):
+    """Issue a magic-link to the supplied email. Always returns 204 --
+    no account-enumeration leak (the UI shows 'Check your inbox' state
+    unconditionally)."""
+    _rate_limit_auth(request)
+    email = body.email.strip().lower()
+    token = secrets.token_urlsafe(24)             # 192 bits, URL-safe
+    consume_url = (
+        f"{str(request.base_url).rstrip('/')}/auth/consume?token={token}")
+    try:
+        await asyncio.to_thread(db.create_magic_link, email, token)
+    except Exception as exc:
+        logger.warning("create_magic_link failed for %s: %s", email, exc)
+        return Response(status_code=204)         # still no enumeration
+    import email_send                              # local import: optional dep
+    try:
+        await asyncio.to_thread(
+            email_send.send_magic_link, email, consume_url,
+            db.MAGIC_LINK_TTL_MINUTES)
+    except Exception as exc:
+        logger.warning("send_magic_link failed for %s: %s", email, exc)
+    return Response(status_code=204)
+
+
+@app.get("/auth/consume", response_class=HTMLResponse)
+async def auth_consume(token: str = Query(..., min_length=8, max_length=64)):
+    """Validate the magic-link token, mint a session, set cookie,
+    redirect to /. On failure, render a small error page with a link
+    to request a fresh one. Server-rendered HTML keeps this independent
+    of the SPA so first-time users don't hit a blank page mid-load."""
+    email = await asyncio.to_thread(db.consume_magic_link, token)
+    if not email:
+        return HTMLResponse(_consume_error_html(), status_code=400)
+
+    user = await asyncio.to_thread(db.upsert_user_by_email, email)
+    sess_token = secrets.token_urlsafe(32)
+    # Best-effort persist of UA/IP for the session row.
+    # (Not asked here; just no client context to capture cleanly.)
+    await asyncio.to_thread(db.create_session, user["id"], sess_token,
+                            None, None)
+    resp = HTMLResponse(_consume_success_html(user["email"]))
+    _set_session_cookie(resp, sess_token)
+    return resp
+
+
+def _consume_success_html(email: str) -> str:
+    safe = email.replace("<", "&lt;").replace(">", "&gt;")
+    return (
+        "<!doctype html><meta charset='utf-8'>"
+        "<meta http-equiv='refresh' content='0; url=/'>"
+        "<title>Signed in</title>"
+        "<style>body{font-family:system-ui,sans-serif;display:flex;"
+        "align-items:center;justify-content:center;height:100vh;margin:0;"
+        "background:#f7f9fc;color:#222}"
+        ".card{background:#fff;padding:24px 32px;border-radius:10px;"
+        "box-shadow:0 1px 6px rgba(0,0,0,.08);text-align:center}"
+        ".ok{font-size:48px;color:#27ae60;line-height:1}"
+        "</style>"
+        "<div class='card'>"
+        "<div class='ok'>&#10003;</div>"
+        f"<h3 style='margin:12px 0 4px'>Signed in as {safe}</h3>"
+        "<p style='color:#666;margin:0'>Redirecting&hellip;</p>"
+        "</div>")
+
+
+def _consume_error_html() -> str:
+    return (
+        "<!doctype html><meta charset='utf-8'>"
+        "<title>Link expired</title>"
+        "<style>body{font-family:system-ui,sans-serif;display:flex;"
+        "align-items:center;justify-content:center;height:100vh;margin:0;"
+        "background:#f7f9fc;color:#222}"
+        ".card{background:#fff;padding:24px 32px;border-radius:10px;"
+        "box-shadow:0 1px 6px rgba(0,0,0,.08);text-align:center;"
+        "max-width:380px}"
+        ".warn{font-size:48px;color:#e67e22;line-height:1}"
+        "a.btn{display:inline-block;background:#1e6fd9;color:#fff;"
+        "text-decoration:none;padding:10px 18px;border-radius:6px;"
+        "margin-top:12px;font-weight:600}"
+        "</style>"
+        "<div class='card'>"
+        "<div class='warn'>&#9888;</div>"
+        "<h3 style='margin:12px 0 8px'>This sign-in link is no longer valid</h3>"
+        "<p style='color:#666'>It may have expired or already been used.</p>"
+        "<a class='btn' href='/'>Back to Blueliner</a>"
+        "</div>")
+
+
+@app.post("/api/auth/logout", status_code=204)
+async def api_logout(request: Request):
+    token = request.cookies.get(_SESSION_COOKIE, "").strip()
+    if token:
+        await asyncio.to_thread(db.delete_session, token)
+    resp = Response(status_code=204)
+    resp.delete_cookie(_SESSION_COOKIE, path="/")
+    return resp
+
+
+@app.get("/api/me")
+async def api_me(request: Request):
+    user = _session_user(request)
+    if not user:
+        raise HTTPException(status_code=401, detail="Not signed in")
+    return {"id": user["id"], "email": user["email"],
+            "display_name": user.get("display_name")}
+
+
+@app.patch("/api/me")
+async def api_me_update(body: _DisplayNameIn, request: Request):
+    user = _session_user(request)
+    if not user:
+        raise HTTPException(status_code=401, detail="Not signed in")
+    await asyncio.to_thread(
+        db.update_user_display_name, user["id"], body.display_name)
+    refreshed = await asyncio.to_thread(db.get_user, user["id"])
+    return {"id": refreshed["id"], "email": refreshed["email"],
+            "display_name": refreshed.get("display_name")}
+
+
+@app.delete("/api/me", status_code=204)
+async def api_me_delete(request: Request):
+    user = _session_user(request)
+    if not user:
+        raise HTTPException(status_code=401, detail="Not signed in")
+    await asyncio.to_thread(db.soft_delete_user, user["id"])
+    resp = Response(status_code=204)
+    resp.delete_cookie(_SESSION_COOKIE, path="/")
+    return resp
+
+
+@app.get("/api/pins/claimable")
+async def api_pins_claimable(request: Request):
+    """List the device-token-owned pins this signed-in user could
+    claim. Empty when no device token, no anonymous pins, or none
+    that belong solely to the device (already-claimed ones don't
+    show here because they're under the user owner now)."""
+    user = _session_user(request)
+    if not user:
+        raise HTTPException(status_code=401, detail="Not signed in")
+    device = _device_owner(request)
+    if not device:
+        return []
+    return await asyncio.to_thread(db.list_pins_for_device_token, device)
+
+
+@app.post("/api/pins/claim")
+async def api_pins_claim(request: Request):
+    """Relink the device-token-owned anonymous pins to the signed-in
+    user. One-shot: subsequent calls find no anonymous pins and do
+    nothing (returns claimed=0)."""
+    user = _session_user(request)
+    if not user:
+        raise HTTPException(status_code=401, detail="Not signed in")
+    device = _device_owner(request)
+    if not device:
+        return {"claimed": 0}
+    n = await asyncio.to_thread(
+        db.claim_pins, device, f"user:{user['id']}")
+    return {"claimed": n}
+
+
+# -- Catch log (Phase 2) ----------------------------------------------
+
+class _CatchIn(BaseModel):
+    occurred_at: str | None = None
+    river_name: str | None = None
+    river_site_no: str | None = None
+    lat: float | None = None
+    lon: float | None = None
+    species: str
+    length_in: float | None = None
+    fly_used: str | None = None
+    notes: str | None = None
+
+
+class _CatchPatch(BaseModel):
+    occurred_at: str | None = None
+    river_name: str | None = None
+    species: str | None = None
+    length_in: float | None = None
+    fly_used: str | None = None
+    notes: str | None = None
+
+
+def _require_user(request: Request) -> dict:
+    user = _session_user(request)
+    if not user:
+        raise HTTPException(status_code=401, detail="Sign in to log catches")
+    return user
+
+
+def _parse_when(occurred_at: str | None) -> datetime:
+    """Parse the client's occurred_at (ISO) into an aware UTC datetime;
+    fall back to now on anything unparseable."""
+    if occurred_at:
+        try:
+            dt = datetime.fromisoformat(occurred_at.replace("Z", "+00:00"))
+            return dt if dt.tzinfo else dt.replace(tzinfo=timezone.utc)
+        except (ValueError, TypeError):
+            pass
+    return datetime.now(timezone.utc)
+
+
+@app.get("/api/catches/enrichment-preview")
+async def api_enrichment_preview(
+    request: Request,
+    lat: float = Query(...), lon: float = Query(...),
+    site_no: str | None = Query(default=None),
+    river_name: str | None = Query(default=None),
+    occurred_at: str | None = Query(default=None),
+):
+    """Live conditions snapshot for the catch form's 'auto-captured'
+    block, before save. Requires sign-in (same surface as logging)."""
+    _require_user(request)
+    when = _parse_when(occurred_at)
+    env = await asyncio.to_thread(
+        enrichment.build_env, lat, lon, site_no, river_name, when)
+    return env
+
+
+@app.post("/api/catches", status_code=201)
+async def api_add_catch(body: _CatchIn, request: Request):
+    user = _require_user(request)
+    if not (body.species or "").strip():
+        raise HTTPException(status_code=422, detail="Species is required")
+    when = _parse_when(body.occurred_at)
+    # Build the authoritative env snapshot server-side at save time.
+    env = None
+    if body.lat is not None and body.lon is not None:
+        env = await asyncio.to_thread(
+            enrichment.build_env, body.lat, body.lon,
+            body.river_site_no, body.river_name, when)
+    data = body.model_dump()
+    data["occurred_at"] = when.isoformat()
+    data["species"] = body.species.strip()
+    catch = await asyncio.to_thread(db.add_catch, user["id"], data, env)
+    return catch
+
+
+@app.get("/api/catches")
+async def api_list_catches(
+    request: Request,
+    species: str | None = Query(default=None),
+    date_from: str | None = Query(default=None),
+    date_to: str | None = Query(default=None),
+    limit: int = Query(default=200, le=500),
+):
+    user = _require_user(request)
+    items = await asyncio.to_thread(
+        db.list_catches, user["id"], species=species,
+        date_from=date_from, date_to=date_to, limit=limit)
+    total = await asyncio.to_thread(db.count_catches, user["id"])
+    return {"total": total, "catches": items}
+
+
+@app.get("/api/catches/{catch_id}")
+async def api_get_catch(catch_id: int, request: Request):
+    user = _require_user(request)
+    catch = await asyncio.to_thread(db.get_catch, catch_id)
+    if not catch or catch["user_id"] != user["id"]:
+        raise HTTPException(status_code=404, detail="Catch not found")
+    return catch
+
+
+@app.patch("/api/catches/{catch_id}")
+async def api_update_catch(catch_id: int, body: _CatchPatch,
+                           request: Request):
+    user = _require_user(request)
+    data = {k: v for k, v in body.model_dump().items() if v is not None}
+    if "species" in data:
+        data["species"] = (data["species"] or "").strip()
+    if "occurred_at" in data:
+        data["occurred_at"] = _parse_when(data["occurred_at"]).isoformat()
+    updated = await asyncio.to_thread(
+        db.update_catch, catch_id, user["id"], data)
+    if not updated:
+        raise HTTPException(status_code=404, detail="Catch not found")
+    return updated
+
+
+@app.delete("/api/catches/{catch_id}", status_code=204)
+async def api_delete_catch(catch_id: int, request: Request):
+    user = _require_user(request)
+    ok = await asyncio.to_thread(db.delete_catch, catch_id, user["id"])
+    if not ok:
+        raise HTTPException(status_code=404, detail="Catch not found")
+    return Response(status_code=204)

@@ -1,4 +1,4 @@
-# BlueLines -- Product Spec
+# Blueliner -- Product Spec
 
 ## Problem Statement
 
@@ -6,7 +6,7 @@ Fly fishermen make go/no-go decisions about fishing trips based on stream condit
 Current tools -- the USGS water data website, scattered fishing forums, word of mouth --
 are fragmented, slow to navigate, and not built for quick mobile use on the water.
 A single glance at current conditions across nearby streams should be all it takes to
-decide where to go. BlueLines consolidates live USGS sensor data into a fast, map-based
+decide where to go. Blueliner consolidates live USGS sensor data into a fast, map-based
 view that answers one question: which streams are fishable right now?
 
 ## Target User
@@ -17,7 +17,7 @@ checking USGS data manually -- they just need a faster, more visual way to do it
 
 ## Core Use Case
 
-A user opens BlueLines the morning before a planned fishing trip, sees the map with
+A user opens Blueliner the morning before a planned fishing trip, sees the map with
 color-coded markers, and immediately knows which nearby streams are in fishable
 condition. No clicking through multiple USGS pages, no mental math on whether the
 flow is too high. Green means go.

@@ -1,4 +1,4 @@
-name: Refresh BlueLines precompute
+name: Refresh Blueliner precompute
 
 # Triggers the background refresher that keeps every focused state's
 # river snapshot + flowline geometry warm in Postgres. ~30 min matches
@@ -6,7 +6,7 @@ name: Refresh BlueLines precompute
 # belt that makes sure it happens even when nobody's on the site).
 #
 # Required repo secrets:
-#   BLUELINES_URL    e.g. https://bluelines.onrender.com (NO trailing slash)
+#   BLUELINES_URL    e.g. https://blueliner.app (NO trailing slash)
 #   REFRESH_TOKEN    must match the token Render generated for the service
 on:
   schedule:

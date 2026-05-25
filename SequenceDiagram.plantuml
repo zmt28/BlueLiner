@@ -1,4 +1,4 @@
-@startuml BlueLinesSequenceDiagram
+@startuml BluelinerSequenceDiagram
 
 skinparam Shadowing false
 

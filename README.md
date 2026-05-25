@@ -1,15 +1,15 @@
-# BlueLines
+# Blueliner
 
 A real-time stream condition monitor for fly fishermen.
 
-![BlueLines Demo](bluelines-demo.gif)
+![Blueliner Demo](blueliner-demo.gif)
 
 ## The Problem
 
 Fly fishing is deeply condition-dependent. Flow rate, water temperature, and discharge
 levels determine whether a river is worth fishing on any given day. Current tools for
 checking conditions -- the USGS water data website, scattered fishing forums -- are
-fragmented, slow, and not designed for quick decision-making. BlueLines consolidates
+fragmented, slow, and not designed for quick decision-making. Blueliner consolidates
 live sensor data from USGS monitoring stations into a single, fast, map-based view
 so you can check conditions before you drive to the water.
 
@@ -25,26 +25,25 @@ so you can check conditions before you drive to the water.
 - **National gauge coverage** -- all 50 states + DC via the state selector (conditions/trend are national; trout/stocking/hatch data are mid-Atlantic and expanding)
 - **Styled popup cards** -- condition badges, flow trends, data tables, and direct links to USGS site pages
 - **Instant filters** -- filter by condition, trout water, hatch, or stocking and switch states client-side, with no full page reload
-- **Saved pins** -- drop a pin with a note anywhere on the map; pins are private to your device via an opaque token (no login), persisted in SQLite/Postgres
+- **Saved pins** -- drop a pin with a note anywhere on the map; private to your device via an opaque token, or to your account once you sign in
+- **Accounts (optional)** -- passwordless magic-link sign-in (no passwords stored); anonymous use is fully supported, and on first sign-in you can claim the pins you saved on that device
+- **Catch log** -- signed-in anglers log a catch (species, length, fly, notes) from any river popup; private by default
+- **Auto-enrichment** -- each catch automatically captures the conditions at log time: USGS flow (vs. historical median) and water temperature, NOAA air temperature / barometric pressure / sky conditions, moon phase, and the active hatch window -- so patterns ("what produces fish") emerge over a season without manual entry
 
 ## Tech Stack
 
 - **FastAPI** -- async JSON API backend
 - **USGS NWIS API** -- real-time stream sensor data (instantaneous values + daily statistics)
 - **USGS The National Map** -- labeled rivers/streams as a hydrography tile overlay (no key, national)
+- **USGS NLDI + NHDPlusV2** -- river identity and flowline geometry; `LevelPathID` topology keeps a tributary's line from bleeding onto the main stem at a confluence
+- **NOAA api.weather.gov** -- air temperature / barometric pressure / sky conditions for catch enrichment (free, no key)
 - **State fisheries ArcGIS REST services** -- trout stream designations (VA DWR, MD DNR)
+- **Resend** -- transactional email for magic-link sign-in
 - **GeoPandas** -- geospatial data processing and spatial joins
 - **Leaflet (vendored) + vanilla JS** -- client-side interactive map; no framework, no build step
-- **SQLite / Postgres** -- user-content datastore (saved pins); SQLite locally, Postgres in production via the same `db.py`
+- **SQLite / Postgres** -- user-content datastore (accounts, sessions, pins, catch log); SQLite locally, Postgres in production via the same `db.py`
 - **gunicorn + uvicorn workers** -- production server (Docker, deployable to Render)
 - **httpx** -- async HTTP client
-
-## Built with AI
-
-BlueLines was built using Claude Code as a development accelerator. Every line of code
-was written and reviewed by hand -- Claude Code was used to navigate unfamiliar APIs,
-debug geospatial data processing, and iterate faster. The result is code I understand
-and own completely.
 
 ## Getting Started
 
@@ -53,8 +52,18 @@ pip install -r requirements.txt
 uvicorn main:app --reload
 ```
 
-With no `DATABASE_URL` set, pins are stored in a local SQLite file
-(`bluelines.db`, override with `BLUELINES_DB`).
+With no `DATABASE_URL` set, all user content (accounts, sessions, pins,
+catch log) is stored in a local SQLite file (`blueliner.db`, override
+with `BLUELINER_DB`). Magic-link email runs in dev mode until
+`RESEND_API_KEY` is set -- the sign-in link is written to the log so
+local auth works fully offline.
+
+Run the tests with:
+
+```bash
+pip install -r requirements-dev.txt
+pytest -q
+```
 
 ## Deploying (24/7 on Render)
 
@@ -129,7 +138,7 @@ Required GitHub repo secrets (Settings -> Secrets and variables -> Actions):
 
 | Secret | Value |
 |--------|-------|
-| `BLUELINES_URL` | Render service URL, e.g. `https://bluelines.onrender.com` (no trailing slash) |
+| `BLUELINES_URL` | Render service URL, e.g. `https://blueliner.app` (no trailing slash). _(Secret name kept as-is to avoid breaking the existing Actions secret; rename to `BLUELINER_URL` only if you also recreate the repo secret.)_ |
 | `REFRESH_TOKEN` | The token Render generated for `REFRESH_TOKEN` (read it from the Render dashboard) |
 
 Workflows can also be triggered by hand from the Actions tab
@@ -152,22 +161,28 @@ schema and the validation step (`python scripts/validate_data.py`).
 | Stocking baselines | `data/stocking/<STATE>.json` | Famous + heavily-stocked waters; ~2 km proximity tagging on the map |
 | Per-river hatch overrides | `data/hatches/overrides.json` | Curated lists for famous waters (Gunpowder, Penns, Letort, Mossy, Yellow Breeches, Savage, North Branch Potomac) that beat the generic regional zone |
 | Trout-stream geometry | `data/trout/<STATE>.json` (optional) | Bundled-GeoJSON fallback when a state agency's live endpoint isn't reliable |
+| NHDPlusV2 VAA | `data/nhdplus/vaa.csv.gz` | ~300K NHD reach routing attributes (COMID, LevelPathID, gnis_name, ...) for HUC-02 + HUC-05 (mid-Atlantic). Loaded into Postgres once at first boot. Drives the LevelPathID-based flowline filter that keeps a tributary gauge's flowline from extending past the confluence onto the receiving river. Regenerate with `python scripts/build_nhdplus_vaa.py`. |
 
-River identity uses NHD `gnis_name` (via NLDI, cached in Postgres) when
-available, falling back to the USGS station-name heuristic.
+River identity comes from NHDPlusV2's `LevelPathID` (topologically
+correct, language-agnostic) when the gauge's COMID is in the loaded
+VAA region, falling back to NHD `gnis_name` via NLDI for COMIDs
+outside loaded regions, and the USGS station-name heuristic as a last
+resort.
 
 ### Environment variables
 
 | Var | Default | Purpose |
 |-----|---------|---------|
 | `DATABASE_URL` | _(unset)_ | Postgres URL; absent ⇒ SQLite |
-| `BLUELINES_DB` | `./bluelines.db` | SQLite path (when no `DATABASE_URL`) |
+| `BLUELINER_DB` | `./blueliner.db` | SQLite path (when no `DATABASE_URL`) |
 | `WEB_CONCURRENCY` | `1` | gunicorn workers (caches are per-worker) |
 | `LOG_LEVEL` | `INFO` | Root log level |
 | `PIN_RATE_MAX` | `20` | Max pin creates / IP / minute |
 | `REFRESH_INTERVAL` | `2700` | Refresher cadence + snapshot staleness (seconds) |
 | `REFRESH_TOKEN` | _(unset)_ | Auth for `POST /internal/refresh` (unset ⇒ 403) |
 | `FOCUSED_STATES` | _(built-in)_ | Comma-separated states refreshed every cycle |
+| `RESEND_API_KEY` | _(unset)_ | Resend API key for magic-link email. Unset ⇒ dev mode: the sign-in link is logged instead of sent, so local auth works offline. |
+| `EMAIL_FROM` | `Blueliner <no-reply@blueliner.app>` | Sender for magic-link email; must be a Resend-verified domain in production |
 
 Then open: `http://localhost:8000`
 
@@ -189,20 +204,56 @@ Each monitoring station is scored based on current readings:
 
 ## API Endpoints
 
+**App shell & map data**
 - `GET /` -- redirects to the Maryland map
 - `GET /map` -- the application shell (static client; state/filters resolved in the browser)
+- `GET /healthz` -- liveness check (used by the keep-warm cron)
 - `GET /api/states` -- supported states (code, name, map center); drives the selector
 - `GET /streams?state=MD` -- raw live stream data from USGS NWIS for the specified state
 - `GET /api/rivers?state=MD` -- gauges grouped into rivers (rating, hatch, stocking, aggregated popup) as JSON
+- `GET /api/river_lines?state=MD` (or `?bbox=`) -- river flowline geometry as GeoJSON
+- `GET /api/river_geom?site_no=01581920` -- a single river's flowline geometry
 - `GET /api/trout?state=MD` -- designated trout water as GeoJSON (non-blocking; warms in the background)
 - `GET /api/history?site_no=01581920` -- ~1 year of USGS daily values (served live, not stored)
+
+**Accounts (magic-link)**
+- `POST /api/auth/request-link` -- email a sign-in link (rate-limited; always 204, no account enumeration)
+- `GET /auth/consume?token=...` -- redeem a link, set the session cookie, redirect home
+- `POST /api/auth/logout` -- end the session
+- `GET` / `PATCH` / `DELETE /api/me` -- current user; update display name; delete account
+
+**Pins**
 - `GET /api/pins` / `POST /api/pins` / `DELETE /api/pins/{id}` -- saved map pins
+- `GET /api/pins/claimable` / `POST /api/pins/claim` -- list / claim anonymous device pins after sign-in
+
+**Catch log**
+- `GET` / `POST /api/catches` -- list (with `species` / date filters) / create a catch
+- `GET` / `PATCH` / `DELETE /api/catches/{id}` -- read / edit / delete a catch
+- `GET /api/catches/enrichment-preview` -- live conditions snapshot for the catch form
+
+**Ops**
+- `POST /internal/refresh` -- trigger the precompute refresher (requires `X-Refresh-Token`)
 
 Supported states: any U.S. state two-letter code (plus `DC`); see `GET /api/states`
 
 ## Roadmap
 
-- Mobile-responsive layout for on-the-water use
-- "Best bet" recommendation card highlighting the top-scoring station
-- Loading skeleton for perceived performance during data fetch
-- URL-shareable map state (lat/lon/zoom in the URL)
+Shipped:
+
+- Real-time conditions, scoring, hatches, stocking, trout overlay
+- Mobile-responsive layout + installable PWA
+- NHDPlusV2 `LevelPathID` river identity (no cross-confluence bleed)
+- Optional accounts (magic-link) with anonymous-pin claim
+- Private catch log with automatic condition enrichment
+
+Planned:
+
+- **Privacy-preserving sharing** -- share a catch at river / watershed / county
+  granularity (never an exact GPS spot), via direct links
+- **TroutRoutes-style depth** -- access points, per-segment regulations, and
+  public-land boundaries layered on the existing stream network
+- Catch photos and a season summary view
+
+## License
+
+[MIT](LICENSE) © Zion Taber

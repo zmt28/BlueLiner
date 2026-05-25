@@ -7,7 +7,7 @@ name: Keep Render service warm
 # free tier behave like always-on.
 #
 # Required repo secret:
-#   BLUELINES_URL    e.g. https://bluelines.onrender.com
+#   BLUELINES_URL    e.g. https://blueliner.app
 on:
   schedule:
     - cron: "*/10 * * * *"

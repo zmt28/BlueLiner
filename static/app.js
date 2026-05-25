@@ -73,8 +73,27 @@ const riverLinesLayer = L.layerGroup().addTo(map);
 const riversLayer = L.layerGroup().addTo(map);
 const pinsLayer = L.layerGroup().addTo(map);
 
+// Two stacked layers per feature: a thin styled visible line and a
+// transparent fat "hit casing" on top to catch finger taps on mobile
+// (a 4px line is still a poor touch target). Visible is non-interactive
+// so clicks unambiguously go to the casing; both render the same FC.
+const clickableVisible = L.geoJSON(null, {
+  style: (f) => streamStyle(f.properties),
+  interactive: false,
+});
+const clickableHit = L.geoJSON(null, {
+  style: () => ({ color: "#000", weight: 16, opacity: 0, lineCap: "round" }),
+  onEachFeature: (f, l) => l.on("click", (e) => {
+    L.DomEvent.stop(e);
+    onStreamClick(f.properties, e.latlng);
+  }),
+});
+const clickableLayer = L.featureGroup(
+  [clickableVisible, clickableHit]).addTo(map);
+
 // Trout-stream lines are heavy; off by default (toggle in the control).
 L.control.layers(null, {
+  "Fishable streams": clickableLayer,
   "Streams (USGS)": hydroLayer,
   "Trout Streams": troutLayer,
   "Saved Pins": pinsLayer,
@@ -90,6 +109,15 @@ const riverGeomInFlight = new Set();  // site_nos being fetched right now
 
 // -- 1-yr USGS trend sparkline (dependency-free SVG) --
 
+// Decode HTML entities baked into a source string (USGS series names
+// arrive as "Streamflow, ft&#179;/s"). Letting esc() run on that produces
+// "&amp;#179;" which renders as literal "&#179;" in the panel.
+function _decodeHtml(s) {
+  const d = document.createElement("div");
+  d.innerHTML = String(s == null ? "" : s);
+  return d.textContent || "";
+}
+
 function sparkline(series) {
   if (!series || !series.length) {
     return '<div class="bl-trend-msg">No 1-yr data for this site.</div>';
@@ -102,30 +130,101 @@ function sparkline(series) {
   const vals = pts.map((p) => p.value);
   const min = Math.min(...vals), max = Math.max(...vals);
   const W = 300, H = 80, PX = 4, PY = 6, n = pts.length;
-  const X = (i) => PX + (i * (W - 2 * PX)) / (n - 1);
-  const Y = (v) => (max === min ? H / 2
-    : (H - PY) - ((v - min) * (H - 2 * PY)) / (max - min));
+  const xs = pts.map((_, i) => PX + (i * (W - 2 * PX)) / (n - 1));
+  const ys = pts.map((p) => max === min ? H / 2
+    : (H - PY) - ((p.value - min) * (H - 2 * PY)) / (max - min));
   let d = "";
   pts.forEach((p, i) => {
-    d += (i ? "L" : "M") + X(i).toFixed(1) + " " + Y(p.value).toFixed(1) + " ";
+    d += (i ? "L" : "M") + xs[i].toFixed(1) + " " + ys[i].toFixed(1) + " ";
   });
   const last = pts[pts.length - 1];
+  const cleanName = _decodeHtml(s.name || s.parameter || "");
+  // Carry per-point [svgX, svgY, value, date] into the wired hover handler.
+  const data = pts.map((p, i) => [xs[i], ys[i], p.value, (p.date || "").slice(0, 10)]);
   return (
-    `<div class="bl-trend-msg">${esc(s.name || s.parameter)} ` +
-    `(${esc(s.unit || "")}) &mdash; last 12 months</div>` +
+    `<div class="bl-trend-msg">${esc(cleanName)} &mdash; last 12 months</div>` +
+    `<div class="bl-spark" data-w="${W}" data-h="${H}">` +
     `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" ` +
     `xmlns="http://www.w3.org/2000/svg">` +
-    `<path d="${d}" fill="none" stroke="#2c6fbf" stroke-width="1.5"/></svg>` +
+    `<path d="${d}" fill="none" stroke="#2c6fbf" stroke-width="1.5"/>` +
+    `<line class="bl-spark-cur" x1="0" x2="0" y1="0" y2="${H}" ` +
+    `stroke="#94a3b8" stroke-dasharray="3 3" stroke-width="1" ` +
+    `vector-effect="non-scaling-stroke" visibility="hidden"/>` +
+    `<circle class="bl-spark-dot" r="3" fill="#2c6fbf" visibility="hidden"/>` +
+    `</svg>` +
+    `<div class="bl-spark-tip" hidden></div>` +
+    // Inline data for the post-render wirer; <script type="application/json">
+    // is inert (not executed) but readable via textContent.
+    `<script type="application/json" class="bl-spark-data">${JSON.stringify(data)}</script>` +
+    `</div>` +
     `<div class="bl-trend-msg">min ${min.toFixed(0)} &middot; ` +
     `max ${max.toFixed(0)} &middot; now ${last.value.toFixed(0)} ` +
     `(${esc((last.date || "").slice(0, 10))})</div>`
   );
 }
 
-function wireTrend(e) {
-  const root = e.popup.getElement();
+// Wire crosshair + tooltip readout on any .bl-spark inside `root`. Idempotent.
+function wireSparkHover(root) {
   if (!root) return;
-  // A river popup has one trend button per gauge.
+  root.querySelectorAll(".bl-spark").forEach((box) => {
+    if (box.dataset.hover) return;
+    box.dataset.hover = "1";
+    const svg = box.querySelector("svg");
+    const dataEl = box.querySelector(".bl-spark-data");
+    const cur = box.querySelector(".bl-spark-cur");
+    const dot = box.querySelector(".bl-spark-dot");
+    const tip = box.querySelector(".bl-spark-tip");
+    if (!svg || !dataEl || !cur || !dot || !tip) return;
+    let pts;
+    try { pts = JSON.parse(dataEl.textContent); } catch (_) { return; }
+    if (!pts.length) return;
+    const W = parseFloat(box.dataset.w), H = parseFloat(box.dataset.h);
+
+    const move = (clientX) => {
+      const rect = svg.getBoundingClientRect();
+      if (clientX < rect.left || clientX > rect.right) { hide(); return; }
+      const vx = ((clientX - rect.left) / rect.width) * W;
+      // pts are spaced uniformly in svgX, so we can index directly.
+      const i = Math.max(0, Math.min(pts.length - 1,
+        Math.round((vx - pts[0][0]) /
+          ((pts[pts.length - 1][0] - pts[0][0]) / (pts.length - 1)))));
+      const [px, py, val, date] = pts[i];
+      cur.setAttribute("x1", px); cur.setAttribute("x2", px);
+      cur.setAttribute("visibility", "visible");
+      dot.setAttribute("cx", px); dot.setAttribute("cy", py);
+      dot.setAttribute("visibility", "visible");
+      tip.textContent = `${date}  ${val.toFixed(0)}`;
+      tip.hidden = false;
+      // Place tip in container px (svg viewBox -> rendered ratio).
+      const tipX = (px / W) * rect.width;
+      const tipY = (py / H) * rect.height;
+      const tw = tip.offsetWidth || 80;
+      tip.style.left = Math.max(0, Math.min(rect.width - tw, tipX + 6)) + "px";
+      tip.style.top = Math.max(0, tipY - 22) + "px";
+    };
+    const hide = () => {
+      cur.setAttribute("visibility", "hidden");
+      dot.setAttribute("visibility", "hidden");
+      tip.hidden = true;
+    };
+    svg.addEventListener("mousemove", (e) => move(e.clientX));
+    svg.addEventListener("mouseleave", hide);
+    svg.addEventListener("touchstart",
+      (e) => { if (e.touches[0]) move(e.touches[0].clientX); },
+      { passive: true });
+    svg.addEventListener("touchmove",
+      (e) => { if (e.touches[0]) move(e.touches[0].clientX); },
+      { passive: true });
+    svg.addEventListener("touchend", hide);
+    svg.addEventListener("touchcancel", hide);
+  });
+}
+
+// Wire each gauge's on-demand "show flow trend" button within `root`
+// (the river detail panel body). The primary gauge's chart is loaded
+// eagerly elsewhere; this covers secondary gauges.
+function wireTrend(root) {
+  if (!root) return;
   root.querySelectorAll(".bl-trend-btn").forEach((btn) => {
     if (btn.dataset.wired) return;
     btn.dataset.wired = "1";
@@ -138,15 +237,301 @@ function wireTrend(e) {
         const d = await fetch(
           `/api/history?site_no=${encodeURIComponent(site)}`
         ).then((r) => r.json());
-        if (box) box.innerHTML = sparkline(d.series);
+        if (box) { box.innerHTML = sparkline(d.series); wireSparkHover(box); }
       } catch (_) {
         if (box) box.innerHTML = '<div class="bl-trend-msg">Trend unavailable.</div>';
       }
       btn.style.display = "none";
-      e.popup.update();
     };
   });
 }
+
+// Inject the "Log a catch" CTA into the detail panel `root`, wired to
+// `river`. Signed-out users get a sign-in nudge instead.
+function wireCatch(root, river) {
+  if (!root || !river) return;
+  let slot = root.querySelector(".bl-catch-cta");
+  if (!slot) {
+    // Older cached popup HTML without the placeholder: append one.
+    slot = document.createElement("div");
+    slot.className = "bl-catch-cta";
+    root.appendChild(slot);
+  }
+  if (slot.dataset.wired) return;
+  slot.dataset.wired = "1";
+
+  if (CURRENT_USER) {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "bl-catch-btn";
+    btn.textContent = "🎣 Log a catch here";
+    btn.onclick = () => openCatchForm(river);
+    slot.appendChild(btn);
+  } else {
+    const a = document.createElement("button");
+    a.type = "button";
+    a.className = "bl-catch-signin";
+    a.textContent = "Sign in to log catches";
+    a.onclick = () => openModal("login-modal");
+    slot.appendChild(a);
+  }
+}
+
+// -- River detail panel (drawer / bottom sheet) ----------------------
+
+let _panelHideTimer = null;
+let _selectedRiver = null;        // { layer, base } for highlight restore
+let _lastPanelOpenTs = 0;
+
+function openRiverPanel(river, layer, baseStyle) {
+  const panel = document.getElementById("river-panel");
+  const body = document.getElementById("river-panel-body");
+  if (!panel || !body) return;
+  clearTimeout(_panelHideTimer);
+  body.innerHTML = river.popup_html || "";
+  body.scrollTop = 0;
+  panel.hidden = false;
+  requestAnimationFrame(() => panel.classList.add("open"));
+  _lastPanelOpenTs = Date.now();
+  wireTrend(body);
+  wireCatch(body, river);
+  autoLoadFlowChart(body);
+  highlightRiver(layer, baseStyle);
+}
+
+function closeRiverPanel() {
+  const panel = document.getElementById("river-panel");
+  if (!panel || panel.hidden) return;
+  panel.classList.remove("open");
+  _panelHideTimer = setTimeout(() => { panel.hidden = true; }, 240);
+  clearRiverHighlight();
+  clearStreamHighlight();
+}
+
+async function autoLoadFlowChart(root) {
+  const box = root.querySelector(".bl-flow-chart[data-site]");
+  if (!box || box.dataset.loaded) return;
+  box.dataset.loaded = "1";
+  const site = box.getAttribute("data-site");
+  box.innerHTML = '<div class="bl-trend-msg">Loading flow chart&hellip;</div>';
+  try {
+    const d = await fetch(
+      `/api/history?site_no=${encodeURIComponent(site)}`
+    ).then((r) => r.json());
+    box.innerHTML = sparkline(d.series);
+    wireSparkHover(box);
+  } catch (_) {
+    box.innerHTML = '<div class="bl-trend-msg">Flow chart unavailable.</div>';
+  }
+}
+
+function highlightRiver(layer, baseStyle) {
+  clearRiverHighlight();
+  if (!layer || !layer.setStyle) return;
+  _selectedRiver = { layer, base: baseStyle || null };
+  layer.setStyle({ weight: 8, opacity: 0.95 });
+}
+
+function clearRiverHighlight() {
+  if (_selectedRiver && _selectedRiver.layer.setStyle && _selectedRiver.base) {
+    _selectedRiver.layer.setStyle(_selectedRiver.base);
+  }
+  _selectedRiver = null;
+}
+
+function wireRiverPanel() {
+  const panel = document.getElementById("river-panel");
+  if (!panel) return;
+  panel.querySelectorAll("[data-close]").forEach((el) =>
+    el.addEventListener("click", closeRiverPanel));
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") closeRiverPanel();
+  });
+  // Clicking empty map closes the panel. Guarded so the same click that
+  // opened it (via a layer) doesn't immediately close it.
+  map.on("click", () => {
+    if (Date.now() - _lastPanelOpenTs > 300) closeRiverPanel();
+  });
+}
+
+// -- Clickable-stream network (Phase B) ------------------------------
+
+const STREAM_MIN_ZOOM = 9;          // below this, viewport is too large
+const STREAM_CLASS_COLORS = {
+  class_a: "#b8860b", wilderness: "#117a65", wild_reproduction: "#1e8449",
+  stocked: "#2c6fbf", designated: "#27ae60",
+};
+const STREAM_CLASS_LABEL = {
+  class_a: "Class A wild trout", wilderness: "Wilderness trout",
+  wild_reproduction: "Wild reproduction", stocked: "Stocked trout",
+  designated: "Designated trout",
+};
+// "trout" colors by class; "conditions" greys the network so the
+// gauged condition colors (green/yellow/red) read on top (Decision C).
+let streamColorMode = "trout";
+
+function streamColor(p) {
+  if (streamColorMode === "conditions") return "#9aa7b8";
+  return STREAM_CLASS_COLORS[p.trout_class] || "#8a9bb0";
+}
+function streamWeight(p) {
+  // Floor of 4px keeps even order-1 headwaters a tappable target (a 2px
+  // line is nearly impossible to hit on touch). Scales up with order.
+  return Math.max(4, Math.min(7, (p.streamorder || 3) * 0.9));
+}
+function streamStyle(p) {
+  return { color: streamColor(p), weight: streamWeight(p), opacity: 0.8 };
+}
+
+let _streamReqId = 0;
+async function loadClickableStreams() {
+  if (!map.hasLayer(clickableLayer)) return;       // toggled off
+  if (map.getZoom() < STREAM_MIN_ZOOM) {
+    clickableVisible.clearLayers(); clickableHit.clearLayers(); return;
+  }
+  const b = map.getBounds();
+  if (b.getEast() - b.getWest() > 6 || b.getNorth() - b.getSouth() > 6) return;
+  const bbox = [b.getWest(), b.getSouth(), b.getEast(), b.getNorth()]
+    .map((x) => x.toFixed(4)).join(",");
+  const reqId = ++_streamReqId;
+  try {
+    const fc = await fetch(
+      `/api/clickable_streams?bbox=${bbox}&zoom=${map.getZoom()}`
+    ).then((r) => r.json());
+    if (reqId !== _streamReqId) return;            // a newer move superseded us
+    clickableVisible.clearLayers(); clickableHit.clearLayers();
+    clickableVisible.addData(fc); clickableHit.addData(fc);
+  } catch (_) { /* transient; next moveend retries */ }
+}
+
+function restyleStreams() {
+  clickableVisible.setStyle((f) => streamStyle(f.properties));
+}
+
+// Highlight every rendered reach sharing the clicked stream's LevelPathID
+// (whole-river emphasis), restoring on the next selection / close.
+let _selStreamLpid = null;
+function highlightStream(lpid) {
+  clearStreamHighlight();
+  _selStreamLpid = lpid;
+  clickableVisible.eachLayer((l) => {
+    if (l.feature && l.feature.properties.levelpathid === lpid) {
+      l.setStyle({ weight: 8, color: "#e74c3c", opacity: 0.95 });
+    }
+  });
+}
+function clearStreamHighlight() {
+  if (_selStreamLpid == null) return;
+  clickableVisible.eachLayer((l) => {
+    if (l.feature) l.setStyle(streamStyle(l.feature.properties));
+  });
+  _selStreamLpid = null;
+}
+
+function _normName(s) { return (s || "").trim().toLowerCase(); }
+
+// A clickable-network reach belongs to a gauged river when a loaded river
+// shares its name. Gauged rivers are keyed by gnis name (not levelpathid),
+// so we match on name; when several rivers share a name (common creek
+// names), pick the one whose representative point is nearest the click.
+function _gaugedRiverFor(p, latlng) {
+  const name = _normName(p.gnis_name);
+  if (!name) return null;
+  // Search BOTH the current set (viewport rivers when zoomed in) and the
+  // full state snapshot, deduped by site_no. Without the stateRivers
+  // fallback, clicking an upstream reach of a river whose gauges sit
+  // outside the current bbox (e.g., the Gunpowder above Glencoe) wouldn't
+  // find a match and would wrongly render as ungauged.
+  const seen = new Set();
+  const matches = [];
+  for (const list of [allRivers, stateRivers]) {
+    if (!list) continue;
+    for (const r of list) {
+      if (r.site_no && !seen.has(r.site_no)
+          && _normName(r.name) === name) {
+        seen.add(r.site_no); matches.push(r);
+      }
+    }
+  }
+  if (matches.length <= 1 || !latlng) return matches[0] || null;
+  let best = matches[0], bestD = Infinity;
+  for (const r of matches) {
+    const dy = r.lat - latlng.lat, dx = r.lon - latlng.lng;
+    const d = dy * dy + dx * dx;
+    if (d < bestD) { bestD = d; best = r; }
+  }
+  return best;
+}
+
+function onStreamClick(p, latlng) {
+  highlightStream(p.levelpathid);   // whole-river emphasis, gauged or not
+  // Unify the two layers: if this reach is part of a gauged river, open
+  // that river's rich panel instead of the generic ungauged card, so the
+  // whole river behaves as one thing regardless of where you click.
+  const gauged = _gaugedRiverFor(p, latlng);
+  if (gauged) { openRiverPanel(gauged, null, null); return; }
+  const panel = document.getElementById("river-panel");
+  const body = document.getElementById("river-panel-body");
+  clearTimeout(_panelHideTimer);
+  const cls = p.trout_class;
+  const label = STREAM_CLASS_LABEL[cls] || "No trout designation";
+  body.innerHTML =
+    `<div class="bl-card"><div class="bl-card-head">` +
+    `<div style="font-size:18px;font-weight:700;color:#1a1a2e">${esc(p.gnis_name || "Unnamed stream")}</div>` +
+    `<span class="stream-badge" style="background:${esc(streamColor(p))}">${esc(label)}</span>` +
+    `<span class="stream-badge" style="background:#64748b">Order ${esc(p.streamorder)}</span>` +
+    `<div class="bl-summary">Ungauged reach &mdash; no live USGS flow here. Showing what we know.</div>` +
+    `</div><div class="bl-card-body">` +
+    `<div class="bl-catch-cta"></div>` +
+    `<details class="bl-section bl-hatch"><summary>Hatching now</summary>` +
+    `<div class="bl-section-body">Hatch guidance for this reach's zone lands with the ungauged-card data wire-up.</div></details>` +
+    `<details class="bl-section" open><summary>Trout</summary>` +
+    `<div class="bl-section-body">${esc(label)}${cls ? " (state designation)" : ""}.</div></details>` +
+    `<details class="bl-section"><summary>Access &amp; land</summary>` +
+    `<div class="bl-section-body">Access points + public/private land coming in the TroutRoutes-depth phase.</div></details>` +
+    `<details class="bl-section"><summary>Conditions</summary>` +
+    `<div class="bl-section-body">No gauge on this reach. Nearest downstream gauge could provide context.</div></details>` +
+    `</div></div>`;
+  body.scrollTop = 0;
+  panel.hidden = false;
+  requestAnimationFrame(() => panel.classList.add("open"));
+  _lastPanelOpenTs = Date.now();
+  // Catch CTA: the clicked point is a reasonable catch location for an
+  // ungauged stream (no representative gauge to attach to).
+  wireCatch(body, {
+    name: p.gnis_name, site_no: null,
+    lat: latlng ? latlng.lat : null, lon: latlng ? latlng.lng : null,
+  });
+}
+
+// Coloring-mode toggle (Decision C): Conditions vs Trout class.
+const StreamModeControl = L.Control.extend({
+  options: { position: "topright" },
+  onAdd() {
+    const div = L.DomUtil.create("div", "stream-mode");
+    div.innerHTML =
+      `<button data-mode="trout" class="on">Trout class</button>` +
+      `<button data-mode="conditions">Conditions</button>`;
+    L.DomEvent.disableClickPropagation(div);
+    div.querySelectorAll("button").forEach((b) =>
+      b.addEventListener("click", () => {
+        streamColorMode = b.dataset.mode;
+        div.querySelectorAll("button").forEach((x) =>
+          x.classList.toggle("on", x === b));
+        restyleStreams();
+      }));
+    return div;
+  },
+});
+map.addControl(new StreamModeControl());
+
+// Re-fetch the network whenever the view settles or the layer is toggled.
+let _streamTimer = null;
+map.on("moveend", () => {
+  clearTimeout(_streamTimer);
+  _streamTimer = setTimeout(loadClickableStreams, 350);
+});
+map.on("overlayadd", (e) => { if (e.layer === clickableLayer) loadClickableStreams(); });
 
 // -- Gauges --
 
@@ -206,8 +591,9 @@ function renderRivers() {
       `<b>${esc(r.name)}</b>${tBadge}${sBadge}` +
       `<br><span style="color:${r.color}">${esc(r.label)}</span>`
     );
-    m.bindPopup(r.popup_html, popupOpts());
-    m.on("popupopen", wireTrend);
+    m._blRiver = r;
+    m.on("click", () => openRiverPanel(
+      r, m, { weight: 2, opacity: 1 }));
     riversLayer.addLayer(m);
   }
 }
@@ -259,8 +645,9 @@ async function fetchRiverLine(r) {
       const line = L.geoJSON(fc, {
         style: { color: r.color, weight: 5, opacity: 0.6 },
       });
-      line.bindPopup(r.popup_html, popupOpts());
-      line.on("popupopen", wireTrend);
+      line._blRiver = r;
+      line.on("click", () => openRiverPanel(
+        r, line, { color: r.color, weight: 5, opacity: 0.6 }));
       riverLineBySite.set(r.site_no, line);   // renderRivers() places it
     }
     riverGeomLoaded.add(r.site_no);
@@ -392,7 +779,11 @@ async function loadRiverLines(qs) {
     const r = riverBySite.get(sn);
     const color = (r && r.color) || g.color || "#2c6fbf";
     const line = L.geoJSON(g, { style: { color, weight: 5, opacity: 0.6 } });
-    if (r) { line.bindPopup(r.popup_html, popupOpts()); line.on("popupopen", wireTrend); }
+    if (r) {
+      line._blRiver = r;
+      line.on("click", () => openRiverPanel(
+        r, line, { color, weight: 5, opacity: 0.6 }));
+    }
     riverLineBySite.set(sn, line);
     riverGeomLoaded.add(sn);              // per-site fallback now skips it
   }
@@ -597,12 +988,470 @@ async function init() {
   currentSt = state;
   sel.value = state;
   map.setView(STATES[state].center, STATE_ZOOM);
+  wireRiverPanel();
   loadRivers(state);
   loadPins();
+  await initAuth();
 }
 init();
 
+// -- Accounts (Phase 1) ---------------------------------------------
+
+// Auth state derived from /api/me on load. null = signed out.
+let CURRENT_USER = null;
+
+async function initAuth() {
+  await loadAuthState();
+  wireAuthHandlers();
+  wireCatchUI();
+  if (CURRENT_USER) await maybePromptClaim();
+}
+
+async function loadAuthState() {
+  try {
+    const r = await fetch("/api/me");
+    CURRENT_USER = r.ok ? await r.json() : null;
+  } catch {
+    CURRENT_USER = null;
+  }
+  renderAuthSlot();
+}
+
+function renderAuthSlot() {
+  const slot = document.getElementById("auth-slot");
+  if (!slot) return;
+  slot.innerHTML = "";
+  const btn = document.createElement("button");
+  btn.type = "button";
+  btn.className = "ctrl";
+  if (CURRENT_USER) {
+    btn.id = "account-btn";
+    btn.textContent =
+      (CURRENT_USER.display_name || CURRENT_USER.email) + " ▾";
+    btn.addEventListener("click", toggleAccountMenu);
+  } else {
+    btn.id = "signin-btn";
+    btn.textContent = "Sign in";
+    btn.addEventListener("click", () => openModal("login-modal"));
+  }
+  slot.appendChild(btn);
+}
+
+function openModal(id) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.hidden = false;
+  // Reset login modal state if reopened
+  if (id === "login-modal") {
+    document.getElementById("login-step-1").hidden = false;
+    document.getElementById("login-step-2").hidden = true;
+    const inp = document.getElementById("login-email");
+    if (inp) inp.value = "";
+    setTimeout(() => inp && inp.focus(), 30);
+  }
+  if (id === "settings-modal") loadSettings();
+}
+
+function closeModal(id) {
+  const el = document.getElementById(id);
+  if (el) el.hidden = true;
+}
+
+function toggleAccountMenu() {
+  const menu = document.getElementById("account-menu");
+  if (!menu) return;
+  const showing = !menu.hidden;
+  menu.hidden = showing;
+  if (!showing) {
+    document.getElementById("account-menu-email").textContent =
+      CURRENT_USER ? CURRENT_USER.email : "";
+  }
+}
+
+function wireAuthHandlers() {
+  // Backdrop + [×] + data-close close their parent modal
+  document.querySelectorAll(".modal").forEach((m) => {
+    m.querySelectorAll("[data-close]").forEach((b) =>
+      b.addEventListener("click", () => (m.hidden = true)));
+  });
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") {
+      document.querySelectorAll(".modal").forEach((m) => (m.hidden = true));
+      const menu = document.getElementById("account-menu");
+      if (menu) menu.hidden = true;
+    }
+  });
+  // Close account menu on outside click
+  document.addEventListener("click", (e) => {
+    const menu = document.getElementById("account-menu");
+    if (!menu || menu.hidden) return;
+    if (e.target.closest("#account-menu") ||
+        e.target.closest("#account-btn")) return;
+    menu.hidden = true;
+  });
+
+  // Login form
+  const form = document.getElementById("login-form");
+  if (form) form.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const email = document.getElementById("login-email").value.trim();
+    if (!email) return;
+    const btn = document.getElementById("login-submit");
+    btn.disabled = true;
+    btn.textContent = "Sending…";
+    try {
+      await fetch("/api/auth/request-link", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ email }),
+      });
+    } catch {}
+    btn.disabled = false;
+    btn.textContent = "Send sign-in link";
+    document.getElementById("login-sent-to").textContent = email;
+    document.getElementById("login-step-1").hidden = true;
+    document.getElementById("login-step-2").hidden = false;
+  });
+  const retry = document.getElementById("login-retry");
+  if (retry) retry.addEventListener("click", () => {
+    document.getElementById("login-step-2").hidden = true;
+    document.getElementById("login-step-1").hidden = false;
+    document.getElementById("login-email").focus();
+  });
+
+  // Account menu actions
+  document.querySelectorAll("#account-menu button").forEach((b) => {
+    b.addEventListener("click", () => onAccountAction(b.dataset.action));
+  });
+
+  // Claim modal
+  const claimBtn = document.getElementById("claim-confirm");
+  if (claimBtn) claimBtn.addEventListener("click", confirmClaim);
+
+  // Settings
+  const saveBtn = document.getElementById("settings-save");
+  if (saveBtn) saveBtn.addEventListener("click", saveDisplayName);
+  const delBtn = document.getElementById("settings-delete");
+  if (delBtn) delBtn.addEventListener("click", deleteAccount);
+}
+
+async function onAccountAction(action) {
+  document.getElementById("account-menu").hidden = true;
+  if (action === "logout") {
+    try {
+      await fetch("/api/auth/logout", { method: "POST" });
+    } catch {}
+    location.reload();
+  } else if (action === "settings") {
+    openModal("settings-modal");
+  } else if (action === "my-catches") {
+    openMyCatches();
+  }
+}
+
+async function maybePromptClaim() {
+  if (!CURRENT_USER) return;
+  if (localStorage.getItem("bl_claim_dismissed") === "1") return;
+  try {
+    const r = await fetch("/api/pins/claimable", {
+      headers: DEVICE_HEADER,
+    });
+    if (!r.ok) return;
+    const list = await r.json();
+    if (!list || !list.length) return;
+    document.getElementById("claim-count").textContent = list.length;
+    const ul = document.getElementById("claim-list");
+    ul.innerHTML = "";
+    for (const p of list.slice(0, 6)) {
+      const li = document.createElement("li");
+      li.textContent = p.note || "(no note)";
+      ul.appendChild(li);
+    }
+    if (list.length > 6) {
+      const li = document.createElement("li");
+      li.textContent = `… and ${list.length - 6} more`;
+      ul.appendChild(li);
+    }
+    openModal("claim-modal");
+    // Dismiss-on-skip applies even if the modal is closed with [×]/Esc;
+    // no re-prompt for that device. Re-checks on next sign-in still
+    // honor the persisted flag (per-device by design).
+    document.getElementById("claim-modal").addEventListener("click", (e) => {
+      if (e.target.matches("[data-close]")) {
+        localStorage.setItem("bl_claim_dismissed", "1");
+      }
+    }, { once: true });
+  } catch {}
+}
+
+async function confirmClaim() {
+  const btn = document.getElementById("claim-confirm");
+  btn.disabled = true;
+  btn.textContent = "Claiming…";
+  try {
+    await fetch("/api/pins/claim", {
+      method: "POST",
+      headers: DEVICE_HEADER,
+    });
+    localStorage.setItem("bl_claim_dismissed", "1");
+  } catch {}
+  closeModal("claim-modal");
+  loadPins();
+}
+
+async function loadSettings() {
+  if (!CURRENT_USER) return;
+  document.getElementById("settings-email").textContent = CURRENT_USER.email;
+  document.getElementById("settings-name").value =
+    CURRENT_USER.display_name || "";
+  document.getElementById("settings-saved").style.opacity = 0;
+}
+
+async function saveDisplayName() {
+  const name = document.getElementById("settings-name").value.trim();
+  if (!name) return;
+  const btn = document.getElementById("settings-save");
+  btn.disabled = true;
+  try {
+    const r = await fetch("/api/me", {
+      method: "PATCH",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ display_name: name }),
+    });
+    if (r.ok) {
+      CURRENT_USER = await r.json();
+      renderAuthSlot();
+      const t = document.getElementById("settings-saved");
+      t.style.opacity = 1;
+      setTimeout(() => (t.style.opacity = 0), 1400);
+    }
+  } catch {}
+  btn.disabled = false;
+}
+
+async function deleteAccount() {
+  if (!confirm(
+    "Delete your account? Pins you've claimed will become anonymous " +
+    "again on this device. This cannot be undone."
+  )) return;
+  try {
+    await fetch("/api/me", { method: "DELETE" });
+  } catch {}
+  localStorage.removeItem("bl_claim_dismissed");
+  location.reload();
+}
+
+// -- Catch log (Phase 2) --------------------------------------------
+
+const SPECIES = [
+  "Brown Trout", "Rainbow Trout", "Brook Trout", "Cutthroat Trout",
+  "Tiger Trout", "Smallmouth Bass", "Largemouth Bass", "Bluegill",
+  "Carp", "Fallfish", "Chain Pickerel", "Walleye",
+];
+
+// Context for the form: which river it was launched from (drives the
+// enrichment lat/lon/site_no even if the user edits the river name).
+let catchCtx = null;
+
+function _toLocalInputValue(d) {
+  // datetime-local wants "YYYY-MM-DDTHH:MM" in *local* time.
+  const off = d.getTimezoneOffset();
+  const local = new Date(d.getTime() - off * 60000);
+  return local.toISOString().slice(0, 16);
+}
+
+function openCatchForm(river) {
+  catchCtx = {
+    river_name: river.name || "",
+    river_site_no: river.site_no || null,
+    lat: river.lat, lon: river.lon,
+  };
+  // Populate species datalist once
+  const dl = document.getElementById("cf-species-list");
+  if (dl && !dl.dataset.filled) {
+    dl.dataset.filled = "1";
+    for (const s of SPECIES) {
+      const o = document.createElement("option");
+      o.value = s;
+      dl.appendChild(o);
+    }
+  }
+  document.getElementById("catch-form").reset();
+  document.getElementById("cf-river").value = catchCtx.river_name;
+  document.getElementById("cf-when").value = _toLocalInputValue(new Date());
+  document.getElementById("cf-error").textContent = "";
+  openModal("catch-modal");
+  loadEnrichmentPreview();
+}
+
+async function loadEnrichmentPreview() {
+  const body = document.getElementById("cf-enrich-body");
+  body.innerHTML = '<div class="cf-enrich-loading">Reading current conditions&hellip;</div>';
+  if (!catchCtx || catchCtx.lat == null || catchCtx.lon == null) {
+    body.innerHTML = '<div class="cf-enrich-loading">No location — conditions won’t be captured.</div>';
+    return;
+  }
+  const p = new URLSearchParams({ lat: catchCtx.lat, lon: catchCtx.lon });
+  if (catchCtx.river_site_no) p.set("site_no", catchCtx.river_site_no);
+  if (catchCtx.river_name) p.set("river_name", catchCtx.river_name);
+  const when = document.getElementById("cf-when").value;
+  if (when) p.set("occurred_at", new Date(when).toISOString());
+  try {
+    const env = await fetch(`/api/catches/enrichment-preview?${p}`).then((r) => r.json());
+    body.innerHTML = renderEnv(env);
+  } catch {
+    body.innerHTML = '<div class="cf-enrich-loading">Conditions unavailable right now.</div>';
+  }
+}
+
+function renderEnv(env) {
+  if (!env) return '<div class="cf-enrich-loading">No conditions.</div>';
+  const rows = [];
+  const flow = env.flow_cfs != null
+    ? `${env.flow_cfs} cfs${env.flow_vs_median ? " (" + esc(env.flow_vs_median) + ")" : ""}`
+    : null;
+  if (flow) rows.push(["💧", "Flow", flow]);
+  if (env.water_temp_f != null) rows.push(["🌡", "Water", `${env.water_temp_f}°F`]);
+  if (env.air_temp_f != null) {
+    rows.push(["☁", "Air", `${env.air_temp_f}°F${env.conditions ? ", " + esc(env.conditions) : ""}`]);
+  }
+  if (env.pressure_inhg != null) rows.push(["📊", "Pressure", `${env.pressure_inhg} inHg`]);
+  if (env.moon_phase) rows.push(["🌙", "Moon", esc(env.moon_phase)]);
+  if (env.active_hatches && env.active_hatches.length) {
+    rows.push(["🦟", "Hatches", env.active_hatches.map(esc).join(", ")]);
+  }
+  if (!rows.length) return '<div class="cf-enrich-loading">No conditions captured for this spot.</div>';
+  return rows.map((r) =>
+    `<div class="cf-env-row"><span class="cf-env-ic">${r[0]}</span>` +
+    `<span class="cf-env-k">${r[1]}</span><span class="cf-env-v">${r[2]}</span></div>`
+  ).join("");
+}
+
+async function submitCatch(ev) {
+  ev.preventDefault();
+  const species = document.getElementById("cf-species").value.trim();
+  const err = document.getElementById("cf-error");
+  if (!species) { err.textContent = "Species is required."; return; }
+  const lenRaw = document.getElementById("cf-length").value;
+  const whenRaw = document.getElementById("cf-when").value;
+  const payload = {
+    species,
+    river_name: document.getElementById("cf-river").value.trim() || null,
+    river_site_no: catchCtx ? catchCtx.river_site_no : null,
+    lat: catchCtx ? catchCtx.lat : null,
+    lon: catchCtx ? catchCtx.lon : null,
+    length_in: lenRaw ? parseFloat(lenRaw) : null,
+    fly_used: document.getElementById("cf-fly").value.trim() || null,
+    notes: document.getElementById("cf-notes").value.trim() || null,
+    occurred_at: whenRaw ? new Date(whenRaw).toISOString() : null,
+  };
+  const btn = document.getElementById("cf-save");
+  btn.disabled = true; btn.textContent = "Saving…";
+  try {
+    const r = await fetch("/api/catches", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    if (!r.ok) throw new Error("save failed");
+    closeModal("catch-modal");
+  } catch {
+    err.textContent = "Could not save. Try again.";
+  }
+  btn.disabled = false; btn.textContent = "Save catch";
+}
+
+async function openMyCatches() {
+  const panel = document.getElementById("catches-panel");
+  panel.hidden = false;
+  const list = document.getElementById("catches-list");
+  list.innerHTML = '<div class="catches-empty">Loading…</div>';
+  try {
+    const data = await fetch("/api/catches").then((r) => r.json());
+    document.getElementById("catches-count").textContent =
+      data.total ? `${data.total} catch${data.total === 1 ? "" : "es"}` : "";
+    renderCatchList(data.catches || []);
+  } catch {
+    list.innerHTML = '<div class="catches-empty">Could not load your catches.</div>';
+  }
+}
+
+function renderCatchList(catches) {
+  const list = document.getElementById("catches-list");
+  if (!catches.length) {
+    list.innerHTML =
+      '<div class="catches-empty"><div class="catches-empty-ic">🎣</div>' +
+      "<p>No catches logged yet.</p>" +
+      "<p class=\"modal-fine\">Tap any river on the map and hit " +
+      "“Log a catch” — we’ll capture the conditions automatically.</p></div>";
+    return;
+  }
+  list.innerHTML = "";
+  for (const c of catches) {
+    const when = c.occurred_at ? new Date(c.occurred_at) : null;
+    const dateStr = when
+      ? when.toLocaleDateString(undefined, { month: "short", day: "numeric" })
+      : "";
+    const env = c.env || {};
+    const envChips = [
+      env.flow_cfs != null ? `💧${env.flow_cfs}cfs` : null,
+      env.water_temp_f != null ? `🌡${env.water_temp_f}°F` : null,
+      env.air_temp_f != null ? `☁${env.air_temp_f}°F` : null,
+    ].filter(Boolean).map(esc).join("  ");
+    const sub = [
+      c.species, c.length_in != null ? `${c.length_in}"` : null, c.fly_used,
+    ].filter(Boolean).map(esc).join(" · ");
+    const row = document.createElement("div");
+    row.className = "catch-row";
+    row.innerHTML =
+      `<div class="catch-row-head"><span class="catch-date">${esc(dateStr)}</span>` +
+      `<span class="catch-river">${esc(c.river_name || "Unknown water")}</span></div>` +
+      `<div class="catch-sub">${sub}</div>` +
+      (envChips ? `<div class="catch-env">${envChips}</div>` : "") +
+      (c.notes ? `<div class="catch-notes">${esc(c.notes)}</div>` : "") +
+      `<button class="catch-del" data-id="${c.id}">Delete</button>`;
+    row.querySelector(".catch-del").onclick = () => deleteCatch(c.id, row);
+    list.appendChild(row);
+  }
+}
+
+async function deleteCatch(id, rowEl) {
+  if (!confirm("Delete this catch?")) return;
+  try {
+    const r = await fetch(`/api/catches/${id}`, { method: "DELETE" });
+    if (r.ok || r.status === 204) {
+      rowEl.remove();
+      const list = document.getElementById("catches-list");
+      if (!list.children.length) renderCatchList([]);
+    }
+  } catch {}
+}
+
+function wireCatchUI() {
+  const form = document.getElementById("catch-form");
+  if (form) form.addEventListener("submit", submitCatch);
+  const whenInput = document.getElementById("cf-when");
+  if (whenInput) whenInput.addEventListener("change", loadEnrichmentPreview);
+  const back = document.getElementById("catches-back");
+  if (back) back.addEventListener("click", () => {
+    document.getElementById("catches-panel").hidden = true;
+  });
+}
+
 if ("serviceWorker" in navigator) {
+  // Auto-reload once when a new service worker takes control, so a deploy
+  // propagates fresh JS/CSS without a manual cache clear. Only armed when
+  // the page is already controlled (a returning visit) -- on the very
+  // first visit there's no controller yet and no stale assets to replace,
+  // so we skip the reload to avoid a pointless first-load refresh.
+  if (navigator.serviceWorker.controller) {
+    let refreshing = false;
+    navigator.serviceWorker.addEventListener("controllerchange", () => {
+      if (refreshing) return;
+      refreshing = true;
+      window.location.reload();
+    });
+  }
   window.addEventListener("load", () => {
     navigator.serviceWorker.register("/sw.js").catch(() => {});
   });
