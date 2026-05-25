@@ -118,6 +118,14 @@ function _decodeHtml(s) {
   return d.textContent || "";
 }
 
+// USGS unit codes are plain ASCII ("ft3/s", "deg C", "ft"). Promote
+// trailing digits to Unicode superscripts so the hover tip reads like
+// the chart label ("ft3/s" -> "ft³/s"). Safe because USGS unit codes
+// never use digits for anything but exponents.
+function _prettyUnit(u) {
+  return (u || "").replace(/\d/g, (d) => "⁰¹²³⁴⁵⁶⁷⁸⁹"[d] || d);
+}
+
 function sparkline(series) {
   if (!series || !series.length) {
     return '<div class="bl-trend-msg">No 1-yr data for this site.</div>';
@@ -143,7 +151,8 @@ function sparkline(series) {
   const data = pts.map((p, i) => [xs[i], ys[i], p.value, (p.date || "").slice(0, 10)]);
   return (
     `<div class="bl-trend-msg">${esc(cleanName)} &mdash; last 12 months</div>` +
-    `<div class="bl-spark" data-w="${W}" data-h="${H}">` +
+    `<div class="bl-spark" data-w="${W}" data-h="${H}" ` +
+    `data-unit="${esc(s.unit || "")}">` +
     `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" ` +
     `xmlns="http://www.w3.org/2000/svg">` +
     `<path d="${d}" fill="none" stroke="#2c6fbf" stroke-width="1.5"/>` +
@@ -179,6 +188,7 @@ function wireSparkHover(root) {
     try { pts = JSON.parse(dataEl.textContent); } catch (_) { return; }
     if (!pts.length) return;
     const W = parseFloat(box.dataset.w), H = parseFloat(box.dataset.h);
+    const unit = _prettyUnit(box.dataset.unit || "");
 
     const move = (clientX) => {
       const rect = svg.getBoundingClientRect();
@@ -193,7 +203,9 @@ function wireSparkHover(root) {
       cur.setAttribute("visibility", "visible");
       dot.setAttribute("cx", px); dot.setAttribute("cy", py);
       dot.setAttribute("visibility", "visible");
-      tip.textContent = `${date}  ${val.toFixed(0)}`;
+      tip.textContent = unit
+        ? `${date}  ${val.toFixed(0)} ${unit}`
+        : `${date}  ${val.toFixed(0)}`;
       tip.hidden = false;
       // Place tip in container px (svg viewBox -> rendered ratio).
       const tipX = (px / W) * rect.width;
@@ -401,24 +413,33 @@ async function loadClickableStreams() {
     if (reqId !== _streamReqId) return;            // a newer move superseded us
     clickableVisible.clearLayers(); clickableHit.clearLayers();
     clickableVisible.addData(fc); clickableHit.addData(fc);
+    if (_selStreamLpid != null) _paintHighlight(_selStreamLpid);
   } catch (_) { /* transient; next moveend retries */ }
 }
 
 function restyleStreams() {
   clickableVisible.setStyle((f) => streamStyle(f.properties));
+  if (_selStreamLpid != null) _paintHighlight(_selStreamLpid);
 }
 
 // Highlight every rendered reach sharing the clicked stream's LevelPathID
 // (whole-river emphasis), restoring on the next selection / close.
+// `_paintHighlight` is idempotent so it can be re-applied after the
+// clickable-streams layer is rebuilt (pan/zoom moveend) or restyled
+// (trout/conditions mode toggle) -- without it, the red selection
+// silently reverts to the base style as soon as you pan the map.
 let _selStreamLpid = null;
-function highlightStream(lpid) {
-  clearStreamHighlight();
-  _selStreamLpid = lpid;
+function _paintHighlight(lpid) {
   clickableVisible.eachLayer((l) => {
     if (l.feature && l.feature.properties.levelpathid === lpid) {
       l.setStyle({ weight: 8, color: "#e74c3c", opacity: 0.95 });
     }
   });
+}
+function highlightStream(lpid) {
+  clearStreamHighlight();
+  _selStreamLpid = lpid;
+  _paintHighlight(lpid);
 }
 function clearStreamHighlight() {
   if (_selStreamLpid == null) return;
