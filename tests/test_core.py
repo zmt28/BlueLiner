@@ -864,6 +864,49 @@ def test_assemble_rivers_prefers_gnis_name(monkeypatch):
     assert len(rivers) == 1 and rivers[0]["name"] == "Gunpowder Falls"
 
 
+def test_assemble_rivers_collects_levelpathids_per_river(monkeypatch):
+    """River dicts carry each gauge's NHD levelpath so the client can
+    unify a clicked clickable-stream reach with its gauged river even
+    when NHD and NLDI disagree on the GNIS name for that reach."""
+    import asyncio
+
+    async def no_medians(nos):
+        return None
+
+    monkeypatch.setattr(main, "_ensure_medians_cached", no_medians)
+    monkeypatch.setattr(
+        db, "get_gauge_metas",
+        lambda nos: {
+            "01582500": {"comid": "1", "gnis_name": "Gunpowder Falls",
+                         "levelpathid": 200010762},
+            "01581700": {"comid": "2", "gnis_name": "Gunpowder Falls",
+                         "levelpathid": 200010762},
+        },
+    )
+    main._stats_cache.clear()
+    ts = [
+        {"sourceInfo": {
+            "siteName": "Gunpowder Falls at Glencoe, MD",
+            "siteCode": [{"value": "01582500"}],
+            "geoLocation": {"geogLocation": {"latitude": 39.62,
+                                             "longitude": -76.62}}},
+         "variable": {"variableDescription": "Streamflow, ft3/s"},
+         "values": [{"value": [{"value": "150",
+                                "dateTime": "2026-05-19T08:00:00"}]}]},
+        {"sourceInfo": {
+            "siteName": "Gunpowder Falls near Parkton, MD",
+            "siteCode": [{"value": "01581700"}],
+            "geoLocation": {"geogLocation": {"latitude": 39.65,
+                                             "longitude": -76.66}}},
+         "variable": {"variableDescription": "Streamflow, ft3/s"},
+         "values": [{"value": [{"value": "40",
+                                "dateTime": "2026-05-19T08:00:00"}]}]},
+    ]
+    rivers = asyncio.run(main._assemble_rivers(ts, [None], []))
+    assert len(rivers) == 1
+    assert rivers[0]["levelpathids"] == [200010762]
+
+
 def test_assemble_rivers_falls_back_to_heuristic_without_gnis(monkeypatch):
     """If gauge_meta lookup returns nothing, the station-name heuristic
     is still used -- behavior unchanged for not-yet-backfilled gauges."""

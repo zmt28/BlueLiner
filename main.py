@@ -779,6 +779,8 @@ async def _assemble_rivers(time_series: list, trout_layers: list,
         on_trout = any(is_near_trout_stream(latitude, longitude, g) for g in tgs)
         gnis = (gauge_metas.get(site_no, {}).get("gnis_name") if site_no
                 else None)
+        lpid = (gauge_metas.get(site_no, {}).get("levelpathid") if site_no
+                else None)
         if gnis:
             key, display = gnis.strip().lower(), gnis.strip()
         else:
@@ -786,10 +788,16 @@ async def _assemble_rivers(time_series: list, trout_layers: list,
         g = groups.setdefault(key, {
             "name": display, "lats": [], "lons": [],
             "on_trout": False, "gauges": [],
+            # Collected so the client can match a clicked clickable-stream
+            # reach by NHD levelpath even when NHD/NLDI disagree on the
+            # gauge's GNIS name -- a more durable fallback than name-only.
+            "levelpathids": set(),
         })
         g["lats"].append(latitude)
         g["lons"].append(longitude)
         g["on_trout"] = g["on_trout"] or on_trout
+        if lpid is not None:
+            g["levelpathids"].add(lpid)
         g["gauges"].append({
             "site_name": site_name, "site_no": site_no,
             "variables": variables, "conditions": conditions,
@@ -825,6 +833,7 @@ async def _assemble_rivers(time_series: list, trout_layers: list,
             "on_trout": river["on_trout"], "near_stocked": river["near_stocked"],
             "hatch_zone": zone["name"],
             "active_hatches": [e["common_name"] for e in active],
+            "levelpathids": sorted(g["levelpathids"]),
             "popup_html": build_river_popup_html(river),
         })
     return rivers

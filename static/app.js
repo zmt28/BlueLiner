@@ -431,12 +431,16 @@ function clearStreamHighlight() {
 function _normName(s) { return (s || "").trim().toLowerCase(); }
 
 // A clickable-network reach belongs to a gauged river when a loaded river
-// shares its name. Gauged rivers are keyed by gnis name (not levelpathid),
-// so we match on name; when several rivers share a name (common creek
-// names), pick the one whose representative point is nearest the click.
+// shares either its GNIS name OR its NHD levelpath. Levelpath matching
+// catches reaches that NHD and NLDI label differently for the same
+// physical river (e.g., where NHD names a downstream tidal section
+// "Gunpowder River" and an upstream section "Gunpowder Falls" on the
+// same levelpath). When several rivers match, pick the one whose
+// representative point is nearest the click.
 function _gaugedRiverFor(p, latlng) {
   const name = _normName(p.gnis_name);
-  if (!name) return null;
+  const lpid = p.levelpathid;
+  if (!name && lpid == null) return null;
   // Search BOTH the current set (viewport rivers when zoomed in) and the
   // full state snapshot, deduped by site_no. Without the stateRivers
   // fallback, clicking an upstream reach of a river whose gauges sit
@@ -447,8 +451,11 @@ function _gaugedRiverFor(p, latlng) {
   for (const list of [allRivers, stateRivers]) {
     if (!list) continue;
     for (const r of list) {
-      if (r.site_no && !seen.has(r.site_no)
-          && _normName(r.name) === name) {
+      if (!r.site_no || seen.has(r.site_no)) continue;
+      const nameMatch = name && _normName(r.name) === name;
+      const lpidMatch = lpid != null && Array.isArray(r.levelpathids)
+        && r.levelpathids.includes(lpid);
+      if (nameMatch || lpidMatch) {
         seen.add(r.site_no); matches.push(r);
       }
     }
