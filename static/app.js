@@ -91,13 +91,9 @@ const clickableHit = L.geoJSON(null, {
 const clickableLayer = L.featureGroup(
   [clickableVisible, clickableHit]).addTo(map);
 
-// Trout-stream lines are heavy; off by default (toggle in the control).
-L.control.layers(null, {
-  "Fishable streams": clickableLayer,
-  "Streams (USGS)": hydroLayer,
-  "Trout Streams": troutLayer,
-  "Saved Pins": pinsLayer,
-}, { collapsed: true }).addTo(map);
+// Layer visibility used to live in Leaflet's default top-right control;
+// it now sits inside the unified #filter-panel popover. Wiring happens
+// at init time so the panel checkboxes drive add/remove on the map.
 
 let allRivers = [];
 // One representation per river: the NLDI flowline when we have it, else
@@ -533,25 +529,17 @@ function onStreamClick(p, latlng) {
 }
 
 // Coloring-mode toggle (Decision C): Conditions vs Trout class.
-const StreamModeControl = L.Control.extend({
-  options: { position: "topright" },
-  onAdd() {
-    const div = L.DomUtil.create("div", "stream-mode");
-    div.innerHTML =
-      `<button data-mode="trout" class="on">Trout class</button>` +
-      `<button data-mode="conditions">Conditions</button>`;
-    L.DomEvent.disableClickPropagation(div);
-    div.querySelectorAll("button").forEach((b) =>
-      b.addEventListener("click", () => {
-        streamColorMode = b.dataset.mode;
-        div.querySelectorAll("button").forEach((x) =>
-          x.classList.toggle("on", x === b));
-        restyleStreams();
-      }));
-    return div;
-  },
-});
-map.addControl(new StreamModeControl());
+// Wiring lives with the unified filter popover, so it's just a DOM
+// segmented control instead of its own Leaflet control. Both modes
+// re-style the same clickable network -- it's a viewing aid, not a
+// filter, so it groups under "Show on map" rather than "Show rivers".
+document.querySelectorAll("#color-mode button").forEach((b) =>
+  b.addEventListener("click", () => {
+    streamColorMode = b.dataset.mode;
+    document.querySelectorAll("#color-mode button").forEach((x) =>
+      x.classList.toggle("on", x === b));
+    restyleStreams();
+  }));
 
 // Re-fetch the network whenever the view settles or the layer is toggled.
 let _streamTimer = null;
@@ -559,7 +547,6 @@ map.on("moveend", () => {
   clearTimeout(_streamTimer);
   _streamTimer = setTimeout(loadClickableStreams, 350);
 });
-map.on("overlayadd", (e) => { if (e.layer === clickableLayer) loadClickableStreams(); });
 
 // -- Gauges --
 
@@ -570,8 +557,8 @@ function populateHatchOptions() {
   allRivers.forEach((r) => (r.active_hatches || []).forEach((h) => set.add(h)));
   const insects = [...set].sort();
   sel.innerHTML =
-    '<option value="any">Any hatch</option>' +
-    '<option value="active">Active hatch now</option>' +
+    '<option value="any">Any</option>' +
+    '<option value="active">Active now</option>' +
     insects.map((i) => `<option value="${esc(i)}">${esc(i)}</option>`).join("");
   sel.value = [...sel.options].some((o) => o.value === cur) ? cur : "any";
 }
@@ -647,10 +634,6 @@ async function ensureTrout(state) {
     troutLoading = false;
   }
 }
-
-map.on("overlayadd", (e) => {
-  if (e.layer === troutLayer) ensureTrout(currentSt);
-});
 
 // -- Clickable river flowlines (USGS NLDI): lazy, viewport-bounded --
 // Loading every river's geometry at once is the trout-layer trap, so we
@@ -980,17 +963,55 @@ document.getElementById("state-select").onchange = (e) => {
   if (map.hasLayer(troutLayer)) ensureTrout(s);
 };
 
-// -- Mobile: filter sheet + collapsible legend --
+// -- Filter popover: visibility + filters + color mode in one surface --
 
-const controls = document.getElementById("controls");
+const filterPanel = document.getElementById("filter-panel");
 const filtersToggle = document.getElementById("filters-toggle");
-function setSheet(open) {
-  controls.classList.toggle("open", open);
+function setFilterPanel(open) {
+  filterPanel.hidden = !open;
+  filterPanel.classList.toggle("open", open);
   filtersToggle.classList.toggle("active", open);
   filtersToggle.setAttribute("aria-expanded", open ? "true" : "false");
 }
-filtersToggle.onclick = () => setSheet(!controls.classList.contains("open"));
-document.getElementById("controls-done").onclick = () => setSheet(false);
+filtersToggle.onclick = () => setFilterPanel(filterPanel.hidden);
+document.getElementById("filter-panel-close").onclick =
+  () => setFilterPanel(false);
+// Click-outside-to-close: the panel is a non-modal popover on desktop;
+// users expect tapping the map or anywhere outside to dismiss it.
+document.addEventListener("click", (e) => {
+  if (filterPanel.hidden) return;
+  if (filterPanel.contains(e.target)) return;
+  if (filtersToggle.contains(e.target)) return;
+  setFilterPanel(false);
+});
+
+// Layer visibility checkboxes -- one per Leaflet layer. Toggling the
+// checkbox mirrors what the old L.control.layers did, plus fires the
+// same side-effects (lazy load of clickable streams / trout layer).
+function wireLayerToggle(id, layer, onAdd) {
+  const cb = document.getElementById(id);
+  cb.checked = map.hasLayer(layer);
+  cb.addEventListener("change", () => {
+    if (cb.checked) {
+      map.addLayer(layer);
+      if (onAdd) onAdd();
+    } else {
+      map.removeLayer(layer);
+    }
+  });
+}
+wireLayerToggle("lyr-fishable", clickableLayer, loadClickableStreams);
+wireLayerToggle("lyr-usgs", hydroLayer);
+wireLayerToggle("lyr-trout", troutLayer, () => ensureTrout(currentSt));
+wireLayerToggle("lyr-pins", pinsLayer);
+
+document.getElementById("filter-reset").onclick = () => {
+  document.getElementById("cond-select").value = "any";
+  document.getElementById("hatch-select").value = "any";
+  document.getElementById("trout-only").checked = false;
+  document.getElementById("stocked-only").checked = false;
+  onFilterChange();
+};
 
 const legend = document.getElementById("legend");
 const legendToggle = document.getElementById("legend-toggle");
