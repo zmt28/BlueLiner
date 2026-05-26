@@ -20,9 +20,21 @@ def test_zone_for_gunpowder_is_limestone_tailwater():
 
 
 def test_zone_for_regions_and_fallback():
+    # mid-Atlantic still picks up the fine-grained zones first
     assert hatches.zone_for(38.51, -80.54)["name"] == "Mountain Freestone"
     assert hatches.zone_for(38.07, -77.5)["name"] == "Blue Ridge / Piedmont"
-    assert hatches.zone_for(45.0, -120.0)["name"] == "Mid-Atlantic (general)"
+    # post-national-rollout: regional zones cover the lower 48
+    assert hatches.zone_for(45.0, -120.0)["name"] == "Pacific Northwest"  # OR
+    assert hatches.zone_for(46.5, -110.0)["name"] == "Northern Rockies"  # MT
+    assert hatches.zone_for(39.5, -106.0)["name"] == "Southern Rockies / Intermountain"  # CO
+    assert hatches.zone_for(37.5, -119.0)["name"] == "Sierra Nevada / California"  # CA Sierra
+    assert hatches.zone_for(35.8, -83.5)["name"] == "Southern Appalachians"  # Smokies
+    assert hatches.zone_for(44.0, -91.5)["name"] == "Driftless / Upper Midwest"  # WI
+    assert hatches.zone_for(45.0, -84.0)["name"] == "Great Lakes"  # MI
+    assert hatches.zone_for(36.5, -92.5)["name"] == "Ozarks"  # AR
+    assert hatches.zone_for(43.5, -71.0)["name"] == "Northeast / New England"  # NH
+    # truly outside any zone (e.g. southern Florida) -> generic fallback
+    assert hatches.zone_for(25.5, -80.3)["name"] == "Continental US (general)"
 
 
 def test_in_range_wraps_year_boundary():
