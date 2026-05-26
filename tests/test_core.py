@@ -1310,3 +1310,55 @@ def test_nldi_get_returns_none_on_network_error(monkeypatch):
     with httpx.Client(transport=httpx.MockTransport(broken)) as c:
         resp = main._nldi_get(c, "https://nldi.test/x")
     assert resp is None
+
+
+# -- root-redirect state resolution --
+
+def _req(query: dict | None = None, headers: dict | None = None):
+    """Minimal Request stub for _root_state: it only reads
+    query_params.get and headers.get, both dict-shaped."""
+    return SimpleNamespace(query_params=query or {}, headers=headers or {})
+
+
+def test_root_state_default_is_maryland():
+    """No explicit param, no geolocation header -> historical MD default."""
+    assert main._root_state(_req()) == "MD"
+
+
+def test_root_state_explicit_query_param_wins():
+    """Explicit ?state= overrides geolocation -- a user pasting a link to
+    Colorado shouldn't be redirected to their own state."""
+    req = _req(query={"state": "co"},
+               headers={"CF-IPCountry": "US", "CF-Region-Code": "MT"})
+    assert main._root_state(req) == "CO"
+
+
+def test_root_state_invalid_query_param_falls_through():
+    """Garbage in the URL doesn't lock the user out of the geo default."""
+    req = _req(query={"state": "ZZ"},
+               headers={"CF-IPCountry": "US", "CF-Region-Code": "OR"})
+    assert main._root_state(req) == "OR"
+
+
+def test_root_state_uses_cloudflare_region_when_us():
+    """When Cloudflare proxying is enabled on blueliner.app, the edge
+    injects CF-Region-Code. US-only so a Canadian visitor doesn't end up
+    on `BC` (not in STATES)."""
+    req = _req(headers={"CF-IPCountry": "US", "CF-Region-Code": "CO"})
+    assert main._root_state(req) == "CO"
+
+
+def test_root_state_ignores_non_us_geolocation():
+    """A user in Vancouver (BC) shouldn't get redirected to a state code
+    that doesn't exist -- fall through to the MD default instead of
+    breaking the map."""
+    req = _req(headers={"CF-IPCountry": "CA", "CF-Region-Code": "BC"})
+    assert main._root_state(req) == "MD"
+
+
+def test_root_state_unknown_region_code_falls_back_to_default():
+    """If CF gives us a region we don't recognise (e.g. an outlying US
+    territory not in STATES), fall back rather than 302'ing into a
+    broken state."""
+    req = _req(headers={"CF-IPCountry": "US", "CF-Region-Code": "XX"})
+    assert main._root_state(req) == "MD"
