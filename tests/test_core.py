@@ -1181,3 +1181,28 @@ def test_resolve_data_file_downloads_when_configured(tmp_path, monkeypatch):
     missing = str(tmp_path / "absent.gz")
     out = data_source.resolve_data_file(missing, "absent.gz")
     assert out != missing and open(out, "rb").read() == b"remote-bytes"
+
+
+# -- lower-48 scale: bbox lat index + cache sizing --
+
+def test_clickable_streams_has_both_bbox_indexes(tmp_path, monkeypatch):
+    """At national scale the lon-only index leaves half the table for
+    the lat predicate to scan; init_db must create both."""
+    monkeypatch.setattr(db, "DB_PATH", str(tmp_path / "t.db"))
+    db.init_db()
+    with db._conn() as conn:
+        cur = conn.cursor()
+        cur.execute(
+            "SELECT name FROM sqlite_master "
+            "WHERE type='index' AND tbl_name='clickable_streams'")
+        names = {row[0] for row in cur.fetchall()}
+    assert "idx_clk_lon" in names
+    assert "idx_clk_lat" in names
+
+
+def test_caches_sized_for_lower_48_fanout():
+    """48-state lazy fanout: caches must hold the full national working
+    set without thrashing. Regression-protect the maxsize bumps."""
+    assert main._state_rivers_cache.maxsize >= 48
+    assert main._stats_cache.maxsize >= 6000
+    assert main._river_geom_cache.maxsize >= 1024

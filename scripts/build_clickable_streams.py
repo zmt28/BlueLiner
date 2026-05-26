@@ -46,6 +46,12 @@ MIN_ORDER = 3
 SIMPLIFY_TOL = 0.0003
 COORD_GRID = 1e-5
 
+# For lower-48 national coverage, extend this list to all HUC-2
+# archives (HUC-01 through HUC-18 with sub-archive splits) by mirroring
+# the entries below; archive vintage suffixes (`_NHDSnapshot_<n>` /
+# `_NHDPlusAttributes_<n>`) vary per region -- consult the EPA
+# NHDPlusV21 S3 bucket index. PA/VA/MD trout endpoints below stay as-is;
+# other states ship without a `trout_class` tag (deferred enrichment).
 REGIONS = [
     {"id": "MA_02", "label": "Mid-Atlantic (HUC-02)",
      "snap": f"{S3}/NHDPlusMA/NHDPlusV21_MA_02_NHDSnapshot_04.7z",
