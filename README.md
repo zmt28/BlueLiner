@@ -2,7 +2,7 @@
 
 A real-time stream condition monitor for fly fishermen.
 
-![Blueliner Demo](blueliner-demo.gif)
+![Blueliner Demo](blueliner-demo.gif?raw=true)
 
 ## The Problem
 
