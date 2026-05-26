@@ -5,7 +5,12 @@
 // deploys propagate immediately (cache-first here meant returning browsers
 // ran stale JS forever). Only the immutable vendored Leaflet + icons are
 // cache-first. Bump CACHE on any caching-strategy change.
-const CACHE = "blueliner-v8";
+// Bump this on any change to the cached shell (app.js, app.css, sw.js
+// strategies). The activate handler below deletes every cache whose
+// name doesn't match the current CACHE constant, which forces every
+// returning browser to refetch the shell on next visit -- the only
+// reliable way to roll out a buggy client-side change.
+const CACHE = "blueliner-v9";
 const SHELL = [
   "/map",
   "/static/app.css",
