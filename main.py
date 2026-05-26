@@ -32,6 +32,7 @@ import stocking
 import db
 import enrichment
 import data_source
+import access_points
 
 
 logging.basicConfig(
@@ -1282,6 +1283,33 @@ async def api_trout(request: Request,
     warming = all(layer is None for layer in layers)
     if warming:
         return _cached_response(request, body, max_age=60, s_max_age=300)
+    return _cached_response(request, body, max_age=3600, s_max_age=86400)
+
+
+@app.get("/api/access")
+async def api_access(request: Request,
+                     state: str = Query(default="MD",
+                                        description="Two-letter state code.")):
+    """Angler access points (boat ramps, walk-ins, piers, parking, wading
+    spots) as GeoJSON. Bundled per-state baseline + a state-DNR live
+    overlay for any state whose ArcGIS endpoint has been verified
+    (`access_points.ACCESS_SOURCES`)."""
+    states_to_load = _resolve_states(state)
+    if states_to_load is None:
+        raise HTTPException(status_code=400, detail=f"Unsupported state: {state}")
+    # Build the FeatureCollection in a thread so a slow live overlay
+    # fetch doesn't block the request handler.
+    fcs = await asyncio.to_thread(
+        lambda: [access_points.access_points_geojson(st)
+                 for st in states_to_load])
+    features: list[dict] = []
+    for fc in fcs:
+        features.extend(fc.get("features", []))
+    body = json.dumps({"type": "FeatureCollection", "features": features},
+                      separators=(",", ":"))
+    # Baseline data is in-memory + stable across deploys; live overlay
+    # changes rarely. Long browser cache + day-long CDN cache like
+    # /api/trout.
     return _cached_response(request, body, max_age=3600, s_max_age=86400)
 
 

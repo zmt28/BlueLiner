@@ -8,6 +8,7 @@ from fastapi import HTTPException
 
 import hatches
 import stocking
+import access_points
 import db
 import main
 
@@ -77,6 +78,81 @@ def test_is_near_stocked_covers_reach_not_far():
 def test_stocked_points_wv_baseline_only():
     pts = stocking.stocked_points("WV")
     assert pts and all("water" in p for p in pts)
+
+
+# -- access points --
+
+def test_access_baseline_covers_seed_states():
+    """All four seed states ship with non-empty access baselines so
+    /api/access?state=<MD|VA|WV|PA> always returns something even when
+    the live ArcGIS overlay is unconfigured / unreachable."""
+    for state in ("MD", "VA", "WV", "PA"):
+        pts = access_points.ACCESS_BASELINE[state]
+        assert pts, f"{state} access baseline is empty"
+        for p in pts:
+            assert "name" in p and "lat" in p and "lon" in p
+            assert p["type"] in {"boat_ramp", "walk_in", "pier",
+                                 "parking", "wading_access"}
+            assert p["access"] in {"public", "permit", "fee",
+                                   "private_easement"}
+
+
+def test_access_points_geojson_shape():
+    """The /api/access response shape: GeoJSON FeatureCollection of
+    Points with the canonical attrs travelling in properties so the
+    client can render type-coded icons and popups without a second
+    request."""
+    fc = access_points.access_points_geojson("MD")
+    assert fc["type"] == "FeatureCollection"
+    assert fc["features"], "MD should have at least one access point"
+    f0 = fc["features"][0]
+    assert f0["geometry"]["type"] == "Point"
+    lon, lat = f0["geometry"]["coordinates"]
+    assert -180 <= lon <= 180 and -90 <= lat <= 90
+    props = f0["properties"]
+    for k in ("name", "type", "access", "agency_url"):
+        assert k in props
+    # The {lat, lon} keys are folded into geometry; not duplicated in
+    # properties (would confuse downstream consumers).
+    assert "lat" not in props and "lon" not in props
+
+
+def test_access_unsupported_state_is_empty():
+    """States without baseline + without configured ArcGIS source --
+    e.g. Colorado today -- yield an empty FeatureCollection. The
+    client-side checkbox still works; the layer simply has no markers."""
+    fc = access_points.access_points_geojson("CO")
+    assert fc == {"type": "FeatureCollection", "features": []}
+
+
+def test_nearby_access_proximity_and_ordering():
+    """Spatial query mirrors stocking.nearby_stocked: nearest-first,
+    bounded by ~buffer_deg. Used for any future 'nearby access' popup
+    section parallel to 'stocked nearby'."""
+    pts = access_points.load_access_points("MD")
+    # Gunpowder Falls Glencoe centroid; should pull in the nearby
+    # walk-in entries seeded in MD.json.
+    hits = access_points.nearby_access(39.576, -76.613, pts, buffer_deg=0.05)
+    assert hits, "Glencoe should return at least one nearby access"
+    # Nearest-first: each successive hit is at least as far as the prior.
+    def d2(p):
+        return (p["lat"] - 39.576) ** 2 + (p["lon"] + 76.613) ** 2
+    distances = [d2(p) for p in hits]
+    assert distances == sorted(distances)
+
+
+def test_access_normalize_type_maps_strings_onto_enum():
+    """Live ArcGIS feeds emit free-form strings ('Boat Ramp', 'Wade
+    Access', etc.). _normalize_type collapses them to the canonical
+    enum so the client never has to handle string surprises."""
+    n = access_points._normalize_type
+    assert n("Boat Ramp") == "boat_ramp"
+    assert n("BOAT LAUNCH") == "boat_ramp"
+    assert n("Fishing Pier") == "pier"
+    assert n("Wading Access") == "wading_access"
+    assert n("Parking Lot") == "parking"
+    assert n("Trail to river") == "walk_in"
+    assert n(None) == "walk_in"
 
 
 # -- db (temp file) --

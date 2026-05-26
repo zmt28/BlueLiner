@@ -204,10 +204,42 @@ too.
 
 ## Adding a new state
 
-1. Drop in `data/stocking/<STATE>.json` (and optionally
-   `data/trout/<STATE>.json`).
+1. Drop in `data/stocking/<STATE>.json`, optionally
+   `data/trout/<STATE>.json`, and optionally
+   `data/access_points/<STATE>.json` (see schemas below).
 2. Add the state code to the loader's state list in `stocking.py`
-   (`STOCKING_BASELINE = {...}` dict literal) so it's picked up at
-   import time.
+   (`STOCKING_BASELINE = {...}` dict literal) and
+   `access_points.py` (`ACCESS_BASELINE = {...}`) so they're picked
+   up at import time.
 3. Add an `agency_url` constant if you want a per-state default.
 4. Run `pytest -q` -- the coverage test will flag a missing state.
+
+### `data/access_points/<STATE>.json` schema
+
+Per-state list of angler access points (boat ramps, walk-in trails,
+fishing piers, parking, wading spots). Schema:
+
+```json
+[
+  {
+    "name": "Glencoe / Monkton (Gunpowder Falls)",
+    "lat": 39.5760, "lon": -76.6130,
+    "type": "walk_in",
+    "access": "public",
+    "agency_url": "https://dnr.maryland.gov/publiclands/...",
+    "notes": "NCR Trail parking; broad runs and slicks."
+  }
+]
+```
+
+- `type ∈ {boat_ramp, walk_in, pier, parking, wading_access}` -- drives
+  marker glyph + color on the map.
+- `access ∈ {public, permit, fee, private_easement}` -- drives a chip
+  on the popup.
+- `notes` is freeform and optional.
+- Coordinates can be approximate (~100 m precision acceptable); the
+  client renders a 22-pixel disc at any zoom.
+
+A state-DNR live ArcGIS endpoint can be added to
+`access_points.ACCESS_SOURCES` once verified; live results merge on
+top of the baseline. Until then, the bundled JSON is the only source.

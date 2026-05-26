@@ -19,6 +19,8 @@ so you can check conditions before you drive to the water.
 - **Color-coded markers** -- green (good), orange (fair), red (poor), gray (no data) at a glance
 - **Historical flow context** -- current discharge vs. the historical median for today's date, powered by the USGS Statistics API
 - **Trout stream overlay** -- statewide designated trout water (VA DWR / MD DNR, OBJECTID keyset-paginated for full coverage) as a toggleable layer, plus per-river spatial tagging
+- **Access points overlay** -- boat ramps, walk-in trails, fishing piers, parking, and wading-access spots as a toggleable layer. Type-coded markers; popup includes access tier (public / permit / fee), agency link, and freeform notes. Bundled baselines for MD / VA / WV / PA, with a documented contributor path to add more states + live state-DNR ArcGIS overlays
+- **Swappable base maps** -- Street (CARTO), Satellite (Esri World Imagery), and Topographic (USGS National Map) -- one segmented control in the filters popover, choice persists across sessions via localStorage
 - **Hatch guidance** -- "what's hatching now" per river, resolved to a sub-state hatch zone and the current month
 - **Stocking** -- well-known stocked / specially-managed waters (MD/VA/WV baseline + live VA DWR feed) surfaced in the river popup with species/season/agency link
 - **1-year flow trend** -- on-demand USGS daily-values sparkline per gauge in the river popup (served live, never stored)
@@ -207,6 +209,7 @@ Each monitoring station is scored based on current readings:
 - `GET /api/river_lines?state=MD` (or `?bbox=`) -- river flowline geometry as GeoJSON
 - `GET /api/river_geom?site_no=01581920` -- a single river's flowline geometry
 - `GET /api/trout?state=MD` -- designated trout water as GeoJSON (non-blocking; warms in the background)
+- `GET /api/access?state=MD` -- access points (ramps / walk-ins / piers / parking / wading) as GeoJSON; bundled baseline + state-DNR live overlay when configured
 - `GET /api/history?site_no=01581920` -- ~1 year of USGS daily values (served live, not stored)
 
 **Accounts (magic-link)**

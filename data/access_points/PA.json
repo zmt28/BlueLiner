@@ -1,0 +1,50 @@
+[
+  {
+    "name": "Penns Creek (Coburn lot)",
+    "lat": 40.8200, "lon": -77.3500,
+    "type": "walk_in",
+    "access": "public",
+    "agency_url": "https://www.fishandboat.com/Fish/Trout/Pages/default.aspx",
+    "notes": "Trailhead to the Tunnel section; Class A wild brown water."
+  },
+  {
+    "name": "Spring Creek (Fisherman's Paradise)",
+    "lat": 40.8600, "lon": -77.8200,
+    "type": "walk_in",
+    "access": "public",
+    "agency_url": "https://www.fishandboat.com/Fish/Trout/Pages/default.aspx",
+    "notes": "Heritage stretch; catch-and-release fly only."
+  },
+  {
+    "name": "Yellow Breeches (Allenberry)",
+    "lat": 40.1450, "lon": -77.0250,
+    "type": "walk_in",
+    "access": "public",
+    "agency_url": "https://www.fishandboat.com/Fish/Trout/Pages/default.aspx",
+    "notes": "Year-round artificials section; pull off Williams Grove Rd."
+  },
+  {
+    "name": "Letort Spring Run (Carlisle)",
+    "lat": 40.2050, "lon": -77.1800,
+    "type": "walk_in",
+    "access": "public",
+    "agency_url": "https://www.fishandboat.com/Fish/Trout/Pages/default.aspx",
+    "notes": "Limestone wild browns; LeTort Park lot."
+  },
+  {
+    "name": "Pine Creek (Slate Run)",
+    "lat": 41.4880, "lon": -77.5010,
+    "type": "walk_in",
+    "access": "public",
+    "agency_url": "https://www.fishandboat.com/Fish/Trout/Pages/default.aspx",
+    "notes": "Pine Creek Rail Trail access; the famous Slate Run confluence."
+  },
+  {
+    "name": "Susquehanna (Harrisburg City Island)",
+    "lat": 40.2580, "lon": -76.8870,
+    "type": "boat_ramp",
+    "access": "public",
+    "agency_url": "https://www.fishandboat.com/Boat/Pages/default.aspx",
+    "notes": "City Island concrete ramp; smallmouth + walleye launch."
+  }
+]
