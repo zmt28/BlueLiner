@@ -43,11 +43,55 @@ function popupOpts() {
 }
 
 const map = L.map("map");
-L.tileLayer("https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png", {
-  attribution: '&copy; OpenStreetMap contributors &copy; CARTO',
-  subdomains: "abcd",
-  maxZoom: 19,
-}).addTo(map);
+
+// Base maps. Exactly one is on the map at a time; the active one sits
+// at the bottom of the layer stack so overlays (hydro, streams, gauges)
+// always render on top. Defaults to "street" (CARTO Light); the user's
+// last choice persists in localStorage["bl_basemap"] across visits.
+const BASE_MAPS = {
+  street: () => L.tileLayer(
+    "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png",
+    {
+      attribution: "&copy; OpenStreetMap contributors &copy; CARTO",
+      subdomains: "abcd",
+      maxZoom: 19,
+    }),
+  satellite: () => L.tileLayer(
+    "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+    {
+      attribution: "Source: Esri, Maxar, Earthstar Geographics",
+      maxZoom: 19,
+    }),
+  topo: () => L.tileLayer(
+    "https://basemap.nationalmap.gov/arcgis/rest/services/USGSTopo/MapServer/tile/{z}/{y}/{x}",
+    {
+      attribution: "USGS The National Map: National Boundaries Dataset, "
+                 + "National Elevation Dataset, Geographic Names Information System.",
+      maxZoom: 16,
+    }),
+};
+
+function loadBaseMapPref() {
+  try {
+    const v = localStorage.getItem("bl_basemap");
+    return BASE_MAPS[v] ? v : "street";
+  } catch (_) { return "street"; }
+}
+
+let currentBaseKey = loadBaseMapPref();
+let currentBaseLayer = BASE_MAPS[currentBaseKey]().addTo(map);
+
+function setBaseMap(key) {
+  if (!BASE_MAPS[key] || key === currentBaseKey) return;
+  map.removeLayer(currentBaseLayer);
+  currentBaseKey = key;
+  currentBaseLayer = BASE_MAPS[key]().addTo(map);
+  // Keep overlays on top: Leaflet re-stacks newly-added layers, but
+  // tile layers added later render *above* earlier ones, so we set
+  // zIndex explicitly to push the base back behind hydro + everything.
+  currentBaseLayer.setZIndex(0);
+  try { localStorage.setItem("bl_basemap", key); } catch (_) {}
+}
 
 // Labeled rivers/streams: free national USGS "Hydro Cached" overlay (no key,
 // no deps). Transparent raster designed to sit on a basemap. ArcGIS cached
@@ -69,6 +113,19 @@ const troutLayer = L.geoJSON(null, {
     if (n) l.bindTooltip(String(n), { sticky: true });
   },
 });
+
+// Access points: type-coded markers, lazy-loaded per state via
+// /api/access?state=. Different glyph + tone per access type so a
+// boat ramp is visually distinct from a walk-in trail at a glance.
+const ACCESS_TYPE_META = {
+  boat_ramp:      { glyph: "B", color: "#d97706" },
+  walk_in:        { glyph: "W", color: "#0891b2" },
+  wading_access:  { glyph: "W", color: "#0891b2" },
+  pier:           { glyph: "P", color: "#7c3aed" },
+  parking:        { glyph: "P", color: "#475569" },
+};
+const accessLayer = L.layerGroup();
+
 const riverLinesLayer = L.layerGroup().addTo(map);
 const riversLayer = L.layerGroup().addTo(map);
 const pinsLayer = L.layerGroup().addTo(map);
@@ -678,6 +735,60 @@ async function ensureTrout(state) {
   }
 }
 
+let accessLoadedState = null;
+let accessLoading = false;
+
+function makeAccessIcon(type) {
+  const meta = ACCESS_TYPE_META[type] || ACCESS_TYPE_META.walk_in;
+  return L.divIcon({
+    className: "access-marker",
+    html: `<div class="access-marker-pin" style="background:${meta.color}">`
+        + `${esc(meta.glyph)}</div>`,
+    iconSize: [22, 22],
+    iconAnchor: [11, 11],
+  });
+}
+
+function accessPopupHtml(p) {
+  const accessChip = p.access
+    ? `<span class="ap-chip ap-chip-${esc(p.access)}">${esc(p.access)}</span>`
+    : "";
+  const typeLabel = String(p.type || "walk_in").replace(/_/g, " ");
+  const notes = p.notes ? `<div class="ap-notes">${esc(p.notes)}</div>` : "";
+  const link = p.agency_url
+    ? `<div class="ap-link"><a href="${esc(p.agency_url)}" target="_blank" `
+    + `rel="noopener noreferrer">Agency info &rarr;</a></div>`
+    : "";
+  return `<div class="ap-popup">`
+    + `<div class="ap-name">${esc(p.name || "Access point")}</div>`
+    + `<div class="ap-meta">${esc(typeLabel)}${accessChip}</div>`
+    + notes
+    + link
+    + `</div>`;
+}
+
+async function ensureAccess(state) {
+  if (accessLoadedState === state || accessLoading) return;
+  accessLoading = true;
+  try {
+    const fc = await fetch(`/api/access?state=${state}`).then((r) => r.json());
+    accessLayer.clearLayers();
+    for (const f of (fc.features || [])) {
+      const c = (f.geometry && f.geometry.coordinates) || null;
+      const p = f.properties || {};
+      if (!c || c.length < 2) continue;
+      const m = L.marker([c[1], c[0]], { icon: makeAccessIcon(p.type) });
+      m.bindPopup(accessPopupHtml(p), popupOpts());
+      accessLayer.addLayer(m);
+    }
+    accessLoadedState = state;
+  } catch (_) {
+    /* leave layer empty; user can re-toggle to retry */
+  } finally {
+    accessLoading = false;
+  }
+}
+
 // -- Clickable river flowlines (USGS NLDI): lazy, viewport-bounded --
 // Loading every river's geometry at once is the trout-layer trap, so we
 // only fetch lines for rivers in the current view, when zoomed in,
@@ -1001,9 +1112,11 @@ document.getElementById("state-select").onchange = (e) => {
   history.replaceState(null, "", `/map?state=${s.toLowerCase()}`);
   map.setView(STATES[s].center, STATE_ZOOM);
   loadRivers(s);
-  // Refresh trout for the new state only if the layer is currently shown.
+  // Refresh trout / access for the new state only if the layer is currently shown.
   troutLoadedState = null;
   if (map.hasLayer(troutLayer)) ensureTrout(s);
+  accessLoadedState = null;
+  if (map.hasLayer(accessLayer)) ensureAccess(s);
 };
 
 // -- Filter popover: visibility + filters + color mode in one surface --
@@ -1028,12 +1141,41 @@ document.addEventListener("click", (e) => {
   setFilterPanel(false);
 });
 
+// Layer visibility: persist last user choice across page loads in
+// localStorage["bl_layers"]. Defaults come from the HTML `checked`
+// attribute when no saved preference exists -- new layers added after
+// a user's last visit will use whatever default the HTML declares.
+const LAYER_PREF_KEY = "bl_layers";
+function loadLayerPrefs() {
+  try {
+    const raw = localStorage.getItem(LAYER_PREF_KEY);
+    return raw ? JSON.parse(raw) : {};
+  } catch (_) { return {}; }
+}
+function saveLayerPref(id, on) {
+  try {
+    const prefs = loadLayerPrefs();
+    prefs[id] = !!on;
+    localStorage.setItem(LAYER_PREF_KEY, JSON.stringify(prefs));
+  } catch (_) {}
+}
+const _layerPrefs = loadLayerPrefs();
+
 // Layer visibility checkboxes -- one per Leaflet layer. Toggling the
 // checkbox mirrors what the old L.control.layers did, plus fires the
-// same side-effects (lazy load of clickable streams / trout layer).
+// same side-effects (lazy load of clickable streams / trout / access).
 function wireLayerToggle(id, layer, onAdd) {
   const cb = document.getElementById(id);
-  cb.checked = map.hasLayer(layer);
+  // Apply saved preference if present, otherwise leave the HTML default.
+  if (Object.prototype.hasOwnProperty.call(_layerPrefs, id)) {
+    cb.checked = !!_layerPrefs[id];
+  }
+  if (cb.checked && !map.hasLayer(layer)) {
+    map.addLayer(layer);
+    if (onAdd) onAdd();
+  } else if (!cb.checked && map.hasLayer(layer)) {
+    map.removeLayer(layer);
+  }
   cb.addEventListener("change", () => {
     if (cb.checked) {
       map.addLayer(layer);
@@ -1041,6 +1183,7 @@ function wireLayerToggle(id, layer, onAdd) {
     } else {
       map.removeLayer(layer);
     }
+    saveLayerPref(id, cb.checked);
   });
 }
 wireLayerToggle("lyr-fishable", clickableLayer, loadClickableStreams);
@@ -1051,7 +1194,24 @@ document.getElementById("lyr-fishable").addEventListener("change", (e) => {
 });
 wireLayerToggle("lyr-usgs", hydroLayer);
 wireLayerToggle("lyr-trout", troutLayer, () => ensureTrout(currentSt));
+wireLayerToggle("lyr-access", accessLayer, () => ensureAccess(currentSt));
 wireLayerToggle("lyr-pins", pinsLayer);
+
+// Base-map segmented control: mutually exclusive radio behavior.
+const basemapSeg = document.getElementById("basemap-mode");
+if (basemapSeg) {
+  // Reflect the loaded preference on the segment buttons.
+  for (const btn of basemapSeg.querySelectorAll("button[data-base]")) {
+    btn.classList.toggle("on", btn.dataset.base === currentBaseKey);
+    btn.addEventListener("click", () => {
+      const key = btn.dataset.base;
+      setBaseMap(key);
+      for (const sib of basemapSeg.querySelectorAll("button[data-base]")) {
+        sib.classList.toggle("on", sib.dataset.base === key);
+      }
+    });
+  }
+}
 
 document.getElementById("filter-reset").onclick = () => {
   document.getElementById("cond-select").value = "any";

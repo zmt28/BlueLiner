@@ -1,0 +1,50 @@
+[
+  {
+    "name": "Elk River below Sutton Dam",
+    "lat": 38.5100, "lon": -80.5400,
+    "type": "walk_in",
+    "access": "public",
+    "agency_url": "https://wvdnr.gov/fishing/",
+    "notes": "Trophy tailwater; wade access from multiple roadside pullouts."
+  },
+  {
+    "name": "Williams River (Cowen / Three Forks)",
+    "lat": 38.3500, "lon": -80.4200,
+    "type": "walk_in",
+    "access": "public",
+    "agency_url": "https://wvdnr.gov/fishing/",
+    "notes": "Stocked + catch-and-release sections; USFS land."
+  },
+  {
+    "name": "Cranberry River (Cranberry Wilderness)",
+    "lat": 38.2800, "lon": -80.4500,
+    "type": "walk_in",
+    "access": "public",
+    "agency_url": "https://wvdnr.gov/fishing/",
+    "notes": "Wilderness; bike-in or hike-in only past the gates."
+  },
+  {
+    "name": "North Fork South Branch (Smoke Hole)",
+    "lat": 38.8300, "lon": -79.2700,
+    "type": "walk_in",
+    "access": "public",
+    "agency_url": "https://wvdnr.gov/fishing/",
+    "notes": "Smoke Hole Canyon; remote walk-in trout water."
+  },
+  {
+    "name": "Seneca Creek (Spruce Knob)",
+    "lat": 38.8300, "lon": -79.3800,
+    "type": "walk_in",
+    "access": "public",
+    "agency_url": "https://wvdnr.gov/fishing/",
+    "notes": "Monongahela NF; multiple trail access points."
+  },
+  {
+    "name": "New River (Sandstone Falls)",
+    "lat": 37.7560, "lon": -80.8990,
+    "type": "boat_ramp",
+    "access": "public",
+    "agency_url": "https://www.nps.gov/neri/",
+    "notes": "Smallmouth + musky float-trip put-in."
+  }
+]
