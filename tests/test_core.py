@@ -2,6 +2,7 @@
 
 from types import SimpleNamespace
 
+import httpx
 import pytest
 from fastapi import HTTPException
 
@@ -150,6 +151,10 @@ def test_owner_from_device_token():
 
 
 class _FakeResp:
+    # status_code / headers added for _nldi_get's retry path; existing
+    # tests that don't pass them still get a "success" response.
+    status_code = 200
+    headers: dict = {}
     def __init__(self, payload): self._p = payload
     def raise_for_status(self): pass
     def json(self): return self._p
@@ -1235,3 +1240,61 @@ def test_query_clickable_streams_sqlite_path(tmp_path, monkeypatch):
     assert db.query_clickable_streams(-80, 30, -79, 31, min_order=1) == []
     # streamorder filter excludes
     assert db.query_clickable_streams(-78, 38, -76, 40, min_order=6) == []
+
+
+# -- NLDI backoff on 429/503 throttling --
+
+def test_nldi_get_retries_on_429_then_succeeds(monkeypatch):
+    """USGS NLDI throttles aggressively under the focused-states geom
+    backfill. Without retry, a single 429 lost the gauge's flowline
+    for the full ~45 min refresh interval. _nldi_get should retry on
+    429 and return the first non-throttled response."""
+    monkeypatch.setattr(main.time, "sleep", lambda *_: None)  # no real sleep
+    seq = [
+        httpx.Response(429, headers={"Retry-After": "0"}),
+        httpx.Response(429),
+        httpx.Response(200, json={"features": []}),
+    ]
+    calls = {"n": 0}
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        i = calls["n"]
+        calls["n"] += 1
+        return seq[i]
+
+    with httpx.Client(transport=httpx.MockTransport(handler)) as c:
+        resp = main._nldi_get(c, "https://nldi.test/x")
+    assert resp is not None
+    assert resp.status_code == 200
+    assert calls["n"] == 3
+
+
+def test_nldi_get_gives_up_after_max_retries(monkeypatch):
+    """If the throttle window outlasts our retry budget, return the
+    final 429 so the caller logs+returns empty (geometry retried next
+    refresh cycle) rather than hanging the worker."""
+    monkeypatch.setattr(main.time, "sleep", lambda *_: None)
+    calls = {"n": 0}
+
+    def always_429(_: httpx.Request) -> httpx.Response:
+        calls["n"] += 1
+        return httpx.Response(429)
+
+    with httpx.Client(transport=httpx.MockTransport(always_429)) as c:
+        resp = main._nldi_get(c, "https://nldi.test/x")
+    assert resp is not None
+    assert resp.status_code == 429
+    assert calls["n"] == main._NLDI_MAX_RETRIES + 1  # initial + retries
+
+
+def test_nldi_get_returns_none_on_network_error(monkeypatch):
+    """RequestError (timeout / DNS / reset) isn't retried -- bail
+    immediately with None so the caller's except path runs cleanly."""
+    monkeypatch.setattr(main.time, "sleep", lambda *_: None)
+
+    def broken(_: httpx.Request) -> httpx.Response:
+        raise httpx.ConnectError("connection reset")
+
+    with httpx.Client(transport=httpx.MockTransport(broken)) as c:
+        resp = main._nldi_get(c, "https://nldi.test/x")
+    assert resp is None
