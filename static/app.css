@@ -266,6 +266,13 @@ html, body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
 .ap-chip-permit          { background: #fef3c7; color: #92400e; }
 .ap-chip-fee             { background: #fee2e2; color: #991b1b; }
 .ap-chip-private_easement{ background: #ede9fe; color: #5b21b6; }
+/* PAD-US access tiers. OA = open access (the most common public-land
+   case for anglers); RA = restricted (permit / season / specific use);
+   XA = closed; UK = unknown (treat conservatively). */
+.pa-chip-OA              { background: #d1fae5; color: #047857; }
+.pa-chip-RA              { background: #fef3c7; color: #92400e; }
+.pa-chip-XA              { background: #fee2e2; color: #991b1b; }
+.pa-chip-UK              { background: #e2e8f0; color: #475569; }
 .ap-notes { color: #475569; margin-bottom: 6px; }
 .ap-link a { color: #1e6fd9; text-decoration: none; font-weight: 600; }
 .ap-link a:hover { text-decoration: underline; }

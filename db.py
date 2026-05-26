@@ -237,6 +237,58 @@ def init_db() -> None:
                 "CREATE INDEX IF NOT EXISTS idx_clk_bbox_gist"
                 " ON clickable_streams USING GIST (bbox)"
             )
+        # Public-lands vector parcels (Phase B). Every parcel in PAD-US
+        # 4.0 -- federal/state/tribal/local/NGO/private-easement -- with
+        # canonical attrs (unit_name, manager_type, manager_name,
+        # designation, public_access, state_nm) and a GeoJSON geometry
+        # string. Hosted on R2 alongside clickable_streams.geojson.gz;
+        # loaded once at first boot. Served by viewport bbox via the
+        # same GiST `&&` path proven for clickable_streams. The
+        # uncolored basemap below this layer reads as "either private
+        # or PAD-US doesn't know" -- both treat-as-private from a
+        # fishing-access standpoint.
+        cur.execute(
+            "CREATE TABLE IF NOT EXISTS public_lands ("
+            + (" id BIGSERIAL PRIMARY KEY," if _IS_PG
+               else " id INTEGER PRIMARY KEY AUTOINCREMENT,")
+            + " unit_name TEXT,"
+              " manager_type TEXT,"
+              " manager_name TEXT,"
+              " designation TEXT,"
+              " public_access TEXT,"
+              " state_nm TEXT,"
+              " min_lon REAL, min_lat REAL, max_lon REAL, max_lat REAL,"
+              " geom TEXT NOT NULL)"
+        )
+        cur.execute(
+            "CREATE INDEX IF NOT EXISTS idx_pl_mgr "
+            "ON public_lands(manager_type)"
+        )
+        cur.execute(
+            "CREATE INDEX IF NOT EXISTS idx_pl_lon "
+            "ON public_lands(min_lon, max_lon)"
+        )
+        cur.execute(
+            "CREATE INDEX IF NOT EXISTS idx_pl_lat "
+            "ON public_lands(min_lat, max_lat)"
+        )
+        if _IS_PG:
+            cur.execute(
+                "ALTER TABLE public_lands"
+                " ADD COLUMN IF NOT EXISTS bbox box"
+                " GENERATED ALWAYS AS ("
+                "  box("
+                "   point(min_lon::double precision,"
+                "         min_lat::double precision),"
+                "   point(max_lon::double precision,"
+                "         max_lat::double precision)"
+                "  )"
+                " ) STORED"
+            )
+            cur.execute(
+                "CREATE INDEX IF NOT EXISTS idx_pl_bbox_gist"
+                " ON public_lands USING GIST (bbox)"
+            )
         # Real user accounts (Phase 1). Magic-link auth: no passwords
         # to manage. `display_name` defaults to the email's local part
         # at first sign-in; `deleted_at` enables soft delete so
@@ -813,6 +865,147 @@ def query_clickable_streams(west: float, south: float, east: float,
             "gnis_name": r["gnis_name"], "streamorder": r["streamorder"],
             "trout_class": r["trout_class"],
             "geometry": _trim_geom(geom),    # idempotent on already-trimmed rows
+        })
+    return out
+
+
+# -- Public lands (PAD-US 4.0): vector parcels with click-to-identify --
+
+
+def public_lands_loaded() -> bool:
+    with _conn() as conn:
+        cur = conn.cursor()
+        cur.execute("SELECT 1 FROM public_lands LIMIT 1")
+        return cur.fetchone() is not None
+
+
+# Canonical column order for INSERT. Matches the build script's emitter
+# so the loader can use one positional executemany.
+_PL_COLS = ("unit_name", "manager_type", "manager_name", "designation",
+            "public_access", "state_nm",
+            "min_lon", "min_lat", "max_lon", "max_lat", "geom")
+
+
+def bulk_load_public_lands(geojson_gz_path: str) -> int:
+    """Ingest PAD-US 4.0 parcels from the gzipped GeoJSON. Idempotent
+    (skips when populated). **Streams** the FeatureCollection with
+    ijson -- same memory-safety pattern as bulk_load_clickable_streams
+    so a 100+ MB file never spikes RSS past the 512 MB free-tier ceiling.
+    Returns rows inserted."""
+    import gzip
+    import json
+
+    import ijson
+
+    if public_lands_loaded():
+        return 0
+    if not os.path.exists(geojson_gz_path):
+        return 0
+
+    placeholders = ",".join("?" for _ in _PL_COLS)
+    insert = _ph(f"INSERT INTO public_lands ({','.join(_PL_COLS)}) "
+                 f"VALUES ({placeholders})")
+
+    batch: list[tuple] = []
+    total = 0
+    with _conn() as conn:
+        cur = conn.cursor()
+
+        def _flush():
+            nonlocal total
+            if not batch:
+                return
+            cur.executemany(insert, batch)
+            total += len(batch)
+            batch.clear()
+
+        with gzip.open(geojson_gz_path, "rb") as f:
+            for feat in ijson.items(f, "features.item"):
+                geom = feat.get("geometry") or {}
+                coords = geom.get("coordinates")
+                gtype = geom.get("type")
+                if not coords or gtype not in ("Polygon", "MultiPolygon"):
+                    continue
+                p = feat.get("properties", {})
+                # Compute bbox over all vertices regardless of poly nesting.
+                try:
+                    w, s, e, n = _polygon_bbox(coords, gtype)
+                except (ValueError, TypeError, IndexError):
+                    continue
+                batch.append((
+                    str(p["unit_name"]) if p.get("unit_name") else None,
+                    str(p["manager_type"]) if p.get("manager_type") else None,
+                    str(p["manager_name"]) if p.get("manager_name") else None,
+                    str(p["designation"]) if p.get("designation") else None,
+                    str(p["public_access"]) if p.get("public_access") else None,
+                    str(p["state_nm"]) if p.get("state_nm") else None,
+                    float(w), float(s), float(e), float(n),
+                    # default=float coerces ijson Decimals to ordinary floats
+                    # before json.dumps serializes them.
+                    json.dumps(geom, separators=(",", ":"), default=float),
+                ))
+                if len(batch) >= 2000:
+                    _flush()
+        _flush()
+        conn.commit()
+    return total
+
+
+def _polygon_bbox(coords, gtype) -> tuple:
+    """Min/max lon/lat across every vertex of a Polygon or MultiPolygon."""
+    if gtype == "Polygon":
+        rings = coords
+    else:  # MultiPolygon
+        rings = [r for poly in coords for r in poly]
+    lons: list[float] = []
+    lats: list[float] = []
+    for ring in rings:
+        for p in ring:
+            lons.append(p[0])
+            lats.append(p[1])
+    if not lons:
+        raise ValueError("empty polygon")
+    return min(lons), min(lats), max(lons), max(lats)
+
+
+def query_public_lands(west: float, south: float, east: float,
+                       north: float, limit: int = 500) -> list[dict]:
+    """Public-land parcels whose bounding box overlaps the viewport.
+    Mirrors `query_clickable_streams`: GiST `&&` on Postgres, 4-range
+    B-tree on SQLite. Caller is expected to zoom-gate before hitting
+    this (the API endpoint does)."""
+    import json
+    if _IS_PG:
+        sql = ("SELECT unit_name, manager_type, manager_name, designation,"
+               " public_access, state_nm, geom FROM public_lands"
+               " WHERE bbox && box(point(%s, %s), point(%s, %s))"
+               " ORDER BY manager_type LIMIT %s")
+        params = (west, south, east, north, int(limit))
+    else:
+        sql = ("SELECT unit_name, manager_type, manager_name, designation,"
+               " public_access, state_nm, geom FROM public_lands"
+               " WHERE max_lon >= ? AND min_lon <= ?"
+               " AND max_lat >= ? AND min_lat <= ?"
+               " ORDER BY manager_type LIMIT ?")
+        params = (west, east, south, north, int(limit))
+    with _conn() as conn:
+        cur = conn.cursor()
+        cur.execute(sql, params)
+        rows = cur.fetchall()
+    out: list[dict] = []
+    for r in rows:
+        try:
+            geom = json.loads(r["geom"])
+        except (ValueError, TypeError):
+            continue
+        out.append({
+            "unit_name": r["unit_name"],
+            "manager_type": r["manager_type"],
+            "manager_name": r["manager_name"],
+            "designation": r["designation"],
+            "public_access": r["public_access"],
+            "state_nm": r["state_nm"],
+            "geometry": geom,
         })
     return out
 

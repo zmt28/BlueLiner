@@ -1330,6 +1330,76 @@ def test_query_clickable_streams_sqlite_path(tmp_path, monkeypatch):
     assert db.query_clickable_streams(-78, 38, -76, 40, min_order=6) == []
 
 
+# -- Public lands (PAD-US 4.0): schema + viewport query --
+
+def test_public_lands_has_bbox_indexes(tmp_path, monkeypatch):
+    """init_db() must create both the b-tree lat + lon indexes (used
+    by the SQLite dev path) on public_lands. The PG GiST index is
+    only built on the Postgres backend so it's not exercised here --
+    Phase B verification covers it via EXPLAIN ANALYZE in prod."""
+    monkeypatch.setattr(db, "DB_PATH", str(tmp_path / "t.db"))
+    db.init_db()
+    with db._conn() as conn:
+        cur = conn.cursor()
+        cur.execute(
+            "SELECT name FROM sqlite_master "
+            "WHERE type='index' AND tbl_name='public_lands'")
+        names = {row[0] for row in cur.fetchall()}
+    assert "idx_pl_lon" in names
+    assert "idx_pl_lat" in names
+    assert "idx_pl_mgr" in names
+
+
+def test_query_public_lands_sqlite_path(tmp_path, monkeypatch):
+    """SQLite dev path uses the 4-range B-tree query; the PG path
+    uses the GiST `bbox &&` operator. Same split-pattern as
+    query_clickable_streams. This guards the SQLite branch as the
+    PG branch evolves."""
+    monkeypatch.setattr(db, "DB_PATH", str(tmp_path / "t.db"))
+    monkeypatch.setattr(db, "_IS_PG", False)
+    db.init_db()
+    with db._conn() as conn:
+        cur = conn.cursor()
+        cur.execute(
+            "INSERT INTO public_lands"
+            " (unit_name, manager_type, manager_name, designation,"
+            "  public_access, state_nm,"
+            "  min_lon, min_lat, max_lon, max_lat, geom)"
+            " VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            ("Test WMA", "State", "VA DWR", "Wildlife Management Area",
+             "OA", "Virginia",
+             -77.5, 38.5, -77.0, 39.0,
+             '{"type":"Polygon","coordinates":[[[-77.5,38.5],[-77.0,38.5],'
+             '[-77.0,39.0],[-77.5,39.0],[-77.5,38.5]]]}'),
+        )
+        conn.commit()
+    # overlap → returns the row, geom decoded to dict
+    hits = db.query_public_lands(-78, 38, -76, 40)
+    assert len(hits) == 1
+    assert hits[0]["unit_name"] == "Test WMA"
+    assert hits[0]["manager_type"] == "State"
+    assert hits[0]["public_access"] == "OA"
+    assert hits[0]["geometry"]["type"] == "Polygon"
+    # disjoint bbox → empty
+    assert db.query_public_lands(-80, 30, -79, 31) == []
+
+
+def test_polygon_bbox_handles_polygon_and_multipolygon():
+    """The bulk loader computes per-feature bbox from raw geometry
+    coords without going through shapely (faster). Verify both
+    Polygon and MultiPolygon shapes -- regression guard for the
+    common ijson-Decimal-coord shape."""
+    poly_coords = [[[-77.5, 38.5], [-77.0, 38.5], [-77.0, 39.0],
+                    [-77.5, 39.0], [-77.5, 38.5]]]
+    w, s, e, n = db._polygon_bbox(poly_coords, "Polygon")
+    assert (w, s, e, n) == (-77.5, 38.5, -77.0, 39.0)
+    multi_coords = [poly_coords,
+                    [[[-78.0, 37.0], [-77.5, 37.0], [-77.5, 37.5],
+                      [-78.0, 37.5], [-78.0, 37.0]]]]
+    w, s, e, n = db._polygon_bbox(multi_coords, "MultiPolygon")
+    assert (w, s, e, n) == (-78.0, 37.0, -77.0, 39.0)
+
+
 # -- NLDI backoff on 429/503 throttling --
 
 def test_nldi_get_retries_on_429_then_succeeds(monkeypatch):

@@ -191,6 +191,47 @@ After this, state-scale viewport queries that previously took 10s+ (and
 killed the gunicorn worker at the 120s timeout under concurrent panning)
 return in <100ms via `bbox && box(point(west, south), point(east, north))`.
 
+### Refreshing PAD-US (public-lands overlay)
+
+`data/public_lands/public_lands.geojson.gz` is the bundled vector
+overlay for the "Public lands" filter checkbox. National (~80-150 MB
+gzipped) so it lives on R2 alongside the NHDPlus files; dev runs
+without it (loader no-ops cleanly, the layer just stays empty).
+
+To roll a new PAD-US vintage (4.0 -> 4.1 -> ...):
+
+1. **Verify the source URLs** in `scripts/build_public_lands.py`
+   `SLICES` against
+   <https://www.usgs.gov/programs/gap-analysis-project/science/pad-us-data-download>
+   (the per-manager-type GeoJSON exports). USGS GAP changes
+   ScienceBase item IDs on each release; update the `url` fields.
+2. **Run the builder** (one-time, local; ~20-40 min, ~3 GB scratch):
+   ```sh
+   pip install -r requirements-dev.txt
+   python scripts/build_public_lands.py
+   ls -lh data/public_lands/public_lands.geojson.gz
+   ```
+3. **Upload to R2** (reuse the same creds + endpoint as the NHDPlus
+   files):
+   ```sh
+   aws --endpoint-url "$R2_ENDPOINT" s3 cp \
+       data/public_lands/public_lands.geojson.gz \
+       s3://bluelines-data/v1/public_lands.geojson.gz
+   ```
+4. **Truncate the table** in TablePlus, then redeploy in Render:
+   ```sql
+   TRUNCATE public_lands;
+   ```
+   `db.bulk_load_public_lands` skips when the table has any rows, so
+   refreshing requires the truncate. (Future work: a manifest table
+   that compares sha256 + row count and reloads automatically when
+   the upstream file changes.)
+5. **VACUUM ANALYZE** the table once the load completes so the
+   planner uses `idx_pl_bbox_gist` immediately:
+   ```sql
+   VACUUM ANALYZE public_lands;
+   ```
+
 ## Validating
 
 ```sh
