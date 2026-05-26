@@ -953,10 +953,42 @@ async def _rivers_for_bbox(bbox: tuple[float, float, float, float]) -> list[dict
 
 # -- Routes --
 
+_DEFAULT_ROOT_STATE = "MD"
+
+
+def _root_state(request: Request) -> str:
+    """Pick the state code the root redirect should land on.
+
+    Priority:
+      1. Explicit `?state=XX` query param (the user told us what they
+         want -- e.g. someone pasted a Colorado map link without the
+         /map prefix).
+      2. Cloudflare's edge geolocation header `CF-IPCountry` +
+         `CF-Region-Code`. Present only when blueliner.app is proxied
+         through Cloudflare (orange-cloud DNS); they cost nothing,
+         require no API call, and CF caches them at the edge. We
+         require US country to avoid landing a Canadian user on `BC`
+         (which `STATES` doesn't know about anyway).
+      3. Default to MD -- the historical behavior, kept as a backstop
+         for direct-origin hits and dev.
+
+    Anything that doesn't validate against `STATES` falls through to
+    the next tier so a malformed header or query param can't
+    300-redirect the user to a broken `/map?state=zz`."""
+    raw = (request.query_params.get("state") or "").strip().upper()
+    if raw in STATES:
+        return raw
+    if (request.headers.get("CF-IPCountry") or "").upper() == "US":
+        region = (request.headers.get("CF-Region-Code") or "").strip().upper()
+        if region in STATES:
+            return region
+    return _DEFAULT_ROOT_STATE
+
+
 @app.head("/")
 @app.get("/")
-async def root():
-    return RedirectResponse(url="/map?state=MD")
+async def root(request: Request):
+    return RedirectResponse(url=f"/map?state={_root_state(request)}")
 
 
 @app.get("/healthz")
