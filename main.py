@@ -18,6 +18,7 @@ import hashlib
 import json
 import logging
 import os
+import random
 import re
 import time
 
@@ -1275,7 +1276,10 @@ def _simplify_fc(fc: dict, tol: float = 0.0005) -> dict:
 
 def _fetch_nav(client: httpx.Client, base: str, nav: str, dist: str) -> list:
     try:
-        r = client.get(f"{base}/{nav}/flowlines", params={"distance": dist})
+        r = _nldi_get(client, f"{base}/{nav}/flowlines",
+                      params={"distance": dist})
+        if r is None:
+            return []
         r.raise_for_status()
         return r.json().get("features", [])
     except Exception:
@@ -1419,6 +1423,58 @@ def _comid_gnis_lower(comid: str) -> str:
 
 _NLDI_BASE = "https://api.water.usgs.gov/nldi/linked-data"
 
+# Retry/backoff for NLDI throttling. USGS NLDI rate-limits at ~10
+# req/s/IP and starts returning 429 quickly when the focused-states
+# geom backfill fans out hundreds of navigation calls. Without retry
+# the gauge just lost its flowline for the full refresh interval (~45
+# min) -- the geometry would render as an unnamed dot on the map.
+# Exponential backoff with jitter retries the call a few times so the
+# transient throttle window passes; longer outages still fail clean
+# and retry on the next refresh cycle.
+_NLDI_RETRY_STATUSES = (429, 503)
+_NLDI_MAX_RETRIES = 3       # 4 attempts total (initial + 3 retries)
+_NLDI_BACKOFF_BASE = 0.5    # seconds; doubles each attempt
+_NLDI_BACKOFF_MAX = 8.0     # cap for both the backoff and Retry-After
+
+
+def _nldi_get(client: httpx.Client, url: str, *,
+              params: dict | None = None) -> httpx.Response | None:
+    """GET an NLDI URL with backoff on 429/503.
+
+    Returns the final httpx.Response (caller decides whether to call
+    raise_for_status / json()), or None on a network-level error
+    (timeout, DNS, connection reset). Honors the Retry-After response
+    header when present, capped at _NLDI_BACKOFF_MAX so a hostile or
+    misconfigured upstream can't park us indefinitely."""
+    last: httpx.Response | None = None
+    for attempt in range(_NLDI_MAX_RETRIES + 1):
+        try:
+            last = client.get(url, params=params)
+        except httpx.RequestError as exc:
+            logger.warning("NLDI request error %s on %s: %s",
+                           type(exc).__name__, url, exc)
+            return None
+        if last.status_code not in _NLDI_RETRY_STATUSES:
+            return last
+        if attempt == _NLDI_MAX_RETRIES:
+            logger.warning("NLDI %s after %d retries: %s",
+                           last.status_code, _NLDI_MAX_RETRIES, url)
+            return last
+        ra = last.headers.get("Retry-After")
+        wait: float
+        if ra:
+            try:
+                wait = min(float(ra), _NLDI_BACKOFF_MAX)
+            except ValueError:
+                wait = min(_NLDI_BACKOFF_BASE * (2 ** attempt),
+                           _NLDI_BACKOFF_MAX)
+        else:
+            wait = min(_NLDI_BACKOFF_BASE * (2 ** attempt),
+                       _NLDI_BACKOFF_MAX)
+        wait += random.uniform(0.0, 0.5)
+        time.sleep(wait)
+    return last
+
 
 def _nldi_gauge_meta(site_no: str) -> dict:
     """Authoritative NHD identity for a USGS gauge.
@@ -1461,7 +1517,9 @@ def _nldi_gauge_meta(site_no: str) -> dict:
     meta: dict = {}
     try:
         with httpx.Client(timeout=10.0, headers={"User-Agent": USER_AGENT}) as c:
-            r1 = c.get(f"{_NLDI_BASE}/nwissite/USGS-{site_no}")
+            r1 = _nldi_get(c, f"{_NLDI_BASE}/nwissite/USGS-{site_no}")
+            if r1 is None:
+                raise httpx.RequestError("nwissite lookup failed")
             r1.raise_for_status()
             feats = r1.json().get("features") or []
             comid = None
@@ -1469,11 +1527,12 @@ def _nldi_gauge_meta(site_no: str) -> dict:
                 comid = feats[0].get("properties", {}).get("comid")
             gnis = None
             if comid:
-                r2 = c.get(f"{_NLDI_BASE}/comid/{comid}")
-                r2.raise_for_status()
-                feats2 = r2.json().get("features") or []
-                if feats2:
-                    gnis = feats2[0].get("properties", {}).get("gnis_name")
+                r2 = _nldi_get(c, f"{_NLDI_BASE}/comid/{comid}")
+                if r2 is not None:
+                    r2.raise_for_status()
+                    feats2 = r2.json().get("features") or []
+                    if feats2:
+                        gnis = feats2[0].get("properties", {}).get("gnis_name")
             if comid:
                 lpid = None
                 try:
@@ -1519,7 +1578,9 @@ def _comid_meta(comid: str) -> dict:
     meta: dict = {}
     try:
         with httpx.Client(timeout=10.0, headers={"User-Agent": USER_AGENT}) as c:
-            r = c.get(f"{_NLDI_BASE}/comid/{comid}")
+            r = _nldi_get(c, f"{_NLDI_BASE}/comid/{comid}")
+            if r is None:
+                raise httpx.RequestError("comid lookup failed")
             r.raise_for_status()
             feats = r.json().get("features") or []
             if feats:
