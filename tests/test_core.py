@@ -1206,3 +1206,32 @@ def test_caches_sized_for_lower_48_fanout():
     assert main._state_rivers_cache.maxsize >= 48
     assert main._stats_cache.maxsize >= 6000
     assert main._river_geom_cache.maxsize >= 1024
+
+
+def test_query_clickable_streams_sqlite_path(tmp_path, monkeypatch):
+    """SQLite dev path uses the 4-range B-tree query; the PG path was
+    split off to use GiST via the && operator (state-scale viewports
+    were 10s+ on the 4-range path and killing the worker). This guards
+    the SQLite branch from regressing as the PG branch evolves."""
+    monkeypatch.setattr(db, "DB_PATH", str(tmp_path / "t.db"))
+    monkeypatch.setattr(db, "_IS_PG", False)
+    db.init_db()
+    with db._conn() as conn:
+        cur = conn.cursor()
+        cur.execute(
+            "INSERT INTO clickable_streams"
+            " (comid, levelpathid, gnis_name, streamorder, trout_class,"
+            "  min_lon, min_lat, max_lon, max_lat, geom)"
+            " VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            (1, 100, "Test River", 5, None, -77.5, 38.5, -77.0, 39.0,
+             '{"type":"LineString","coordinates":[[-77.5,38.5],[-77.0,39.0]]}'),
+        )
+        conn.commit()
+    # overlap → returns the row
+    hits = db.query_clickable_streams(-78, 38, -76, 40, min_order=1)
+    assert len(hits) == 1 and hits[0]["comid"] == 1
+    assert hits[0]["gnis_name"] == "Test River"
+    # disjoint bbox → empty
+    assert db.query_clickable_streams(-80, 30, -79, 31, min_order=1) == []
+    # streamorder filter excludes
+    assert db.query_clickable_streams(-78, 38, -76, 40, min_order=6) == []

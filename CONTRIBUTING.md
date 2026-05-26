@@ -161,6 +161,36 @@ so `resolve_data_file` always falls through to R2 in prod; dev
 unaffected. Unset `DATA_BASE_URL` to roll back -- the app uses
 whatever's bundled locally.
 
+### Postgres GiST bbox index (one-time migration)
+
+`init_db()` adds a `bbox box GENERATED STORED` column on
+`clickable_streams` + a GiST index on it (Postgres only -- SQLite stays
+on the 4-range b-tree path). Fresh deploys get this automatically. For
+**existing Postgres installs that pre-date the GiST migration**, the
+`ALTER TABLE ADD COLUMN` synchronously backfills 742K+ rows on first
+boot, which on a free-tier Postgres takes 3-5 min and blocks startup.
+To skip the startup penalty, run the migration manually in TablePlus
+(or `psql`) before the first deploy carrying this code:
+
+```sql
+ALTER TABLE clickable_streams
+  ADD COLUMN IF NOT EXISTS bbox box GENERATED ALWAYS AS (
+    box(
+      point(min_lon::double precision, min_lat::double precision),
+      point(max_lon::double precision, max_lat::double precision)
+    )
+  ) STORED;
+
+CREATE INDEX IF NOT EXISTS idx_clk_bbox_gist
+  ON clickable_streams USING GIST (bbox);
+
+ANALYZE clickable_streams;
+```
+
+After this, state-scale viewport queries that previously took 10s+ (and
+killed the gunicorn worker at the 120s timeout under concurrent panning)
+return in <100ms via `bbox && box(point(west, south), point(east, north))`.
+
 ## Validating
 
 ```sh
