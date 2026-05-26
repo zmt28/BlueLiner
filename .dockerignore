@@ -8,3 +8,9 @@ blueliner.db*
 bluelines.db*
 tests/
 requirements-dev.txt
+# National NHDPlus data (vaa.csv.gz, clickable_streams.geojson.gz) is
+# hosted on R2 and pulled via DATA_BASE_URL on boot. The bundled
+# mid-Atlantic files stay in git as a dev fallback but must not bake
+# into the image -- otherwise resolve_data_file short-circuits to them
+# and the prod container never sees the national data.
+data/nhdplus/*.gz

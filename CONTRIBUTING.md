@@ -126,20 +126,40 @@ wild-trout validation report prints at the end.
 
 ### Hosting the data files externally (national scale)
 
-Today's `vaa.csv.gz` + `clickable_streams.geojson.gz` (~9 MB) are
-committed and baked into the image. At national scale they grow to
-~50-150 MB -- too big to ship in the repo. When that happens:
+The bundled `vaa.csv.gz` + `clickable_streams.geojson.gz` in
+`data/nhdplus/` are the mid-Atlantic dev fallback (~9 MB; kept in git
+so a fresh clone + `pytest` + `uvicorn main:app` works offline).
+National lower-48 versions of those same files (~60-120 MB each) live
+on Cloudflare R2 and are pulled at startup via
+`data_source.resolve_data_file`.
 
-1. Host the files at a public base URL (Cloudflare R2 bucket or a
-   GitHub release asset), keeping the same filenames.
-2. Set the `DATA_BASE_URL` env var to that base (e.g.
-   `https://data.blueliner.app`). On boot the app downloads any file
-   it doesn't find locally (`data_source.resolve_data_file`), then
-   bulk-loads it into Postgres as usual.
-3. Add the big files to `.dockerignore` / drop them from git.
+Hosting convention -- versioned prefix:
 
-No code change required -- `DATA_BASE_URL` unset means "use the bundled
-local files," which is the current behavior.
+```
+https://data.blueliner.app/v1/vaa.csv.gz
+https://data.blueliner.app/v1/clickable_streams.geojson.gz
+```
+
+The `/v1/` segment is what we bump on each data refresh. The
+worker-local download cache lives in `/tmp/blueliner-data` and is
+keyed by filename, so changing the version segment in `DATA_BASE_URL`
+forces a fresh download without a manual purge of any CDN or worker
+disk.
+
+To roll new data:
+
+1. Regenerate via `scripts/build_nhdplus_vaa.py` +
+   `scripts/build_clickable_streams.py` (extend the `REGIONS` list to
+   cover all HUC-2 regions in the lower-48; see the EPA
+   NHDPlusV21 S3 bucket index for the per-region archive names and
+   vintage suffixes).
+2. Upload to R2 under a new version prefix (e.g. `v2/`).
+3. Update `DATA_BASE_URL` in the Render dashboard and redeploy.
+
+`.dockerignore` excludes `data/nhdplus/*.gz` from the production image
+so `resolve_data_file` always falls through to R2 in prod; dev
+unaffected. Unset `DATA_BASE_URL` to roll back -- the app uses
+whatever's bundled locally.
 
 ## Validating
 

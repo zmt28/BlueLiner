@@ -202,6 +202,15 @@ def init_db() -> None:
             "CREATE INDEX IF NOT EXISTS idx_clk_lon "
             "ON clickable_streams(min_lon, max_lon)"
         )
+        # Companion lat range index. At national scale (~500K-1M rows)
+        # the lon-only index leaves ~half the table for the lat predicate
+        # to scan; with both, the planner does a BitmapAnd (Postgres) or
+        # picks the more selective range (SQLite) and the hot bbox query
+        # stays sub-100ms.
+        cur.execute(
+            "CREATE INDEX IF NOT EXISTS idx_clk_lat "
+            "ON clickable_streams(min_lat, max_lat)"
+        )
         # Real user accounts (Phase 1). Magic-link auth: no passwords
         # to manage. `display_name` defaults to the email's local part
         # at first sign-in; `deleted_at` enables soft delete so

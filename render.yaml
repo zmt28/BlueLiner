@@ -30,3 +30,12 @@ services:
       # generated value from the Render dashboard.
       - key: REFRESH_TOKEN
         generateValue: true
+      # National NHDPlus data lives on Cloudflare R2 (the .gz files are
+      # excluded from the image via .dockerignore). Set to the R2
+      # public base URL including a version segment, e.g.
+      # `https://data.blueliner.app/v1`. Bump the version segment on
+      # each data refresh to bust the worker-local /tmp cache without a
+      # manual purge. Unset -> falls back to the bundled mid-Atlantic
+      # files (dev only); see CONTRIBUTING.md.
+      - key: DATA_BASE_URL
+        sync: false

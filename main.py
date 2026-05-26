@@ -56,10 +56,10 @@ _CLICKABLE_BUNDLED_PATH = os.path.join(os.path.dirname(__file__), "data",
 # were the runtime memory growth behind the 512MB OOM. Both are also
 # persisted in Postgres (db.river_stats / db.river_geom) so this is just
 # the fast L1 in front of a durable, cross-restart store.
-_stats_cache: LruTtl = LruTtl(maxsize=2000)
+_stats_cache: LruTtl = LruTtl(maxsize=6000)
 # site_no -> NLDI flowline FeatureCollection. TTL'd so a transient empty
 # (NLDI failure) retries later; successful geometry also lives in the DB.
-_river_geom_cache: LruTtl = LruTtl(maxsize=512, ttl=900.0)
+_river_geom_cache: LruTtl = LruTtl(maxsize=1024, ttl=900.0)
 # site_no -> {"comid", "gnis_name"} (the authoritative NHD identity).
 # Immutable per site -- DB is the durable store; this is L1. TTL'd so
 # transient NLDI failures retry; successful meta is also in Postgres.
@@ -842,7 +842,7 @@ async def _assemble_rivers(time_series: list, trout_layers: list,
 _STATE_RIVERS_TTL = 120.0  # USGS IV updates ~15-60 min; short cache is plenty
 # Bounded + TTL'd: expired entries are actually evicted (the old soft-TTL
 # dict only ever grew, one assembled-rivers list per state).
-_state_rivers_cache: LruTtl = LruTtl(maxsize=12, ttl=_STATE_RIVERS_TTL)
+_state_rivers_cache: LruTtl = LruTtl(maxsize=64, ttl=_STATE_RIVERS_TTL)
 
 
 _state_refreshing: set[str] = set()

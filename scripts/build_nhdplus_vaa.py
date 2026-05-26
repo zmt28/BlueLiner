@@ -38,7 +38,16 @@ OUT_PATH = os.path.join(ROOT, "data", "nhdplus", "vaa.csv.gz")
 S3_BASE = "https://dmap-data-commons-ow.s3.amazonaws.com/NHDPlusV21/Data"
 
 # Per region: VAA archive + NHDSnapshot archive (NHDFlowline.dbf for
-# GNIS_Name). Add entries here when expanding coverage.
+# GNIS_Name).
+#
+# For lower-48 national coverage, add the remaining HUC-2 archives
+# (HUC-01 through HUC-18, with sub-archives for HUCs that split
+# e.g. MS_05..08, MS_10L+10U, SA_03N/03S/03W). The per-archive
+# `_NHDPlusAttributes_<n>` and `_NHDSnapshot_<n>` vintage suffixes are
+# stable but not uniform across regions -- check the EPA NHDPlusV21 S3
+# bucket index (https://dmap-data-commons-ow.s3.amazonaws.com/) to pull
+# the current suffix for each archive. AK/HI/PR (HUC-19/20/21) are out
+# of scope.
 REGIONS = [
     {"id": "MA_02", "label": "Mid-Atlantic (HUC-02)",
      "vaa":  f"{S3_BASE}/NHDPlusMA/NHDPlusV21_MA_02_NHDPlusAttributes_09.7z",
