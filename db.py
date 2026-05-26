@@ -211,6 +211,32 @@ def init_db() -> None:
             "CREATE INDEX IF NOT EXISTS idx_clk_lat "
             "ON clickable_streams(min_lat, max_lat)"
         )
+        # Postgres only: GiST bbox index for true spatial overlap. The
+        # B-tree range indexes above are fine for small bboxes, but at
+        # state-scale the planner picks just one and the other predicate
+        # becomes a heap filter -- 10s+ queries that pile up and kill
+        # the worker at the gunicorn 120s timeout. GiST handles all
+        # four bbox sides in one index lookup via the && operator;
+        # query_clickable_streams below uses it on the PG path. The
+        # `bbox` column is GENERATED STORED so writes don't need any
+        # extra wiring; SQLite has no GiST and stays on the 4-range path.
+        if _IS_PG:
+            cur.execute(
+                "ALTER TABLE clickable_streams"
+                " ADD COLUMN IF NOT EXISTS bbox box"
+                " GENERATED ALWAYS AS ("
+                "  box("
+                "   point(min_lon::double precision,"
+                "         min_lat::double precision),"
+                "   point(max_lon::double precision,"
+                "         max_lat::double precision)"
+                "  )"
+                " ) STORED"
+            )
+            cur.execute(
+                "CREATE INDEX IF NOT EXISTS idx_clk_bbox_gist"
+                " ON clickable_streams USING GIST (bbox)"
+            )
         # Real user accounts (Phase 1). Magic-link auth: no passwords
         # to manage. `display_name` defaults to the email's local part
         # at first sign-in; `deleted_at` enables soft delete so
@@ -747,18 +773,34 @@ def query_clickable_streams(west: float, south: float, east: float,
                             north: float, min_order: int = 1,
                             limit: int = 4000) -> list[dict]:
     """Clickable streams whose bounding box overlaps the viewport and
-    whose StreamOrder >= min_order (the zoom tier). Capped for safety."""
+    whose StreamOrder >= min_order (the zoom tier). Capped for safety.
+
+    Postgres uses the GiST bbox index via the `&&` overlap operator,
+    which handles all four bbox sides in one index lookup -- state-scale
+    viewports come back in <100ms instead of the 10s+ the 4-range
+    B-tree path took (which was killing the gunicorn worker under
+    concurrent panning). SQLite has no GiST so the dev path keeps the
+    original 4-range query, served by the b-tree lat/lon indexes.
+    """
     import json
+    if _IS_PG:
+        sql = ("SELECT comid, levelpathid, gnis_name, streamorder,"
+               " trout_class, geom FROM clickable_streams"
+               " WHERE streamorder >= %s"
+               " AND bbox && box(point(%s, %s), point(%s, %s))"
+               " ORDER BY streamorder DESC LIMIT %s")
+        params = (int(min_order), west, south, east, north, int(limit))
+    else:
+        sql = ("SELECT comid, levelpathid, gnis_name, streamorder,"
+               " trout_class, geom FROM clickable_streams"
+               " WHERE streamorder >= ?"
+               " AND max_lon >= ? AND min_lon <= ?"
+               " AND max_lat >= ? AND min_lat <= ?"
+               " ORDER BY streamorder DESC LIMIT ?")
+        params = (int(min_order), west, east, south, north, int(limit))
     with _conn() as conn:
         cur = conn.cursor()
-        cur.execute(
-            _ph("SELECT comid, levelpathid, gnis_name, streamorder,"
-                " trout_class, geom FROM clickable_streams"
-                " WHERE streamorder >= ?"
-                " AND max_lon >= ? AND min_lon <= ?"
-                " AND max_lat >= ? AND min_lat <= ?"
-                " ORDER BY streamorder DESC LIMIT ?"),
-            (int(min_order), west, east, south, north, int(limit)))
+        cur.execute(sql, params)
         rows = cur.fetchall()
     out = []
     for r in rows:
