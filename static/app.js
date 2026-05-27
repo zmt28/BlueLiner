@@ -512,14 +512,21 @@ let _loadedClkLpids = new Set();
 async function loadClickableStreams() {
   if (!map.hasLayer(clickableLayer)) return;       // toggled off
   if (map.getZoom() < STREAM_MIN_ZOOM) {
-    clickableVisible.clearLayers(); clickableHit.clearLayers();
-    _loadedClkNames = new Set();
-    _loadedClkLpids = new Set();
-    renderRivers();
+    // Earlier versions cleared the layer here. That made panning
+    // across the zoom-9 boundary blink the entire stream network
+    // off and back on. Now we just no-op; the previous frame's
+    // features linger until the next moveend at zoom 9+ replaces
+    // them. The bbox-area guard below + the per-zoom StreamOrder
+    // filter still prevent country-scale fetches when the user is
+    // way zoomed out.
     return;
   }
   const b = map.getBounds();
-  if (b.getEast() - b.getWest() > 6 || b.getNorth() - b.getSouth() > 6) return;
+  // 4° cap (was 6°): at zoom 9 a 6° bbox is already country-scale on
+  // tall screens and a fast pinch-out can briefly cross the guard,
+  // firing a fetch that returns tens of thousands of features and
+  // locks the main thread.
+  if (b.getEast() - b.getWest() > 4 || b.getNorth() - b.getSouth() > 4) return;
   const bbox = [b.getWest(), b.getSouth(), b.getEast(), b.getNorth()]
     .map((x) => x.toFixed(4)).join(",");
   const reqId = ++_streamReqId;
@@ -530,7 +537,7 @@ async function loadClickableStreams() {
     if (reqId !== _streamReqId) return;            // a newer move superseded us
     clickableVisible.clearLayers(); clickableHit.clearLayers();
     clickableVisible.addData(fc); clickableHit.addData(fc);
-    if (_selStreamLpid != null) _paintHighlight(_selStreamLpid);
+    if (_selStreamKey != null) _paintHighlight(_selStreamKey);
     _loadedClkNames = new Set();
     _loadedClkLpids = new Set();
     for (const feat of (fc.features || [])) {
@@ -562,34 +569,47 @@ function _riverHasClickableReach(r) {
 
 function restyleStreams() {
   clickableVisible.setStyle((f) => streamStyle(f.properties));
-  if (_selStreamLpid != null) _paintHighlight(_selStreamLpid);
+  if (_selStreamKey != null) _paintHighlight(_selStreamKey);
 }
 
-// Highlight every rendered reach sharing the clicked stream's LevelPathID
-// (whole-river emphasis), restoring on the next selection / close.
-// `_paintHighlight` is idempotent so it can be re-applied after the
-// clickable-streams layer is rebuilt (pan/zoom moveend) or restyled
-// (trout/conditions mode toggle) -- without it, the red selection
-// silently reverts to the base style as soon as you pan the map.
-let _selStreamLpid = null;
-function _paintHighlight(lpid) {
+// Highlight every rendered reach sharing the clicked stream's *named-
+// river* identity (or LevelPathID for unnamed reaches). NHDPlusV2
+// frequently splits a single named river across multiple levelpathids
+// at HUC boundaries, so matching on lpid alone leaves the upper and
+// lower reaches of e.g. "Little Conestoga Creek" unhighlighted; the
+// composite key falls back to lpid only when the clicked reach has no
+// gnis_name (true for ~1/3 of order-1 headwaters). `_paintHighlight`
+// is idempotent so it can be re-applied after the clickable-streams
+// layer is rebuilt (pan/zoom moveend) or restyled (trout/conditions
+// mode toggle) -- without it, the red selection silently reverts to
+// the base style as soon as you pan the map. The repaint-after-fetch
+// path is what makes the highlight continue onto newly-loaded
+// segments of the same named river as the user pans along its reach.
+let _selStreamKey = null;
+function _featMatchesKey(f, key) {
+  if (!f || !key) return false;
+  if (key.name) return _normName(f.properties.gnis_name) === key.name;
+  return f.properties.levelpathid === key.lpid;
+}
+function _paintHighlight(key) {
   clickableVisible.eachLayer((l) => {
-    if (l.feature && l.feature.properties.levelpathid === lpid) {
+    if (_featMatchesKey(l.feature, key)) {
       l.setStyle({ weight: 8, color: "#e74c3c", opacity: 0.95 });
     }
   });
 }
-function highlightStream(lpid) {
+function highlightStream(p) {
   clearStreamHighlight();
-  _selStreamLpid = lpid;
-  _paintHighlight(lpid);
+  const name = _normName(p && p.gnis_name);
+  _selStreamKey = { name: name || null, lpid: (p && p.levelpathid) ?? null };
+  _paintHighlight(_selStreamKey);
 }
 function clearStreamHighlight() {
-  if (_selStreamLpid == null) return;
+  if (_selStreamKey == null) return;
   clickableVisible.eachLayer((l) => {
     if (l.feature) l.setStyle(streamStyle(l.feature.properties));
   });
-  _selStreamLpid = null;
+  _selStreamKey = null;
 }
 
 function _normName(s) { return (s || "").trim().toLowerCase(); }
@@ -635,7 +655,7 @@ function _gaugedRiverFor(p, latlng) {
 }
 
 function onStreamClick(p, latlng) {
-  highlightStream(p.levelpathid);   // whole-river emphasis, gauged or not
+  highlightStream(p);                // whole-river emphasis, gauged or not
   // Unify the two layers: if this reach is part of a gauged river, open
   // that river's rich panel instead of the generic ungauged card, so the
   // whole river behaves as one thing regardless of where you click.
@@ -691,11 +711,14 @@ document.querySelectorAll("#color-mode button").forEach((b) =>
 // Re-fetch the network whenever the view settles or the layer is toggled.
 let _streamTimer = null;
 let _publicLandsTimer = null;
+// 500ms (was 350ms) so touch-device momentum-pans don't fire two
+// fetches per gesture -- iOS Safari and Android Chrome both emit a
+// moveend at the start of the deceleration *and* at the rest point.
 map.on("moveend", () => {
   clearTimeout(_streamTimer);
-  _streamTimer = setTimeout(loadClickableStreams, 350);
+  _streamTimer = setTimeout(loadClickableStreams, 500);
   clearTimeout(_publicLandsTimer);
-  _publicLandsTimer = setTimeout(loadPublicLands, 350);
+  _publicLandsTimer = setTimeout(loadPublicLands, 500);
 });
 
 // -- Gauges --
@@ -827,16 +850,24 @@ function accessPopupHtml(p) {
 // at country-scale bboxes, replace the layer's contents wholesale on
 // each fetch (parcels are sparse enough at zoom 8+ that we don't need
 // the streams' "merge-with-loaded" gymnastics).
-const PUBLIC_LANDS_MIN_ZOOM = 8;
+// Matches STREAM_MIN_ZOOM and RIVER_LINE_MIN_ZOOM so all three layer
+// families appear/hide at the same zoom boundary -- previous staggered
+// 8/9/9 setup made the user see two distinct "snap" moments while
+// zooming through 8 -> 9.
+const PUBLIC_LANDS_MIN_ZOOM = 9;
 let _publicLandsReqId = 0;
 async function loadPublicLands() {
   if (!map.hasLayer(publicLandsLayer)) return;
   if (map.getZoom() < PUBLIC_LANDS_MIN_ZOOM) {
-    publicLandsLayer.clearLayers();
+    // Don't clear here: see the matching note in loadClickableStreams.
+    // Letting the previous frame's parcels linger across the
+    // zoom-threshold boundary eliminates the blink-off-blink-on
+    // flash users hit when pinching from zoom 10 to zoom 8.
     return;
   }
   const b = map.getBounds();
-  if (b.getEast() - b.getWest() > 6 || b.getNorth() - b.getSouth() > 6) return;
+  // 4° cap matching loadClickableStreams.
+  if (b.getEast() - b.getWest() > 4 || b.getNorth() - b.getSouth() > 4) return;
   const bbox = [b.getWest(), b.getSouth(), b.getEast(), b.getNorth()]
     .map((x) => x.toFixed(4)).join(",");
   const reqId = ++_publicLandsReqId;

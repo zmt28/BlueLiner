@@ -1229,7 +1229,14 @@ async def api_river_lines(
 # only big rivers; zooming in reveals progressively smaller streams down
 # to the order-1/2 wild-trout headwaters. Mirrors the prototype tiers.
 def _min_order_for_zoom(zoom: int) -> int:
-    if zoom >= 13:
+    # Tier table tweaked to soften the zoom-12 -> zoom-13 step.
+    # Previously order-1 headwaters (the most numerous tier by far,
+    # ~3-4x the rest combined) all appeared at zoom 13. The user
+    # perceived this as a sudden flood of new streams. Pushing order
+    # 1 to zoom 14 keeps zoom 13 close in feature-count to zoom 12,
+    # then reveals headwaters only at neighborhood-scale (zoom 14+)
+    # where they're useful for bluelining specific watersheds.
+    if zoom >= 14:
         return 1
     if zoom >= 12:
         return 2
@@ -1274,7 +1281,10 @@ async def api_clickable_streams(
 # scale doesn't ask the DB for tens of thousands of polygons; capped
 # at the per-response constant below so even a state-sized request
 # stays within the gunicorn worker's memory + timeout budget.
-_PUBLIC_LANDS_MIN_ZOOM = 8
+# Matches the streams + river-line min zooms in app.js. Previously 8,
+# which made public lands appear one zoom level before the streams
+# they're meant to give context to.
+_PUBLIC_LANDS_MIN_ZOOM = 9
 _PUBLIC_LANDS_MAX_FEATURES = 500
 
 
