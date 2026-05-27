@@ -198,19 +198,30 @@ overlay for the "Public lands" filter checkbox. National (~80-150 MB
 gzipped) so it lives on R2 alongside the NHDPlus files; dev runs
 without it (loader no-ops cleanly, the layer just stays empty).
 
+PAD-US 4.0 ships as a single ~1.6 GB geodatabase ZIP on ScienceBase.
+**ScienceBase routes files >1 GB through a captcha-gated, one-shot
+downloader, so the build script cannot fetch it programmatically** --
+the operator downloads the ZIP once by hand, the script reads from
+disk.
+
 To roll a new PAD-US vintage (4.0 -> 4.1 -> ...):
 
-1. **Verify the source URLs** in `scripts/build_public_lands.py`
-   `SLICES` against
-   <https://www.usgs.gov/programs/gap-analysis-project/science/pad-us-data-download>
-   (the per-manager-type GeoJSON exports). USGS GAP changes
-   ScienceBase item IDs on each release; update the `url` fields.
-2. **Run the builder** (one-time, local; ~20-40 min, ~3 GB scratch):
+1. **Download the geodatabase ZIP** (one-time, in a browser):
+   - Open <https://www.sciencebase.gov/catalog/item/652ef930d34edd15305a9b03>.
+   - Click `PADUS4_0Geodatabase.zip` in the Attached Files section.
+   - Solve the captcha and wait for the "Download File" button to
+     activate (ScienceBase prepares the ~1.6 GB file on their side
+     first; takes ~30 s).
+   - Save the file to `data/public_lands/PADUS4_0Geodatabase.zip`.
+2. **Run the builder** (~10-15 min wall clock; peak RSS ~8-12 GB
+   during the pyogrio read -- PAD-US has very complex polygons in
+   Alaska parks and BLM sections):
    ```sh
    pip install -r requirements-dev.txt
    python scripts/build_public_lands.py
    ls -lh data/public_lands/public_lands.geojson.gz
    ```
+   (If you saved the ZIP elsewhere, pass `--gdb-zip <path>`.)
 3. **Upload to R2** (reuse the same creds + endpoint as the NHDPlus
    files):
    ```sh

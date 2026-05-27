@@ -1,89 +1,80 @@
 #!/usr/bin/env python3
 """
-Build data/public_lands/public_lands.geojson.gz -- the vector overlay
-of every parcel in PAD-US 4.0 (USGS GAP's Protected Areas Database),
-tinted by manager type on the map and tagged with the per-unit public
-access tier (Open / Restricted / Closed / Unknown).
+Build data/public_lands/public_lands.geojson.gz from the bundled
+PAD-US 4.0 geodatabase.
 
-Each output feature carries:
+PAD-US 4.0 ships as a single ~1.6 GB geodatabase ZIP on ScienceBase
+(https://www.sciencebase.gov/catalog/item/652ef930d34edd15305a9b03).
+ScienceBase routes files >1 GB through a captcha-gated, one-shot
+download system, so a programmatic fetch from this script is not
+possible -- the operator downloads the ZIP manually once and the
+script reads from disk.
+
+Workflow:
+    1) Open the ScienceBase item URL above in a browser.
+    2) Click `PADUS4_0Geodatabase.zip` in Attached Files. Solve the
+       captcha; wait for the "Download File" button to activate.
+    3) Save the file to data/public_lands/PADUS4_0Geodatabase.zip
+       (or anywhere else and pass --gdb-zip <path>).
+    4) Run this script. ~10-15 min wall clock; peak RSS ~8-12 GB
+       during the pyogrio read (PAD-US geometries are complex --
+       Alaska parks especially).
+
+Each output feature carries the canonical six-field schema the
+runtime expects:
     unit_name, manager_type, manager_name, designation,
     public_access, state_nm
 
-Geometry is the Polygon / MultiPolygon, simplified at SIMPLIFY_TOL
-(same value used for clickable_streams; ~33 m at mid-latitudes,
-beyond what matters for "which parcel did the user click").
+Geometry is the (Multi)Polygon simplified at SIMPLIFY_TOL (the same
+~33 m tolerance used by the clickable_streams builder).
 
 Dev dependencies (NOT in runtime requirements.txt):
-    pip install httpx geopandas pyogrio shapely
+    pip install httpx pyogrio shapely
 
 Run from repo root:
-    python scripts/build_public_lands.py
+    python scripts/build_public_lands.py [--gdb-zip PATH] [--out PATH]
 
-The output is hosted on Cloudflare R2 alongside vaa.csv.gz +
-clickable_streams.geojson.gz -- see CONTRIBUTING.md "Refreshing
-PAD-US" for the upload + redeploy playbook.
-
-PAD-US download URLs change between releases. The SLICES list below
-points at the current 4.0 manager-type GeoJSON exports from USGS GAP.
-On a future release (4.1, 5.0, ...) the operator updates the URLs +
-expected vintage suffix once, re-runs this script, and bumps the
-versioned R2 prefix (`/v1/` -> `/v2/`) in the Render env var.
+The output is hosted on Cloudflare R2 alongside the other bundled
+data files -- see CONTRIBUTING.md "Refreshing PAD-US" for the upload
++ redeploy playbook.
 """
 
+import argparse
 import gzip
 import json
 import os
 import sys
 import tempfile
-
-import httpx
+import zipfile
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 OUT_DIR = os.path.join(ROOT, "data", "public_lands")
-OUT_PATH = os.path.join(OUT_DIR, "public_lands.geojson.gz")
+DEFAULT_OUT_PATH = os.path.join(OUT_DIR, "public_lands.geojson.gz")
+DEFAULT_GDB_ZIP = os.path.join(OUT_DIR, "PADUS4_0Geodatabase.zip")
+SCIENCEBASE_URL = (
+    "https://www.sciencebase.gov/catalog/item/652ef930d34edd15305a9b03")
 
 # Same simplification tolerance as build_clickable_streams.py -- enough
 # to drop redundant vertices without altering which parcel a click
-# falls in. preserve_topology=False is fine: parcels don't share
-# critical edges with each other for our purposes.
+# falls in.
 SIMPLIFY_TOL = 0.0003
 
-# PAD-US 4.0 GeoJSON-by-Manager-Type slices. Federal is by far the
-# largest; private (easements only -- ordinary private land isn't
-# mapped) is small but worth including so the "private easement"
-# legend swatch isn't always empty. Each slice is downloaded, parsed,
-# simplified, and streamed into the merged output.
-#
-# These URLs reflect the 4.0 release as published by USGS GAP on
-# ScienceBase. They go stale on each new release; cross-check at
-# https://www.usgs.gov/programs/gap-analysis-project/science/pad-us-data-download
-# before re-running and update the `url` fields to point at the
-# current vintage.
-SLICES = [
-    {"manager": "Federal",
-     "url": "https://www.sciencebase.gov/catalog/file/get/"
-            "65aab0a8d34ef8c8c7d3eb1c?f=__disk__pa_dus_fed.geojson"},
-    {"manager": "State",
-     "url": "https://www.sciencebase.gov/catalog/file/get/"
-            "65aab0a8d34ef8c8c7d3eb1c?f=__disk__pa_dus_state.geojson"},
-    {"manager": "Tribal",
-     "url": "https://www.sciencebase.gov/catalog/file/get/"
-            "65aab0a8d34ef8c8c7d3eb1c?f=__disk__pa_dus_tribal.geojson"},
-    {"manager": "Local",
-     "url": "https://www.sciencebase.gov/catalog/file/get/"
-            "65aab0a8d34ef8c8c7d3eb1c?f=__disk__pa_dus_local.geojson"},
-    {"manager": "NGO",
-     "url": "https://www.sciencebase.gov/catalog/file/get/"
-            "65aab0a8d34ef8c8c7d3eb1c?f=__disk__pa_dus_ngo.geojson"},
-    {"manager": "Private",
-     "url": "https://www.sciencebase.gov/catalog/file/get/"
-            "65aab0a8d34ef8c8c7d3eb1c?f=__disk__pa_dus_private.geojson"},
-]
+# Layers inside the GDB we actually want. PAD-US's "Combined_Fee"
+# is the bulk of fee-simple public ownership; "Combined_Easement" is
+# the conservation-easement-on-private-land slice. Skipping:
+#   - "Combined_Marine" (saltwater MPAs, irrelevant for stream fishing)
+#   - "Combined_Designation" (overlays the same land as Fee with extra
+#     wilderness/special-area designations; including it would
+#     double-render the polygon)
+#   - "Combined_Proclamation" (administrative boundaries, not parcels)
+# We match by substring on the layer name so PAD-US 4.1's "Fee" /
+# "Easement" rename (if it lands that way) doesn't require a code
+# change here.
+TARGET_LAYER_PATTERNS = ("Combined_Fee", "Combined_Easement")
+SKIP_LAYER_PATTERNS = ("Marine",)
 
-# PAD-US source field -> canonical client-facing field. We aggressively
-# prune; the runtime table only needs these six attrs + geometry. Any
-# field not listed here is dropped at write time (saves ~30-40% of the
-# output payload).
+# PAD-US source field -> canonical client-facing field. Anything not
+# listed here is dropped -- saves ~30-40% of the output payload.
 FIELD_MAP = {
     "Unit_Nm":     "unit_name",
     "Mang_Type":   "manager_type",
@@ -94,37 +85,56 @@ FIELD_MAP = {
 }
 
 
-def download(url: str, dest: str) -> None:
-    sys.stdout.write(f"  fetch {os.path.basename(dest)} ... ")
-    sys.stdout.flush()
-    with httpx.stream("GET", url, timeout=600.0,
-                      follow_redirects=True) as r:
-        r.raise_for_status()
-        with open(dest, "wb") as f:
-            for chunk in r.iter_bytes():
-                f.write(chunk)
-    print(f"{os.path.getsize(dest) / 1e6:.0f} MB")
+def select_layers(gdb_path: str) -> list[str]:
+    """Pick the GDB layers we want to ingest, matching by substring so
+    minor PAD-US renames don't break the build."""
+    import pyogrio
+    raw = pyogrio.list_layers(gdb_path)
+    # pyogrio.list_layers returns a 2D array of [layer_name, geometry_type]
+    names = [str(row[0]) for row in raw]
+    chosen: list[str] = []
+    for name in names:
+        if any(skip in name for skip in SKIP_LAYER_PATTERNS):
+            continue
+        if any(want in name for want in TARGET_LAYER_PATTERNS):
+            chosen.append(name)
+    if not chosen:
+        raise SystemExit(
+            f"No matching layers in {gdb_path}.\n"
+            f"  Looked for any of {TARGET_LAYER_PATTERNS} (excluding "
+            f"{SKIP_LAYER_PATTERNS}).\n"
+            f"  Found layers: {names}\n"
+            f"PAD-US may have renamed its layers; update "
+            f"TARGET_LAYER_PATTERNS in this script.")
+    return chosen
 
 
-def simplify_and_clean(features, manager_default: str):
-    """Yield canonical-shape features one at a time so the caller can
-    stream-write to disk without buffering the whole national set."""
-    # Lazy import so the script's `--help` works on a clean machine.
+def emit_features(layer_name: str, gdb_path: str, out, written):
+    """Stream features from one GDB layer through simplification +
+    attribute pruning into the gzipped output. Mutates `written` (the
+    leading-comma flag) and returns the running total."""
     from shapely.geometry import mapping, shape
-    for f in features:
-        props_in = f.get("properties") or {}
+    import pyogrio
+
+    print(f"[{layer_name}] reading ...")
+    gdf = pyogrio.read_dataframe(gdb_path, layer=layer_name)
+    if gdf is None or gdf.empty:
+        print(f"  empty layer, skipping")
+        return written
+    print(f"  {len(gdf):,} rows")
+
+    n_layer = 0
+    for raw in gdf.iterfeatures():
+        props_in = raw.get("properties") or {}
         props_out = {client: props_in.get(src)
                      for src, client in FIELD_MAP.items()}
-        # Per-slice manager type is authoritative when the source
-        # field is blank -- guarantees the client always gets a
-        # color-coded fill.
         if not props_out.get("manager_type"):
-            props_out["manager_type"] = manager_default
-        geom = f.get("geometry")
-        if not geom:
+            continue        # no point rendering a parcel with no color tier
+        geom_dict = raw.get("geometry")
+        if not geom_dict:
             continue
         try:
-            g = shape(geom).buffer(0)         # fix self-intersections
+            g = shape(geom_dict).buffer(0)         # fix self-intersections
             if g.is_empty:
                 continue
             g = g.simplify(SIMPLIFY_TOL, preserve_topology=False)
@@ -132,50 +142,80 @@ def simplify_and_clean(features, manager_default: str):
                 continue
         except Exception:
             continue
-        yield {
+        feat = {
             "type": "Feature",
             "properties": props_out,
             "geometry": mapping(g),
         }
+        if written["any"]:
+            out.write(",")
+        json.dump(feat, out, separators=(",", ":"))
+        written["any"] = True
+        written["total"] += 1
+        n_layer += 1
+    print(f"  +{n_layer:,} features written (running total "
+          f"{written['total']:,})")
+    return written
 
 
 def main() -> int:
-    os.makedirs(OUT_DIR, exist_ok=True)
-    total = 0
-    with gzip.open(OUT_PATH, "wt", encoding="utf-8") as out:
-        out.write('{"type":"FeatureCollection","features":[')
-        first = True
-        with tempfile.TemporaryDirectory() as tmp:
-            for slice_ in SLICES:
-                mgr = slice_["manager"]
-                print(f"[{mgr}]")
-                local = os.path.join(tmp, f"padus_{mgr.lower()}.geojson")
-                try:
-                    download(slice_["url"], local)
-                except httpx.HTTPError as exc:
-                    print(f"  skip {mgr}: {exc}")
-                    continue
-                # Lazy import -- pyogrio is heavy and isn't a runtime dep.
-                import pyogrio
-                gdf = pyogrio.read_dataframe(local)
-                if gdf is None or gdf.empty:
-                    print(f"  skip {mgr}: empty")
-                    continue
-                # Feed shapely features one at a time; pyogrio's
-                # iterfeatures keeps memory bounded.
-                for feat in simplify_and_clean(gdf.iterfeatures(), mgr):
-                    if not first:
-                        out.write(",")
-                    json.dump(feat, out, separators=(",", ":"))
-                    first = False
-                    total += 1
-                print(f"  +{total:,} cumulative features")
-                # Free memory before the next slice. The Federal slice
-                # in particular is gigabytes of polygons.
-                del gdf
-        out.write("]}")
-    size_mb = os.path.getsize(OUT_PATH) / 1e6
-    print(f"\n[done] {total:,} parcels -> {OUT_PATH} ({size_mb:.1f} MB gz)")
+    p = argparse.ArgumentParser(description=__doc__,
+                                formatter_class=argparse.RawTextHelpFormatter)
+    p.add_argument("--gdb-zip", default=DEFAULT_GDB_ZIP,
+                   help=f"Path to PADUS4_0Geodatabase.zip "
+                        f"(default: {DEFAULT_GDB_ZIP})")
+    p.add_argument("--out", default=DEFAULT_OUT_PATH,
+                   help=f"Output gzipped GeoJSON path "
+                        f"(default: {DEFAULT_OUT_PATH})")
+    args = p.parse_args()
+
+    if not os.path.exists(args.gdb_zip):
+        print(f"ERROR: PAD-US geodatabase not found at {args.gdb_zip}",
+              file=sys.stderr)
+        print(file=sys.stderr)
+        print("Download it manually (~1.6 GB, one-time):", file=sys.stderr)
+        print(f"  1. Open {SCIENCEBASE_URL}", file=sys.stderr)
+        print("  2. Click 'PADUS4_0Geodatabase.zip' in Attached Files.",
+              file=sys.stderr)
+        print("  3. Solve the captcha + click 'Download File'.",
+              file=sys.stderr)
+        print(f"  4. Save the .zip to {args.gdb_zip}", file=sys.stderr)
+        print("     (or pass --gdb-zip <other-path>)", file=sys.stderr)
+        print("Then re-run this script.", file=sys.stderr)
+        return 1
+
+    os.makedirs(os.path.dirname(args.out) or ".", exist_ok=True)
+    with tempfile.TemporaryDirectory() as tmp:
+        print(f"[unzip] {args.gdb_zip} -> {tmp}/")
+        with zipfile.ZipFile(args.gdb_zip) as z:
+            z.extractall(tmp)
+        # Find the .gdb directory inside the extracted tree. Vendors
+        # sometimes nest it one level deep ("PADUS4_0Geodatabase/PADUS4_0.gdb").
+        gdb_paths = []
+        for root, dirs, _ in os.walk(tmp):
+            for d in dirs:
+                if d.endswith(".gdb"):
+                    gdb_paths.append(os.path.join(root, d))
+        if not gdb_paths:
+            print(f"ERROR: no .gdb directory found in {args.gdb_zip}",
+                  file=sys.stderr)
+            return 1
+        gdb_path = gdb_paths[0]
+        print(f"[gdb] {gdb_path}")
+
+        layers = select_layers(gdb_path)
+        print(f"[layers] {layers}")
+
+        written = {"any": False, "total": 0}
+        with gzip.open(args.out, "wt", encoding="utf-8") as out:
+            out.write('{"type":"FeatureCollection","features":[')
+            for layer in layers:
+                emit_features(layer, gdb_path, out, written)
+            out.write("]}")
+
+    size_mb = os.path.getsize(args.out) / 1e6
+    print(f"\n[done] {written['total']:,} parcels -> {args.out} "
+          f"({size_mb:.1f} MB gz)")
     return 0
 
 
