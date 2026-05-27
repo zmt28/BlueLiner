@@ -1305,11 +1305,25 @@ document.getElementById("filter-reset").onclick = () => {
   onFilterChange();
 };
 
+// Legend: collapsed-by-default popup. Click "Legend" button to expand the
+// color-coded swatches; click again to collapse. State persists in
+// localStorage so users who prefer it open don't have to re-expand every
+// visit. Default-collapsed because the legend covers ~12% of the map on
+// desktop and 25%+ on mobile -- always-visible was too aggressive.
 const legend = document.getElementById("legend");
 const legendToggle = document.getElementById("legend-toggle");
+const LEGEND_OPEN_KEY = "bl_legend_open";
+try {
+  if (localStorage.getItem(LEGEND_OPEN_KEY) === "1") {
+    legend.classList.remove("collapsed");
+    legendToggle.setAttribute("aria-expanded", "true");
+  }
+} catch (_) { /* localStorage unavailable; default-collapsed stands */ }
 legendToggle.onclick = () => {
   const collapsed = legend.classList.toggle("collapsed");
   legendToggle.setAttribute("aria-expanded", collapsed ? "false" : "true");
+  try { localStorage.setItem(LEGEND_OPEN_KEY, collapsed ? "0" : "1"); }
+  catch (_) { /* no-op */ }
 };
 
 // -- Init --
