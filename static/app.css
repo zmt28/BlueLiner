@@ -45,7 +45,6 @@ html, body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
 .ctrl-check input { cursor: pointer; }
 #drop-pin.active { background: #8e44ad; border-color: #8e44ad; }
 #controls { display: flex; align-items: center; gap: 10px; }
-.legend-toggle { display: none; }
 #filters-toggle {
     display: inline-flex;
     align-items: center;
@@ -205,11 +204,38 @@ html, body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
     background: rgba(255,255,255,0.95);
     backdrop-filter: blur(8px);
     border-radius: 10px;
-    padding: 14px 18px;
     box-shadow: 0 2px 12px rgba(0,0,0,0.15);
     z-index: 1001;
     font-size: 13px;
+    /* Padding goes on the *children* now so the collapsed pill is tight. */
+    padding: 0;
+    overflow: hidden;
 }
+.legend-toggle {
+    display: block;
+    width: 100%;
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 8px 14px;
+    text-align: left;
+    font-weight: 700;
+    color: #1a1a2e;
+    font-size: 13px;
+}
+.legend-toggle::before {
+    content: "▾ ";
+    display: inline-block;
+    transition: transform 0.12s ease;
+}
+.legend.collapsed .legend-toggle::before {
+    transform: rotate(-90deg);
+}
+.legend-body {
+    padding: 0 18px 14px;
+    max-width: 280px;
+}
+.legend.collapsed .legend-body { display: none; }
 .legend-title {
     font-weight: 700;
     color: #1a1a2e;
@@ -849,16 +875,10 @@ html, body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
     .legend {
         bottom: calc(12px + env(safe-area-inset-bottom));
         left: 12px;
-        padding: 8px 10px;
         font-size: 12px;
     }
-    .legend-toggle {
-        display: block;
-        background: none; border: none;
-        font-weight: 700; color: #1a1a2e; font-size: 12px;
-        cursor: pointer; padding: 2px 2px;
-    }
-    .legend.collapsed .legend-body { display: none; }
+    .legend-toggle { font-size: 12px; padding: 6px 10px; }
+    .legend-body { padding: 0 12px 10px; }
 
     .pin-form {
         width: min(280px, calc(100vw - 24px));
