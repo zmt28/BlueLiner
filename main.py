@@ -462,14 +462,20 @@ def _trend_html(site_no: str | None) -> str:
 
 
 _CHIP_TROUT = (
-    '<span style="display:inline-block;padding:3px 8px;border-radius:12px;font-size:11px;'
-    'font-weight:600;color:#0e6655;background:#d1f2eb;border:1px solid #1abc9c;margin-left:6px">'
+    '<span class="bl-pill bl-pill-trout">'
     '&#x1f41f; Trout Water</span>'
 )
 _CHIP_STOCKED = (
-    '<span style="display:inline-block;padding:3px 8px;border-radius:12px;font-size:11px;'
-    'font-weight:600;color:#9c4a00;background:#fdebd0;border:1px solid #e67e22;margin-left:6px">'
+    '<span class="bl-pill bl-pill-stocked">'
     'Recently Stocked</span>'
+)
+_CHIP_HATCH_NOW = (
+    '<span class="bl-pill bl-pill-hatch">'
+    '&#x1F41B; Hatching now</span>'
+)
+_CHIP_ACCESS = (
+    '<span class="bl-pill bl-pill-access">'
+    '&#x1F45F; Public access</span>'
 )
 
 
@@ -605,61 +611,141 @@ def _ranking_summary_html(river: dict) -> str:
     return f'<div class="bl-summary">{sentence}</div>'
 
 
-def build_river_popup_html(river: dict) -> str:
+def _panel_header_html(river: dict) -> str:
+    """Top of the river panel: name, condition badge, feature pills,
+    stat grid. This block fits in the mobile snap-sheet's peek view
+    (~38vh) so the angler sees the headline info before deciding to
+    expand the sheet."""
     overall = river["overall"]
     badge_color = SCORE_COLORS[overall]
     badge_bg = SCORE_BG[overall]
     badge_label = SCORE_LABELS[overall]
-    trout_html = _CHIP_TROUT if river["on_trout"] else ""
-    stocked_html = _CHIP_STOCKED if river["near_stocked"] else ""
+    pills = []
+    if river.get("on_trout"):
+        pills.append(_CHIP_TROUT)
+    if river.get("near_stocked"):
+        pills.append(_CHIP_STOCKED)
+    if river.get("active"):
+        pills.append(_CHIP_HATCH_NOW)
+    if river.get("access_count", 0):
+        pills.append(_CHIP_ACCESS)
+    pills_row = (
+        f'<div class="bl-pills">{"".join(pills)}</div>' if pills else ""
+    )
+    n_gauges = len(river.get("gauges") or [])
+    n_active = len(river.get("active") or [])
+    n_stocked = len(river.get("stocked_waters") or [])
+    n_access = int(river.get("access_count", 0))
+    stats_html = (
+        '<div class="bl-stats">'
+        f'<div class="bl-stat"><div class="bl-stat-n">{n_gauges}</div>'
+        f'<div class="bl-stat-label">Gauges</div></div>'
+        f'<div class="bl-stat"><div class="bl-stat-n">{n_active}</div>'
+        f'<div class="bl-stat-label">Active hatches</div></div>'
+        f'<div class="bl-stat"><div class="bl-stat-n">{n_stocked}</div>'
+        f'<div class="bl-stat-label">Stocked nearby</div></div>'
+        f'<div class="bl-stat"><div class="bl-stat-n">{n_access}</div>'
+        f'<div class="bl-stat-label">Access points</div></div>'
+        '</div>'
+    )
+    return f"""
+        <div class="bl-card-head">
+            <div class="bl-title">{river["name"]}</div>
+            <span class="bl-condition" style="
+                color:{badge_color};background:{badge_bg};border-color:{badge_color}">
+                {badge_label}
+            </span>
+            {pills_row}
+            {_ranking_summary_html(river)}
+            {stats_html}
+        </div>
+    """
 
+
+def _panel_gauge_section_html(g: dict, is_primary: bool) -> str:
+    """One gauge's content block. Used inside the Conditions tab."""
+    usgs = (
+        f'<div style="padding:4px 0 2px;text-align:right">'
+        f'<a href="https://waterdata.usgs.gov/nwis/uv?site_no={g["site_no"]}" '
+        f'target="_blank" style="color:#3498db;font-size:12px;text-decoration:none">'
+        f'View on USGS &#x2197;</a></div>'
+    ) if g.get("site_no") else ""
+    # Primary gauge's chart renders above; skip its inline trend button.
+    trend = "" if is_primary else _trend_html(g.get("site_no"))
+    return f"""
+        <details class="bl-section bl-gauge" open>
+            <summary>{g["site_name"]}</summary>
+            <div class="bl-section-body">
+                {_flow_context_html(g["conditions"], g["historical_median"])}
+                {_readings_table_html(g["variables"])}
+                {trend}
+                {usgs}
+            </div>
+        </details>"""
+
+
+def _panel_tabs_html(river: dict, chart_html: str) -> str:
+    """Four-tab content area: Conditions / Hatches / Stocking / Log.
+    Pure CSS pattern -- a hidden radio per tab + sibling-selector show/
+    hide on the panels. The Catch tab gets the .bl-catch-cta hook so
+    wireCatch() can populate it on panel open (same as before, just
+    relocated). flowchart placeholder + autoLoadFlowChart() hook still
+    fire on open even when the Conditions tab isn't visible -- they
+    populate the element silently, render kicks in when displayed."""
+    primary = _primary_gauge(river["gauges"])
+    gauges_html = "".join(
+        _panel_gauge_section_html(g, g is primary)
+        for g in river["gauges"]
+    )
+    conditions_panel = f"""
+        <div class="bl-tab-panel" data-tab="conditions">
+            {chart_html}
+            {gauges_html}
+        </div>"""
+    hatches_panel = f"""
+        <div class="bl-tab-panel" data-tab="hatches">
+            {_hatch_section_html(river["hatch_zone"], river["active"], river["month"])}
+        </div>"""
+    stocking_panel = f"""
+        <div class="bl-tab-panel" data-tab="stocking">
+            {_stocked_block_html(river["stocked_waters"])}
+        </div>"""
+    catch_panel = """
+        <div class="bl-tab-panel" data-tab="catch">
+            <div class="bl-catch-cta"></div>
+        </div>"""
+    # Radios + labels for the tab bar. data-tab on the label matches the
+    # panel so CSS `:checked ~ ... [data-tab="..."]` can drive visibility.
+    tab_bar = """
+        <div class="bl-tabs" role="tablist">
+            <input type="radio" name="bl-tab" id="bl-tab-conditions" checked>
+            <input type="radio" name="bl-tab" id="bl-tab-hatches">
+            <input type="radio" name="bl-tab" id="bl-tab-stocking">
+            <input type="radio" name="bl-tab" id="bl-tab-catch">
+            <div class="bl-tab-bar">
+                <label for="bl-tab-conditions" class="bl-tab" data-tab="conditions">Conditions</label>
+                <label for="bl-tab-hatches" class="bl-tab" data-tab="hatches">Hatches</label>
+                <label for="bl-tab-stocking" class="bl-tab" data-tab="stocking">Stocking</label>
+                <label for="bl-tab-catch" class="bl-tab" data-tab="catch">Log catch</label>
+            </div>
+            <div class="bl-tab-panels">
+                """ + conditions_panel + hatches_panel + stocking_panel + catch_panel + """
+            </div>
+        </div>"""
+    return tab_bar
+
+
+def build_river_popup_html(river: dict) -> str:
     primary = _primary_gauge(river["gauges"])
     chart_html = ""
     if primary and primary.get("site_no"):
         chart_html = (f'<div class="bl-flow-chart" '
                       f'data-site="{primary["site_no"]}"></div>')
-
-    gauges_html = ""
-    for g in river["gauges"]:
-        is_primary = g is primary
-        usgs = (
-            f'<div style="padding:4px 0 2px;text-align:right">'
-            f'<a href="https://waterdata.usgs.gov/nwis/uv?site_no={g["site_no"]}" '
-            f'target="_blank" style="color:#3498db;font-size:12px;text-decoration:none">'
-            f'View on USGS &#x2197;</a></div>'
-        ) if g.get("site_no") else ""
-        # The primary gauge's chart is rendered up top, so skip its inline
-        # on-demand trend button; secondary gauges keep theirs.
-        trend = "" if is_primary else _trend_html(g.get("site_no"))
-        open_attr = " open" if is_primary else ""
-        gauges_html += f"""
-            <details class="bl-section bl-gauge"{open_attr}>
-                <summary>{g["site_name"]}</summary>
-                <div class="bl-section-body">
-                    {_flow_context_html(g["conditions"], g["historical_median"])}
-                    {_readings_table_html(g["variables"])}
-                    {trend}
-                    {usgs}
-                </div>
-            </details>"""
-
     return f"""
-        <div class="bl-card" style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif">
-            <div class="bl-card-head">
-                <div style="font-size:18px;font-weight:700;color:#1a1a2e;margin-bottom:6px">{river["name"]}</div>
-                <span style="display:inline-block;padding:3px 10px;border-radius:12px;font-size:12px;font-weight:700;
-                    color:{badge_color};background:{badge_bg};border:1.5px solid {badge_color};letter-spacing:0.5px">
-                    {badge_label}
-                </span>{trout_html}{stocked_html}
-                <div style="font-size:11px;color:#888;margin-top:5px">{len(river["gauges"])} gauge(s) on this water</div>
-                {_ranking_summary_html(river)}
-            </div>
+        <div class="bl-card">
+            {_panel_header_html(river)}
             <div class="bl-card-body">
-                <div class="bl-catch-cta"></div>
-                {chart_html}
-                {_hatch_section_html(river["hatch_zone"], river["active"], river["month"])}
-                {_stocked_block_html(river["stocked_waters"])}
-                {gauges_html}
+                {_panel_tabs_html(river, chart_html)}
             </div>
         </div>
     """
@@ -732,10 +818,16 @@ def _trout_geojson_str(layers: list) -> str:
 
 
 async def _assemble_rivers(time_series: list, trout_layers: list,
-                           stocked_pts: list) -> list[dict]:
+                           stocked_pts: list,
+                           access_pts: list | None = None) -> list[dict]:
     """Shared core: aggregate USGS sites -> group into rivers -> popups.
     `trout_layers` is a list of TroutLayer|None (a gauge is on trout if
-    near ANY)."""
+    near ANY). `access_pts` is the bundled+live access-point list for
+    the state(s) being assembled; used to compute each river's
+    nearby-access count for the panel stat grid. Defaults to empty so
+    test callers that don't care about the count don't have to plumb
+    it through."""
+    access_pts = access_pts or []
     today = datetime.now()
     today_key = (today.month, today.day)
     month_now = today.month
@@ -837,12 +929,19 @@ async def _assemble_rivers(time_series: list, trout_layers: list,
         # geographic zone for the centroid.
         zone = hatches.zone_for_river(g["name"], clat, clon)
         active = hatches.active_hatches(zone, month_now)
+        # ~0.03 degrees ≈ 3 km buffer for the panel stat-grid count.
+        # Reuses access_points.nearby_access (same helper that backs the
+        # on-map access layer) so the count agrees with what the user
+        # sees as markers around the river.
+        access_count = len(access_points.nearby_access(
+            clat, clon, access_pts, buffer_deg=0.03))
         stocked_waters = stocking.nearby_stocked(clat, clon, stocked_pts)
         river = {
             "name": g["name"], "lat": clat, "lon": clon, "overall": overall,
             "on_trout": g["on_trout"], "near_stocked": bool(stocked_waters),
             "hatch_zone": zone, "active": active, "month": month_now,
             "stocked_waters": stocked_waters,
+            "access_count": access_count,
             "gauges": sorted(g["gauges"], key=lambda x: x["site_name"]),
         }
         site_no = next(

@@ -408,7 +408,16 @@ function openRiverPanel(river, layer, baseStyle) {
   body.innerHTML = river.popup_html || "";
   body.scrollTop = 0;
   panel.hidden = false;
-  requestAnimationFrame(() => panel.classList.add("open"));
+  // Open to peek on phone-sized viewports so the highlighted river
+  // stays visible (TroutRoutes-style). Desktop keeps the side-drawer
+  // behavior; the snap classes are scoped to a mobile media query so
+  // they're inert on wider screens.
+  const isMobile = window.matchMedia("(max-width: 700px)").matches;
+  panel.classList.remove("peek", "full");
+  requestAnimationFrame(() => {
+    panel.classList.add("open");
+    panel.classList.add(isMobile ? "peek" : "full");
+  });
   _lastPanelOpenTs = Date.now();
   wireTrend(body);
   wireCatch(body, river);
@@ -419,11 +428,102 @@ function openRiverPanel(river, layer, baseStyle) {
 function closeRiverPanel() {
   const panel = document.getElementById("river-panel");
   if (!panel || panel.hidden) return;
-  panel.classList.remove("open");
+  panel.classList.remove("open", "peek", "full");
   _panelHideTimer = setTimeout(() => { panel.hidden = true; }, 240);
   clearRiverHighlight();
   clearStreamHighlight();
 }
+
+// Snap-sheet drag + tap handling on mobile. The grip is the only
+// gesture surface; dragging it from peek up snaps to full, from full
+// down snaps to peek, and dragging past a threshold below peek closes
+// the panel. Tapping anywhere in the panel body (that isn't a button
+// or other control) while at peek promotes to full so users can
+// open the full sheet without precisely hitting the 5px grip.
+(function wireRiverPanelSnap() {
+  const panel = document.getElementById("river-panel");
+  if (!panel) return;
+  const card = panel.querySelector(".river-panel-card");
+  const grip = panel.querySelector(".river-panel-grip");
+  if (!card || !grip) return;
+
+  let drag = null;          // { startY, lastY, lastT, baseTranslate }
+  const CLOSE_THRESHOLD_PX = 110;  // drag-past-peek to dismiss
+
+  function cardHeight() { return card.getBoundingClientRect().height; }
+  function isMobile() { return window.matchMedia("(max-width: 700px)").matches; }
+
+  function setSnap(state) {
+    panel.classList.remove("peek", "full");
+    panel.classList.add(state);
+  }
+
+  function onDown(e) {
+    if (!isMobile()) return;
+    drag = {
+      startY: e.clientY,
+      lastY: e.clientY,
+      lastT: performance.now(),
+      // 62% translate at peek matches the CSS; full is 0.
+      baseTranslate: panel.classList.contains("peek") ? 0.62 : 0,
+    };
+    card.classList.add("dragging");
+    grip.setPointerCapture && grip.setPointerCapture(e.pointerId);
+  }
+  function onMove(e) {
+    if (!drag) return;
+    const dy = e.clientY - drag.startY;
+    drag.lastY = e.clientY;
+    drag.lastT = performance.now();
+    // Follow the finger: base translate as a fraction of card height
+    // plus the drag delta in pixels. Clamp at 0 (can't go above full).
+    const h = cardHeight();
+    let px = drag.baseTranslate * h + dy;
+    if (px < 0) px = 0;
+    card.style.transform = `translateY(${px}px)`;
+  }
+  function onUp(e) {
+    if (!drag) return;
+    const dy = drag.lastY - drag.startY;
+    const h = cardHeight();
+    const startedAtPeek = drag.baseTranslate > 0;
+    card.style.transform = "";          // back to CSS-driven
+    card.classList.remove("dragging");
+    drag = null;
+    // Close if user drags down significantly past peek.
+    if (startedAtPeek && dy > CLOSE_THRESHOLD_PX) {
+      closeRiverPanel();
+      return;
+    }
+    if (!startedAtPeek && dy > CLOSE_THRESHOLD_PX * 1.4) {
+      // Dragged from full all the way down -- collapse to peek (not
+      // close). One-step gesture; tapping X is the deliberate close.
+      setSnap("peek");
+      return;
+    }
+    // Snap by direction of net travel: down -> peek, up -> full.
+    // A near-zero drag (a tap) on the grip expands peek -> full or
+    // collapses full -> peek -- treat the grip as a clickable toggle
+    // when the user clearly didn't drag.
+    if (dy < -30) setSnap("full");
+    else if (dy > 30) setSnap("peek");
+    else setSnap(startedAtPeek ? "full" : "peek");
+  }
+  grip.addEventListener("pointerdown", onDown);
+  grip.addEventListener("pointermove", onMove);
+  grip.addEventListener("pointerup", onUp);
+  grip.addEventListener("pointercancel", onUp);
+
+  // Tap-to-expand: a click on the body content (not on a control)
+  // promotes peek -> full so users can open the sheet without
+  // precisely hitting the 5px grip.
+  document.getElementById("river-panel-body").addEventListener("click", (e) => {
+    if (!isMobile()) return;
+    if (!panel.classList.contains("peek")) return;
+    if (e.target.closest("button, a, label, input, summary")) return;
+    setSnap("full");
+  });
+})();
 
 async function autoLoadFlowChart(root) {
   const box = root.querySelector(".bl-flow-chart[data-site]");

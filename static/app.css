@@ -577,6 +577,22 @@ html, body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
     position: sticky; top: 0; background: #fff; z-index: 1;
 }
 .bl-card-body { padding: 12px 16px calc(20px + env(safe-area-inset-bottom)); }
+.bl-title {
+    font-size: 19px;
+    font-weight: 700;
+    color: #1a1a2e;
+    margin-bottom: 6px;
+    line-height: 1.2;
+}
+.bl-condition {
+    display: inline-block;
+    padding: 3px 10px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 700;
+    border: 1.5px solid;
+    letter-spacing: 0.5px;
+}
 .bl-summary {
     margin-top: 8px;
     font-size: 13px;
@@ -586,6 +602,90 @@ html, body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
     border-radius: 6px;
     padding: 7px 10px;
     line-height: 1.4;
+}
+/* Pill row -- one quick-readable line of property chips just under the
+   title. Lifted from TroutRoutes' "Popular / Tailwater / Public
+   Shoreline" header. Each pill renders conditionally on data, so an
+   ungauged ungauged-class stream gets a leaner header instead of a
+   row of empty space. */
+.bl-pills {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 8px;
+}
+.bl-pill {
+    display: inline-flex;
+    align-items: center;
+    padding: 3px 10px;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 600;
+    border: 1px solid;
+    line-height: 1.4;
+    white-space: nowrap;
+}
+.bl-pill-trout   { color: #0e6655; background: #d1f2eb; border-color: #1abc9c; }
+.bl-pill-stocked { color: #9c4a00; background: #fdebd0; border-color: #e67e22; }
+.bl-pill-hatch   { color: #6b21a8; background: #ede9fe; border-color: #9333ea; }
+.bl-pill-access  { color: #1e40af; background: #dbeafe; border-color: #3b82f6; }
+/* Four-up stat grid: gauges / active hatches / stocked nearby / access
+   points. Each cell stacks a big numeric on a tiny label. Mirrors
+   TroutRoutes' "3.8 mi Public Shoreline / 6 Access Points / ..." row. */
+.bl-stats {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 4px;
+    margin-top: 10px;
+    border-top: 1px solid #eef0f3;
+    padding-top: 8px;
+}
+.bl-stat { text-align: center; padding: 2px 0; }
+.bl-stat-n { font-size: 18px; font-weight: 700; color: #1a1a2e; line-height: 1.1; }
+.bl-stat-label { font-size: 10px; color: #64748b; text-transform: uppercase; letter-spacing: 0.4px; margin-top: 2px; }
+
+/* Tab bar: pure-CSS toggle via hidden radio inputs + sibling-selector
+   show/hide on the panels. Default tab (Conditions) is `checked` in
+   markup. Each `.bl-tab` label is the visible tab control; the matching
+   `.bl-tab-panel` (selected by `~ .bl-tab-panels [data-tab="X"]`) is
+   shown when its sibling radio is :checked. JS-free, accessible by
+   keyboard via native radio focus. */
+.bl-tabs > input[type="radio"] { position: absolute; opacity: 0; pointer-events: none; }
+.bl-tab-bar {
+    display: flex;
+    gap: 4px;
+    border-bottom: 1px solid #e5e7eb;
+    margin-bottom: 10px;
+    overflow-x: auto;
+}
+.bl-tab {
+    padding: 9px 14px;
+    font-size: 13px;
+    font-weight: 600;
+    color: #64748b;
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    white-space: nowrap;
+    transition: color 0.12s ease, border-color 0.12s ease;
+}
+.bl-tab:hover { color: #1a1a2e; }
+.bl-tab-panel { display: none; }
+/* Per-tab active state: the radio above the tab-bar drives both the
+   label highlight and the matching panel's visibility. Using nth-of-
+   type to wire each radio to its tab + panel without per-tab IDs in
+   the selector. */
+#bl-tab-conditions:checked ~ .bl-tab-bar > label[for="bl-tab-conditions"],
+#bl-tab-hatches:checked    ~ .bl-tab-bar > label[for="bl-tab-hatches"],
+#bl-tab-stocking:checked   ~ .bl-tab-bar > label[for="bl-tab-stocking"],
+#bl-tab-catch:checked      ~ .bl-tab-bar > label[for="bl-tab-catch"] {
+    color: #1a1a2e;
+    border-bottom-color: #1a1a2e;
+}
+#bl-tab-conditions:checked ~ .bl-tab-panels > [data-tab="conditions"],
+#bl-tab-hatches:checked    ~ .bl-tab-panels > [data-tab="hatches"],
+#bl-tab-stocking:checked   ~ .bl-tab-panels > [data-tab="stocking"],
+#bl-tab-catch:checked      ~ .bl-tab-panels > [data-tab="catch"] {
+    display: block;
 }
 
 /* Collapsible sections via native <details>. Affordance: chevron is
@@ -627,8 +727,12 @@ html, body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
 .river-selected { filter: drop-shadow(0 0 3px rgba(26,32,46,0.6)); }
 
 @media (max-width: 700px) {
-    /* Bottom sheet instead of a side drawer */
-    .river-panel.open .river-panel-backdrop { background: rgba(15, 23, 42, 0.45); }
+    /* Bottom sheet with two snap points: `peek` (~38vh visible) and
+       `full` (~85vh). The river-panel container gets a `peek` or
+       `full` class; backdrop opacity + card translate read off it. At
+       peek the backdrop is transparent so the user still sees the
+       highlighted river on the map -- this is the whole point of the
+       redesign (TroutRoutes screenshot). */
     .river-panel-card {
         top: auto; left: 0; right: 0; bottom: 0;
         width: 100%;
@@ -637,17 +741,40 @@ html, body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
         box-shadow: 0 -4px 24px rgba(0,0,0,0.25);
         transform: translateY(100%);
         padding-top: 0;
+        /* During drag, inline transform overrides this. The 220ms
+           ease-out matches the open/close animation feel; disabled
+           via the .dragging class while the user has the grip. */
+        transition: transform 0.22s ease-out;
+        touch-action: none;             /* the grip handles its own pan */
     }
-    .river-panel.open .river-panel-card { transform: none; }
+    .river-panel-card.dragging { transition: none; }
+    /* Peek: ~62% of 85vh hidden -> ~32vh visible. Tuned so the
+       header summary (title + condition + pills + stat grid) just
+       fits, with the tab bar peeking as an invitation to expand. */
+    .river-panel.open.peek .river-panel-card { transform: translateY(62%); }
+    .river-panel.open.full .river-panel-card { transform: none; }
+    /* Fallback if neither class is set: behave like the old open state. */
+    .river-panel.open:not(.peek):not(.full) .river-panel-card { transform: none; }
+    /* Backdrop only dims when fully expanded -- peek keeps the map
+       visible and clickable. */
+    .river-panel.open.full .river-panel-backdrop { background: rgba(15, 23, 42, 0.45); }
+    .river-panel.open:not(.peek):not(.full) .river-panel-backdrop { background: rgba(15, 23, 42, 0.45); }
     .river-panel-grip {
         display: block;
-        width: 40px; height: 4px;
+        width: 44px; height: 5px;
         background: #cbd5e1; border-radius: 3px;
         margin: 8px auto 2px;
         flex-shrink: 0;
+        cursor: grab;
+        touch-action: none;
     }
+    .river-panel-card.dragging .river-panel-grip { cursor: grabbing; }
     .river-panel-close { top: 6px; }
     .bl-card-head { position: static; }
+    /* On a phone, four-up stat numbers get cramped; shrink the numerals
+       slightly so they don't truncate. */
+    .bl-stat-n { font-size: 17px; }
+    .bl-stat-label { font-size: 9px; }
 }
 
 /* -- Clickable-stream network (Phase B) -- */

@@ -20,6 +20,7 @@ import logging
 import os
 
 from states import STATES
+import access_points
 import db
 import stocking
 
@@ -108,7 +109,10 @@ async def refresh_state(st: str, *, backfill: bool = True) -> list[dict]:
     ts = data.get("value", {}).get("timeSeries", [])
     trout = [main._trout_for_state(st)]  # non-blocking; tags fill next cycle
     stocked = await asyncio.to_thread(stocking.stocked_points, st)
-    rivers = await main._assemble_rivers(ts, trout, stocked)
+    # Access points feed the panel stat-grid's "N access points" stat.
+    # load_access_points is cached so this is free on warm runs.
+    access_pts = await asyncio.to_thread(access_points.load_access_points, st)
+    rivers = await main._assemble_rivers(ts, trout, stocked, access_pts)
     if not rivers:
         logger.info("refresh %s: no rivers (USGS empty/unreachable)", st)
         return []
