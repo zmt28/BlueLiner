@@ -94,9 +94,17 @@ def main() -> int:
     print(f"[load] source: {args.geojson} ({size_mb:.1f} MB gz)")
     print(f"[load] target: {target}")
 
-    # Make sure the schema exists.
-    print("[load] ensuring schema (init_db) ...")
-    db.init_db()
+    # NB: we do *not* call db.init_db() here. The schema was created by
+    # an earlier prod deploy and is fully in place. Running init_db()
+    # from the laptop re-issues CREATE INDEX IF NOT EXISTS statements;
+    # those need ShareLock on public_lands, which conflicts with the
+    # ShareUpdateExclusiveLock autovacuum holds when it runs on the
+    # TOAST table -- and statement_timeout fires before the lock clears.
+    # Skipping init_db() here makes the laptop load immune to that
+    # transient lock contention. The web service still runs init_db()
+    # on boot and is idempotent; if it ever fails with the same
+    # timeout, it'll succeed on the next deploy when autovacuum isn't
+    # active.
 
     # Check current state + truncate if any rows present. The whole point of
     # this script is a clean one-shot reload; partial state from a previous
