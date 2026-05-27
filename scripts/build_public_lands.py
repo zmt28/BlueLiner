@@ -181,23 +181,36 @@ def main() -> int:
               file=sys.stderr)
         print(f"  4. Save the .zip to {args.gdb_zip}", file=sys.stderr)
         print("     (or pass --gdb-zip <other-path>)", file=sys.stderr)
+        print("     macOS Archive Utility may have auto-extracted the .zip; "
+              "that's fine -- point --gdb-zip at the extracted folder.",
+              file=sys.stderr)
         print("Then re-run this script.", file=sys.stderr)
         return 1
 
     os.makedirs(os.path.dirname(args.out) or ".", exist_ok=True)
     with tempfile.TemporaryDirectory() as tmp:
-        print(f"[unzip] {args.gdb_zip} -> {tmp}/")
-        with zipfile.ZipFile(args.gdb_zip) as z:
-            z.extractall(tmp)
-        # Find the .gdb directory inside the extracted tree. Vendors
-        # sometimes nest it one level deep ("PADUS4_0Geodatabase/PADUS4_0.gdb").
+        # Accept either a ZIP archive or an already-extracted directory
+        # (macOS Archive Utility auto-extracts ZIPs by default, leaving
+        # a folder instead of the original .zip). If the input is a
+        # directory, skip the unzip step and search it for the .gdb.
+        if os.path.isdir(args.gdb_zip):
+            search_root = args.gdb_zip
+            print(f"[input] {args.gdb_zip} (already extracted)")
+        else:
+            print(f"[unzip] {args.gdb_zip} -> {tmp}/")
+            with zipfile.ZipFile(args.gdb_zip) as z:
+                z.extractall(tmp)
+            search_root = tmp
+        # Find the .gdb directory in the extracted (or pre-extracted)
+        # tree. ScienceBase nests it one level deep, e.g.
+        # "PADUS4_0Geodatabase/PADUS4_0Geodatabase.gdb".
         gdb_paths = []
-        for root, dirs, _ in os.walk(tmp):
+        for root, dirs, _ in os.walk(search_root):
             for d in dirs:
                 if d.endswith(".gdb"):
                     gdb_paths.append(os.path.join(root, d))
         if not gdb_paths:
-            print(f"ERROR: no .gdb directory found in {args.gdb_zip}",
+            print(f"ERROR: no .gdb directory found under {search_root}",
                   file=sys.stderr)
             return 1
         gdb_path = gdb_paths[0]
