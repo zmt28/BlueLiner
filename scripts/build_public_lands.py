@@ -57,18 +57,24 @@ SCIENCEBASE_URL = (
 # Geometry simplification + precision knobs. PAD-US polygons have far
 # higher per-feature vertex counts than NHDPlus lines -- some
 # MultiPolygons have 100+ rings (National Forest sub-boundaries,
-# scattered BLM allotments), so the streams value of 0.0003 produced
-# a 1+ GB output. At 0.003 (~330 m at mid-latitudes) parcels still
-# look right at app zoom levels (8-14) but the vertex count drops by
-# roughly an order of magnitude. COORD_PRECISION further trims float
-# strings in the GeoJSON output (~30-40% savings on top).
-SIMPLIFY_TOL = 0.003
-COORD_PRECISION = 5         # ~1.1 m -- well below parcel-edge precision
-# Drop parcels smaller than this many sq-degrees (~12,000 m² at mid-
-# latitudes, ≈ 3 acres). PAD-US has tens of thousands of tiny urban-
-# infill parks + easement scraps that aren't fishing-relevant and
-# dominate row count for marginal coverage.
-MIN_AREA_DEG2 = 1e-6
+# scattered BLM allotments). The streams value of 0.0003 produced a
+# 1+ GB output; 0.003 still produced 803 MB on 632K features (~80
+# vertices/feature average). At 0.008 (~880 m at mid-latitudes) the
+# vertex count drops another ~3x while parcel shapes remain clearly
+# legible at the app's intended zoom range (country/state-scale
+# "which national forest is this" rather than parcel-edge precision).
+# COORD_PRECISION trims float strings in the GeoJSON output further;
+# 4 decimals (~11 m) is well below the simplify tolerance so no real
+# information is lost.
+SIMPLIFY_TOL = 0.008
+COORD_PRECISION = 4         # ~11 m -- below SIMPLIFY_TOL so lossless wrt it
+# Drop parcels smaller than this many sq-degrees. 1e-5 ≈ 120,000 m² ≈
+# ~30 acres at mid-latitudes. PAD-US has hundreds of thousands of tiny
+# urban-infill parks, easement scraps, and BLM micro-parcels that
+# aren't fishing-relevant at country/state scale and dominate row
+# count for marginal visual coverage. (Earlier 1e-6 threshold dropped
+# essentially nothing because PAD-US units are rarely sub-3-acre.)
+MIN_AREA_DEG2 = 1e-5
 
 # Layers inside the GDB we actually want. PAD-US 4.0's "PADUS4_0Fee"
 # is the bulk of fee-simple public ownership; "PADUS4_0Easement" is
