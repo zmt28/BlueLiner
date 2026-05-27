@@ -430,19 +430,34 @@ def test_build_river_popup_html():
     }
     html = main.build_river_popup_html(river)
     assert "Gunpowder Falls" in html
-    assert "Hatching now" in html
-    assert "Recently Stocked" in html                       # near_stocked chip
-    assert "Trout Water" in html                            # on_trout chip
+    assert "Recently Stocked" in html                       # near_stocked pill
+    assert "Trout Water" in html                            # on_trout pill
     assert "Stocked nearby" in html                         # stocked block
     assert "Gunpowder falls near glencoe, md" in html       # gauge sub-header
     assert 'data-site="01581920"' in html                   # chart placeholder
     assert "Flow context" in html                           # median present
-    # Redesign: collapsible sections, summary, chart placeholder, and the
-    # catch CTA hoisted above the gauge sections.
-    assert "<details" in html and "<summary>" in html
+    # TroutRoutes-style panel redesign: peek-friendly header with stat
+    # grid + pill row + condition badge, followed by a CSS-radio tab bar
+    # whose four panels carry the existing Conditions/Hatches/Stocking/
+    # Log-catch sections. <details> remains for the inner gauge sub-
+    # accordions inside the Conditions tab.
+    assert "bl-pills" in html                               # pill row exists
+    assert "bl-pill-trout" in html and "bl-pill-stocked" in html
+    assert "bl-stats" in html and "bl-stat-n" in html       # stat grid
+    assert 'class="bl-tabs"' in html                        # tabbed body
+    assert 'id="bl-tab-conditions"' in html                 # default-checked tab
+    assert 'data-tab="conditions"' in html
+    assert 'data-tab="hatches"' in html
+    assert 'data-tab="stocking"' in html
+    assert 'data-tab="catch"' in html
     assert 'class="bl-flow-chart"' in html
-    assert "bl-summary" in html
-    assert html.index("bl-catch-cta") < html.index("bl-gauge")  # CTA first
+    # Hatches tab content still renders the seasonal block.
+    assert "Hatching now" in html or "Hatching soon" in html
+    # Tab-bar redesign: the catch CTA is now its own tab panel after
+    # gauges (Conditions tab default), not a banner above the gauges.
+    # Verify it still exists and sits inside its own labeled panel.
+    assert 'data-tab="catch"' in html
+    assert "bl-catch-cta" in html
 
 
 def test_score_conditions_returns_temp_f():
