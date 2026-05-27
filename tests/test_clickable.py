@@ -68,7 +68,11 @@ def test_viewport_and_tier_filtering(tmp_path, monkeypatch):
 def test_min_order_for_zoom_tiers():
     f = main._min_order_for_zoom
     assert f(7) == 6 and f(8) == 5 and f(9) == 4
-    assert f(10) == 3 and f(12) == 2 and f(13) == 1
+    assert f(10) == 3 and f(11) == 3
+    # Order-1 headwaters appear at zoom 14, not 13 -- previous tiers
+    # introduced them all at zoom 13 in a single visible jump, which
+    # the user perceived as "things flickering on/off when panning."
+    assert f(12) == 2 and f(13) == 2 and f(14) == 1
     assert f(16) == 1                                    # clamps
 
 
@@ -76,18 +80,22 @@ def test_endpoint_returns_filtered_featurecollection(tmp_path, monkeypatch):
     _fresh(tmp_path, monkeypatch)
     db.bulk_load_clickable_streams(_fixture(tmp_path))
     req = SimpleNamespace(headers={})
-    # zoom 13 -> min_order 1 -> all three in a wide bbox
+    # zoom 14 -> min_order 1 -> all three in a wide bbox
     resp = asyncio.run(main.api_clickable_streams(
-        req, bbox="-78.0,40.6,-77.3,41.0", zoom=13))
+        req, bbox="-78.0,40.6,-77.3,41.0", zoom=14))
     fc = json.loads(resp.body)
     assert fc["type"] == "FeatureCollection"
     assert len(fc["features"]) == 3
     assert {"comid", "levelpathid", "gnis_name", "streamorder",
             "trout_class"} <= set(fc["features"][0]["properties"])
+    # zoom 13 now sits at min_order 2 -- excludes the order-1 headwater
+    resp13 = asyncio.run(main.api_clickable_streams(
+        req, bbox="-78.0,40.6,-77.3,41.0", zoom=13))
+    assert len(json.loads(resp13.body)["features"]) == 2
     # zoom 9 -> min_order 4 -> Big River + Penns Creek only
-    resp2 = asyncio.run(main.api_clickable_streams(
+    resp9 = asyncio.run(main.api_clickable_streams(
         req, bbox="-78.0,40.6,-77.3,41.0", zoom=9))
-    assert len(json.loads(resp2.body)["features"]) == 2
+    assert len(json.loads(resp9.body)["features"]) == 2
 
 
 def test_query_strips_z_and_rounds(tmp_path, monkeypatch):
