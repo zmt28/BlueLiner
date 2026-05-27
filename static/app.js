@@ -126,6 +126,61 @@ const ACCESS_TYPE_META = {
 };
 const accessLayer = L.layerGroup();
 
+// Public-lands parcels (PAD-US). Vector polygons tinted by manager
+// type; click for unit / agency / designation / access tier. Loaded
+// per-viewport via /api/public_lands?bbox= -- same lazy bbox-bound
+// pattern as clickable streams. Color choices are intentionally
+// muted (15-30% fill) so the overlay never fights the stream network
+// or gauge markers stacked above it.
+const PUBLIC_LANDS_STYLE = {
+  Federal: { fillColor: "#2d6a4f", color: "#1b4332", fillOpacity: 0.30 },
+  State:   { fillColor: "#1e6fd9", color: "#1e40af", fillOpacity: 0.22 },
+  Tribal:  { fillColor: "#92400e", color: "#7c2d12", fillOpacity: 0.28 },
+  Local:   { fillColor: "#a16207", color: "#854d0e", fillOpacity: 0.22 },
+  NGO:     { fillColor: "#9333ea", color: "#6b21a8", fillOpacity: 0.22 },
+  Private: { fillColor: "#94a3b8", color: "#64748b", fillOpacity: 0.18 },
+};
+const PUBLIC_LANDS_DEFAULT_STYLE = {
+  fillColor: "#94a3b8", color: "#64748b", fillOpacity: 0.18,
+};
+function publicLandsStyle(feature) {
+  const mgr = (feature && feature.properties && feature.properties.manager_type) || "";
+  const base = PUBLIC_LANDS_STYLE[mgr] || PUBLIC_LANDS_DEFAULT_STYLE;
+  return Object.assign({ weight: 0.8 }, base);
+}
+// Access-tier chip labels for the popup. PAD-US codes are terse;
+// expand to legible strings + map to chip CSS variants.
+const PA_ACCESS_LABEL = {
+  OA: "Open access",
+  RA: "Restricted access",
+  XA: "Closed",
+  UK: "Unknown",
+};
+function publicLandsPopupHtml(p) {
+  const tierCode = p.public_access || "UK";
+  const tierLabel = PA_ACCESS_LABEL[tierCode] || PA_ACCESS_LABEL.UK;
+  const tierChip =
+    `<span class="ap-chip pa-chip-${esc(tierCode)}">${esc(tierLabel)}</span>`;
+  const lines = [
+    `<div class="ap-name">${esc(p.unit_name || "Public land parcel")}</div>`,
+  ];
+  const sub = [];
+  if (p.manager_name) sub.push(esc(p.manager_name));
+  if (p.designation) sub.push(esc(p.designation));
+  if (sub.length) lines.push(`<div class="ap-meta">${sub.join(" &middot; ")}</div>`);
+  lines.push(`<div class="ap-meta" style="margin-top:6px">${tierChip}</div>`);
+  if (p.state_nm) {
+    lines.push(`<div class="ap-notes">${esc(p.state_nm)}</div>`);
+  }
+  return `<div class="ap-popup">${lines.join("")}</div>`;
+}
+const publicLandsLayer = L.geoJSON(null, {
+  style: publicLandsStyle,
+  onEachFeature: (f, layer) => {
+    layer.bindPopup(publicLandsPopupHtml(f.properties || {}), popupOpts());
+  },
+});
+
 const riverLinesLayer = L.layerGroup().addTo(map);
 const riversLayer = L.layerGroup().addTo(map);
 const pinsLayer = L.layerGroup().addTo(map);
@@ -638,9 +693,12 @@ document.querySelectorAll("#color-mode button").forEach((b) =>
 
 // Re-fetch the network whenever the view settles or the layer is toggled.
 let _streamTimer = null;
+let _publicLandsTimer = null;
 map.on("moveend", () => {
   clearTimeout(_streamTimer);
   _streamTimer = setTimeout(loadClickableStreams, 350);
+  clearTimeout(_publicLandsTimer);
+  _publicLandsTimer = setTimeout(loadPublicLands, 350);
 });
 
 // -- Gauges --
@@ -765,6 +823,34 @@ function accessPopupHtml(p) {
     + notes
     + link
     + `</div>`;
+}
+
+// Public-lands fetch: bbox-bound, debounced on moveend, zoom-gated.
+// Mirrors loadClickableStreams contract: skip when toggled off, skip
+// at country-scale bboxes, replace the layer's contents wholesale on
+// each fetch (parcels are sparse enough at zoom 8+ that we don't need
+// the streams' "merge-with-loaded" gymnastics).
+const PUBLIC_LANDS_MIN_ZOOM = 8;
+let _publicLandsReqId = 0;
+async function loadPublicLands() {
+  if (!map.hasLayer(publicLandsLayer)) return;
+  if (map.getZoom() < PUBLIC_LANDS_MIN_ZOOM) {
+    publicLandsLayer.clearLayers();
+    return;
+  }
+  const b = map.getBounds();
+  if (b.getEast() - b.getWest() > 6 || b.getNorth() - b.getSouth() > 6) return;
+  const bbox = [b.getWest(), b.getSouth(), b.getEast(), b.getNorth()]
+    .map((x) => x.toFixed(4)).join(",");
+  const reqId = ++_publicLandsReqId;
+  try {
+    const fc = await fetch(
+      `/api/public_lands?bbox=${bbox}&zoom=${map.getZoom()}`
+    ).then((r) => r.json());
+    if (reqId !== _publicLandsReqId) return;        // newer pan superseded us
+    publicLandsLayer.clearLayers();
+    publicLandsLayer.addData(fc);
+  } catch (_) { /* transient; next moveend retries */ }
 }
 
 async function ensureAccess(state) {
@@ -1195,6 +1281,7 @@ document.getElementById("lyr-fishable").addEventListener("change", (e) => {
 wireLayerToggle("lyr-usgs", hydroLayer);
 wireLayerToggle("lyr-trout", troutLayer, () => ensureTrout(currentSt));
 wireLayerToggle("lyr-access", accessLayer, () => ensureAccess(currentSt));
+wireLayerToggle("lyr-public-lands", publicLandsLayer, loadPublicLands);
 wireLayerToggle("lyr-pins", pinsLayer);
 
 // Base-map segmented control: mutually exclusive radio behavior.

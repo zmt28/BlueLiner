@@ -14,3 +14,8 @@ requirements-dev.txt
 # into the image -- otherwise resolve_data_file short-circuits to them
 # and the prod container never sees the national data.
 data/nhdplus/*.gz
+# Same logic for the PAD-US public-lands export (Phase B): national
+# file is hosted on R2 alongside vaa.csv.gz / clickable_streams.geojson.gz
+# and pulled in via DATA_BASE_URL. Excluded from the image so the
+# resolve_data_file fallback never sees a stale local copy in prod.
+data/public_lands/*.gz

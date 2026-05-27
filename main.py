@@ -53,6 +53,12 @@ _VAA_BUNDLED_PATH = os.path.join(os.path.dirname(__file__), "data",
                                  "nhdplus", "vaa.csv.gz")
 _CLICKABLE_BUNDLED_PATH = os.path.join(os.path.dirname(__file__), "data",
                                        "nhdplus", "clickable_streams.geojson.gz")
+# Public-lands parcels (Phase B). Like the clickable streams file, the
+# national PAD-US export lives on R2 and is fetched via DATA_BASE_URL;
+# dev runs without a bundled fallback (the loader no-ops when absent).
+_PUBLIC_LANDS_BUNDLED_PATH = os.path.join(
+    os.path.dirname(__file__), "data", "public_lands",
+    "public_lands.geojson.gz")
 
 # Module-level caches. All bounded (LruTtl) -- unbounded per-state dicts
 # were the runtime memory growth behind the 512MB OOM. Both are also
@@ -123,6 +129,19 @@ async def lifespan(app: FastAPI):
                 logger.info("Clickable streams loaded: %d rows", n)
         except Exception as exc:
             logger.warning("Clickable-streams load failed: %s", exc)
+        # Public-lands parcels (PAD-US 4.0). Loader is idempotent and
+        # no-ops cleanly when the file isn't present (dev without R2);
+        # in prod the bytes come from DATA_BASE_URL/public_lands.geojson.gz.
+        try:
+            n = await asyncio.to_thread(
+                lambda: db.bulk_load_public_lands(
+                    data_source.resolve_data_file(
+                        _PUBLIC_LANDS_BUNDLED_PATH,
+                        "public_lands.geojson.gz")))
+            if n:
+                logger.info("Public lands loaded: %d parcels", n)
+        except Exception as exc:
+            logger.warning("Public-lands load failed: %s", exc)
 
     # The refresher is what makes the map instant: it keeps each focused
     # state's snapshot + flowline geometry warm in Postgres so requests
@@ -1249,6 +1268,48 @@ async def api_clickable_streams(
     } for r in rows]
     payload = {"type": "FeatureCollection", "features": features}
     return _cached_json(request, payload, max_age=600)
+
+
+# Public-lands viewport endpoint. Zoom-gated so panning at country
+# scale doesn't ask the DB for tens of thousands of polygons; capped
+# at the per-response constant below so even a state-sized request
+# stays within the gunicorn worker's memory + timeout budget.
+_PUBLIC_LANDS_MIN_ZOOM = 8
+_PUBLIC_LANDS_MAX_FEATURES = 500
+
+
+@app.get("/api/public_lands")
+async def api_public_lands(
+    request: Request,
+    bbox: str = Query(..., description="west,south,east,north"),
+    zoom: int = Query(default=10, ge=0, le=22),
+):
+    """Public-land parcels overlapping the viewport. Pure DB read,
+    bbox-filtered via the GiST `bbox &&` operator on Postgres. Returns
+    a GeoJSON FeatureCollection with canonical per-parcel properties
+    (unit_name, manager_type, manager_name, designation, public_access,
+    state_nm). The client styles + renders by manager_type."""
+    w, s, e, n = _parse_bbox(bbox)
+    if zoom < _PUBLIC_LANDS_MIN_ZOOM:
+        return _cached_json(
+            request, {"type": "FeatureCollection", "features": []},
+            max_age=300)
+    rows = await asyncio.to_thread(
+        db.query_public_lands, w, s, e, n, _PUBLIC_LANDS_MAX_FEATURES)
+    features = [{
+        "type": "Feature",
+        "geometry": r["geometry"],
+        "properties": {
+            "unit_name": r["unit_name"],
+            "manager_type": r["manager_type"],
+            "manager_name": r["manager_name"],
+            "designation": r["designation"],
+            "public_access": r["public_access"],
+            "state_nm": r["state_nm"],
+        },
+    } for r in rows]
+    payload = {"type": "FeatureCollection", "features": features}
+    return _cached_json(request, payload, max_age=300)
 
 
 _REFRESH_TOKEN = os.environ.get("REFRESH_TOKEN", "")

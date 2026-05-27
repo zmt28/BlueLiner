@@ -21,6 +21,7 @@ so you can check conditions before you drive to the water.
 - **Trout stream overlay** -- statewide designated trout water (VA DWR / MD DNR, OBJECTID keyset-paginated for full coverage) as a toggleable layer, plus per-river spatial tagging
 - **Access points overlay** -- boat ramps, walk-in trails, fishing piers, parking, and wading-access spots as a toggleable layer. Type-coded markers; popup includes access tier (public / permit / fee), agency link, and freeform notes. Bundled baselines for MD / VA / WV / PA, with a documented contributor path to add more states + live state-DNR ArcGIS overlays
 - **Swappable base maps** -- Street (CARTO), Satellite (Esri World Imagery), and Topographic (USGS National Map) -- one segmented control in the filters popover, choice persists across sessions via localStorage
+- **Public-lands overlay (PAD-US 4.0)** -- every parcel in USGS GAP's Protected Areas Database, tinted by manager type (Federal / State / Tribal / Local / NGO / Private easement) and click-to-identify (unit name, managing agency, designation, access tier). Renders at zoom 8+; uncolored areas read as "either private or PAD-US doesn't know -- treat as private"
 - **Hatch guidance** -- "what's hatching now" per river, resolved to a sub-state hatch zone and the current month
 - **Stocking** -- well-known stocked / specially-managed waters (MD/VA/WV baseline + live VA DWR feed) surfaced in the river popup with species/season/agency link
 - **1-year flow trend** -- on-demand USGS daily-values sparkline per gauge in the river popup (served live, never stored)
@@ -156,6 +157,7 @@ schema and the validation step (`python scripts/validate_data.py`).
 | Trout-stream geometry | `data/trout/<STATE>.json` (optional) | Bundled-GeoJSON fallback when a state agency's live endpoint isn't reliable |
 | NHDPlusV2 VAA | `data/nhdplus/vaa.csv.gz` | NHD reach routing attributes (COMID, LevelPathID, gnis_name, ...). The file bundled in git is the **mid-Atlantic dev fallback** (HUC-02 + HUC-05, ~300 K rows, ~3 MB). The **national lower-48 build** (HUC-01 .. HUC-18, ~2.7 M rows, ~30 MB) lives on Cloudflare R2 and is downloaded at startup when `DATA_BASE_URL` is set. Loaded into Postgres once at first boot. Drives the LevelPathID-based flowline filter that keeps a tributary gauge's flowline from extending past the confluence onto the receiving river. Regenerate with `python scripts/build_nhdplus_vaa.py`. |
 | NHDPlus clickable streams | `data/nhdplus/clickable_streams.geojson.gz` | Per-stream geometry + trout class for stream-order ≥ 3 reaches and trout-water tributaries. Bundled mid-Atlantic dev fallback (~104 K features, ~6 MB) ↔ national lower-48 (~742 K features, ~49 MB) on R2 via `DATA_BASE_URL`. Loaded into Postgres once; served by viewport via the GiST `box` index. Regenerate with `python scripts/build_clickable_streams.py`. |
+| PAD-US public lands | `data/public_lands/public_lands.geojson.gz` | Every parcel in USGS GAP's Protected Areas Database (federal/state/tribal/local/NGO/private-easement) with canonical attrs (unit_name, manager_type, manager_name, designation, public_access, state_nm). National-only (~80-150 MB gzipped, ~400-700 K features); not bundled in git (~3 GB raw source). Hosted on R2 via `DATA_BASE_URL`; loaded into Postgres once; served by viewport via the same GiST `box` index pattern as clickable streams. Regenerate with `python scripts/build_public_lands.py` (~20-40 min). |
 
 River identity comes from NHDPlusV2's `LevelPathID` (topologically
 correct, language-agnostic) when the gauge's COMID is in the loaded
@@ -210,6 +212,7 @@ Each monitoring station is scored based on current readings:
 - `GET /api/river_geom?site_no=01581920` -- a single river's flowline geometry
 - `GET /api/trout?state=MD` -- designated trout water as GeoJSON (non-blocking; warms in the background)
 - `GET /api/access?state=MD` -- access points (ramps / walk-ins / piers / parking / wading) as GeoJSON; bundled baseline + state-DNR live overlay when configured
+- `GET /api/public_lands?bbox=west,south,east,north&zoom=10` -- PAD-US parcels overlapping the viewport (zoom-gated; capped at 500 features); pure Postgres read via GiST `bbox &&`
 - `GET /api/history?site_no=01581920` -- ~1 year of USGS daily values (served live, not stored)
 
 **Accounts (magic-link)**
