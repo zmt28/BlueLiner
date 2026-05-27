@@ -199,6 +199,14 @@ def emit_features(layer_name: str, gdb_path: str, out, written, stats):
     if gdf is None or gdf.empty:
         print(f"  empty layer, skipping")
         return written
+    # Reproject to WGS84 (EPSG:4326) -- PAD-US 4.0 ships in EPSG:5070
+    # (NAD83 / CONUS Albers, projected meters). Leaflet expects
+    # lon/lat in degrees; our DB bbox queries do too. Without this,
+    # min_lon/max_lon/etc. get written as continental-origin meters
+    # (e.g. -80888, 1033148) and nothing matches the viewport rect.
+    if gdf.crs and gdf.crs.to_epsg() != 4326:
+        print(f"  reprojecting {gdf.crs.to_string()} -> EPSG:4326 ...")
+        gdf = gdf.to_crs(epsg=4326)
     print(f"  {len(gdf):,} rows")
 
     n_layer = 0
