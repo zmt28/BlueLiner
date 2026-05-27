@@ -17,11 +17,16 @@ because that function commits exactly once at the very end -- which
 is the right semantic for a worker (all-or-nothing avoids partial
 loads being mistaken for complete) but fragile over a long
 residential connection. Instead, we inline the load with per-batch
-commits: each 2000-row batch is its own short transaction. If the
-SSL connection drops mid-load (residential NAT timeout, transient
-Render hiccup, anything), only the in-flight batch is lost and
-previous batches stay durable. You can re-run the script and it'll
-truncate + reload from the top.
+commits + automatic resume on connection drop:
+
+  - Each 2000-row batch is its own short transaction. Connection
+    drop loses at most one batch.
+  - On psycopg.OperationalError the script reconnects, re-counts
+    rows in public_lands, and skips the first N valid features in
+    the stream to pick up exactly where the previous attempt
+    committed. Up to MAX_ATTEMPTS reconnects per run.
+  - --resume re-uses the same logic for a deliberate re-run after
+    interruption: keep whatever's in the table, continue loading.
 
 Usage:
     # Get the External Connection string from Render: blueliner-db
@@ -35,11 +40,15 @@ Usage:
     python scripts/load_public_lands_to_postgres.py \\
         --geojson /path/to/public_lands.geojson.gz
 
-    # Skip the TRUNCATE confirmation prompt
+    # If the table has rows and you want a clean reload:
     python scripts/load_public_lands_to_postgres.py --yes
 
-Takes ~5-15 minutes over residential upload. Safe to interrupt + re-
-run: the script TRUNCATEs any partial state before starting.
+    # If the table has rows and you want to continue where you stopped:
+    python scripts/load_public_lands_to_postgres.py --resume
+
+Total wall clock 5-15 min over residential upload. SSL drops on the
+256 MB Postgres tier are common (backend OOM-killed by fat polygons)
+but the auto-retry handles them transparently.
 """
 
 import argparse
@@ -53,6 +62,10 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DEFAULT_GEOJSON = os.path.join(
     ROOT, "data", "public_lands", "public_lands.geojson.gz")
 BATCH_SIZE = 2000
+MAX_ATTEMPTS = 20          # SSL drops on the 256 MB tier are bursty; need
+                           # generous headroom so a multi-drop run still
+                           # finishes without operator intervention.
+RETRY_DELAY_S = 3
 
 
 def main() -> int:
@@ -63,7 +76,11 @@ def main() -> int:
                    help=f"Path to gzipped geojson "
                         f"(default: {DEFAULT_GEOJSON})")
     p.add_argument("--yes", action="store_true",
-                   help="Skip the TRUNCATE confirmation prompt.")
+                   help="If table has rows, TRUNCATE without prompting.")
+    p.add_argument("--resume", action="store_true",
+                   help="If table has rows, keep them and resume loading "
+                        "from where the previous attempt stopped. Pairs "
+                        "with the script's auto-retry on connection drop.")
     args = p.parse_args()
 
     if not os.environ.get("DATABASE_URL", "").startswith(
@@ -83,6 +100,7 @@ def main() -> int:
     sys.path.insert(0, ROOT)
     import db
     import ijson
+    import psycopg          # for OperationalError; db.py also imports this
 
     if not db._IS_PG:
         print("ERROR: db module did not detect a Postgres URL.",
@@ -106,47 +124,119 @@ def main() -> int:
     # timeout, it'll succeed on the next deploy when autovacuum isn't
     # active.
 
-    # Check current state + truncate if any rows present. The whole point of
-    # this script is a clean one-shot reload; partial state from a previous
-    # failed run would otherwise survive the idempotency check in
-    # bulk_load_public_lands (which we're bypassing anyway).
-    with db._conn() as conn:
-        cur = conn.cursor()
-        cur.execute("SELECT COUNT(*) FROM public_lands")
-        existing = cur.fetchone()
-        existing_n = existing["count"] if isinstance(existing, dict) \
-            else existing[0]
+    # Inspect current state. Three possible starting states:
+    #   - empty table -> fresh load
+    #   - partial rows from a previous interrupted run + --resume -> continue
+    #     where we left off (skip the first N valid features in the stream)
+    #   - partial rows + --yes (or interactive 'y') -> TRUNCATE first, then
+    #     fresh load
+    # Default with rows present + no flag = prompt the user.
+    existing_n = _count_rows(db)
     if existing_n:
         print(f"[load] public_lands has {existing_n:,} existing rows.")
-        if not args.yes:
-            ans = input("  TRUNCATE and reload? [y/N] ").strip().lower()
-            if ans != "y":
+        if args.resume:
+            print(f"[load] --resume given; will skip the first {existing_n:,} "
+                  f"valid features and continue from there.")
+        elif args.yes:
+            _truncate(db)
+            print(f"[load] truncated.")
+            existing_n = 0
+        else:
+            ans = input("  [t]runcate and reload, [r]esume, or "
+                        "[a]bort? ").strip().lower()
+            if ans in ("t", "truncate"):
+                _truncate(db)
+                existing_n = 0
+            elif ans in ("r", "resume"):
+                pass
+            else:
                 print("[load] aborted.")
                 return 1
-        with db._conn() as conn:
-            cur = conn.cursor()
-            cur.execute("TRUNCATE public_lands")
-            conn.commit()
-        print(f"[load] truncated.")
 
     placeholders = ",".join("%s" for _ in db._PL_COLS)
     insert_sql = (f"INSERT INTO public_lands ({','.join(db._PL_COLS)}) "
                   f"VALUES ({placeholders})")
 
-    batch: list[tuple] = []
-    total = 0
-    started = time.time()
-    last_report = started
-
     print(f"[load] streaming features in batches of {BATCH_SIZE:,} "
-          f"(commit per batch -- robust to connection drops) ...")
+          f"(commit per batch + auto-resume on connection drop) ...")
+    started = time.time()
+    attempt = 0
+    skip_n = existing_n      # features-already-loaded counter; grows across
+                             # attempts if we lose the connection mid-load.
 
-    # One long-lived connection, but with frequent commits so each
-    # batch is durable on its own. If the SSL drops mid-load only the
-    # in-flight batch is lost.
+    # Retry-on-drop loop: each attempt opens a fresh connection, skips
+    # features already durable in the DB (committed by earlier attempts),
+    # and resumes loading from there. Connection drops (Postgres backend
+    # OOM-killed by a fat polygon on the 256 MB tier, residential NAT
+    # timeout, etc.) become a few-second pause instead of a full restart.
+    while True:
+        attempt += 1
+        try:
+            inserted_this_attempt = _do_load(
+                db, ijson, args.geojson, insert_sql, skip_n, started)
+            skip_n += inserted_this_attempt
+            break               # full stream consumed, we're done
+        except psycopg.OperationalError as exc:
+            # Refresh skip_n from the DB rather than trusting the in-memory
+            # counter: the last batch may have been committed even if the
+            # client saw the connection drop afterwards.
+            try:
+                skip_n = _count_rows(db)
+            except Exception:
+                pass            # if even the count fails, keep the in-memory value
+            print(f"\n[retry] connection dropped after {skip_n:,} rows: "
+                  f"{type(exc).__name__}: {str(exc)[:120]}")
+            if attempt >= MAX_ATTEMPTS:
+                print(f"[error] giving up after {MAX_ATTEMPTS} attempts.",
+                      file=sys.stderr)
+                print(f"[error] {skip_n:,} rows are durable in the DB; "
+                      f"re-run with --resume to continue.", file=sys.stderr)
+                return 1
+            print(f"[retry] reconnecting in {RETRY_DELAY_S}s "
+                  f"(attempt {attempt + 1}/{MAX_ATTEMPTS}) ...")
+            time.sleep(RETRY_DELAY_S)
+
+    elapsed = time.time() - started
+    print(f"\n[done] {skip_n:,} rows in public_lands "
+          f"({elapsed/60:.1f} min total, {attempt} attempt"
+          f"{'s' if attempt != 1 else ''})")
+    print(f"[done] now run `VACUUM ANALYZE public_lands;` in TablePlus "
+          f"so the planner picks up the GiST index immediately.")
+    return 0
+
+
+def _count_rows(db) -> int:
+    """Current row count of public_lands. Helper because we look at it in
+    several places (initial check, retry-resume, final report)."""
     with db._conn() as conn:
         cur = conn.cursor()
-        with gzip.open(args.geojson, "rb") as f:
+        cur.execute("SELECT COUNT(*) FROM public_lands")
+        row = cur.fetchone()
+    return row["count"] if isinstance(row, dict) else row[0]
+
+
+def _truncate(db) -> None:
+    with db._conn() as conn:
+        cur = conn.cursor()
+        cur.execute("TRUNCATE public_lands")
+        conn.commit()
+
+
+def _do_load(db, ijson, geojson_path: str, insert_sql: str,
+             skip_n: int, started: float) -> int:
+    """Stream the geojson and insert features past index `skip_n`. Commits
+    per batch. Returns the number of rows inserted on this attempt.
+    Raises psycopg.OperationalError on connection drop (caught by main's
+    retry loop)."""
+    import gzip
+    valid_count = 0          # valid features SEEN so far (inserted or skipped)
+    inserted = 0             # rows actually committed on this attempt
+    batch: list[tuple] = []
+    last_report = time.time()
+
+    with db._conn() as conn:
+        cur = conn.cursor()
+        with gzip.open(geojson_path, "rb") as f:
             for feat in ijson.items(f, "features.item"):
                 geom = feat.get("geometry") or {}
                 coords = geom.get("coordinates")
@@ -158,6 +248,9 @@ def main() -> int:
                     w, s, e, n = db._polygon_bbox(coords, gtype)
                 except (ValueError, TypeError, IndexError):
                     continue
+                valid_count += 1
+                if valid_count <= skip_n:
+                    continue   # already loaded in a previous attempt
                 batch.append((
                     str(p_in["unit_name"]) if p_in.get("unit_name") else None,
                     str(p_in["manager_type"]) if p_in.get("manager_type") else None,
@@ -171,11 +264,12 @@ def main() -> int:
                 if len(batch) >= BATCH_SIZE:
                     cur.executemany(insert_sql, batch)
                     conn.commit()
-                    total += len(batch)
+                    inserted += len(batch)
                     batch.clear()
                     now = time.time()
                     if now - last_report >= 5:
-                        rate = total / max(now - started, 0.001)
+                        total = skip_n + inserted
+                        rate = inserted / max(now - started, 0.001)
                         print(f"  {total:>7,} rows  "
                               f"({rate:.0f} rows/s, "
                               f"{(now - started)/60:.1f} min elapsed)")
@@ -183,15 +277,9 @@ def main() -> int:
         if batch:
             cur.executemany(insert_sql, batch)
             conn.commit()
-            total += len(batch)
+            inserted += len(batch)
             batch.clear()
-
-    elapsed = time.time() - started
-    print(f"\n[done] inserted {total:,} rows in {elapsed/60:.1f} min "
-          f"({total / max(elapsed, 0.001):.0f} rows/s avg)")
-    print(f"[done] now run `VACUUM ANALYZE public_lands;` in TablePlus "
-          f"so the planner picks up the GiST index immediately.")
-    return 0
+    return inserted
 
 
 if __name__ == "__main__":
