@@ -204,6 +204,25 @@ downloader, so the build script cannot fetch it programmatically** --
 the operator downloads the ZIP once by hand, the script reads from
 disk.
 
+The build script doesn't ingest PAD-US verbatim. Two angler-driven
+filters are applied at build time:
+
+- `Pub_Access IN ('OA', 'RA')` only -- Open Access and Restricted.
+  UK (Unknown) and XA (Closed) parcels are dropped. Rendering
+  unknown-access lands as "public-ish" would send anglers to locked
+  gates; rendering closed-to-fishing refuges as public is similarly
+  misleading. The frontend keys its style off this same field (green
+  for OA, dashed yellow for RA).
+- Easement layer dropped entirely. Conservation easements on private
+  land restrict the owner's development rights, not the public's
+  access rights; ~95% are not legally fishable without permission.
+
+Interior holes smaller than ~30 acres are also stripped from each
+polygon (National Forest features carry hundreds of tiny private-
+inholding rings that dominate vertex count without being visually
+meaningful at app zoom). If a future PAD-US vintage exposes a finer-
+grained access taxonomy, revisit `KEEP_PUB_ACCESS` in the script.
+
 To roll a new PAD-US vintage (4.0 -> 4.1 -> ...):
 
 1. **Download the geodatabase ZIP** (one-time, in a browser):
