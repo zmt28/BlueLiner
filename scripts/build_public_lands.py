@@ -59,19 +59,20 @@ SCIENCEBASE_URL = (
 # falls in.
 SIMPLIFY_TOL = 0.0003
 
-# Layers inside the GDB we actually want. PAD-US's "Combined_Fee"
-# is the bulk of fee-simple public ownership; "Combined_Easement" is
+# Layers inside the GDB we actually want. PAD-US 4.0's "PADUS4_0Fee"
+# is the bulk of fee-simple public ownership; "PADUS4_0Easement" is
 # the conservation-easement-on-private-land slice. Skipping:
-#   - "Combined_Marine" (saltwater MPAs, irrelevant for stream fishing)
-#   - "Combined_Designation" (overlays the same land as Fee with extra
+#   - "PADUS4_0Marine" (saltwater MPAs, irrelevant for stream fishing)
+#   - "PADUS4_0Designation" (overlays the same land as Fee with extra
 #     wilderness/special-area designations; including it would
 #     double-render the polygon)
-#   - "Combined_Proclamation" (administrative boundaries, not parcels)
-# We match by substring on the layer name so PAD-US 4.1's "Fee" /
-# "Easement" rename (if it lands that way) doesn't require a code
-# change here.
-TARGET_LAYER_PATTERNS = ("Combined_Fee", "Combined_Easement")
-SKIP_LAYER_PATTERNS = ("Marine",)
+#   - "PADUS4_0Proclamation" (administrative boundaries, not parcels)
+#   - "PADUS4_0Combined_..." (the union-of-everything mega-layer --
+#     would double-render with Fee + Easement)
+# Match by substring so a PAD-US 4.1 rename like "PADUSFee" still
+# works without a code change.
+TARGET_LAYER_PATTERNS = ("PADUS4_0Fee", "PADUS4_0Easement")
+SKIP_LAYER_PATTERNS = ("Marine", "Combined", "Designation", "Proclamation")
 
 # PAD-US source field -> canonical client-facing field. Anything not
 # listed here is dropped -- saves ~30-40% of the output payload.
@@ -168,6 +169,16 @@ def main() -> int:
                    help=f"Output gzipped GeoJSON path "
                         f"(default: {DEFAULT_OUT_PATH})")
     args = p.parse_args()
+
+    # macOS's Archive Utility auto-extracts ZIPs by default, replacing
+    # the .zip with a same-named directory. If the .zip default path
+    # doesn't exist but the suffix-less folder does, transparently use
+    # that instead so the operator doesn't have to remember the flag.
+    if not os.path.exists(args.gdb_zip) and args.gdb_zip.endswith(".zip"):
+        alt = args.gdb_zip[:-4]
+        if os.path.exists(alt):
+            print(f"[input] using auto-extracted directory: {alt}")
+            args.gdb_zip = alt
 
     if not os.path.exists(args.gdb_zip):
         print(f"ERROR: PAD-US geodatabase not found at {args.gdb_zip}",
