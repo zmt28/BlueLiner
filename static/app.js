@@ -126,27 +126,24 @@ const ACCESS_TYPE_META = {
 };
 const accessLayer = L.layerGroup();
 
-// Public-lands parcels (PAD-US). Vector polygons tinted by manager
-// type; click for unit / agency / designation / access tier. Loaded
+// Public-lands parcels (PAD-US). Vector polygons keyed off the
+// `public_access` tier rather than the manager type -- the angler's
+// primary question is "can I walk in here?", not "is this BLM or
+// USFS?" Two visual tiers: green for OA (Open Access) and dashed
+// yellow for RA (Restricted -- permit, walk-in, seasonal). UK/XA
+// features are filtered out at build time, not rendered. Loaded
 // per-viewport via /api/public_lands?bbox= -- same lazy bbox-bound
-// pattern as clickable streams. Color choices are intentionally
-// muted (15-30% fill) so the overlay never fights the stream network
-// or gauge markers stacked above it.
+// pattern as clickable streams.
 const PUBLIC_LANDS_STYLE = {
-  Federal: { fillColor: "#2d6a4f", color: "#1b4332", fillOpacity: 0.30 },
-  State:   { fillColor: "#1e6fd9", color: "#1e40af", fillOpacity: 0.22 },
-  Tribal:  { fillColor: "#92400e", color: "#7c2d12", fillOpacity: 0.28 },
-  Local:   { fillColor: "#a16207", color: "#854d0e", fillOpacity: 0.22 },
-  NGO:     { fillColor: "#9333ea", color: "#6b21a8", fillOpacity: 0.22 },
-  Private: { fillColor: "#94a3b8", color: "#64748b", fillOpacity: 0.18 },
+  OA: { fillColor: "#2d6a4f", color: "#1b4332", fillOpacity: 0.28,
+        weight: 0.8, dashArray: null },
+  RA: { fillColor: "#eab308", color: "#854d0e", fillOpacity: 0.22,
+        weight: 1.0, dashArray: "4,4" },
 };
-const PUBLIC_LANDS_DEFAULT_STYLE = {
-  fillColor: "#94a3b8", color: "#64748b", fillOpacity: 0.18,
-};
+const PUBLIC_LANDS_DEFAULT_STYLE = PUBLIC_LANDS_STYLE.OA;
 function publicLandsStyle(feature) {
-  const mgr = (feature && feature.properties && feature.properties.manager_type) || "";
-  const base = PUBLIC_LANDS_STYLE[mgr] || PUBLIC_LANDS_DEFAULT_STYLE;
-  return Object.assign({ weight: 0.8 }, base);
+  const tier = (feature && feature.properties && feature.properties.public_access) || "OA";
+  return PUBLIC_LANDS_STYLE[tier] || PUBLIC_LANDS_DEFAULT_STYLE;
 }
 // Access-tier chip labels for the popup. PAD-US codes are terse;
 // expand to legible strings + map to chip CSS variants.

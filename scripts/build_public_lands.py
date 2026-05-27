@@ -57,23 +57,26 @@ SCIENCEBASE_URL = (
 # Geometry simplification + precision knobs. PAD-US polygons have far
 # higher per-feature vertex counts than NHDPlus lines -- some
 # MultiPolygons have 100+ rings (National Forest sub-boundaries,
-# scattered BLM allotments). The streams value of 0.0003 produced a
-# 1+ GB output; 0.003 still produced 803 MB on 632K features (~80
-# vertices/feature average). At 0.008 (~880 m at mid-latitudes) the
-# vertex count drops another ~3x while parcel shapes remain clearly
-# legible at the app's intended zoom range (country/state-scale
-# "which national forest is this" rather than parcel-edge precision).
-# COORD_PRECISION trims float strings in the GeoJSON output further;
-# 4 decimals (~11 m) is well below the simplify tolerance so no real
-# information is lost.
-SIMPLIFY_TOL = 0.008
+# scattered BLM allotments). Iterating on a national build: streams'
+# 0.0003 produced 1+ GB; 0.003 still produced 803 MB; 0.008 plus
+# Easement-layer drop got to 559 MB. The remaining bulk is "Swiss
+# cheese" private inholdings inside National Forests -- hundreds of
+# tiny interior rings per feature, each at 3-10 vertices that
+# simplify can't reduce further (DP won't go below 3 verts/ring).
+# At 0.015 (~1.7 km at mid-latitudes) the exterior boundary plus the
+# small-hole filter below compound to ~5-10x further reduction.
+# Polygon shapes remain clearly legible at zoom 8-10 where the layer
+# answers "which national forest is this"; at zoom 13+ you'll see
+# light edge-blockiness, which is the right trade since at that zoom
+# the angler is reading the stream geometry, not the forest boundary.
+SIMPLIFY_TOL = 0.015
 COORD_PRECISION = 4         # ~11 m -- below SIMPLIFY_TOL so lossless wrt it
-# Drop parcels smaller than this many sq-degrees. 1e-5 ≈ 120,000 m² ≈
-# ~30 acres at mid-latitudes. PAD-US has hundreds of thousands of tiny
-# urban-infill parks, easement scraps, and BLM micro-parcels that
-# aren't fishing-relevant at country/state scale and dominate row
-# count for marginal visual coverage. (Earlier 1e-6 threshold dropped
-# essentially nothing because PAD-US units are rarely sub-3-acre.)
+# Drop parcels (and interior holes) smaller than this many sq-degrees.
+# 1e-5 ≈ 120,000 m² ≈ ~30 acres at mid-latitudes. PAD-US units
+# themselves are almost never sub-3-acre, but every National Forest
+# has hundreds of small private-inholding interior rings that
+# dominate vertex count without being visually meaningful at app
+# zoom. Applied symmetrically to exterior parcels and interior holes.
 MIN_AREA_DEG2 = 1e-5
 
 # Layers inside the GDB we actually want. PAD-US 4.0's "PADUS4_0Fee"
@@ -102,6 +105,16 @@ FIELD_MAP = {
     "State_Nm":    "state_nm",
 }
 
+# PAD-US Pub_Access codes we keep. OA = Open Access (walk in, no
+# permission needed); RA = Restricted Access (permit / seasonal /
+# walk-in only). UK = Unknown is dropped because rendering
+# guess-it's-public over private ranches sends anglers to locked
+# gates; XA = Closed is dropped because there's nothing actionable on
+# a fishing map about "definitely closed" parcels (the user assumes
+# private/closed for anything uncolored anyway). The frontend keys
+# its style off this field -- green for OA, dashed yellow for RA.
+KEEP_PUB_ACCESS = {"OA", "RA"}
+
 
 def select_layers(gdb_path: str) -> list[str]:
     """Pick the GDB layers we want to ingest, matching by substring so
@@ -125,6 +138,27 @@ def select_layers(gdb_path: str) -> list[str]:
             f"PAD-US may have renamed its layers; update "
             f"TARGET_LAYER_PATTERNS in this script.")
     return chosen
+
+
+def _drop_small_holes(g, min_area: float = MIN_AREA_DEG2):
+    """Strip interior rings (holes) smaller than `min_area` sq-degrees
+    from each Polygon part. National Forests carry hundreds of
+    tiny private-inholding holes that dominate vertex count without
+    being visible at app zoom levels -- a 30-acre hole is less than
+    one pixel at zoom 8, ~10 pixels at zoom 12, and the angler isn't
+    making a fishing decision based on those specks anyway."""
+    from shapely.geometry import Polygon, MultiPolygon
+    def clean_poly(p):
+        kept = [r for r in p.interiors
+                if Polygon(r).area >= min_area]
+        if len(kept) == len(p.interiors):
+            return p
+        return Polygon(p.exterior, kept)
+    if g.geom_type == "Polygon":
+        return clean_poly(g)
+    if g.geom_type == "MultiPolygon":
+        return MultiPolygon([clean_poly(p) for p in g.geoms])
+    return g
 
 
 def _round_coords(geom: dict, precision: int = COORD_PRECISION) -> dict:
@@ -170,6 +204,12 @@ def emit_features(layer_name: str, gdb_path: str, out, written, stats):
     n_layer = 0
     for raw in gdf.iterfeatures():
         props_in = raw.get("properties") or {}
+        # Cheap filter first: Pub_Access decides whether a parcel even
+        # belongs in the angler-facing layer. Filtering before the
+        # shapely work skips ~30-40% of features on the expensive path.
+        if props_in.get("Pub_Access") not in KEEP_PUB_ACCESS:
+            stats["dropped_access"] += 1
+            continue
         props_out = {client: props_in.get(src)
                      for src, client in FIELD_MAP.items()}
         if not props_out.get("manager_type"):
@@ -188,6 +228,7 @@ def emit_features(layer_name: str, gdb_path: str, out, written, stats):
             if g.is_empty:
                 stats["dropped_empty"] += 1
                 continue
+            g = _drop_small_holes(g)
             if g.area < MIN_AREA_DEG2:
                 stats["dropped_tiny"] += 1
                 continue
@@ -282,9 +323,9 @@ def main() -> int:
         print(f"[layers] {layers}")
 
         written = {"any": False, "total": 0}
-        stats = {"dropped_no_mgr": 0, "dropped_no_geom": 0,
-                 "dropped_empty": 0, "dropped_tiny": 0,
-                 "dropped_error": 0}
+        stats = {"dropped_access": 0, "dropped_no_mgr": 0,
+                 "dropped_no_geom": 0, "dropped_empty": 0,
+                 "dropped_tiny": 0, "dropped_error": 0}
         with gzip.open(args.out, "wt", encoding="utf-8") as out:
             out.write('{"type":"FeatureCollection","features":[')
             for layer in layers:
@@ -296,10 +337,11 @@ def main() -> int:
     print(f"\n[done] {written['total']:,} parcels -> {args.out} "
           f"({size_mb:.1f} MB gz)")
     if dropped_total:
-        print(f"       dropped {dropped_total:,} (tiny: "
-              f"{stats['dropped_tiny']:,}, no manager: "
-              f"{stats['dropped_no_mgr']:,}, empty/error: "
-              f"{stats['dropped_empty'] + stats['dropped_error']:,})")
+        print(f"       dropped {dropped_total:,} "
+              f"(access UK/XA: {stats['dropped_access']:,}, "
+              f"tiny: {stats['dropped_tiny']:,}, "
+              f"no manager: {stats['dropped_no_mgr']:,}, "
+              f"empty/error: {stats['dropped_empty'] + stats['dropped_error']:,})")
     return 0
 
 
