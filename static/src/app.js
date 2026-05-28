@@ -153,221 +153,33 @@ function wireCatch(root, river) {
     slot.appendChild(a);
   }
 }
+// Bridges for river-panel.ts's openRiverPanel(), which calls these
+// to wire the gauge-trend buttons + the catch-log CTA inside the
+// freshly-injected panel body. Future PRs that fully extract these
+// (wire-trend.ts / catches.ts) drop the window assignments.
+window.wireTrend = wireTrend;
+window.wireCatch = wireCatch;
 
-// -- River detail panel (drawer / bottom sheet) ----------------------
-
-let _panelHideTimer = null;
-let _selectedRiver = null;        // { layer, base } for highlight restore
-let _lastPanelOpenTs = 0;
-
-// refreshIcons() extracted to static/src/util.ts in PR B1c.
+// -- River detail panel -- extracted to static/src/river-panel.ts +
+// static/src/snap-sheet.ts in PR B1f. Re-exposed via window so the
+// rivers / streams / lines code throughout this file can still call
+// openRiverPanel / closeRiverPanel / highlightRiver / etc. by bare
+// name. The ungauged-stream card path (onStreamClick further down)
+// uses prepareRiverPanel + commitRiverPanelOpen to share the panel-
+// opening primitives without duplicating timer + scroll + animation
+// logic. PR B1g (streams.ts) moves onStreamClick out of here and
+// can drop the prepareRiverPanel / commitRiverPanelOpen window
+// indirection in favor of direct ES imports.
 const refreshIcons = window.refreshIcons;
-
-function openRiverPanel(river, layer, baseStyle) {
-  const panel = document.getElementById("river-panel");
-  const body = document.getElementById("river-panel-body");
-  if (!panel || !body) return;
-  clearTimeout(_panelHideTimer);
-  body.innerHTML = river.popup_html || "";
-  body.scrollTop = 0;
-  panel.hidden = false;
-  // Open to peek on phone-sized viewports so the highlighted river
-  // stays visible (TroutRoutes-style). Desktop keeps the side-drawer
-  // behavior; the snap classes are scoped to a mobile media query so
-  // they're inert on wider screens.
-  const isMobile = window.matchMedia("(max-width: 700px)").matches;
-  panel.classList.remove("peek", "full");
-  requestAnimationFrame(() => {
-    panel.classList.add("open");
-    panel.classList.add(isMobile ? "peek" : "full");
-  });
-  _lastPanelOpenTs = Date.now();
-  wireTrend(body);
-  wireCatch(body, river);
-  autoLoadFlowChart(body);
-  highlightRiver(layer, baseStyle);
-  refreshIcons();
-}
-
-function closeRiverPanel() {
-  const panel = document.getElementById("river-panel");
-  if (!panel || panel.hidden) return;
-  panel.classList.remove("open", "peek", "full");
-  _panelHideTimer = setTimeout(() => { panel.hidden = true; }, 240);
-  clearRiverHighlight();
-  clearStreamHighlight();
-}
-
-// Snap-sheet drag + tap handling on mobile. The grip is the only
-// gesture surface; dragging it from peek up snaps to full, from full
-// down snaps to peek, and dragging past a threshold below peek closes
-// the panel. Tapping anywhere in the panel body (that isn't a button
-// or other control) while at peek promotes to full so users can
-// open the full sheet without precisely hitting the 5px grip.
-// Shared snap-sheet wiring for bottom-sheet panels on mobile. Used by
-// the river-detail panel and the unified controls panel.
-//
-// Handlers attached:
-//   - pointer drag on the grip: follow finger, snap to peek/full on
-//     release, drag-past-threshold dismisses (calls opts.onClose)
-//   - tap on the body (not on a control) at peek: expand to full
-//   - swipe on the body at peek: up -> full, down -> close
-//   - tap on a tab label at peek: expand to full (if tabSelector given)
-//
-// All handlers no-op on desktop (the matchMedia gate); the panel's
-// desktop CSS handles its own positioning.
-function wireSnapSheet(panel, opts) {
-  if (!panel) return null;
-  const card = panel.querySelector(opts.cardSelector);
-  const grip = panel.querySelector(opts.gripSelector);
-  const body = panel.querySelector(opts.bodySelector);
-  if (!card || !grip || !body) return null;
-  const onClose = opts.onClose;
-  const tabSelector = opts.tabSelector || null;
-
-  let drag = null;
-  const CLOSE_THRESHOLD_PX = 110;
-  const SWIPE_THRESHOLD = 36;
-
-  function cardHeight() { return card.getBoundingClientRect().height; }
-  function isMobile() { return window.matchMedia("(max-width: 700px)").matches; }
-  function setSnap(state) {
-    panel.classList.remove("peek", "full");
-    panel.classList.add(state);
-  }
-
-  function onDown(e) {
-    if (!isMobile()) return;
-    drag = {
-      startY: e.clientY,
-      lastY: e.clientY,
-      // 62% translate at peek matches the CSS; full is 0.
-      baseTranslate: panel.classList.contains("peek") ? 0.62 : 0,
-    };
-    card.classList.add("dragging");
-    grip.setPointerCapture && grip.setPointerCapture(e.pointerId);
-  }
-  function onMove(e) {
-    if (!drag) return;
-    const dy = e.clientY - drag.startY;
-    drag.lastY = e.clientY;
-    const h = cardHeight();
-    let px = drag.baseTranslate * h + dy;
-    if (px < 0) px = 0;
-    card.style.transform = `translateY(${px}px)`;
-  }
-  function onUp() {
-    if (!drag) return;
-    const dy = drag.lastY - drag.startY;
-    const startedAtPeek = drag.baseTranslate > 0;
-    card.style.transform = "";
-    card.classList.remove("dragging");
-    drag = null;
-    if (startedAtPeek && dy > CLOSE_THRESHOLD_PX) { onClose(); return; }
-    if (!startedAtPeek && dy > CLOSE_THRESHOLD_PX * 1.4) { setSnap("peek"); return; }
-    if (dy < -30) setSnap("full");
-    else if (dy > 30) setSnap("peek");
-    else setSnap(startedAtPeek ? "full" : "peek");
-  }
-  grip.addEventListener("pointerdown", onDown);
-  grip.addEventListener("pointermove", onMove);
-  grip.addEventListener("pointerup", onUp);
-  grip.addEventListener("pointercancel", onUp);
-
-  body.addEventListener("click", (e) => {
-    if (!isMobile()) return;
-    if (!panel.classList.contains("peek")) return;
-    if (e.target.closest("button, a, label, input, summary, select")) return;
-    setSnap("full");
-  });
-
-  let bodyDrag = null;
-  body.addEventListener("pointerdown", (e) => {
-    if (!isMobile()) return;
-    if (!panel.classList.contains("peek")) return;
-    if (e.target.closest("button, a, label, input, summary, select")) return;
-    bodyDrag = { startY: e.clientY };
-  });
-  body.addEventListener("pointermove", (e) => {
-    if (!bodyDrag) return;
-    bodyDrag.lastY = e.clientY;
-  });
-  body.addEventListener("pointerup", () => {
-    if (!bodyDrag) return;
-    const dy = (bodyDrag.lastY || bodyDrag.startY) - bodyDrag.startY;
-    bodyDrag = null;
-    if (Math.abs(dy) < SWIPE_THRESHOLD) return;
-    if (dy < 0) setSnap("full");
-    else onClose();
-  });
-  body.addEventListener("pointercancel", () => { bodyDrag = null; });
-
-  if (tabSelector) {
-    body.addEventListener("click", (e) => {
-      if (!isMobile()) return;
-      const tab = e.target.closest(tabSelector);
-      if (!tab) return;
-      if (panel.classList.contains("peek")) setSnap("full");
-    });
-  }
-
-  return { setSnap };
-}
-
-// Wire the river panel's snap-sheet handlers.
-wireSnapSheet(document.getElementById("river-panel"), {
-  cardSelector: ".river-panel-card",
-  gripSelector: ".river-panel-grip",
-  bodySelector: "#river-panel-body",
-  tabSelector: ".bl-tab",
-  onClose: closeRiverPanel,
-});
-
-async function autoLoadFlowChart(root) {
-  const box = root.querySelector(".bl-flow-chart[data-site]");
-  if (!box || box.dataset.loaded) return;
-  box.dataset.loaded = "1";
-  const site = box.getAttribute("data-site");
-  box.innerHTML = '<div class="bl-trend-msg">Loading flow chart&hellip;</div>';
-  try {
-    const d = await fetch(
-      `/api/history?site_no=${encodeURIComponent(site)}`
-    ).then((r) => r.json());
-    box.innerHTML = sparkline(d.series);
-    wireSparkHover(box);
-  } catch (_) {
-    box.innerHTML = '<div class="bl-trend-msg">Flow chart unavailable.</div>';
-  }
-}
-
-function highlightRiver(layer, baseStyle) {
-  clearRiverHighlight();
-  if (!layer || !layer.setStyle) return;
-  _selectedRiver = { layer, base: baseStyle || null };
-  layer.setStyle({ weight: 8, opacity: 0.95 });
-}
-
-function clearRiverHighlight() {
-  if (_selectedRiver && _selectedRiver.layer.setStyle && _selectedRiver.base) {
-    _selectedRiver.layer.setStyle(_selectedRiver.base);
-  }
-  _selectedRiver = null;
-}
-
-function wireRiverPanel() {
-  const panel = document.getElementById("river-panel");
-  if (!panel) return;
-  panel.querySelectorAll("[data-close]").forEach((el) =>
-    el.addEventListener("click", closeRiverPanel));
-  document.addEventListener("keydown", (e) => {
-    if (e.key === "Escape") closeRiverPanel();
-  });
-  // Clicking empty map closes the panel. Guarded so the same click that
-  // opened it (via a layer) doesn't immediately close it.
-  map.on("click", () => {
-    if (Date.now() - _lastPanelOpenTs > 300) closeRiverPanel();
-  });
-}
+const openRiverPanel = window.openRiverPanel;
+const closeRiverPanel = window.closeRiverPanel;
+const prepareRiverPanel = window.prepareRiverPanel;
+const commitRiverPanelOpen = window.commitRiverPanelOpen;
+const highlightRiver = window.highlightRiver;
+const clearRiverHighlight = window.clearRiverHighlight;
+const autoLoadFlowChart = window.autoLoadFlowChart;
+const wireRiverPanel = window.wireRiverPanel;
+const wireSnapSheet = window.wireSnapSheet;
 
 // -- Clickable-stream network (Phase B) ------------------------------
 
@@ -509,6 +321,10 @@ function clearStreamHighlight() {
   });
   _selStreamKey = null;
 }
+// Bridge for river-panel.ts's closeRiverPanel(), which clears both
+// highlights. Window assignment lives where the function is defined.
+// PR B1g moves clickable-streams into its own module + drops this.
+window.clearStreamHighlight = clearStreamHighlight;
 
 function _normName(s) { return (s || "").trim().toLowerCase(); }
 
@@ -559,9 +375,9 @@ function onStreamClick(p, latlng) {
   // whole river behaves as one thing regardless of where you click.
   const gauged = _gaugedRiverFor(p, latlng);
   if (gauged) { openRiverPanel(gauged, null, null); return; }
-  const panel = document.getElementById("river-panel");
-  const body = document.getElementById("river-panel-body");
-  clearTimeout(_panelHideTimer);
+  const got = prepareRiverPanel();
+  if (!got) return;
+  const { panel, body } = got;
   const cls = p.trout_class;
   const label = STREAM_CLASS_LABEL[cls] || "No trout designation";
   body.innerHTML =
@@ -581,10 +397,7 @@ function onStreamClick(p, latlng) {
     `<details class="bl-section"><summary>Conditions</summary>` +
     `<div class="bl-section-body">No gauge on this reach. Nearest downstream gauge could provide context.</div></details>` +
     `</div></div>`;
-  body.scrollTop = 0;
-  panel.hidden = false;
-  requestAnimationFrame(() => panel.classList.add("open"));
-  _lastPanelOpenTs = Date.now();
+  commitRiverPanelOpen(panel, body, "open");
   // Catch CTA: the clicked point is a reasonable catch location for an
   // ungauged stream (no representative gauge to attach to).
   wireCatch(body, {
