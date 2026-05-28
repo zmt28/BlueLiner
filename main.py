@@ -1195,7 +1195,18 @@ async def get_streams(state: str = Query(default="MD", description="Two-letter s
 
 @app.get("/map")
 async def map_shell():
-    """Serves the static client shell; state/filters are resolved client-side."""
+    """Serves the static client shell; state/filters are resolved client-side.
+
+    When the Vite production build artifact exists at
+    `static/dist/index.html`, serve that (the version with hashed CSS/JS
+    asset references). Falls back to the source `static/index.html` when
+    no build has been run -- the dev path, where Vite's dev server
+    serves the shell itself on :5173 and this route is only hit by
+    direct curls / health checks.
+    """
+    dist_index = os.path.join(STATIC_DIR, "dist", "index.html")
+    if os.path.exists(dist_index):
+        return FileResponse(dist_index)
     return FileResponse(os.path.join(STATIC_DIR, "index.html"))
 
 
