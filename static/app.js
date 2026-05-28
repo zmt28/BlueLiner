@@ -1,3 +1,13 @@
+// @ts-nocheck
+// `tsconfig.json` enables `checkJs` so types.d.ts and the (PR B) TS
+// modules get strict validation. This single-file legacy app.js opts
+// OUT for now -- it uses untyped document.getElementById /
+// querySelector in ~70 places, all of which would need per-line
+// JSDoc casts. PR B splits this file into typed TS modules where the
+// narrowing happens naturally via typed helpers (e.g.
+// `byId<HTMLInputElement>("...")`). Until then, the type contract
+// surface that matters (types.d.ts) is what `npm run typecheck`
+// validates, plus sw.js which IS @ts-check'd.
 "use strict";
 
 // code -> { name, center }, loaded from /api/states (states.py is the
