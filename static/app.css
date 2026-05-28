@@ -48,64 +48,112 @@ html, body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
 .ctrl-check input { cursor: pointer; }
 #drop-pin.active { background: #8e44ad; border-color: #8e44ad; }
 #controls { display: flex; align-items: center; gap: 10px; }
-#filters-toggle {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
+
+/* -- Unified controls panel: Layers / Filters / Legend in one tabbed sheet.
+   Desktop: top-right floating popover (~360px wide). Mobile: bottom-sheet
+   with snap states (peek / full) mirroring the river-panel UX. Three
+   header buttons (#ctrl-layers, #ctrl-filters, #ctrl-legend) open this
+   panel directly to the matching tab. -- */
+.controls-panel {
+    position: fixed;
+    inset: 0;
+    z-index: 1100;
+    pointer-events: none;
 }
-#filters-toggle .filters-toggle-icon { font-size: 14px; line-height: 1; }
-#filters-toggle.active {
+.controls-panel[hidden] { display: none; }
+.controls-panel-backdrop {
+    position: absolute;
+    inset: 0;
+    background: rgba(15, 23, 42, 0.0);
+    transition: background 0.2s ease;
+    pointer-events: none;
+}
+.controls-panel-card {
+    position: absolute;
+    top: calc(60px + env(safe-area-inset-top));
+    right: 12px;
+    width: 360px;
+    max-width: calc(100vw - 24px);
+    max-height: calc(100vh - 80px - env(safe-area-inset-top));
+    background: #fff;
+    border-radius: 12px;
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.18);
+    pointer-events: auto;
+    display: flex;
+    flex-direction: column;
+    transform: translateY(-6px);
+    opacity: 0;
+    transition: transform 0.18s ease, opacity 0.18s ease;
+    padding-top: 8px;
+}
+.controls-panel.open .controls-panel-card {
+    transform: none;
+    opacity: 1;
+}
+.controls-panel-grip { display: none; }
+.controls-panel-close {
+    position: absolute;
+    top: 6px;
+    right: 8px;
+    width: 32px; height: 32px;
+    border: none; background: #f1f5f9; color: #475569;
+    border-radius: 50%;
+    font-size: 22px; line-height: 30px; text-align: center;
+    cursor: pointer; z-index: 2;
+}
+.controls-panel-close:hover { background: #e2e8f0; color: #1a1a2e; }
+#controls-panel-body {
+    flex: 1;
+    overflow-y: auto;
+    padding: 6px 16px 16px;
+    -webkit-overflow-scrolling: touch;
+}
+
+/* Tab bar inside the controls panel: pure-CSS toggle via hidden radio
+   inputs (same pattern as .bl-tabs on the river panel, scoped names to
+   avoid id collisions). */
+.ctrl-tabs > input[type="radio"] { position: absolute; opacity: 0; pointer-events: none; }
+.ctrl-tab-bar {
+    display: flex;
+    gap: 4px;
+    border-bottom: 1px solid #e5e7eb;
+    margin: 0 -16px 12px;
+    padding: 0 16px;
+    overflow-x: auto;
+}
+.ctrl-tab {
+    padding: 10px 16px;
+    font-size: 14px;
+    font-weight: 600;
+    color: #64748b;
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    white-space: nowrap;
+    transition: color 0.12s ease, border-color 0.12s ease;
+}
+.ctrl-tab:hover { color: #1a1a2e; }
+.ctrl-tab-panel { display: none; }
+#ctrl-tab-layers:checked  ~ .ctrl-tab-bar > label[for="ctrl-tab-layers"],
+#ctrl-tab-filters:checked ~ .ctrl-tab-bar > label[for="ctrl-tab-filters"],
+#ctrl-tab-legend:checked  ~ .ctrl-tab-bar > label[for="ctrl-tab-legend"] {
+    color: #1a1a2e;
+    border-bottom-color: #1a1a2e;
+}
+#ctrl-tab-layers:checked  ~ .ctrl-tab-panels > [data-tab="layers"],
+#ctrl-tab-filters:checked ~ .ctrl-tab-panels > [data-tab="filters"],
+#ctrl-tab-legend:checked  ~ .ctrl-tab-panels > [data-tab="legend"] {
+    display: block;
+}
+/* Header tab buttons: visually grouped, with `.active` highlighting the
+   open tab so the user can see which control the panel is currently
+   focused on. */
+.ctrl-tab-btn { display: inline-flex; align-items: center; gap: 6px; }
+.ctrl-tab-btn .ctrl-icon { font-size: 14px; line-height: 1; }
+.ctrl-tab-btn.active {
     background: #4fc3f7;
     color: #0b2233;
     border-color: #4fc3f7;
 }
-
-/* -- Unified filter popover (visibility + filters + color mode) -- */
-.filter-panel {
-    position: fixed;
-    top: calc(60px + env(safe-area-inset-top));
-    right: 12px;
-    width: 340px;
-    max-width: calc(100vw - 24px);
-    max-height: calc(100vh - 80px - env(safe-area-inset-top));
-    z-index: 1100;
-    overflow: auto;
-    border-radius: 12px;
-    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.18);
-    background: #fff;
-    transform: translateY(-6px);
-    opacity: 0;
-    transition: transform 0.18s ease, opacity 0.18s ease;
-    pointer-events: none;
-}
-.filter-panel.open {
-    transform: none;
-    opacity: 1;
-    pointer-events: auto;
-}
-.filter-panel[hidden] { display: none; }
-.filter-panel-card { padding: 14px 16px 16px; }
-.filter-panel-head {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    margin-bottom: 6px;
-}
-.filter-panel-title {
-    font-size: 16px;
-    font-weight: 700;
-    color: #1a1a2e;
-}
-.filter-panel-close {
-    background: none;
-    border: none;
-    font-size: 22px;
-    line-height: 1;
-    color: #64748b;
-    cursor: pointer;
-    padding: 2px 6px;
-}
-.filter-panel-close:hover { color: #1a1a2e; }
 .filter-section {
     border-top: 1px solid #e2e8f0;
     padding: 12px 0 4px;
@@ -200,85 +248,20 @@ html, body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
     left: 0;
     right: 0;
 }
-/* Map-legend control. Two pieces stacked: the legend body (a card
-   that's hidden when collapsed) and a persistent toggle button. DOM
-   order is body-then-button so the button sits at the bottom of the
-   container; since the container is bottom-anchored, expanding the
-   body grows the card UPWARD from the button. */
-.legend {
-    position: fixed;
-    bottom: calc(18px + env(safe-area-inset-bottom));
-    left: calc(18px + env(safe-area-inset-left));
-    z-index: 1001;
-    font-size: 13px;
-    display: flex;
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 10px;
-    pointer-events: none;                 /* let map clicks pass through the gap */
-}
-.legend > * { pointer-events: auto; }      /* but the body + button stay interactive */
-.legend-body {
-    background: rgba(255,255,255,0.97);
-    backdrop-filter: blur(8px);
-    border-radius: 12px;
-    box-shadow: 0 4px 20px rgba(0,0,0,0.18);
-    padding: 14px 18px;
-    max-width: 300px;
-    color: #1a1a2e;
-}
-.legend.collapsed .legend-body { display: none; }
-.legend-toggle {
-    background: #fff;
-    color: #1a1a2e;
-    border: 1px solid #d8dee6;
-    border-radius: 22px;
-    box-shadow: 0 3px 12px rgba(0,0,0,0.18);
-    padding: 8px 14px 8px 8px;
-    cursor: pointer;
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    font-size: 14px;
-    font-weight: 700;
-    line-height: 1;
-    transition: transform 0.08s ease, box-shadow 0.12s ease;
-}
-.legend-toggle:hover { box-shadow: 0 4px 16px rgba(0,0,0,0.22); }
-.legend-toggle:active { transform: scale(0.97); }
-.legend-toggle-icon {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 26px;
-    height: 26px;
-    border-radius: 50%;
-    background: #4fc3f7;
-    color: #0b2233;
-    font-family: Georgia, serif;          /* italic-i look readable as a key icon */
-    font-style: italic;
-    font-weight: 700;
-    font-size: 16px;
-}
-.legend-toggle-label { letter-spacing: 0.2px; }
-/* When the legend is expanded, hint that the button collapses it. */
-.legend:not(.collapsed) .legend-toggle-icon { background: #1a1a2e; color: #fff; }
-.legend-title {
-    font-weight: 700;
-    color: #1a1a2e;
-    margin-bottom: 8px;
-    font-size: 13px;
-}
+/* Legend rows. The bottom-left .legend container + toggle pill are
+   gone -- the rows now live inside the unified controls panel's
+   Legend tab. Only the per-row item + colored swatch styling stays. */
 .legend-item {
     display: flex;
     align-items: center;
     gap: 8px;
     margin-bottom: 4px;
     color: #444;
+    font-size: 13px;
 }
 .legend-dot {
-    width: 12px;
-    height: 12px;
+    width: 14px;
+    height: 14px;
     border-radius: 50%;
     flex-shrink: 0;
 }
@@ -392,7 +375,6 @@ html, body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
     border: none; border-radius: 6px; padding: 6px 10px;
     background: #fdedec; color: #c0392b; font-weight: 600; cursor: pointer;
 }
-.legend-body { display: block; }
 
 /* -- Accounts (Phase 1) -- */
 .account-menu {
@@ -1048,25 +1030,55 @@ html, body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
     /* On phones the filter popover takes the whole right edge. The
        narrow nav-only header stays inline (state, drop-pin, auth,
        filters) and wraps if needed. */
-    .filter-panel {
-        top: calc(54px + env(safe-area-inset-top));
-        right: 6px;
-        left: 6px;
-        width: auto;
-        max-width: none;
-    }
-    .filter-panel-card { padding: 12px 14px calc(16px + env(safe-area-inset-bottom)); }
     .filter-check, .filter-row { font-size: 16px; padding: 8px 0; }
     .filter-segment button { font-size: 14px; padding: 9px 10px; }
+    /* On phones, hide the label text -- icon only -- to fit logo +
+       state dropdown + drop-pin + auth + three control buttons in a
+       single row. Padding tightens too. */
+    .ctrl-tab-btn .ctrl-label { display: none; }
+    .ctrl-tab-btn { padding: 5px 8px; }
+    .ctrl-tab-btn .ctrl-icon { font-size: 16px; }
 
-    .legend {
-        bottom: calc(14px + env(safe-area-inset-bottom));
-        left: calc(12px + env(safe-area-inset-left));
-        font-size: 12px;
+    /* Mobile controls panel: bottom-sheet with peek/full snap states
+       matching the river panel UX. The card stays anchored to the
+       viewport bottom; the snap class on the panel toggles the
+       translateY. Backdrop dims only at full so the map underneath
+       stays interactive in peek. */
+    .controls-panel-card {
+        top: auto; left: 0; right: 0; bottom: 0;
+        width: 100%;
+        max-width: none;
+        max-height: 85vh;
+        border-radius: 16px 16px 0 0;
+        box-shadow: 0 -4px 24px rgba(0,0,0,0.25);
+        transform: translateY(100%);
+        opacity: 1;
+        padding-top: 0;
+        transition: transform 0.22s ease-out;
+        touch-action: none;
     }
-    .legend-body { padding: 12px 14px; max-width: calc(100vw - 28px); }
-    .legend-toggle { padding: 7px 12px 7px 7px; font-size: 13px; }
-    .legend-toggle-icon { width: 24px; height: 24px; font-size: 15px; }
+    .controls-panel-card.dragging { transition: none; }
+    .controls-panel.open .controls-panel-card { transform: translateY(100%); }
+    .controls-panel.open.peek .controls-panel-card { transform: translateY(62%); }
+    .controls-panel.open.full .controls-panel-card { transform: none; }
+    .controls-panel.open:not(.peek):not(.full) .controls-panel-card { transform: translateY(62%); }
+    .controls-panel.open.full .controls-panel-backdrop {
+        background: rgba(15, 23, 42, 0.45);
+        pointer-events: auto;
+    }
+    .controls-panel.open.peek #controls-panel-body { overflow: hidden; }
+    .controls-panel-grip {
+        display: block;
+        width: 44px; height: 5px;
+        background: #cbd5e1; border-radius: 3px;
+        margin: 8px auto 2px;
+        flex-shrink: 0;
+        cursor: grab;
+        touch-action: none;
+    }
+    .controls-panel-card.dragging .controls-panel-grip { cursor: grabbing; }
+    .controls-panel-close { top: 6px; }
+    #controls-panel-body { padding: 4px 14px calc(16px + env(safe-area-inset-bottom)); }
 
     .pin-form {
         width: min(280px, calc(100vw - 24px));

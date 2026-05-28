@@ -201,8 +201,9 @@ const clickableLayer = L.featureGroup(
   [clickableVisible, clickableHit]).addTo(map);
 
 // Layer visibility used to live in Leaflet's default top-right control;
-// it now sits inside the unified #filter-panel popover. Wiring happens
-// at init time so the panel checkboxes drive add/remove on the map.
+// it now sits inside the Layers tab of the unified #controls-panel.
+// Wiring happens at init time so the tab's checkboxes drive add/remove
+// on the map.
 
 let allRivers = [];
 // One representation per river: the NLDI flowline when we have it, else
@@ -440,19 +441,33 @@ function closeRiverPanel() {
 // the panel. Tapping anywhere in the panel body (that isn't a button
 // or other control) while at peek promotes to full so users can
 // open the full sheet without precisely hitting the 5px grip.
-(function wireRiverPanelSnap() {
-  const panel = document.getElementById("river-panel");
-  if (!panel) return;
-  const card = panel.querySelector(".river-panel-card");
-  const grip = panel.querySelector(".river-panel-grip");
-  if (!card || !grip) return;
+// Shared snap-sheet wiring for bottom-sheet panels on mobile. Used by
+// the river-detail panel and the unified controls panel.
+//
+// Handlers attached:
+//   - pointer drag on the grip: follow finger, snap to peek/full on
+//     release, drag-past-threshold dismisses (calls opts.onClose)
+//   - tap on the body (not on a control) at peek: expand to full
+//   - swipe on the body at peek: up -> full, down -> close
+//   - tap on a tab label at peek: expand to full (if tabSelector given)
+//
+// All handlers no-op on desktop (the matchMedia gate); the panel's
+// desktop CSS handles its own positioning.
+function wireSnapSheet(panel, opts) {
+  if (!panel) return null;
+  const card = panel.querySelector(opts.cardSelector);
+  const grip = panel.querySelector(opts.gripSelector);
+  const body = panel.querySelector(opts.bodySelector);
+  if (!card || !grip || !body) return null;
+  const onClose = opts.onClose;
+  const tabSelector = opts.tabSelector || null;
 
-  let drag = null;          // { startY, lastY, lastT, baseTranslate }
-  const CLOSE_THRESHOLD_PX = 110;  // drag-past-peek to dismiss
+  let drag = null;
+  const CLOSE_THRESHOLD_PX = 110;
+  const SWIPE_THRESHOLD = 36;
 
   function cardHeight() { return card.getBoundingClientRect().height; }
   function isMobile() { return window.matchMedia("(max-width: 700px)").matches; }
-
   function setSnap(state) {
     panel.classList.remove("peek", "full");
     panel.classList.add(state);
@@ -463,7 +478,6 @@ function closeRiverPanel() {
     drag = {
       startY: e.clientY,
       lastY: e.clientY,
-      lastT: performance.now(),
       // 62% translate at peek matches the CSS; full is 0.
       baseTranslate: panel.classList.contains("peek") ? 0.62 : 0,
     };
@@ -474,37 +488,20 @@ function closeRiverPanel() {
     if (!drag) return;
     const dy = e.clientY - drag.startY;
     drag.lastY = e.clientY;
-    drag.lastT = performance.now();
-    // Follow the finger: base translate as a fraction of card height
-    // plus the drag delta in pixels. Clamp at 0 (can't go above full).
     const h = cardHeight();
     let px = drag.baseTranslate * h + dy;
     if (px < 0) px = 0;
     card.style.transform = `translateY(${px}px)`;
   }
-  function onUp(e) {
+  function onUp() {
     if (!drag) return;
     const dy = drag.lastY - drag.startY;
-    const h = cardHeight();
     const startedAtPeek = drag.baseTranslate > 0;
-    card.style.transform = "";          // back to CSS-driven
+    card.style.transform = "";
     card.classList.remove("dragging");
     drag = null;
-    // Close if user drags down significantly past peek.
-    if (startedAtPeek && dy > CLOSE_THRESHOLD_PX) {
-      closeRiverPanel();
-      return;
-    }
-    if (!startedAtPeek && dy > CLOSE_THRESHOLD_PX * 1.4) {
-      // Dragged from full all the way down -- collapse to peek (not
-      // close). One-step gesture; tapping X is the deliberate close.
-      setSnap("peek");
-      return;
-    }
-    // Snap by direction of net travel: down -> peek, up -> full.
-    // A near-zero drag (a tap) on the grip expands peek -> full or
-    // collapses full -> peek -- treat the grip as a clickable toggle
-    // when the user clearly didn't drag.
+    if (startedAtPeek && dy > CLOSE_THRESHOLD_PX) { onClose(); return; }
+    if (!startedAtPeek && dy > CLOSE_THRESHOLD_PX * 1.4) { setSnap("peek"); return; }
     if (dy < -30) setSnap("full");
     else if (dy > 30) setSnap("peek");
     else setSnap(startedAtPeek ? "full" : "peek");
@@ -514,61 +511,54 @@ function closeRiverPanel() {
   grip.addEventListener("pointerup", onUp);
   grip.addEventListener("pointercancel", onUp);
 
-  const body = document.getElementById("river-panel-body");
-
-  // Tap-to-expand: a click on the body content (not on a control)
-  // promotes peek -> full so users can open the sheet without
-  // precisely hitting the 5px grip.
   body.addEventListener("click", (e) => {
     if (!isMobile()) return;
     if (!panel.classList.contains("peek")) return;
-    if (e.target.closest("button, a, label, input, summary")) return;
+    if (e.target.closest("button, a, label, input, summary, select")) return;
     setSnap("full");
   });
 
-  // Swipe-to-expand: a meaningful upward drag anywhere on the peek
-  // sheet (not just the 5px grip) promotes peek -> full. A downward
-  // drag of the same magnitude closes the panel -- matches the grip's
-  // drag-to-dismiss behavior and feels native. At full state this
-  // handler is a no-op so the body scrolls normally.
   let bodyDrag = null;
-  const SWIPE_THRESHOLD = 36;       // pixels of vertical travel to commit
   body.addEventListener("pointerdown", (e) => {
     if (!isMobile()) return;
     if (!panel.classList.contains("peek")) return;
-    // Don't capture clicks on interactive controls; let them behave
-    // normally (the click handler above will still promote to full
-    // when those clicks resolve, e.g. tab labels).
-    if (e.target.closest("button, a, label, input, summary")) return;
+    if (e.target.closest("button, a, label, input, summary, select")) return;
     bodyDrag = { startY: e.clientY };
   });
   body.addEventListener("pointermove", (e) => {
     if (!bodyDrag) return;
-    // No live transform-following here (the body scrolls when at full,
-    // and at peek we just decide on release). Just track the latest Y.
     bodyDrag.lastY = e.clientY;
   });
   body.addEventListener("pointerup", () => {
     if (!bodyDrag) return;
     const dy = (bodyDrag.lastY || bodyDrag.startY) - bodyDrag.startY;
     bodyDrag = null;
-    if (Math.abs(dy) < SWIPE_THRESHOLD) return;     // small move: let click handle it
-    if (dy < 0) setSnap("full");                    // swipe up -> expand
-    else closeRiverPanel();                         // swipe down -> dismiss
+    if (Math.abs(dy) < SWIPE_THRESHOLD) return;
+    if (dy < 0) setSnap("full");
+    else onClose();
   });
   body.addEventListener("pointercancel", () => { bodyDrag = null; });
 
-  // Tab switch -> always expand to full. Clicking any tab on a peek
-  // sheet means the user is engaged with the panel; the right place
-  // for them is the full view, not back at peek with the tab content
-  // mostly off-screen.
-  body.addEventListener("click", (e) => {
-    if (!isMobile()) return;
-    const tab = e.target.closest(".bl-tab");
-    if (!tab) return;
-    if (panel.classList.contains("peek")) setSnap("full");
-  });
-})();
+  if (tabSelector) {
+    body.addEventListener("click", (e) => {
+      if (!isMobile()) return;
+      const tab = e.target.closest(tabSelector);
+      if (!tab) return;
+      if (panel.classList.contains("peek")) setSnap("full");
+    });
+  }
+
+  return { setSnap };
+}
+
+// Wire the river panel's snap-sheet handlers.
+wireSnapSheet(document.getElementById("river-panel"), {
+  cardSelector: ".river-panel-card",
+  gripSelector: ".river-panel-grip",
+  bodySelector: "#river-panel-body",
+  tabSelector: ".bl-tab",
+  onClose: closeRiverPanel,
+});
 
 async function autoLoadFlowChart(root) {
   const box = root.querySelector(".bl-flow-chart[data-site]");
@@ -1378,26 +1368,118 @@ document.getElementById("state-select").onchange = (e) => {
   if (map.hasLayer(accessLayer)) ensureAccess(s);
 };
 
-// -- Filter popover: visibility + filters + color mode in one surface --
+// -- Unified controls panel: Layers / Filters / Legend in one tabbed sheet
+// Three header buttons (#ctrl-layers, #ctrl-filters, #ctrl-legend) act as
+// direct-entry points. Each button opens the panel to its tab; clicking
+// the same button again closes the panel; clicking a different button
+// while the panel is open switches the active tab.
 
-const filterPanel = document.getElementById("filter-panel");
-const filtersToggle = document.getElementById("filters-toggle");
-function setFilterPanel(open) {
-  filterPanel.hidden = !open;
-  filterPanel.classList.toggle("open", open);
-  filtersToggle.classList.toggle("active", open);
-  filtersToggle.setAttribute("aria-expanded", open ? "true" : "false");
+const controlsPanel = document.getElementById("controls-panel");
+const _ctrlTabRadios = {
+  layers: document.getElementById("ctrl-tab-layers"),
+  filters: document.getElementById("ctrl-tab-filters"),
+  legend: document.getElementById("ctrl-tab-legend"),
+};
+const _ctrlHeaderBtns = {
+  layers: document.getElementById("ctrl-layers"),
+  filters: document.getElementById("ctrl-filters"),
+  legend: document.getElementById("ctrl-legend"),
+};
+let _ctrlActiveTab = "layers";
+let _ctrlHideTimer = null;
+
+function _setCtrlHeaderActive(tab) {
+  for (const [t, btn] of Object.entries(_ctrlHeaderBtns)) {
+    const on = t === tab && !controlsPanel.hidden && controlsPanel.classList.contains("open");
+    btn.classList.toggle("active", on);
+    btn.setAttribute("aria-expanded", on ? "true" : "false");
+  }
 }
-filtersToggle.onclick = () => setFilterPanel(filterPanel.hidden);
-document.getElementById("filter-panel-close").onclick =
-  () => setFilterPanel(false);
-// Click-outside-to-close: the panel is a non-modal popover on desktop;
-// users expect tapping the map or anywhere outside to dismiss it.
+
+function _selectCtrlTab(tab) {
+  const radio = _ctrlTabRadios[tab];
+  if (radio) radio.checked = true;
+  _ctrlActiveTab = tab;
+  _setCtrlHeaderActive(tab);
+}
+
+function openControlsPanel(tab) {
+  clearTimeout(_ctrlHideTimer);
+  _selectCtrlTab(tab);
+  controlsPanel.hidden = false;
+  const isMobile = window.matchMedia("(max-width: 700px)").matches;
+  controlsPanel.classList.remove("peek", "full");
+  requestAnimationFrame(() => {
+    controlsPanel.classList.add("open");
+    if (isMobile) controlsPanel.classList.add("peek");
+    _setCtrlHeaderActive(tab);
+  });
+}
+
+function closeControlsPanel() {
+  if (!controlsPanel || controlsPanel.hidden) return;
+  controlsPanel.classList.remove("open", "peek", "full");
+  _ctrlHideTimer = setTimeout(() => { controlsPanel.hidden = true; }, 240);
+  _setCtrlHeaderActive(null);
+}
+
+// Header buttons -> open the panel directly to their tab.
+for (const [tab, btn] of Object.entries(_ctrlHeaderBtns)) {
+  btn.addEventListener("click", (e) => {
+    e.stopPropagation();
+    const open = !controlsPanel.hidden && controlsPanel.classList.contains("open");
+    if (open && _ctrlActiveTab === tab) {
+      closeControlsPanel();
+    } else if (open) {
+      _selectCtrlTab(tab);
+      // On mobile a tab switch while at peek means the user is engaging
+      // with the panel; promote to full (same rule as the river panel).
+      if (window.matchMedia("(max-width: 700px)").matches &&
+          controlsPanel.classList.contains("peek")) {
+        controlsPanel.classList.remove("peek");
+        controlsPanel.classList.add("full");
+      }
+    } else {
+      openControlsPanel(tab);
+    }
+  });
+}
+
+// X button and backdrop -> close.
+controlsPanel.querySelectorAll("[data-close]").forEach((el) =>
+  el.addEventListener("click", closeControlsPanel));
+
+// ESC closes from any state.
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape" && !controlsPanel.hidden) closeControlsPanel();
+});
+
+// Click-outside closes (desktop popover behavior).
 document.addEventListener("click", (e) => {
-  if (filterPanel.hidden) return;
-  if (filterPanel.contains(e.target)) return;
-  if (filtersToggle.contains(e.target)) return;
-  setFilterPanel(false);
+  if (controlsPanel.hidden) return;
+  if (controlsPanel.contains(e.target)) return;
+  if (Object.values(_ctrlHeaderBtns).some((b) => b.contains(e.target))) return;
+  closeControlsPanel();
+});
+
+// In-panel tab switching (clicking a tab label inside the panel)
+// updates the header's active-state indicator.
+for (const [tab, radio] of Object.entries(_ctrlTabRadios)) {
+  radio.addEventListener("change", () => {
+    if (radio.checked) {
+      _ctrlActiveTab = tab;
+      _setCtrlHeaderActive(tab);
+    }
+  });
+}
+
+// Snap-sheet behavior on mobile (bottom-sheet with peek/full).
+wireSnapSheet(controlsPanel, {
+  cardSelector: ".controls-panel-card",
+  gripSelector: ".controls-panel-grip",
+  bodySelector: "#controls-panel-body",
+  tabSelector: ".ctrl-tab",
+  onClose: closeControlsPanel,
 });
 
 // Layer visibility: persist last user choice across page loads in
@@ -1481,26 +1563,9 @@ document.getElementById("filter-reset").onclick = () => {
   onFilterChange();
 };
 
-// Legend: collapsed-by-default popup. Click "Legend" button to expand the
-// color-coded swatches; click again to collapse. State persists in
-// localStorage so users who prefer it open don't have to re-expand every
-// visit. Default-collapsed because the legend covers ~12% of the map on
-// desktop and 25%+ on mobile -- always-visible was too aggressive.
-const legend = document.getElementById("legend");
-const legendToggle = document.getElementById("legend-toggle");
-const LEGEND_OPEN_KEY = "bl_legend_open";
-try {
-  if (localStorage.getItem(LEGEND_OPEN_KEY) === "1") {
-    legend.classList.remove("collapsed");
-    legendToggle.setAttribute("aria-expanded", "true");
-  }
-} catch (_) { /* localStorage unavailable; default-collapsed stands */ }
-legendToggle.onclick = () => {
-  const collapsed = legend.classList.toggle("collapsed");
-  legendToggle.setAttribute("aria-expanded", collapsed ? "false" : "true");
-  try { localStorage.setItem(LEGEND_OPEN_KEY, collapsed ? "0" : "1"); }
-  catch (_) { /* no-op */ }
-};
+// Legend now lives inside the unified controls panel above (the Legend
+// tab). The bottom-left pill + bl_legend_open localStorage key are
+// retired; the panel's own open state is the single source of truth.
 
 // -- Init --
 
