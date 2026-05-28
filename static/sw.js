@@ -10,9 +10,10 @@
 // name doesn't match the current CACHE constant, which forces every
 // returning browser to refetch the shell on next visit -- the only
 // reliable way to roll out a buggy client-side change.
-const CACHE = "blueliner-v17";
+const CACHE = "blueliner-v18";
 const SHELL = [
   "/map",
+  "/static/tokens.css",
   "/static/app.css",
   "/static/app.js",
   "/static/manifest.webmanifest",

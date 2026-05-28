@@ -1,53 +1,65 @@
 * { margin: 0; padding: 0; box-sizing: border-box; }
-html, body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; overflow: hidden; height: 100%; }
+html, body {
+    font-family: var(--font-sans);
+    overflow: hidden;
+    height: 100%;
+    color: var(--fg-1);
+    background: var(--bg-page);
+}
 .header {
-    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
-    color: white;
-    padding: 14px 24px;
-    padding-top: calc(14px + env(safe-area-inset-top));
-    padding-left: calc(24px + env(safe-area-inset-left));
-    padding-right: calc(24px + env(safe-area-inset-right));
+    background: var(--bg-app-bar);
+    color: var(--fg-on-dark);
+    padding: var(--space-4) var(--space-7);
+    padding-top: calc(var(--space-4) + env(safe-area-inset-top));
+    padding-left: calc(var(--space-7) + env(safe-area-inset-left));
+    padding-right: calc(var(--space-7) + env(safe-area-inset-right));
     display: flex;
     align-items: center;
     justify-content: space-between;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.3);
-    z-index: 1000;
+    box-shadow: 0 1px 0 rgba(255,255,255,0.04), 0 2px 8px rgba(0,0,0,0.18);
+    z-index: var(--z-app-bar);
     position: fixed;
     top: 0;
     left: 0;
     width: 100%;
 }
-.header-left { display: flex; align-items: center; gap: 14px; }
+.header-left { display: flex; align-items: center; gap: var(--space-4); }
 .logo {
     font-size: 24px;
     font-weight: 800;
-    letter-spacing: -0.5px;
-    color: #e2e8f0;
+    letter-spacing: var(--tracking-tight);
+    color: var(--fg-on-dark);
+    line-height: 1;
 }
-.logo span { color: #4fc3f7; }
+.logo span { color: var(--bl-river-300); }
 .tagline {
-    font-size: 13px;
-    color: #94a3b8;
+    font-size: var(--fs-meta);
+    color: var(--fg-on-dark-2);
     letter-spacing: 0.3px;
+    margin-top: 2px;
+    line-height: 1;
 }
-.header-right { display: flex; align-items: center; gap: 10px; }
+.header-right { display: flex; align-items: center; gap: var(--space-3); }
 .ctrl {
     /* nowrap so button labels never break mid-text on narrow screens
        (the cause of the iPhone-portrait "Drop\na pin" wrap). */
     white-space: nowrap;
-    background: rgba(255,255,255,0.1);
-    color: white;
-    border: 1px solid rgba(255,255,255,0.2);
-    border-radius: 6px;
+    background: rgba(255,255,255,0.08);
+    color: var(--fg-on-dark);
+    border: 1px solid rgba(255,255,255,0.14);
+    border-radius: var(--radius-2);
     padding: 6px 10px;
-    font-size: 14px;
+    font-size: var(--fs-meta);
     cursor: pointer;
+    transition: background var(--dur-fast) var(--ease-out);
 }
-.ctrl option { background: #1a1a2e; color: white; }
+.ctrl:hover { background: rgba(255,255,255,0.16); }
+.ctrl option { background: var(--bl-river-900); color: var(--fg-on-dark); }
 .ctrl-check { display: flex; align-items: center; gap: 6px; user-select: none; }
 .ctrl-check input { cursor: pointer; }
-#drop-pin.active { background: #8e44ad; border-color: #8e44ad; }
-#controls { display: flex; align-items: center; gap: 10px; }
+#drop-pin.active { background: var(--accent); border-color: var(--accent); color: var(--fg-on-accent); }
+#drop-pin.active:hover { background: var(--accent-hover); border-color: var(--accent-hover); }
+#controls { display: flex; align-items: center; gap: var(--space-3); }
 
 /* -- Unified controls panel: Layers / Filters / Legend in one tabbed sheet.
    Desktop: top-right floating popover (~360px wide). Mobile: bottom-sheet
@@ -57,7 +69,7 @@ html, body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
 .controls-panel {
     position: fixed;
     inset: 0;
-    z-index: 1100;
+    z-index: var(--z-popover);
     pointer-events: none;
 }
 .controls-panel[hidden] { display: none; }
@@ -65,26 +77,27 @@ html, body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
     position: absolute;
     inset: 0;
     background: rgba(15, 23, 42, 0.0);
-    transition: background 0.2s ease;
+    transition: background var(--dur-base) var(--ease-out);
     pointer-events: none;
 }
 .controls-panel-card {
     position: absolute;
     top: calc(60px + env(safe-area-inset-top));
-    right: 12px;
+    right: var(--space-4);
     width: 360px;
     max-width: calc(100vw - 24px);
     max-height: calc(100vh - 80px - env(safe-area-inset-top));
-    background: #fff;
-    border-radius: 12px;
-    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.18);
+    background: var(--bg-surface);
+    border-radius: var(--radius-3);
+    box-shadow: var(--elev-3);
     pointer-events: auto;
     display: flex;
     flex-direction: column;
     transform: translateY(-6px);
     opacity: 0;
-    transition: transform 0.18s ease, opacity 0.18s ease;
-    padding-top: 8px;
+    transition: transform var(--dur-base) var(--ease-out),
+                opacity var(--dur-base) var(--ease-out);
+    padding-top: var(--space-3);
 }
 .controls-panel.open .controls-panel-card {
     transform: none;
@@ -94,18 +107,19 @@ html, body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
 .controls-panel-close {
     position: absolute;
     top: 6px;
-    right: 8px;
+    right: var(--space-3);
     width: 32px; height: 32px;
-    border: none; background: #f1f5f9; color: #475569;
+    border: none; background: var(--bg-sunken); color: var(--fg-2);
     border-radius: 50%;
     font-size: 22px; line-height: 30px; text-align: center;
     cursor: pointer; z-index: 2;
+    transition: background var(--dur-fast) var(--ease-out);
 }
-.controls-panel-close:hover { background: #e2e8f0; color: #1a1a2e; }
+.controls-panel-close:hover { background: var(--bg-pressed); color: var(--fg-1); }
 #controls-panel-body {
     flex: 1;
     overflow-y: auto;
-    padding: 6px 16px 16px;
+    padding: 6px var(--space-5) var(--space-5);
     -webkit-overflow-scrolling: touch;
 }
 
@@ -115,29 +129,30 @@ html, body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
 .ctrl-tabs > input[type="radio"] { position: absolute; opacity: 0; pointer-events: none; }
 .ctrl-tab-bar {
     display: flex;
-    gap: 4px;
-    border-bottom: 1px solid #e5e7eb;
-    margin: 0 -16px 12px;
-    padding: 0 16px;
+    gap: var(--space-2);
+    border-bottom: 1px solid var(--border-1);
+    margin: 0 -16px var(--space-4);
+    padding: 0 var(--space-5);
     overflow-x: auto;
 }
 .ctrl-tab {
-    padding: 10px 16px;
+    padding: 10px var(--space-5);
     font-size: 14px;
-    font-weight: 600;
-    color: #64748b;
+    font-weight: var(--fw-semibold);
+    color: var(--fg-3);
     cursor: pointer;
     border-bottom: 2px solid transparent;
     white-space: nowrap;
-    transition: color 0.12s ease, border-color 0.12s ease;
+    transition: color var(--dur-fast) var(--ease-out),
+                border-color var(--dur-fast) var(--ease-out);
 }
-.ctrl-tab:hover { color: #1a1a2e; }
+.ctrl-tab:hover { color: var(--fg-1); }
 .ctrl-tab-panel { display: none; }
 #ctrl-tab-layers:checked  ~ .ctrl-tab-bar > label[for="ctrl-tab-layers"],
 #ctrl-tab-filters:checked ~ .ctrl-tab-bar > label[for="ctrl-tab-filters"],
 #ctrl-tab-legend:checked  ~ .ctrl-tab-bar > label[for="ctrl-tab-legend"] {
-    color: #1a1a2e;
-    border-bottom-color: #1a1a2e;
+    color: var(--fg-1);
+    border-bottom-color: var(--fg-1);
 }
 #ctrl-tab-layers:checked  ~ .ctrl-tab-panels > [data-tab="layers"],
 #ctrl-tab-filters:checked ~ .ctrl-tab-panels > [data-tab="filters"],
@@ -150,97 +165,100 @@ html, body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
 .ctrl-tab-btn { display: inline-flex; align-items: center; gap: 6px; }
 .ctrl-tab-btn .ctrl-icon { font-size: 14px; line-height: 1; }
 .ctrl-tab-btn.active {
-    background: #4fc3f7;
-    color: #0b2233;
-    border-color: #4fc3f7;
+    background: var(--bl-river-500);
+    color: var(--fg-on-accent);
+    border-color: var(--bl-river-500);
 }
 .filter-section {
-    border-top: 1px solid #e2e8f0;
-    padding: 12px 0 4px;
+    border-top: 1px solid var(--border-1);
+    padding: var(--space-4) 0 var(--space-2);
 }
-.filter-section:first-of-type { border-top: none; padding-top: 4px; }
+.filter-section:first-of-type { border-top: none; padding-top: var(--space-2); }
 .filter-section-title {
-    margin: 0 0 8px;
-    font-size: 12px;
-    font-weight: 700;
-    color: #64748b;
+    margin: 0 0 var(--space-3);
+    font-size: var(--fs-caption);
+    line-height: var(--lh-caption);
+    font-weight: var(--fw-semibold);
+    color: var(--fg-3);
     text-transform: uppercase;
-    letter-spacing: 0.05em;
+    letter-spacing: var(--tracking-caption);
 }
 .filter-check {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: var(--space-3);
     padding: 6px 0;
-    font-size: 14px;
-    color: #1a1a2e;
+    font-size: var(--fs-body);
+    color: var(--fg-1);
     cursor: pointer;
     user-select: none;
 }
-.filter-check input { cursor: pointer; }
+.filter-check input { cursor: pointer; accent-color: var(--bl-river-600); }
 .filter-row {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 10px;
+    gap: var(--space-3);
     padding: 6px 0;
-    font-size: 14px;
-    color: #1a1a2e;
+    font-size: var(--fs-body);
+    color: var(--fg-1);
 }
 .filter-row select {
     min-width: 140px;
     padding: 6px 10px;
-    border: 1px solid #cbd5e1;
-    border-radius: 6px;
-    background: #fff;
-    color: #1a1a2e;
-    font-size: 14px;
+    border: 1px solid var(--border-strong);
+    border-radius: var(--radius-2);
+    background: var(--bg-surface);
+    color: var(--fg-1);
+    font-size: var(--fs-body);
     cursor: pointer;
 }
 .filter-sub {
-    margin-top: 10px;
-    padding-top: 8px;
-    border-top: 1px dashed #e2e8f0;
+    margin-top: var(--space-3);
+    padding-top: var(--space-3);
+    border-top: 1px dashed var(--border-1);
 }
 .filter-sub-label {
-    font-size: 12px;
-    color: #64748b;
+    font-size: var(--fs-caption);
+    color: var(--fg-3);
     margin-bottom: 6px;
 }
 .filter-segment {
     display: flex;
-    border: 1px solid #cbd5e1;
-    border-radius: 8px;
+    border: 1px solid var(--border-strong);
+    border-radius: var(--radius-2);
     overflow: hidden;
-    font-size: 12px;
+    font-size: var(--fs-caption);
 }
 .filter-segment button {
     flex: 1;
     border: none;
-    background: #fff;
-    color: #475569;
+    background: var(--bg-surface);
+    color: var(--fg-2);
     padding: 7px 10px;
     cursor: pointer;
     font: inherit;
+    font-weight: var(--fw-medium);
 }
 .filter-segment button.on {
-    background: #1e6fd9;
-    color: #fff;
-    font-weight: 700;
+    background: var(--bl-river-700);
+    color: var(--fg-on-accent);
+    font-weight: var(--fw-bold);
 }
 .filter-reset {
     width: 100%;
-    margin-top: 12px;
+    margin-top: var(--space-4);
     padding: 10px;
-    background: #f1f5f9;
-    border: 1px solid #cbd5e1;
-    border-radius: 8px;
-    color: #1a1a2e;
-    font-size: 13px;
-    font-weight: 600;
+    background: var(--bg-sunken);
+    border: 1px solid var(--border-strong);
+    border-radius: var(--radius-2);
+    color: var(--fg-1);
+    font-size: var(--fs-meta);
+    font-weight: var(--fw-semibold);
     cursor: pointer;
+    transition: background var(--dur-fast) var(--ease-out);
 }
-.filter-reset:hover { background: #e2e8f0; }
+.filter-reset:hover { background: var(--bg-pressed); }
 #map {
     position: fixed;
     top: calc(56px + env(safe-area-inset-top));
@@ -254,16 +272,38 @@ html, body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
 .legend-item {
     display: flex;
     align-items: center;
-    gap: 8px;
-    margin-bottom: 4px;
-    color: #444;
-    font-size: 13px;
+    gap: var(--space-3);
+    margin-bottom: var(--space-2);
+    color: var(--fg-2);
+    font-size: var(--fs-meta);
 }
 .legend-dot {
     width: 14px;
     height: 14px;
     border-radius: 50%;
     flex-shrink: 0;
+    position: relative;
+}
+/* Shape-coded condition swatches inside the Legend tab. Matches the
+   .cond-glyph treatment so colorblind users get the same signal: dot
+   on Fair, line on Poor, dashed outline on No data. */
+.legend-dot--good { background: var(--bl-cond-good-500); }
+.legend-dot--fair { background: var(--bl-cond-fair-500); }
+.legend-dot--fair::after {
+    content: ""; position: absolute;
+    top: 4px; left: 4px; width: 6px; height: 6px;
+    border-radius: 50%; background: #fff;
+}
+.legend-dot--poor { background: var(--bl-cond-poor-500); }
+.legend-dot--poor::after {
+    content: ""; position: absolute;
+    top: 6px; left: 2px; width: 10px; height: 2px;
+    background: #fff;
+}
+.legend-dot--none {
+    background: var(--bl-cond-none-100);
+    border: 1.5px dashed var(--bl-cond-none-500);
+    box-sizing: border-box;
 }
 
 /* Access-point markers: small colored discs with a single glyph
@@ -273,128 +313,132 @@ html, body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
 .access-marker-pin {
     width: 22px; height: 22px;
     border-radius: 50%;
-    color: #fff;
-    font-weight: 800;
-    font-size: 12px;
+    color: var(--fg-on-accent);
+    font-weight: var(--fw-bold);
+    font-size: var(--fs-caption);
     line-height: 22px;
     text-align: center;
-    border: 2px solid #fff;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.35);
+    border: 2px solid var(--bg-surface);
+    box-shadow: 0 1px 3px rgba(11,22,34,0.35);
     cursor: pointer;
 }
-.ap-popup { font-size: 13px; line-height: 1.4; color: #1a1a2e; }
-.ap-name { font-weight: 700; font-size: 14px; margin-bottom: 2px; }
+.ap-popup { font-size: var(--fs-meta); line-height: 1.4; color: var(--fg-1); }
+.ap-name { font-weight: var(--fw-bold); font-size: 14px; margin-bottom: 2px; }
 .ap-meta {
     display: flex; align-items: center; gap: 6px;
-    text-transform: capitalize; color: #475569;
+    text-transform: capitalize; color: var(--fg-2);
     margin-bottom: 6px;
 }
 .ap-chip {
     display: inline-block;
     padding: 1px 7px;
-    border-radius: 10px;
-    font-size: 11px;
-    font-weight: 700;
+    border-radius: var(--radius-pill);
+    font-size: var(--fs-caption);
+    font-weight: var(--fw-bold);
     text-transform: uppercase;
-    letter-spacing: 0.02em;
+    letter-spacing: var(--tracking-caption);
 }
-.ap-chip-public          { background: #d1fae5; color: #047857; }
-.ap-chip-permit          { background: #fef3c7; color: #92400e; }
-.ap-chip-fee             { background: #fee2e2; color: #991b1b; }
-.ap-chip-private_easement{ background: #ede9fe; color: #5b21b6; }
+.ap-chip-public          { background: var(--bl-cond-good-100); color: var(--bl-cond-good-700); }
+.ap-chip-permit          { background: var(--bl-cond-fair-100); color: var(--bl-cond-fair-700); }
+.ap-chip-fee             { background: var(--bl-cond-poor-100); color: var(--bl-cond-poor-700); }
+.ap-chip-private_easement{ background: var(--bl-hatch-soft); color: var(--bl-hatch); }
 /* PAD-US access tiers. OA = open access (the most common public-land
    case for anglers); RA = restricted (permit / season / specific use);
    XA = closed; UK = unknown (treat conservatively). */
-.pa-chip-OA              { background: #d1fae5; color: #047857; }
-.pa-chip-RA              { background: #fef3c7; color: #92400e; }
-.pa-chip-XA              { background: #fee2e2; color: #991b1b; }
-.pa-chip-UK              { background: #e2e8f0; color: #475569; }
-.ap-notes { color: #475569; margin-bottom: 6px; }
-.ap-link a { color: #1e6fd9; text-decoration: none; font-weight: 600; }
+.pa-chip-OA              { background: var(--bl-cond-good-100); color: var(--bl-cond-good-700); }
+.pa-chip-RA              { background: var(--bl-cond-fair-100); color: var(--bl-cond-fair-700); }
+.pa-chip-XA              { background: var(--bl-cond-poor-100); color: var(--bl-cond-poor-700); }
+.pa-chip-UK              { background: var(--bg-pressed); color: var(--fg-2); }
+.ap-notes { color: var(--fg-2); margin-bottom: 6px; }
+.ap-link a { color: var(--fg-link); text-decoration: none; font-weight: var(--fw-semibold); }
 .ap-link a:hover { text-decoration: underline; }
 
 .pin-form {
     position: fixed;
-    bottom: 24px;
-    right: 24px;
+    bottom: var(--space-7);
+    right: var(--space-7);
     width: 280px;
     background: rgba(255,255,255,0.97);
     backdrop-filter: blur(8px);
-    border-radius: 10px;
-    padding: 14px 16px;
-    box-shadow: 0 2px 12px rgba(0,0,0,0.18);
-    z-index: 1002;
-    font-size: 13px;
+    border-radius: var(--radius-3);
+    padding: var(--space-4) var(--space-5);
+    box-shadow: var(--elev-2);
+    z-index: var(--z-overlay);
+    font-size: var(--fs-meta);
 }
-.pin-form-title { font-weight: 700; color: #1a1a2e; margin-bottom: 8px; }
+.pin-form-title { font-weight: var(--fw-bold); color: var(--fg-1); margin-bottom: var(--space-3); }
 .pin-form textarea {
     width: 100%;
-    border: 1px solid #d0d5dd;
-    border-radius: 6px;
-    padding: 8px;
+    border: 1px solid var(--border-strong);
+    border-radius: var(--radius-2);
+    padding: var(--space-3);
     font: inherit;
     resize: vertical;
+    color: var(--fg-1);
 }
-.pin-form-actions { display: flex; gap: 8px; margin-top: 10px; }
+.pin-form-actions { display: flex; gap: var(--space-3); margin-top: var(--space-3); }
 .pin-form button {
     flex: 1;
     border: none;
-    border-radius: 6px;
-    padding: 8px 10px;
-    font-size: 13px;
-    font-weight: 600;
+    border-radius: var(--radius-2);
+    padding: var(--space-3) 10px;
+    font-size: var(--fs-meta);
+    font-weight: var(--fw-semibold);
     cursor: pointer;
-    background: #8e44ad;
-    color: white;
+    background: var(--accent);
+    color: var(--fg-on-accent);
+    transition: background var(--dur-fast) var(--ease-out);
 }
-.pin-form button.secondary { background: #e9ecef; color: #444; }
+.pin-form button:hover { background: var(--accent-hover); }
+.pin-form button.secondary { background: var(--bg-sunken); color: var(--fg-2); }
+.pin-form button.secondary:hover { background: var(--bg-pressed); }
 .bl-pin-dot {
     width: 16px;
     height: 16px;
     border-radius: 50% 50% 50% 0;
-    background: #8e44ad;
-    border: 2px solid #fff;
-    box-shadow: 0 1px 4px rgba(0,0,0,0.4);
+    background: var(--bl-pin);
+    border: 2px solid var(--bg-surface);
+    box-shadow: 0 1px 4px rgba(11,22,34,0.4);
     transform: rotate(-45deg);
 }
 .bl-trend svg { display: block; width: 100%; height: auto; }
-.bl-trend-msg { font-size: 11px; color: #888; }
+.bl-trend-msg { font-size: var(--fs-caption); color: var(--fg-3); }
 .bl-spark { position: relative; }
 .bl-spark svg { display: block; width: 100%; height: auto; touch-action: none; }
 .bl-spark-tip {
   position: absolute; pointer-events: none;
-  background: rgba(26, 26, 46, 0.92); color: #fff;
-  font-size: 11px; font-weight: 600; padding: 3px 7px; border-radius: 4px;
-  white-space: nowrap; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
+  background: rgba(11, 22, 34, 0.92); color: var(--fg-on-dark);
+  font-size: var(--fs-caption); font-weight: var(--fw-semibold); padding: 3px 7px; border-radius: var(--radius-1);
+  white-space: nowrap; box-shadow: var(--elev-1);
 }
 .bl-spark-tip[hidden] { display: none; }
-.pin-popup { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; min-width: 180px; }
-.pin-popup .pin-note { font-size: 14px; color: #1a1a2e; white-space: pre-wrap; }
-.pin-popup .pin-meta { font-size: 11px; color: #888; margin: 6px 0 8px; }
+.pin-popup { font-family: var(--font-sans); min-width: 180px; }
+.pin-popup .pin-note { font-size: var(--fs-body); color: var(--fg-1); white-space: pre-wrap; }
+.pin-popup .pin-meta { font-size: var(--fs-caption); color: var(--fg-3); margin: 6px 0 8px; }
 .pin-popup .pin-del {
-    border: none; border-radius: 6px; padding: 6px 10px;
-    background: #fdedec; color: #c0392b; font-weight: 600; cursor: pointer;
+    border: none; border-radius: var(--radius-2); padding: 6px 10px;
+    background: var(--bl-cond-poor-100); color: var(--bl-cond-poor-700); font-weight: var(--fw-semibold); cursor: pointer;
 }
 
 /* -- Accounts (Phase 1) -- */
 .account-menu {
     position: fixed;
     top: calc(56px + env(safe-area-inset-top));
-    right: 24px;
-    background: #fff;
-    color: #1a1a2e;
-    border-radius: 8px;
-    box-shadow: 0 4px 18px rgba(0,0,0,0.18);
+    right: var(--space-7);
+    background: var(--bg-surface);
+    color: var(--fg-1);
+    border-radius: var(--radius-2);
+    box-shadow: var(--elev-2);
     min-width: 220px;
     overflow: hidden;
-    z-index: 1100;
-    font-size: 14px;
+    z-index: var(--z-account-menu);
+    font-size: var(--fs-body);
 }
 .account-menu-email {
-    padding: 12px 16px 6px;
-    font-size: 12px;
-    color: #667;
-    border-bottom: 1px solid #eef0f3;
+    padding: var(--space-4) var(--space-5) 6px;
+    font-size: var(--fs-caption);
+    color: var(--fg-3);
+    border-bottom: 1px solid var(--border-1);
     word-break: break-all;
 }
 .account-menu button {
@@ -403,27 +447,27 @@ html, body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
     border: none;
     background: none;
     text-align: left;
-    padding: 10px 16px;
-    font-size: 14px;
+    padding: 10px var(--space-5);
+    font-size: var(--fs-body);
     cursor: pointer;
-    color: #1a1a2e;
+    color: var(--fg-1);
 }
-.account-menu button:hover:not(:disabled) { background: #f4f6fa; }
-.account-menu button:disabled { color: #aab1bd; cursor: default; }
+.account-menu button:hover:not(:disabled) { background: var(--bg-hover); }
+.account-menu button:disabled { color: var(--fg-muted); cursor: default; }
 .account-menu button[data-action="logout"] {
-    border-top: 1px solid #eef0f3;
-    color: #c0392b;
-    font-weight: 600;
+    border-top: 1px solid var(--border-1);
+    color: var(--bl-cond-poor-700);
+    font-weight: var(--fw-semibold);
 }
 
 .modal {
     position: fixed;
     inset: 0;
-    z-index: 1200;
+    z-index: var(--z-modal);
     display: flex;
     align-items: center;
     justify-content: center;
-    padding: 16px;
+    padding: var(--space-5);
 }
 .modal[hidden] { display: none; }
 .modal-backdrop {
@@ -434,84 +478,97 @@ html, body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
 }
 .modal-card {
     position: relative;
-    background: #fff;
-    color: #1a1a2e;
-    border-radius: 12px;
-    padding: 28px 28px 24px;
+    background: var(--bg-surface);
+    color: var(--fg-1);
+    border-radius: var(--radius-3);
+    padding: var(--space-7) var(--space-7) var(--space-6);
     width: min(440px, calc(100vw - 32px));
     max-height: calc(100vh - 32px);
     overflow-y: auto;
-    box-shadow: 0 12px 40px rgba(0,0,0,0.25);
+    box-shadow: var(--elev-3);
 }
-.modal-card h2 { font-size: 20px; margin-bottom: 8px; }
+.modal-card h2 { font-size: var(--fs-data-lg); margin-bottom: var(--space-3); }
 .modal-close {
     position: absolute;
-    top: 8px;
-    right: 8px;
+    top: var(--space-3);
+    right: var(--space-3);
     width: 36px;
     height: 36px;
     border: none;
     background: none;
     font-size: 24px;
     line-height: 1;
-    color: #94a3b8;
+    color: var(--fg-muted);
     cursor: pointer;
-    border-radius: 6px;
+    border-radius: var(--radius-2);
+    transition: background var(--dur-fast) var(--ease-out),
+                color var(--dur-fast) var(--ease-out);
 }
-.modal-close:hover { background: #f4f6fa; color: #1a1a2e; }
+.modal-close:hover { background: var(--bg-hover); color: var(--fg-1); }
 .modal-lede {
-    font-size: 14px;
-    color: #475569;
-    margin: 8px 0 14px;
+    font-size: var(--fs-body);
+    color: var(--fg-2);
+    margin: var(--space-3) 0 var(--space-4);
     line-height: 1.45;
 }
-.modal-fine { font-size: 12px; color: #888; margin-top: 12px; }
-.modal-icon { font-size: 40px; text-align: center; margin: 4px 0 8px; }
+.modal-fine { font-size: var(--fs-meta); color: var(--fg-3); margin-top: var(--space-4); }
+.modal-icon { font-size: 40px; text-align: center; margin: var(--space-2) 0 var(--space-3); color: var(--bl-river-600); }
 
 .modal-card input[type="email"],
 .modal-card input[type="text"] {
     width: 100%;
-    padding: 10px 12px;
-    border: 1px solid #d0d5dd;
-    border-radius: 6px;
+    padding: 10px var(--space-4);
+    border: 1px solid var(--border-strong);
+    border-radius: var(--radius-2);
     font: inherit;
-    font-size: 14px;
-    margin-bottom: 10px;
+    font-size: var(--fs-body);
+    margin-bottom: var(--space-3);
+    color: var(--fg-1);
+    background: var(--bg-surface);
 }
-.modal-card input:focus { outline: 2px solid #1e6fd9; outline-offset: 0; }
+.modal-card input:focus {
+    outline: none;
+    border-color: var(--border-focus);
+    box-shadow: 0 0 0 3px rgba(43, 137, 176, 0.18);
+}
 
 .modal-card button:not(.modal-close):not(.secondary):not(.danger) {
     width: 100%;
-    padding: 11px 14px;
-    background: #1e6fd9;
-    color: #fff;
+    padding: 11px var(--space-4);
+    background: var(--bl-river-700);
+    color: var(--fg-on-accent);
     border: none;
-    border-radius: 6px;
+    border-radius: var(--radius-2);
     font: inherit;
-    font-size: 14px;
-    font-weight: 600;
+    font-size: var(--fs-body);
+    font-weight: var(--fw-semibold);
     cursor: pointer;
+    transition: background var(--dur-fast) var(--ease-out);
+}
+.modal-card button:not(.modal-close):not(.secondary):not(.danger):hover {
+    background: var(--bl-river-800);
 }
 .modal-card button.secondary {
     width: 100%;
-    padding: 10px 14px;
-    background: #eef0f3;
-    color: #1a1a2e;
+    padding: 10px var(--space-4);
+    background: var(--bg-sunken);
+    color: var(--fg-1);
     border: none;
-    border-radius: 6px;
+    border-radius: var(--radius-2);
     font: inherit;
-    font-size: 14px;
+    font-size: var(--fs-body);
     cursor: pointer;
 }
+.modal-card button.secondary:hover { background: var(--bg-pressed); }
 .modal-card button.danger {
-    padding: 8px 12px;
-    background: #fdedec;
-    color: #c0392b;
-    border: 1px solid #f5c0bb;
-    border-radius: 6px;
+    padding: var(--space-3) var(--space-4);
+    background: var(--bl-cond-poor-100);
+    color: var(--bl-cond-poor-700);
+    border: 1px solid var(--bl-cond-poor-500);
+    border-radius: var(--radius-2);
     font: inherit;
-    font-size: 13px;
-    font-weight: 600;
+    font-size: var(--fs-meta);
+    font-weight: var(--fw-semibold);
     cursor: pointer;
 }
 .modal-card button:disabled { opacity: 0.6; cursor: default; }
@@ -519,49 +576,49 @@ html, body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
 .claim-list {
     list-style: none;
     padding: 0;
-    margin: 4px 0 12px;
+    margin: var(--space-2) 0 var(--space-4);
     max-height: 180px;
     overflow-y: auto;
 }
 .claim-list li {
     padding: 6px 0;
-    font-size: 14px;
-    color: #1a1a2e;
-    border-bottom: 1px solid #eef0f3;
+    font-size: var(--fs-body);
+    color: var(--fg-1);
+    border-bottom: 1px solid var(--border-1);
 }
 .claim-list li:last-child { border-bottom: none; }
 
-.modal-actions { display: flex; gap: 10px; margin-top: 14px; }
+.modal-actions { display: flex; gap: var(--space-3); margin-top: var(--space-4); }
 .modal-actions button { flex: 1; }
 
-.modal-row { margin: 12px 0 4px; }
-.modal-label { font-size: 12px; color: #667; margin-bottom: 4px; }
-.modal-value { font-size: 14px; color: #1a1a2e; word-break: break-all; }
+.modal-row { margin: var(--space-4) 0 4px; }
+.modal-label { font-size: var(--fs-caption); color: var(--fg-3); margin-bottom: 4px; }
+.modal-value { font-size: var(--fs-body); color: var(--fg-1); word-break: break-all; }
 .modal-danger {
-    border-top: 1px solid #eef0f3;
-    margin-top: 18px;
-    padding-top: 14px;
+    border-top: 1px solid var(--border-1);
+    margin-top: var(--space-6);
+    padding-top: var(--space-4);
 }
 
 /* -- River detail panel (drawer / bottom sheet) -- */
-.river-panel { position: fixed; inset: 0; z-index: 1120; pointer-events: none; }
+.river-panel { position: fixed; inset: 0; z-index: var(--z-river-panel); pointer-events: none; }
 .river-panel[hidden] { display: none; }
 .river-panel-backdrop {
     position: absolute; inset: 0;
     background: rgba(15, 23, 42, 0.0);
-    transition: background 0.2s ease;
+    transition: background var(--dur-base) var(--ease-out);
 }
 .river-panel-card {
     position: absolute;
     top: 0; right: 0; bottom: 0;
     width: min(420px, 92vw);
-    background: #fff;
-    box-shadow: -4px 0 24px rgba(0,0,0,0.18);
+    background: var(--bg-surface);
+    box-shadow: -4px 0 24px rgba(11,22,34,0.05);
     pointer-events: auto;
     display: flex;
     flex-direction: column;
     transform: translateX(100%);
-    transition: transform 0.24s ease;
+    transition: transform var(--dur-slow) var(--ease-out);
     padding-top: calc(8px + env(safe-area-inset-top));
 }
 .river-panel.open .river-panel-card { transform: none; }
@@ -571,44 +628,45 @@ html, body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
     top: calc(8px + env(safe-area-inset-top));
     right: 10px;
     width: 40px; height: 40px;
-    border: none; background: #f1f5f9; color: #475569;
+    border: none; background: var(--bg-sunken); color: var(--fg-2);
     border-radius: 50%;
     font-size: 26px; line-height: 38px; text-align: center;
     cursor: pointer; z-index: 2;
+    transition: background var(--dur-fast) var(--ease-out);
 }
-.river-panel-close:hover { background: #e2e8f0; color: #1a1a2e; }
+.river-panel-close:hover { background: var(--bg-pressed); color: var(--fg-1); }
 #river-panel-body { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; }
 
-.bl-card { color: #1a1a2e; }
+.bl-card { color: var(--fg-1); }
 .bl-card-head {
-    padding: 14px 52px 12px 18px;   /* right room for the close button */
-    border-bottom: 1px solid #eef0f3;
-    position: sticky; top: 0; background: #fff; z-index: 1;
+    padding: var(--space-4) 52px var(--space-4) var(--space-5);
+    border-bottom: 1px solid var(--border-1);
+    position: sticky; top: 0; background: var(--bg-surface); z-index: 1;
 }
-.bl-card-body { padding: 12px 16px calc(20px + env(safe-area-inset-bottom)); }
+.bl-card-body { padding: var(--space-4) var(--space-5) calc(20px + env(safe-area-inset-bottom)); }
 .bl-title {
     font-size: 19px;
-    font-weight: 700;
-    color: #1a1a2e;
+    font-weight: var(--fw-bold);
+    color: var(--fg-1);
     margin-bottom: 6px;
     line-height: 1.2;
 }
 .bl-condition {
     display: inline-block;
     padding: 3px 10px;
-    border-radius: 12px;
-    font-size: 12px;
-    font-weight: 700;
+    border-radius: var(--radius-pill);
+    font-size: var(--fs-caption);
+    font-weight: var(--fw-bold);
     border: 1.5px solid;
     letter-spacing: 0.5px;
 }
 .bl-summary {
-    margin-top: 8px;
-    font-size: 13px;
-    color: #334155;
-    background: #f4f8fb;
-    border: 1px solid #e3edf4;
-    border-radius: 6px;
+    margin-top: var(--space-3);
+    font-size: var(--fs-meta);
+    color: var(--fg-2);
+    background: var(--bl-river-50);
+    border: 1px solid var(--bl-river-100);
+    border-radius: var(--radius-2);
     padding: 7px 10px;
     line-height: 1.4;
 }
@@ -616,28 +674,31 @@ html, body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
    title. Lifted from TroutRoutes' "Popular / Tailwater / Public
    Shoreline" header. Each pill renders conditionally on data, so an
    ungauged ungauged-class stream gets a leaner header instead of a
-   row of empty space. */
+   row of empty space.
+   Existing .bl-pill* selectors retoned to the design system's overlay
+   palette (trout/stocked/hatch/access). PR 2 swaps the markup to the
+   canonical .pill family but the visual treatment matches now. */
 .bl-pills {
     display: flex;
     flex-wrap: wrap;
     gap: 6px;
-    margin-top: 8px;
+    margin-top: var(--space-3);
 }
 .bl-pill {
     display: inline-flex;
     align-items: center;
     padding: 3px 10px;
-    border-radius: 12px;
-    font-size: 11px;
-    font-weight: 600;
+    border-radius: var(--radius-pill);
+    font-size: var(--fs-caption);
+    font-weight: var(--fw-semibold);
     border: 1px solid;
     line-height: 1.4;
     white-space: nowrap;
 }
-.bl-pill-trout   { color: #0e6655; background: #d1f2eb; border-color: #1abc9c; }
-.bl-pill-stocked { color: #9c4a00; background: #fdebd0; border-color: #e67e22; }
-.bl-pill-hatch   { color: #6b21a8; background: #ede9fe; border-color: #9333ea; }
-.bl-pill-access  { color: #1e40af; background: #dbeafe; border-color: #3b82f6; }
+.bl-pill-trout   { color: #0e6655; background: var(--bl-trout-soft);   border-color: var(--bl-trout); }
+.bl-pill-stocked { color: #7a4f0f; background: var(--bl-stocked-soft); border-color: var(--bl-stocked); }
+.bl-pill-hatch   { color: #4a2e66; background: var(--bl-hatch-soft);   border-color: var(--bl-hatch); }
+.bl-pill-access  { color: #0e4961; background: #D6EAF2;                border-color: var(--bl-access); }
 /* Four-up stat grid: gauges / active hatches / stocked nearby / access
    points. Each cell stacks a big numeric on a tiny label. Mirrors
    TroutRoutes' "3.8 mi Public Shoreline / 6 Access Points / ..." row. */
@@ -645,13 +706,13 @@ html, body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
     display: grid;
     grid-template-columns: repeat(4, 1fr);
     gap: 4px;
-    margin-top: 10px;
-    border-top: 1px solid #eef0f3;
-    padding-top: 8px;
+    margin-top: var(--space-3);
+    border-top: 1px solid var(--border-1);
+    padding-top: var(--space-3);
 }
 .bl-stat { text-align: center; padding: 2px 0; }
-.bl-stat-n { font-size: 18px; font-weight: 700; color: #1a1a2e; line-height: 1.1; }
-.bl-stat-label { font-size: 10px; color: #64748b; text-transform: uppercase; letter-spacing: 0.4px; margin-top: 2px; }
+.bl-stat-n { font-size: 18px; font-weight: var(--fw-bold); color: var(--fg-1); line-height: 1.1; }
+.bl-stat-label { font-size: 10px; color: var(--fg-3); text-transform: uppercase; letter-spacing: var(--tracking-caption); margin-top: 2px; }
 
 /* Tab bar: pure-CSS toggle via hidden radio inputs + sibling-selector
    show/hide on the panels. Default tab (Conditions) is `checked` in
@@ -662,22 +723,23 @@ html, body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
 .bl-tabs > input[type="radio"] { position: absolute; opacity: 0; pointer-events: none; }
 .bl-tab-bar {
     display: flex;
-    gap: 4px;
-    border-bottom: 1px solid #e5e7eb;
-    margin-bottom: 10px;
+    gap: var(--space-2);
+    border-bottom: 1px solid var(--border-1);
+    margin-bottom: var(--space-3);
     overflow-x: auto;
 }
 .bl-tab {
-    padding: 9px 14px;
-    font-size: 13px;
-    font-weight: 600;
-    color: #64748b;
+    padding: 9px var(--space-4);
+    font-size: var(--fs-meta);
+    font-weight: var(--fw-semibold);
+    color: var(--fg-3);
     cursor: pointer;
     border-bottom: 2px solid transparent;
     white-space: nowrap;
-    transition: color 0.12s ease, border-color 0.12s ease;
+    transition: color var(--dur-fast) var(--ease-out),
+                border-color var(--dur-fast) var(--ease-out);
 }
-.bl-tab:hover { color: #1a1a2e; }
+.bl-tab:hover { color: var(--fg-1); }
 .bl-tab-panel { display: none; }
 /* Per-tab active state: the radio above the tab-bar drives both the
    label highlight and the matching panel's visibility. Using nth-of-
@@ -687,8 +749,8 @@ html, body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
 #bl-tab-hatches:checked    ~ .bl-tab-bar > label[for="bl-tab-hatches"],
 #bl-tab-stocking:checked   ~ .bl-tab-bar > label[for="bl-tab-stocking"],
 #bl-tab-catch:checked      ~ .bl-tab-bar > label[for="bl-tab-catch"] {
-    color: #1a1a2e;
-    border-bottom-color: #1a1a2e;
+    color: var(--fg-1);
+    border-bottom-color: var(--fg-1);
 }
 #bl-tab-conditions:checked ~ .bl-tab-panels > [data-tab="conditions"],
 #bl-tab-hatches:checked    ~ .bl-tab-panels > [data-tab="hatches"],
@@ -701,56 +763,56 @@ html, body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
    right-aligned, sized big enough to read as a control, and the row
    darkens on hover so it reads as a clickable strip rather than a
    header. */
-.bl-section { border: 1px solid #e5e7eb; border-radius: 8px; margin-top: 10px; overflow: hidden; }
+.bl-section { border: 1px solid var(--border-1); border-radius: var(--radius-2); margin-top: var(--space-3); overflow: hidden; }
 .bl-section > summary {
     list-style: none;
     cursor: pointer;
-    padding: 10px 12px;
-    font-size: 14px;
-    font-weight: 600;
-    color: #1a1a2e;
-    background: #f8fafc;
+    padding: 10px var(--space-4);
+    font-size: var(--fs-body);
+    font-weight: var(--fw-semibold);
+    color: var(--fg-1);
+    background: var(--bg-page);
     display: flex;
     align-items: center;
-    gap: 8px;
-    transition: background 0.12s ease;
+    gap: var(--space-3);
+    transition: background var(--dur-fast) var(--ease-out);
 }
-.bl-section > summary:hover { background: #eef2f7; }
+.bl-section > summary:hover { background: var(--bg-sunken); }
 .bl-section > summary::-webkit-details-marker { display: none; }
 .bl-section > summary::after {
     content: "▾";   /* closed: rotated -90deg below, open: upright */
     margin-left: auto;
-    color: #475569;
-    font-size: 16px;
+    color: var(--fg-2);
+    font-size: var(--fs-heading);
     line-height: 1;
-    transition: transform 0.15s ease;
+    transition: transform var(--dur-fast) var(--ease-out);
     transform: rotate(-90deg);
 }
 .bl-section[open] > summary::after { transform: none; }
-.bl-section[open] > summary { border-bottom: 1px solid #e5e7eb; }
-.bl-section-body { padding: 8px 12px 12px; }
-.bl-hatch > summary { background: #eef7f2; color: #0e6655; }
+.bl-section[open] > summary { border-bottom: 1px solid var(--border-1); }
+.bl-section-body { padding: var(--space-3) var(--space-4) var(--space-4); }
+.bl-hatch > summary { background: var(--bl-cond-good-50); color: var(--bl-cond-good-700); }
 /* Hatches tab: the section is no longer collapsible (it lives inside
    its own tab so the <details> wrapper was redundant). The title
    keeps the green-tinted background that signalled "hatch info"
    under the old layout. */
 .bl-hatch {
-    border: 1px solid #e3efe8;
-    border-radius: 8px;
+    border: 1px solid var(--bl-cond-good-100);
+    border-radius: var(--radius-2);
     overflow: hidden;
     margin-top: 4px;
 }
 .bl-hatch-title {
-    background: #eef7f2;
-    color: #0e6655;
-    padding: 10px 12px;
-    font-size: 14px;
-    font-weight: 600;
+    background: var(--bl-cond-good-50);
+    color: var(--bl-cond-good-700);
+    padding: 10px var(--space-4);
+    font-size: var(--fs-body);
+    font-weight: var(--fw-semibold);
 }
-.bl-flow-chart { margin-top: 10px; min-height: 4px; }
+.bl-flow-chart { margin-top: var(--space-3); min-height: 4px; }
 
 /* Selected river highlight on the map */
-.river-selected { filter: drop-shadow(0 0 3px rgba(26,32,46,0.6)); }
+.river-selected { filter: drop-shadow(0 0 3px rgba(11,22,34,0.6)); }
 
 @media (max-width: 700px) {
     /* Bottom sheet with two snap points: `peek` (~38vh visible) and
@@ -763,8 +825,8 @@ html, body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
         top: auto; left: 0; right: 0; bottom: 0;
         width: 100%;
         max-height: 85vh;
-        border-radius: 16px 16px 0 0;
-        box-shadow: 0 -4px 24px rgba(0,0,0,0.25);
+        border-radius: var(--radius-4) var(--radius-4) 0 0;
+        box-shadow: 0 -4px 24px rgba(11,22,34,0.25);
         transform: translateY(100%);
         padding-top: 0;
         /* During drag, inline transform overrides this. The 220ms
@@ -793,8 +855,8 @@ html, body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
     .river-panel-grip {
         display: block;
         width: 44px; height: 5px;
-        background: #cbd5e1; border-radius: 3px;
-        margin: 8px auto 2px;
+        background: var(--border-strong); border-radius: 3px;
+        margin: var(--space-3) auto 2px;
         flex-shrink: 0;
         cursor: grab;
         touch-action: none;
@@ -812,45 +874,46 @@ html, body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
 .stream-badge {
     display: inline-block;
     padding: 3px 9px;
-    border-radius: 12px;
-    font-size: 11px;
-    font-weight: 700;
-    color: #fff;
+    border-radius: var(--radius-pill);
+    font-size: var(--fs-caption);
+    font-weight: var(--fw-bold);
+    color: var(--fg-on-accent);
     margin-right: 6px;
 }
 
 /* -- Catch log (Phase 2) -- */
-.bl-catch-cta { margin-top: 12px; }
+.bl-catch-cta { margin-top: var(--space-4); }
 .bl-catch-btn {
     width: 100%;
     border: none;
-    border-radius: 8px;
-    padding: 10px 12px;
-    background: #1abc9c;
-    color: #fff;
+    border-radius: var(--radius-2);
+    padding: 10px var(--space-4);
+    background: var(--bl-trout);
+    color: var(--fg-on-accent);
     font: inherit;
-    font-size: 14px;
-    font-weight: 700;
+    font-size: var(--fs-body);
+    font-weight: var(--fw-bold);
     cursor: pointer;
+    transition: filter var(--dur-fast) var(--ease-out);
 }
-.bl-catch-btn:hover { background: #16a085; }
+.bl-catch-btn:hover { filter: brightness(0.92); }
 .bl-catch-signin {
     width: 100%;
-    border: 1px dashed #c7ccd4;
-    background: #f7f9fc;
-    color: #475569;
-    border-radius: 8px;
-    padding: 9px 12px;
+    border: 1px dashed var(--border-strong);
+    background: var(--bg-page);
+    color: var(--fg-2);
+    border-radius: var(--radius-2);
+    padding: 9px var(--space-4);
     font: inherit;
-    font-size: 13px;
+    font-size: var(--fs-meta);
     cursor: pointer;
 }
 
 .cf-label {
     display: block;
-    font-size: 12px;
-    color: #667;
-    margin: 10px 0 4px;
+    font-size: var(--fs-caption);
+    color: var(--fg-3);
+    margin: var(--space-3) 0 4px;
 }
 #catch-form input[type="text"],
 #catch-form input[type="number"],
@@ -858,51 +921,53 @@ html, body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
 #catch-form textarea {
     width: 100%;
     padding: 9px 11px;
-    border: 1px solid #d0d5dd;
-    border-radius: 6px;
+    border: 1px solid var(--border-strong);
+    border-radius: var(--radius-2);
     font: inherit;
-    font-size: 14px;
+    font-size: var(--fs-body);
+    color: var(--fg-1);
+    background: var(--bg-surface);
 }
 #catch-form textarea { resize: vertical; }
-.cf-row { display: flex; gap: 10px; align-items: flex-end; }
+.cf-row { display: flex; gap: var(--space-3); align-items: flex-end; }
 .cf-grow { flex: 1; }
 .cf-len { width: 96px; flex-shrink: 0; }
 
 .cf-enrich {
-    margin: 16px 0 6px;
-    background: #f4f8fb;
-    border: 1px solid #e3edf4;
-    border-radius: 8px;
-    padding: 12px 14px;
+    margin: var(--space-5) 0 6px;
+    background: var(--bl-river-50);
+    border: 1px solid var(--bl-river-100);
+    border-radius: var(--radius-3);
+    padding: var(--space-4) var(--space-4);
 }
 .cf-enrich-title {
-    font-size: 11px;
-    font-weight: 700;
-    letter-spacing: 0.5px;
+    font-size: var(--fs-caption);
+    font-weight: var(--fw-semibold);
+    letter-spacing: var(--tracking-caption);
     text-transform: uppercase;
-    color: #5a7a90;
-    margin-bottom: 8px;
+    color: var(--bl-river-700);
+    margin-bottom: var(--space-3);
 }
-.cf-enrich-loading { font-size: 13px; color: #889; }
+.cf-enrich-loading { font-size: var(--fs-meta); color: var(--fg-muted); }
 .cf-env-row {
     display: flex;
     align-items: center;
-    gap: 8px;
-    font-size: 13px;
+    gap: var(--space-3);
+    font-size: var(--fs-meta);
     padding: 2px 0;
-    color: #1a1a2e;
+    color: var(--fg-1);
 }
 .cf-env-ic { width: 18px; text-align: center; }
-.cf-env-k { width: 64px; color: #667; }
-.cf-env-v { flex: 1; font-weight: 600; }
-.cf-error { color: #c0392b; font-size: 13px; min-height: 16px; margin: 8px 0; }
+.cf-env-k { width: 64px; color: var(--fg-3); }
+.cf-env-v { flex: 1; font-weight: var(--fw-semibold); }
+.cf-error { color: var(--bl-cond-poor-700); font-size: var(--fs-meta); min-height: 16px; margin: var(--space-3) 0; }
 #catch-form #cf-save { margin-top: 6px; }
 
 .catches-panel {
     position: fixed;
     inset: 0;
-    z-index: 1150;
-    background: #f7f9fc;
+    z-index: var(--z-sheet);
+    background: var(--bg-page);
     display: flex;
     flex-direction: column;
 }
@@ -910,76 +975,78 @@ html, body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
 .catches-head {
     display: flex;
     align-items: center;
-    gap: 12px;
-    padding: 14px 18px;
-    padding-top: calc(14px + env(safe-area-inset-top));
-    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
-    color: #fff;
+    gap: var(--space-4);
+    padding: var(--space-4) var(--space-5);
+    padding-top: calc(var(--space-4) + env(safe-area-inset-top));
+    background: var(--bg-app-bar);
+    color: var(--fg-on-dark);
 }
 .catches-back {
     background: rgba(255,255,255,0.12);
-    color: #fff;
+    color: var(--fg-on-dark);
     border: 1px solid rgba(255,255,255,0.25);
-    border-radius: 6px;
-    padding: 7px 12px;
+    border-radius: var(--radius-2);
+    padding: 7px var(--space-4);
     font: inherit;
-    font-size: 14px;
+    font-size: var(--fs-body);
     cursor: pointer;
 }
-.catches-title { font-size: 18px; font-weight: 700; }
-.catches-count { margin-left: auto; font-size: 13px; color: #9fb3c8; }
+.catches-title { font-size: var(--fs-heading); font-weight: var(--fw-bold); }
+.catches-count { margin-left: auto; font-size: var(--fs-meta); color: var(--fg-on-dark-2); }
 .catches-list {
     flex: 1;
     overflow-y: auto;
-    padding: 12px 16px calc(24px + env(safe-area-inset-bottom));
+    padding: var(--space-4) var(--space-5) calc(24px + env(safe-area-inset-bottom));
     max-width: 720px;
     width: 100%;
     margin: 0 auto;
 }
 .catch-row {
-    background: #fff;
-    border-radius: 10px;
-    padding: 14px 16px;
-    margin-bottom: 10px;
-    box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+    background: var(--bg-surface);
+    border: 1px solid var(--border-1);
+    border-radius: var(--radius-3);
+    padding: var(--space-4) var(--space-5);
+    margin-bottom: var(--space-3);
+    box-shadow: var(--elev-1);
     position: relative;
 }
-.catch-row-head { display: flex; align-items: baseline; gap: 10px; }
+.catch-row-head { display: flex; align-items: baseline; gap: var(--space-3); }
 .catch-date {
-    font-size: 12px;
-    font-weight: 700;
-    color: #1abc9c;
+    font-size: var(--fs-caption);
+    font-weight: var(--fw-bold);
+    color: var(--bl-trout);
     min-width: 48px;
+    letter-spacing: 0.04em;
 }
-.catch-river { font-size: 15px; font-weight: 700; color: #1a1a2e; }
-.catch-sub { font-size: 13px; color: #475569; margin: 4px 0 0 58px; }
-.catch-env { font-size: 12px; color: #5a7a90; margin: 4px 0 0 58px; }
+.catch-river { font-size: var(--fs-body); font-weight: var(--fw-bold); color: var(--fg-1); }
+.catch-sub { font-size: var(--fs-meta); color: var(--fg-2); margin: 4px 0 0 58px; }
+.catch-env { font-size: var(--fs-caption); color: var(--fg-3); margin: 4px 0 0 58px; }
 .catch-notes {
-    font-size: 13px;
-    color: #667;
+    font-size: var(--fs-meta);
+    color: var(--fg-2);
     margin: 6px 0 0 58px;
     white-space: pre-wrap;
 }
 .catch-del {
     position: absolute;
-    top: 12px;
-    right: 12px;
+    top: var(--space-4);
+    right: var(--space-4);
     background: none;
     border: none;
-    color: #c0392b;
-    font-size: 12px;
+    color: var(--bl-cond-poor-700);
+    font-size: var(--fs-caption);
     cursor: pointer;
     opacity: 0.7;
 }
 .catch-del:hover { opacity: 1; }
 .catches-empty {
     text-align: center;
-    color: #667;
-    padding: 48px 24px;
+    color: var(--fg-3);
+    padding: 48px var(--space-7);
     max-width: 360px;
     margin: 0 auto;
 }
-.catches-empty-ic { font-size: 44px; margin-bottom: 12px; }
+.catches-empty-ic { font-size: 44px; margin-bottom: var(--space-4); }
 
 @media (max-width: 700px) {
     .account-menu {
@@ -1049,8 +1116,8 @@ html, body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
         width: 100%;
         max-width: none;
         max-height: 85vh;
-        border-radius: 16px 16px 0 0;
-        box-shadow: 0 -4px 24px rgba(0,0,0,0.25);
+        border-radius: var(--radius-4) var(--radius-4) 0 0;
+        box-shadow: 0 -4px 24px rgba(11,22,34,0.25);
         transform: translateY(100%);
         opacity: 1;
         padding-top: 0;
@@ -1070,19 +1137,121 @@ html, body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
     .controls-panel-grip {
         display: block;
         width: 44px; height: 5px;
-        background: #cbd5e1; border-radius: 3px;
-        margin: 8px auto 2px;
+        background: var(--border-strong); border-radius: 3px;
+        margin: var(--space-3) auto 2px;
         flex-shrink: 0;
         cursor: grab;
         touch-action: none;
     }
     .controls-panel-card.dragging .controls-panel-grip { cursor: grabbing; }
     .controls-panel-close { top: 6px; }
-    #controls-panel-body { padding: 4px 14px calc(16px + env(safe-area-inset-bottom)); }
+    #controls-panel-body { padding: 4px var(--space-4) calc(16px + env(safe-area-inset-bottom)); }
 
     .pin-form {
         width: min(280px, calc(100vw - 24px));
-        right: 12px;
-        bottom: calc(12px + env(safe-area-inset-bottom));
+        right: var(--space-4);
+        bottom: calc(var(--space-4) + env(safe-area-inset-bottom));
     }
 }
+
+/* =========================================================================
+   DESIGN SYSTEM COMPONENTS (lifted from blueliner-design-system/ui_kits/
+   blueliner-pwa/kit.css). PR 1 introduces the markup-agnostic primitives;
+   PR 2 will retarget existing renders (river-panel head, main.py popup
+   HTML) to use these instead of the older .bl-pill* / .bl-condition.
+   ========================================================================= */
+
+/* Condition badge -- color + shape so colorblind anglers get the same
+   signal. ::after glyph: dot for fair, line for poor, dashed outline
+   for no-data. */
+.cond {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 10px 4px 8px;
+    border-radius: var(--radius-pill);
+    font-size: var(--fs-caption);
+    font-weight: var(--fw-bold);
+    letter-spacing: var(--tracking-caption);
+    text-transform: uppercase;
+    border: 1.5px solid;
+    line-height: 1;
+    flex-shrink: 0;
+}
+.cond-glyph {
+    width: 10px; height: 10px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    position: relative;
+}
+.cond--good { color: var(--bl-cond-good-700); background: var(--bl-cond-good-50); border-color: var(--bl-cond-good-500); }
+.cond--good .cond-glyph { background: var(--bl-cond-good-500); }
+.cond--fair { color: var(--bl-cond-fair-700); background: var(--bl-cond-fair-50); border-color: var(--bl-cond-fair-500); }
+.cond--fair .cond-glyph { background: var(--bl-cond-fair-500); }
+.cond--fair .cond-glyph::after {
+    content: ""; position: absolute; top: 3px; left: 3px;
+    width: 4px; height: 4px; border-radius: 50%; background: #fff;
+}
+.cond--poor { color: var(--bl-cond-poor-700); background: var(--bl-cond-poor-50); border-color: var(--bl-cond-poor-500); }
+.cond--poor .cond-glyph { background: var(--bl-cond-poor-500); }
+.cond--poor .cond-glyph::after {
+    content: ""; position: absolute; top: 4px; left: 1px;
+    width: 8px; height: 2px; background: #fff;
+}
+.cond--none { color: var(--bl-cond-none-700); background: var(--bl-cond-none-50); border-color: var(--bl-cond-none-500); border-style: dashed; }
+.cond--none .cond-glyph { background: transparent; border: 1.5px dashed var(--bl-cond-none-500); }
+
+/* Feature pills. One row of property chips under a river title.
+   PR 2 swaps .bl-pill-* renders to these canonical class names. */
+.pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 3px 9px;
+    border-radius: var(--radius-pill);
+    font-size: var(--fs-caption);
+    font-weight: var(--fw-semibold);
+    border: 1px solid;
+    line-height: 1.4;
+    white-space: nowrap;
+}
+.pill-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+.pill--trout   { color: #0E6655; background: var(--bl-trout-soft);   border-color: var(--bl-trout); }
+.pill--trout   .pill-dot { background: var(--bl-trout); }
+.pill--stocked { color: #7A4F0F; background: var(--bl-stocked-soft); border-color: var(--bl-stocked); }
+.pill--stocked .pill-dot { background: var(--bl-stocked); }
+.pill--hatch   { color: #4A2E66; background: var(--bl-hatch-soft);   border-color: var(--bl-hatch); }
+.pill--hatch   .pill-dot { background: var(--bl-hatch); }
+.pill--access  { color: #0E4961; background: #D6EAF2;                border-color: var(--bl-access); }
+.pill--access  .pill-dot { background: var(--bl-access); }
+
+/* Button family. Primary is copper (single warm accent for user
+   action), brand is river-700 (system actions like sign-in submit),
+   secondary is surface, ghost is transparent. PR 2 will retarget
+   existing modal CTAs and the catch-log button to these. */
+.btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 10px var(--space-5);
+    border-radius: var(--radius-2);
+    font-family: inherit;
+    font-size: var(--fs-body);
+    font-weight: var(--fw-semibold);
+    border: 1px solid transparent;
+    cursor: pointer;
+    line-height: 1;
+    transition: background var(--dur-fast) var(--ease-out);
+}
+.btn--primary   { background: var(--accent);       color: var(--fg-on-accent); }
+.btn--primary:hover { background: var(--accent-hover); }
+.btn--brand     { background: var(--bl-river-700); color: var(--fg-on-accent); }
+.btn--brand:hover { background: var(--bl-river-800); }
+.btn--secondary { background: var(--bg-surface);   color: var(--fg-1); border-color: var(--border-2); }
+.btn--secondary:hover { background: var(--bg-hover); }
+.btn--ghost     { background: transparent;         color: var(--fg-2); }
+.btn--ghost:hover { background: var(--bg-hover); }
+.btn--full      { width: 100%; }
+.btn--sm        { padding: 6px 10px; font-size: var(--fs-meta); }
+
