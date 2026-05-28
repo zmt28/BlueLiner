@@ -69,6 +69,7 @@ import * as L from "leaflet";
 import { map } from "./map-setup";
 import { riversLayer, riverLinesLayer } from "./map-layers";
 import { openRiverPanel } from "./river-panel";
+import { getCurrentSt } from "./state";
 import { _riverHasClickableReach } from "./streams";
 import { esc } from "./util";
 
@@ -377,13 +378,14 @@ async function startRiverLines(qs: string): Promise<void> {
 
 /** A lazy (never-visited) state returns [] while the background
  *  precompute runs; refetch once so it fills in without the user
- *  reloading. Reads window.currentSt at retry time (the active code
- *  may have changed in the 20s window) -- currentSt is still owned
- *  by app.js until B1i extracts the state selector. */
+ *  reloading. Reads the active code via getCurrentSt() at retry time
+ *  (the user may have switched states in the 20s window -- in which
+ *  case we skip; whatever state they're now on has its own
+ *  scheduleLazyRetry chain). */
 function scheduleLazyRetry(state: string): void {
   if (_lazyRetry) clearTimeout(_lazyRetry);
   _lazyRetry = setTimeout(() => {
-    if (window.currentSt === state && !viewportMode) loadRivers(state);
+    if (getCurrentSt() === state && !viewportMode) loadRivers(state);
   }, 20000);
 }
 

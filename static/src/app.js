@@ -10,87 +10,23 @@
 // validates, plus sw.js which IS @ts-check'd.
 "use strict";
 
-// code -> { name, center }, loaded from /api/states (states.py is the
-// single source of truth). Populated during init().
-//
-// Note: STATES + currentSt stay in this legacy file for PR B1b --
-// they're hot mutable state that init() and the state selector
-// handler update throughout. They're mirrored to window so the
-// helpers extracted into static/src/state.ts (deviceToken,
-// DEVICE_HEADER, currentState, STATE_ZOOM) can read them. A
-// follow-up PR fully extracts the state-selector code path and
-// migrates these into state.ts proper.
-let STATES = {};
-let currentSt = "MD";
-window.STATES = STATES;          // bridge: state.ts's currentState() reads this
-window.currentSt = currentSt;    // bridge: rivers.ts scheduleLazyRetry reads this
-const STATE_ZOOM = window.STATE_ZOOM;       // re-exposed from state.ts
-const DEVICE_HEADER = window.DEVICE_HEADER; // re-exposed from state.ts
-const deviceToken = window.deviceToken;     // re-exposed from state.ts
-const currentState = window.currentState;   // re-exposed from state.ts
-const esc = window.esc;                     // re-exposed from util.ts
-const popupOpts = window.popupOpts;         // re-exposed from util.ts
+// All state-related plumbing -- STATES catalog, currentSt code,
+// deviceToken / DEVICE_HEADER / STATE_ZOOM / currentState() helpers --
+// owned by static/src/state.ts since PR B1i. App.js reads via window
+// (e.g. window.STATES[code].center inside init).
+const STATE_ZOOM = window.STATE_ZOOM;
+const DEVICE_HEADER = window.DEVICE_HEADER;
+const deviceToken = window.deviceToken;
+const esc = window.esc;
+const popupOpts = window.popupOpts;
 
-// -- Map + base layers -- extracted to static/src/map-setup.ts in PR
-// B1d. The Leaflet map instance, base-map provider catalog, base-map
-// switching + bl_basemap localStorage, and USGS Hydro overlay all
-// live there now. Re-exposed via window so the layer-toggle wiring
-// and base-map segmented control further down can resolve unchanged.
-// `currentBaseKey` is read once at controls init (segment highlight)
-// and then segment buttons manage their own .on classes -- a stale
-// const rebind here is fine.
+// Map (singleton) + the pins layer container -- this file still
+// owns the saved-pin marker creation (B1j scope).
 const map = window.map;
-const setBaseMap = window.setBaseMap;
-const currentBaseKey = window.currentBaseKey;
-const hydroLayer = window.hydroLayer;
-
-// -- Overlay layer groups -- extracted to static/src/map-layers.ts in
-// PR B1e. Owns trout / access / public-lands GeoJSON layers + their
-// lazy-load fetchers + popup HTML helpers, plus the bare layer-group
-// containers (riverLinesLayer, riversLayer, pinsLayer) that the
-// rivers / pins code in this file still populates.
-const troutLayer = window.troutLayer;
-const accessLayer = window.accessLayer;
-const publicLandsLayer = window.publicLandsLayer;
-const riverLinesLayer = window.riverLinesLayer;
-const riversLayer = window.riversLayer;
 const pinsLayer = window.pinsLayer;
-const ensureTrout = window.ensureTrout;
-const ensureAccess = window.ensureAccess;
-const loadPublicLands = window.loadPublicLands;
-const makeAccessIcon = window.makeAccessIcon;
-const accessPopupHtml = window.accessPopupHtml;
-const publicLandsPopupHtml = window.publicLandsPopupHtml;
 
-// Two stacked layers per feature: a thin styled visible line and a
-// transparent fat "hit casing" on top to catch finger taps on mobile
-// (a 4px line is still a poor touch target). Visible is non-interactive
-// so clicks unambiguously go to the casing; both render the same FC.
-// Clickable-stream layers + their click handler extracted to
-// static/src/streams.ts in PR B1g. clickableLayer + clickableVisible
-// are still referenced by the rivers code below (renderRivers checks
-// _riverHasClickableReach + the lyr-fishable toggle binds clickableLayer);
-// re-exposed via window.
-const clickableLayer = window.clickableLayer;
-const clickableVisible = window.clickableVisible;
-
-// Layer visibility used to live in Leaflet's default top-right control;
-// it now sits inside the Layers tab of the unified #controls-panel.
-// Wiring happens at init time so the tab's checkboxes drive add/remove
-// on the map.
-
-// Rivers state machine -- allRivers, stateRivers, the per-site
-// riverLineBySite cache + dedup sets, renderRivers, riverPasses,
-// makeConditionIcon, loadRivers, loadViewportRivers, refreshForView,
-// loadRiverLines, startRiverLines, scheduleLazyRetry, the moveend
-// listener that drives viewport vs state mode -- ALL extracted to
-// static/src/rivers.ts in PR B1h. Re-exposed via window so the
-// state selector handler (and the lyr-fishable layer-toggle which
-// references renderRivers indirectly) keep working unchanged.
-const renderRivers = window.renderRivers;
+// Rivers loader -- still called from init() below.
 const loadRivers = window.loadRivers;
-const loadVisibleRiverLines = window.loadVisibleRiverLines;
-const populateHatchOptions = window.populateHatchOptions;
 
 // -- 1-yr USGS trend sparkline -- extracted to static/src/sparkline.ts
 // in PR B1c. Re-exposed here so existing call sites resolve.
@@ -200,31 +136,11 @@ const clearStreamHighlight = window.clearStreamHighlight;
 const onStreamClick = window.onStreamClick;
 const setStreamColorMode = window.setStreamColorMode;
 
-// Coloring-mode toggle (Decision C): Conditions vs Trout class.
-// Wiring lives with the unified filter popover, so it's just a DOM
-// segmented control instead of its own Leaflet control. Both modes
-// re-style the same clickable network -- it's a viewing aid, not a
-// filter, so it groups under "Show on map" rather than "Show rivers".
-document.querySelectorAll("#color-mode button").forEach((b) =>
-  b.addEventListener("click", () => {
-    setStreamColorMode(b.dataset.mode);
-    document.querySelectorAll("#color-mode button").forEach((x) =>
-      x.classList.toggle("on", x === b));
-    restyleStreams();
-  }));
+// Color-mode segmented control, state selector, filter handlers,
+// layer-toggle wiring, controls panel open/close + tabs, base-map
+// segment + reset-filters button -- all extracted to
+// static/src/controls.ts in PR B1i.
 
-// Re-fetch the network whenever the view settles or the layer is toggled.
-let _streamTimer = null;
-let _publicLandsTimer = null;
-// 500ms (was 350ms) so touch-device momentum-pans don't fire two
-// fetches per gesture -- iOS Safari and Android Chrome both emit a
-// moveend at the start of the deceleration *and* at the rest point.
-map.on("moveend", () => {
-  clearTimeout(_streamTimer);
-  _streamTimer = setTimeout(loadClickableStreams, 500);
-  clearTimeout(_publicLandsTimer);
-  _publicLandsTimer = setTimeout(loadPublicLands, 500);
-});
 
 // -- Gauges + filters + render + line fetch (populateHatchOptions,
 // riverPasses, renderRivers, CONDITION_VARIANT, makeConditionIcon,
@@ -325,252 +241,33 @@ document.getElementById("pin-save").onclick = async () => {
   setPinMode(false);
 };
 
-// -- Filters / state switching (no full reload) --
-
-function onFilterChange() {
-  renderRivers();                 // re-apply filter to pins + lines
-  loadVisibleRiverLines();        // fetch lines for newly-passing in-view rivers
-}
-document.getElementById("cond-select").onchange = onFilterChange;
-document.getElementById("trout-only").onchange = onFilterChange;
-document.getElementById("stocked-only").onchange = onFilterChange;
-document.getElementById("hatch-select").onchange = onFilterChange;
-
-document.getElementById("state-select").onchange = (e) => {
-  const s = e.target.value;
-  currentSt = s;
-  window.currentSt = s;                   // bridge: rivers.ts scheduleLazyRetry reads it
-  history.replaceState(null, "", `/map?state=${s.toLowerCase()}`);
-  map.setView(STATES[s].center, STATE_ZOOM);
-  loadRivers(s);
-  // Refresh trout / access for the new state only if the layer is
-  // currently shown. PR B1h fix: route through map-layers.ts setters
-  // -- the bare `troutLoadedState = null` reads from B1e's extraction
-  // hit ReferenceError in strict mode (ES modules are always strict)
-  // so trout/access state-switch reset silently failed.
-  window.resetTroutLoadedState();
-  if (map.hasLayer(troutLayer)) ensureTrout(s);
-  window.resetAccessLoadedState();
-  if (map.hasLayer(accessLayer)) ensureAccess(s);
-};
-
-// -- Unified controls panel: Layers / Filters / Legend in one tabbed sheet
-// Three header buttons (#ctrl-layers, #ctrl-filters, #ctrl-legend) act as
-// direct-entry points. Each button opens the panel to its tab; clicking
-// the same button again closes the panel; clicking a different button
-// while the panel is open switches the active tab.
-
-const controlsPanel = document.getElementById("controls-panel");
-const _ctrlTabRadios = {
-  layers: document.getElementById("ctrl-tab-layers"),
-  filters: document.getElementById("ctrl-tab-filters"),
-  legend: document.getElementById("ctrl-tab-legend"),
-};
-const _ctrlHeaderBtns = {
-  layers: document.getElementById("ctrl-layers"),
-  filters: document.getElementById("ctrl-filters"),
-  legend: document.getElementById("ctrl-legend"),
-};
-let _ctrlActiveTab = "layers";
-let _ctrlHideTimer = null;
-
-function _setCtrlHeaderActive(tab) {
-  for (const [t, btn] of Object.entries(_ctrlHeaderBtns)) {
-    const on = t === tab && !controlsPanel.hidden && controlsPanel.classList.contains("open");
-    btn.classList.toggle("active", on);
-    btn.setAttribute("aria-expanded", on ? "true" : "false");
-  }
-}
-
-function _selectCtrlTab(tab) {
-  const radio = _ctrlTabRadios[tab];
-  if (radio) radio.checked = true;
-  _ctrlActiveTab = tab;
-  _setCtrlHeaderActive(tab);
-}
-
-function openControlsPanel(tab) {
-  clearTimeout(_ctrlHideTimer);
-  _selectCtrlTab(tab);
-  controlsPanel.hidden = false;
-  const isMobile = window.matchMedia("(max-width: 700px)").matches;
-  controlsPanel.classList.remove("peek", "full");
-  requestAnimationFrame(() => {
-    controlsPanel.classList.add("open");
-    if (isMobile) controlsPanel.classList.add("peek");
-    _setCtrlHeaderActive(tab);
-  });
-}
-
-function closeControlsPanel() {
-  if (!controlsPanel || controlsPanel.hidden) return;
-  controlsPanel.classList.remove("open", "peek", "full");
-  _ctrlHideTimer = setTimeout(() => { controlsPanel.hidden = true; }, 240);
-  _setCtrlHeaderActive(null);
-}
-
-// Header buttons -> open the panel directly to their tab.
-for (const [tab, btn] of Object.entries(_ctrlHeaderBtns)) {
-  btn.addEventListener("click", (e) => {
-    e.stopPropagation();
-    const open = !controlsPanel.hidden && controlsPanel.classList.contains("open");
-    if (open && _ctrlActiveTab === tab) {
-      closeControlsPanel();
-    } else if (open) {
-      _selectCtrlTab(tab);
-      // On mobile a tab switch while at peek means the user is engaging
-      // with the panel; promote to full (same rule as the river panel).
-      if (window.matchMedia("(max-width: 700px)").matches &&
-          controlsPanel.classList.contains("peek")) {
-        controlsPanel.classList.remove("peek");
-        controlsPanel.classList.add("full");
-      }
-    } else {
-      openControlsPanel(tab);
-    }
-  });
-}
-
-// X button and backdrop -> close.
-controlsPanel.querySelectorAll("[data-close]").forEach((el) =>
-  el.addEventListener("click", closeControlsPanel));
-
-// ESC closes from any state.
-document.addEventListener("keydown", (e) => {
-  if (e.key === "Escape" && !controlsPanel.hidden) closeControlsPanel();
-});
-
-// Click-outside closes (desktop popover behavior).
-document.addEventListener("click", (e) => {
-  if (controlsPanel.hidden) return;
-  if (controlsPanel.contains(e.target)) return;
-  if (Object.values(_ctrlHeaderBtns).some((b) => b.contains(e.target))) return;
-  closeControlsPanel();
-});
-
-// In-panel tab switching (clicking a tab label inside the panel)
-// updates the header's active-state indicator.
-for (const [tab, radio] of Object.entries(_ctrlTabRadios)) {
-  radio.addEventListener("change", () => {
-    if (radio.checked) {
-      _ctrlActiveTab = tab;
-      _setCtrlHeaderActive(tab);
-    }
-  });
-}
-
-// Snap-sheet behavior on mobile (bottom-sheet with peek/full).
-wireSnapSheet(controlsPanel, {
-  cardSelector: ".controls-panel-card",
-  gripSelector: ".controls-panel-grip",
-  bodySelector: "#controls-panel-body",
-  tabSelector: ".ctrl-tab",
-  onClose: closeControlsPanel,
-});
-
-// Layer visibility: persist last user choice across page loads in
-// localStorage["bl_layers"]. Defaults come from the HTML `checked`
-// attribute when no saved preference exists -- new layers added after
-// a user's last visit will use whatever default the HTML declares.
-const LAYER_PREF_KEY = "bl_layers";
-function loadLayerPrefs() {
-  try {
-    const raw = localStorage.getItem(LAYER_PREF_KEY);
-    return raw ? JSON.parse(raw) : {};
-  } catch (_) { return {}; }
-}
-function saveLayerPref(id, on) {
-  try {
-    const prefs = loadLayerPrefs();
-    prefs[id] = !!on;
-    localStorage.setItem(LAYER_PREF_KEY, JSON.stringify(prefs));
-  } catch (_) {}
-}
-const _layerPrefs = loadLayerPrefs();
-
-// Layer visibility checkboxes -- one per Leaflet layer. Toggling the
-// checkbox mirrors what the old L.control.layers did, plus fires the
-// same side-effects (lazy load of clickable streams / trout / access).
-function wireLayerToggle(id, layer, onAdd) {
-  const cb = document.getElementById(id);
-  // Apply saved preference if present, otherwise leave the HTML default.
-  if (Object.prototype.hasOwnProperty.call(_layerPrefs, id)) {
-    cb.checked = !!_layerPrefs[id];
-  }
-  if (cb.checked && !map.hasLayer(layer)) {
-    map.addLayer(layer);
-    if (onAdd) onAdd();
-  } else if (!cb.checked && map.hasLayer(layer)) {
-    map.removeLayer(layer);
-  }
-  cb.addEventListener("change", () => {
-    if (cb.checked) {
-      map.addLayer(layer);
-      if (onAdd) onAdd();
-    } else {
-      map.removeLayer(layer);
-    }
-    saveLayerPref(id, cb.checked);
-  });
-}
-wireLayerToggle("lyr-fishable", clickableLayer, loadClickableStreams);
-// Toggling the clickable layer off needs to bring the gauge dots back
-// (since _riverHasClickableReach now returns false), so re-render.
-document.getElementById("lyr-fishable").addEventListener("change", (e) => {
-  if (!e.target.checked) renderRivers();
-});
-wireLayerToggle("lyr-usgs", hydroLayer);
-wireLayerToggle("lyr-trout", troutLayer, () => ensureTrout(currentSt));
-wireLayerToggle("lyr-access", accessLayer, () => ensureAccess(currentSt));
-wireLayerToggle("lyr-public-lands", publicLandsLayer, loadPublicLands);
-wireLayerToggle("lyr-pins", pinsLayer);
-
-// Base-map segmented control: mutually exclusive radio behavior.
-const basemapSeg = document.getElementById("basemap-mode");
-if (basemapSeg) {
-  // Reflect the loaded preference on the segment buttons.
-  for (const btn of basemapSeg.querySelectorAll("button[data-base]")) {
-    btn.classList.toggle("on", btn.dataset.base === currentBaseKey);
-    btn.addEventListener("click", () => {
-      const key = btn.dataset.base;
-      setBaseMap(key);
-      for (const sib of basemapSeg.querySelectorAll("button[data-base]")) {
-        sib.classList.toggle("on", sib.dataset.base === key);
-      }
-    });
-  }
-}
-
-document.getElementById("filter-reset").onclick = () => {
-  document.getElementById("cond-select").value = "any";
-  document.getElementById("hatch-select").value = "any";
-  document.getElementById("trout-only").checked = false;
-  document.getElementById("stocked-only").checked = false;
-  onFilterChange();
-};
-
-// Legend now lives inside the unified controls panel above (the Legend
-// tab). The bottom-left pill + bl_legend_open localStorage key are
-// retired; the panel's own open state is the single source of truth.
+// Filter / state-selector / controls-panel / layer-toggle / base-map
+// segment / reset-filters wiring all extracted to static/src/controls.ts
+// in PR B1i.
 
 // -- Init --
 
 async function init() {
   const list = await fetch("/api/states").then((r) => r.json());
+  // Populate the canonical state.ts catalog (mutates in place; window.STATES
+  // reference stays valid). The state-selector dropdown is filled here
+  // because it's a DOM node owned by index.html; the rest of state.ts
+  // doesn't care about the DOM.
+  window.setStates(list);
   const sel = document.getElementById("state-select");
   sel.innerHTML = "";
   for (const s of list) {
-    STATES[s.code] = { name: s.name, center: s.center };
     const opt = document.createElement("option");
     opt.value = s.code;
     opt.textContent = s.name;
     sel.appendChild(opt);
   }
-  const state = currentState();
-  currentSt = state;
-  window.currentSt = currentSt;   // bridge: rivers.ts scheduleLazyRetry reads this
+  const state = window.currentState();
+  // Init reads the active code from the URL, so syncing it back into
+  // the URL is a no-op -- skip via syncUrl:false.
+  window.setCurrentSt(state, { syncUrl: false });
   sel.value = state;
-  map.setView(STATES[state].center, STATE_ZOOM);
+  map.setView(window.STATES[state].center, STATE_ZOOM);
   wireRiverPanel();
   loadRivers(state);
   loadPins();
