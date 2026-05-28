@@ -30,74 +30,18 @@ const currentState = window.currentState;   // re-exposed from state.ts
 const esc = window.esc;                     // re-exposed from util.ts
 const popupOpts = window.popupOpts;         // re-exposed from util.ts
 
-const map = L.map("map");
-
-// Any Leaflet popup that contains <i data-lucide="..."> nodes needs
-// Lucide to hydrate them when the popup mounts to the DOM. Single
-// global listener so each layer that binds a popup doesn't have to
-// remember it.
-map.on("popupopen", () => refreshIcons());
-
-// Base maps. Exactly one is on the map at a time; the active one sits
-// at the bottom of the layer stack so overlays (hydro, streams, gauges)
-// always render on top. Defaults to "street" (CARTO Light); the user's
-// last choice persists in localStorage["bl_basemap"] across visits.
-const BASE_MAPS = {
-  street: () => L.tileLayer(
-    "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png",
-    {
-      attribution: "&copy; OpenStreetMap contributors &copy; CARTO",
-      subdomains: "abcd",
-      maxZoom: 19,
-    }),
-  satellite: () => L.tileLayer(
-    "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
-    {
-      attribution: "Source: Esri, Maxar, Earthstar Geographics",
-      maxZoom: 19,
-    }),
-  topo: () => L.tileLayer(
-    "https://basemap.nationalmap.gov/arcgis/rest/services/USGSTopo/MapServer/tile/{z}/{y}/{x}",
-    {
-      attribution: "USGS The National Map: National Boundaries Dataset, "
-                 + "National Elevation Dataset, Geographic Names Information System.",
-      maxZoom: 16,
-    }),
-};
-
-function loadBaseMapPref() {
-  try {
-    const v = localStorage.getItem("bl_basemap");
-    return BASE_MAPS[v] ? v : "street";
-  } catch (_) { return "street"; }
-}
-
-let currentBaseKey = loadBaseMapPref();
-let currentBaseLayer = BASE_MAPS[currentBaseKey]().addTo(map);
-
-function setBaseMap(key) {
-  if (!BASE_MAPS[key] || key === currentBaseKey) return;
-  map.removeLayer(currentBaseLayer);
-  currentBaseKey = key;
-  currentBaseLayer = BASE_MAPS[key]().addTo(map);
-  // Keep overlays on top: Leaflet re-stacks newly-added layers, but
-  // tile layers added later render *above* earlier ones, so we set
-  // zIndex explicitly to push the base back behind hydro + everything.
-  currentBaseLayer.setZIndex(0);
-  try { localStorage.setItem("bl_basemap", key); } catch (_) {}
-}
-
-// Labeled rivers/streams: free national USGS "Hydro Cached" overlay (no key,
-// no deps). Transparent raster designed to sit on a basemap. ArcGIS cached
-// tiles are /tile/{level}/{row}/{col} == {z}/{y}/{x}.
-const hydroLayer = L.tileLayer(
-  "https://basemap.nationalmap.gov/arcgis/rest/services/USGSHydroCached/MapServer/tile/{z}/{y}/{x}",
-  {
-    opacity: 0.85,
-    maxZoom: 19,
-    attribution: "Hydrography &copy; USGS The National Map",
-  }
-).addTo(map);
+// -- Map + base layers -- extracted to static/src/map-setup.ts in PR
+// B1d. The Leaflet map instance, base-map provider catalog, base-map
+// switching + bl_basemap localStorage, and USGS Hydro overlay all
+// live there now. Re-exposed via window so the layer-toggle wiring
+// and base-map segmented control further down can resolve unchanged.
+// `currentBaseKey` is read once at controls init (segment highlight)
+// and then segment buttons manage their own .on classes -- a stale
+// const rebind here is fine.
+const map = window.map;
+const setBaseMap = window.setBaseMap;
+const currentBaseKey = window.currentBaseKey;
+const hydroLayer = window.hydroLayer;
 
 const troutLayer = L.geoJSON(null, {
   style: { color: "#1abc9c", weight: 2.5, opacity: 0.7 },

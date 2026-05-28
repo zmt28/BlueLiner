@@ -242,24 +242,11 @@ interface AuthMe {
 /** Map from layer-toggle id (e.g. "lyr-fishable") to whether it's on. */
 type LayerPrefs = Record<string, boolean>;
 
-// ---------------------------------------------------------------------------
-// Leaflet declaration-merging
-// The app attaches `_blRiver` to markers + GeoJSON layers so a click
-// handler can recover the parent River from the layer. Augment the
-// Leaflet types so TS doesn't flag the access pattern.
-// ---------------------------------------------------------------------------
-
-declare module "leaflet" {
-  interface Marker {
-    _blRiver?: River;
-  }
-  interface GeoJSON {
-    _blRiver?: River;
-  }
-  interface Layer {
-    _blRiver?: River;
-  }
-}
+// Leaflet declaration-merging lives in static/leaflet-augment.d.ts
+// (a module file, so `declare module "leaflet"` augments rather than
+// replaces @types/leaflet -- this file is an ambient script so
+// `declare module` here would replace the package types and lose
+// every Leaflet class/function).
 
 // ---------------------------------------------------------------------------
 // Lucide (CDN-loaded global)
