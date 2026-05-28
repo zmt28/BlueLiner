@@ -514,14 +514,59 @@ function closeRiverPanel() {
   grip.addEventListener("pointerup", onUp);
   grip.addEventListener("pointercancel", onUp);
 
+  const body = document.getElementById("river-panel-body");
+
   // Tap-to-expand: a click on the body content (not on a control)
   // promotes peek -> full so users can open the sheet without
   // precisely hitting the 5px grip.
-  document.getElementById("river-panel-body").addEventListener("click", (e) => {
+  body.addEventListener("click", (e) => {
     if (!isMobile()) return;
     if (!panel.classList.contains("peek")) return;
     if (e.target.closest("button, a, label, input, summary")) return;
     setSnap("full");
+  });
+
+  // Swipe-to-expand: a meaningful upward drag anywhere on the peek
+  // sheet (not just the 5px grip) promotes peek -> full. A downward
+  // drag of the same magnitude closes the panel -- matches the grip's
+  // drag-to-dismiss behavior and feels native. At full state this
+  // handler is a no-op so the body scrolls normally.
+  let bodyDrag = null;
+  const SWIPE_THRESHOLD = 36;       // pixels of vertical travel to commit
+  body.addEventListener("pointerdown", (e) => {
+    if (!isMobile()) return;
+    if (!panel.classList.contains("peek")) return;
+    // Don't capture clicks on interactive controls; let them behave
+    // normally (the click handler above will still promote to full
+    // when those clicks resolve, e.g. tab labels).
+    if (e.target.closest("button, a, label, input, summary")) return;
+    bodyDrag = { startY: e.clientY };
+  });
+  body.addEventListener("pointermove", (e) => {
+    if (!bodyDrag) return;
+    // No live transform-following here (the body scrolls when at full,
+    // and at peek we just decide on release). Just track the latest Y.
+    bodyDrag.lastY = e.clientY;
+  });
+  body.addEventListener("pointerup", () => {
+    if (!bodyDrag) return;
+    const dy = (bodyDrag.lastY || bodyDrag.startY) - bodyDrag.startY;
+    bodyDrag = null;
+    if (Math.abs(dy) < SWIPE_THRESHOLD) return;     // small move: let click handle it
+    if (dy < 0) setSnap("full");                    // swipe up -> expand
+    else closeRiverPanel();                         // swipe down -> dismiss
+  });
+  body.addEventListener("pointercancel", () => { bodyDrag = null; });
+
+  // Tab switch -> always expand to full. Clicking any tab on a peek
+  // sheet means the user is engaged with the panel; the right place
+  // for them is the full view, not back at peek with the tab content
+  // mostly off-screen.
+  body.addEventListener("click", (e) => {
+    if (!isMobile()) return;
+    const tab = e.target.closest(".bl-tab");
+    if (!tab) return;
+    if (panel.classList.contains("peek")) setSnap("full");
   });
 })();
 
