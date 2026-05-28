@@ -1228,9 +1228,16 @@ def test_shell_no_cache_middleware():
         resp = asyncio.run(main._shell_no_cache(req, _call_next))
         return resp.headers.get("Cache-Control")
 
-    for p in ("/", "/map", "/sw.js", "/static/app.js", "/static/app.css"):
+    # Shell routes get the no-cache header so deploys propagate
+    # immediately. (Vite hashes the JS/CSS bundle filenames, so
+    # /static/dist/assets/* are themselves immutable -- /map is the
+    # cache-busting choke point that points at fresh hashes.)
+    for p in ("/", "/map", "/sw.js", "/static/manifest.webmanifest"):
         assert cc(p) == "no-cache, must-revalidate", p
-    for p in ("/static/vendor/leaflet/leaflet.js", "/api/rivers"):
+    # Content-hashed Vite bundles + the icons keep their default
+    # long-lived caching; the API has its own per-route cache rules.
+    for p in ("/static/dist/assets/index-abc123.js",
+              "/static/icons/icon-180.png", "/api/rivers"):
         assert cc(p) is None, p
 
 
