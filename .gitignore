@@ -12,3 +12,7 @@ bluelines.db*
 # Test + tooling caches
 .pytest_cache/
 *.egg-info/
+
+# Frontend tooling (PR A: typecheck only; PR B: Vite build)
+node_modules/
+static/dist/

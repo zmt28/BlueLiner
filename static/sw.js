@@ -1,3 +1,11 @@
+// @ts-check
+/// <reference lib="webworker" />
+// In a service worker, `self` is a ServiceWorkerGlobalScope, not a Window.
+// Tell TypeScript that explicitly so .skipWaiting() / .clients are typed.
+/** @typedef {ServiceWorkerGlobalScope} SWGlobalScope */
+/** @type {SWGlobalScope} */
+const swSelf = /** @type {any} */ (self);
+
 // Blueliner service worker -- offline app shell only.
 // Live data (/api/*) and map tiles are always fetched from the network.
 //
@@ -26,7 +34,7 @@ const SHELL = [
 
 self.addEventListener("install", (e) => {
   e.waitUntil(
-    caches.open(CACHE).then((c) => c.addAll(SHELL)).then(() => self.skipWaiting())
+    caches.open(CACHE).then((c) => c.addAll(SHELL)).then(() => swSelf.skipWaiting())
   );
 });
 
@@ -34,7 +42,7 @@ self.addEventListener("activate", (e) => {
   e.waitUntil(
     caches.keys()
       .then((keys) => Promise.all(keys.filter((k) => k !== CACHE).map((k) => caches.delete(k))))
-      .then(() => self.clients.claim())
+      .then(() => swSelf.clients.claim())
   );
 });
 
