@@ -22,8 +22,11 @@ import "leaflet/dist/leaflet.css";
 
 // Canonical TS modules. Each one assigns to window on import for the
 // legacy app.js bridge (until app.js is itself fully extracted into
-// these modules and the window assignments can be dropped).
+// these modules and the window assignments can be dropped). Import
+// order: leaf utilities first, modules that depend on them next.
 import "./state";
+import "./util";
+import "./sparkline";
 
 // Legacy application code, now a Vite-managed module so it can `import`
 // from sibling TS modules. Vite bundles it into the production output;
