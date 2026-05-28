@@ -10,17 +10,22 @@
     "skipLibCheck": true,
     "resolveJsonModule": true,
     "esModuleInterop": true,
+    "isolatedModules": true,
     "forceConsistentCasingInFileNames": true,
 
-    "noImplicitAny": false,
-    "strictNullChecks": false,
-    "strictBindCallApply": true,
-    "strictFunctionTypes": true,
-    "noImplicitThis": true,
-    "alwaysStrict": true,
+    "strict": true,
+    "noUnusedLocals": false,
+    "noUnusedParameters": false,
+    "noFallthroughCasesInSwitch": true,
 
     "types": ["leaflet"]
   },
-  "include": ["static/app.js", "static/sw.js", "static/*.d.ts"],
-  "exclude": ["node_modules", "static/vendor", "static/dist"]
+  "include": [
+    "static/src/**/*.ts",
+    "static/src/**/*.d.ts",
+    "static/sw.js",
+    "static/*.d.ts",
+    "vite.config.ts"
+  ],
+  "exclude": ["node_modules", "static/vendor", "static/dist", "static/app.js"]
 }

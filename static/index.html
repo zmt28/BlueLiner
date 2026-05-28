@@ -12,9 +12,20 @@
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="Blueliner">
-    <link rel="stylesheet" href="/static/vendor/leaflet/leaflet.css">
-    <link rel="stylesheet" href="/static/tokens.css">
-    <link rel="stylesheet" href="/static/app.css">
+    <!-- Vite manages the CSS asset graph + the entry script. In dev
+         mode the dev server injects HMR + the unbundled modules; in
+         the production build (`npm run build`) Vite emits a single
+         fingerprinted CSS bundle (`/static/dist/assets/index-<hash>.css`)
+         and writes a manifest the service worker reads. The order
+         of CSS imports inside src/main.ts mirrors the historical
+         tokens.css -> app.css -> leaflet.css order. -->
+    <script type="module" src="/src/main.ts"></script>
+    <!-- Leaflet is still loaded as a global from the vendored copy
+         in PR B1a so the existing app.js (which uses `L` globally)
+         continues to work unchanged. Future PRs (B1b+) will migrate
+         to `import L from "leaflet"` inside TS modules; PR B2 swaps
+         the renderer to MapLibre. -->
+    <script src="/static/vendor/leaflet/leaflet.js"></script>
     <!-- Lucide outline icons. Replaces the original emoji + unicode
          glyphs (bug, fish, mailbox, arrow) used in popups and modals.
          App calls window.lucide.createIcons() via a refreshIcons()
