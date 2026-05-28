@@ -300,10 +300,10 @@ async def _ensure_medians_cached(site_nos: list[str]) -> None:
 # -- Scoring --
 
 SCORE_COLORS = {
-    "green": "#2ecc71",
-    "yellow": "#f39c12",
-    "red": "#e74c3c",
-    "gray": "#95a5a6",
+    "green":  "#4A8C5C",   # --bl-cond-good-500 (moss)
+    "yellow": "#B7892F",   # --bl-cond-fair-500 (ochre)
+    "red":    "#B3473B",   # --bl-cond-poor-500 (clay)
+    "gray":   "#7F8B9C",   # --bl-cond-none-500 (stone)
 }
 
 SCORE_LABELS = {
@@ -314,10 +314,20 @@ SCORE_LABELS = {
 }
 
 SCORE_BG = {
-    "green": "#d5f5e3",
-    "yellow": "#fef9e7",
-    "red": "#fdedec",
-    "gray": "#eaecee",
+    "green":  "#EEF5F0",   # --bl-cond-good-50
+    "yellow": "#F8F0DA",   # --bl-cond-fair-50
+    "red":    "#F5E1DD",   # --bl-cond-poor-50
+    "gray":   "#EEF0F3",   # --bl-cond-none-50
+}
+
+# Maps the legacy color-name key to the design-system variant suffix.
+# Used by templates that emit class-based markup (.cond--good etc.)
+# instead of inline-styled badges.
+COND_VARIANT = {
+    "green":  "good",
+    "yellow": "fair",
+    "red":    "poor",
+    "gray":   "none",
 }
 
 
@@ -467,20 +477,20 @@ def _trend_html(site_no: str | None) -> str:
 
 
 _CHIP_TROUT = (
-    '<span class="bl-pill bl-pill-trout">'
-    '&#x1f41f; Trout Water</span>'
+    '<span class="pill pill--trout">'
+    '<span class="pill-dot"></span>Trout water</span>'
 )
 _CHIP_STOCKED = (
-    '<span class="bl-pill bl-pill-stocked">'
-    'Recently Stocked</span>'
+    '<span class="pill pill--stocked">'
+    '<span class="pill-dot"></span>Recently stocked</span>'
 )
 _CHIP_HATCH_NOW = (
-    '<span class="bl-pill bl-pill-hatch">'
-    '&#x1F41B; Hatching now</span>'
+    '<span class="pill pill--hatch">'
+    '<span class="pill-dot"></span>Hatching now</span>'
 )
 _CHIP_ACCESS = (
-    '<span class="bl-pill bl-pill-access">'
-    '&#x1F45F; Public access</span>'
+    '<span class="pill pill--access">'
+    '<span class="pill-dot"></span>Public access</span>'
 )
 
 
@@ -539,18 +549,19 @@ def _stocked_block_html(waters: list[dict]) -> str:
     for w in waters[:6]:
         species = ", ".join(w.get("species", []))
         link = (f'<a href="{w["agency_url"]}" target="_blank" '
-                f'style="color:#2c6fbf;text-decoration:none">stocking schedule &#x2197;</a>'
+                f'class="gauge-link">stocking schedule '
+                f'<i data-lucide="arrow-up-right" aria-hidden="true"></i></a>'
                 ) if w.get("agency_url") else ""
         items += f"""
-            <div style="padding:5px 0;border-top:1px solid #f6e2cf">
-                <div style="font-size:13px;font-weight:600;color:#1a1a2e">{w["water"]}</div>
-                <div style="font-size:11px;color:#7a5230">{w.get("category", "")}
+            <div style="padding:5px 0;border-top:1px solid var(--bl-stocked-soft)">
+                <div style="font-size:var(--fs-meta);font-weight:600;color:var(--fg-1)">{w["water"]}</div>
+                <div style="font-size:var(--fs-caption);color:var(--bl-stocked)">{w.get("category", "")}
                     {("&middot; " + species) if species else ""}
                     &middot; {_season_label(w.get("season_months", (1, 12)))} {link}</div>
             </div>"""
     return f"""
-        <div style="margin-top:10px;padding:8px 12px;background:#fdf3e7;border:1px solid #f6dcc0;border-radius:6px">
-            <div style="font-size:13px;font-weight:700;color:#9c4a00">Stocked nearby</div>
+        <div style="margin-top:10px;padding:8px 12px;background:var(--bl-stocked-soft);border:1px solid var(--bl-stocked);border-radius:var(--radius-2)">
+            <div style="font-size:var(--fs-meta);font-weight:700;color:var(--bl-stocked)">Stocked nearby</div>
             {items}
         </div>"""
 
@@ -569,10 +580,30 @@ def _primary_gauge(gauges: list[dict]) -> dict | None:
     return gauges[0] if gauges else None
 
 
+def _verdict_variant(river: dict) -> str:
+    """Picks the .panel-verdict tone modifier from the river's overall
+    score. is-fair / is-poor tint the callout box ochre / clay; is-none
+    grays it out for limited-data rivers."""
+    overall = river.get("overall", "gray")
+    if overall == "yellow":
+        return " is-fair"
+    if overall == "red":
+        return " is-poor"
+    if overall == "gray":
+        return " is-none"
+    return ""
+
+
 def _ranking_summary_html(river: dict) -> str:
     """One-line plain-English read on why the river is rated as it is,
     e.g. 'Flow is 20% below average and water temp is ideal.' Built from
-    the primary gauge's flow-vs-median ratio + water temperature."""
+    the primary gauge's flow-vs-median ratio + water temperature.
+
+    Rendered into a .panel-verdict box (design-system component); the
+    tone modifier (is-fair / is-poor / is-none) matches the overall
+    score so the callout color reinforces the headline badge. Inline
+    numeric insertions get wrapped in <strong> for prominence."""
+    variant = _verdict_variant(river)
     primary = _primary_gauge(river["gauges"])
     if not primary:
         return ""
@@ -589,12 +620,12 @@ def _ranking_summary_html(river: dict) -> str:
             parts.append("flow is near normal for this time of year")
         elif pct < 0:
             parts.append(
-                f"flow is {abs(pct)}% below average for this time of year")
+                f"flow is <strong>{abs(pct)}%</strong> below average for this time of year")
         else:
             parts.append(
-                f"flow is {pct}% above average for this time of year")
+                f"flow is <strong>{pct}%</strong> above average for this time of year")
     elif cf is not None:
-        parts.append(f"flow is {cf:.0f} cfs")
+        parts.append(f"flow is <strong>{cf:.0f}</strong> cfs")
 
     tf = cond.get("temp_f")
     if tf is not None:
@@ -610,20 +641,26 @@ def _ranking_summary_html(river: dict) -> str:
             parts.append("water is too warm")
 
     if not parts:
-        return '<div class="bl-summary">Limited live data right now.</div>'
+        return f'<div class="panel-verdict{variant}">Limited live data right now.</div>'
     sentence = " and ".join(parts)
     sentence = sentence[0].upper() + sentence[1:] + "."
-    return f'<div class="bl-summary">{sentence}</div>'
+    return f'<div class="panel-verdict{variant}">{sentence}</div>'
 
 
 def _panel_header_html(river: dict) -> str:
-    """Top of the river panel: name, condition badge, feature pills,
-    stat grid. This block fits in the mobile snap-sheet's peek view
-    (~38vh) so the angler sees the headline info before deciding to
-    expand the sheet."""
+    """Top of the river panel: name + condition badge on the title row,
+    feature pills, verdict callout, stat grid. This block fits in the
+    mobile snap-sheet's peek view (~38vh) so the angler sees the
+    headline info before deciding to expand the sheet.
+
+    Uses the design-system component primitives:
+        .cond + .cond-glyph + .cond--good/fair/poor/none
+        .pill + .pill-dot + .pill--trout/stocked/hatch/access
+        .panel-verdict (with is-fair / is-poor / is-none tone modifiers)
+        .bl-num (tabular numerals on the stat-grid numbers)
+    """
     overall = river["overall"]
-    badge_color = SCORE_COLORS[overall]
-    badge_bg = SCORE_BG[overall]
+    variant = COND_VARIANT.get(overall, "none")
     badge_label = SCORE_LABELS[overall]
     pills = []
     if river.get("on_trout"):
@@ -643,23 +680,24 @@ def _panel_header_html(river: dict) -> str:
     n_access = int(river.get("access_count", 0))
     stats_html = (
         '<div class="bl-stats">'
-        f'<div class="bl-stat"><div class="bl-stat-n">{n_gauges}</div>'
+        f'<div class="bl-stat"><div class="bl-stat-n bl-num">{n_gauges}</div>'
         f'<div class="bl-stat-label">Gauges</div></div>'
-        f'<div class="bl-stat"><div class="bl-stat-n">{n_active}</div>'
+        f'<div class="bl-stat"><div class="bl-stat-n bl-num">{n_active}</div>'
         f'<div class="bl-stat-label">Active hatches</div></div>'
-        f'<div class="bl-stat"><div class="bl-stat-n">{n_stocked}</div>'
+        f'<div class="bl-stat"><div class="bl-stat-n bl-num">{n_stocked}</div>'
         f'<div class="bl-stat-label">Stocked nearby</div></div>'
-        f'<div class="bl-stat"><div class="bl-stat-n">{n_access}</div>'
+        f'<div class="bl-stat"><div class="bl-stat-n bl-num">{n_access}</div>'
         f'<div class="bl-stat-label">Access points</div></div>'
         '</div>'
     )
     return f"""
         <div class="bl-card-head">
-            <div class="bl-title">{river["name"]}</div>
-            <span class="bl-condition" style="
-                color:{badge_color};background:{badge_bg};border-color:{badge_color}">
-                {badge_label}
-            </span>
+            <div class="panel-title-row">
+                <div class="bl-title">{river["name"]}</div>
+                <span class="cond cond--{variant}">
+                    <span class="cond-glyph"></span>{badge_label}
+                </span>
+            </div>
             {pills_row}
             {_ranking_summary_html(river)}
             {stats_html}
@@ -672,8 +710,8 @@ def _panel_gauge_section_html(g: dict, is_primary: bool) -> str:
     usgs = (
         f'<div style="padding:4px 0 2px;text-align:right">'
         f'<a href="https://waterdata.usgs.gov/nwis/uv?site_no={g["site_no"]}" '
-        f'target="_blank" style="color:#3498db;font-size:12px;text-decoration:none">'
-        f'View on USGS &#x2197;</a></div>'
+        f'target="_blank" class="gauge-link">'
+        f'View on USGS <i data-lucide="arrow-up-right" aria-hidden="true"></i></a></div>'
     ) if g.get("site_no") else ""
     # Primary gauge's chart renders above; skip its inline trend button.
     trend = "" if is_primary else _trend_html(g.get("site_no"))

@@ -15,6 +15,12 @@
     <link rel="stylesheet" href="/static/vendor/leaflet/leaflet.css">
     <link rel="stylesheet" href="/static/tokens.css">
     <link rel="stylesheet" href="/static/app.css">
+    <!-- Lucide outline icons. Replaces the original emoji + unicode
+         glyphs (bug, fish, mailbox, arrow) used in popups and modals.
+         App calls window.lucide.createIcons() via a refreshIcons()
+         helper after any dynamic HTML injection so freshly-rendered
+         <i data-lucide="..."> nodes get hydrated to inline SVG. -->
+    <script src="https://unpkg.com/lucide@latest" defer></script>
 </head>
 <body>
     <div class="header">
@@ -34,20 +40,20 @@
             </div>
             <button id="ctrl-layers" class="ctrl ctrl-tab-btn" type="button"
                     data-tab="layers" aria-controls="controls-panel"
-                    aria-expanded="false">
-                <span class="ctrl-icon" aria-hidden="true">&#9776;</span>
+                    aria-expanded="false" aria-label="Map layers">
+                <i class="ctrl-icon" data-lucide="layers" aria-hidden="true"></i>
                 <span class="ctrl-label">Layers</span>
             </button>
             <button id="ctrl-filters" class="ctrl ctrl-tab-btn" type="button"
                     data-tab="filters" aria-controls="controls-panel"
-                    aria-expanded="false">
-                <span class="ctrl-icon" aria-hidden="true">&#9783;</span>
+                    aria-expanded="false" aria-label="Map filters">
+                <i class="ctrl-icon" data-lucide="sliders-horizontal" aria-hidden="true"></i>
                 <span class="ctrl-label">Filters</span>
             </button>
             <button id="ctrl-legend" class="ctrl ctrl-tab-btn" type="button"
                     data-tab="legend" aria-controls="controls-panel"
-                    aria-expanded="false">
-                <span class="ctrl-icon" aria-hidden="true">&#8505;</span>
+                    aria-expanded="false" aria-label="Map legend">
+                <i class="ctrl-icon" data-lucide="info" aria-hidden="true"></i>
                 <span class="ctrl-label">Legend</span>
             </button>
         </div>
@@ -165,11 +171,11 @@
                             </section>
                             <section class="filter-section">
                                 <h4 class="filter-section-title">Stream colors</h4>
-                                <div class="legend-item"><div class="legend-dot" style="background:var(--bl-river-500)"></div> Streams (USGS)</div>
+                                <div class="legend-item"><div class="legend-dot" style="background:var(--bl-river-300)"></div> Streams (USGS)</div>
                                 <div class="legend-item"><div class="legend-dot" style="background:var(--bl-river-700)"></div> Fishable streams</div>
                                 <div class="legend-item"><div class="legend-dot" style="background:var(--bl-trout)"></div> Trout Stream</div>
                                 <div class="legend-item"><div class="legend-dot" style="background:var(--bl-access)"></div> Access Point</div>
-                                <div class="legend-item"><div class="legend-dot" style="background:var(--bl-pin)"></div> Saved Pin</div>
+                                <div class="legend-item"><div class="legend-dot legend-dot--pin"></div> Saved Pin</div>
                             </section>
                             <section class="filter-section">
                                 <h4 class="filter-section-title">Public Lands (PAD-US)</h4>
@@ -225,7 +231,7 @@
                     expires in 15 minutes.</p>
             </div>
             <div id="login-step-2" hidden>
-                <div class="modal-icon">&#x1F4EC;</div>
+                <i class="modal-icon" data-lucide="mail-check" aria-hidden="true"></i>
                 <h2>Check your inbox</h2>
                 <p class="modal-lede">We sent a sign-in link to
                     <strong id="login-sent-to"></strong>.</p>

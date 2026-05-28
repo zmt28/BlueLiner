@@ -430,8 +430,10 @@ def test_build_river_popup_html():
     }
     html = main.build_river_popup_html(river)
     assert "Gunpowder Falls" in html
-    assert "Recently Stocked" in html                       # near_stocked pill
-    assert "Trout Water" in html                            # on_trout pill
+    # Pill labels are sentence case per the design system spec
+    # ("Trout water" / "Recently stocked", not Title Case).
+    assert "Recently stocked" in html                       # near_stocked pill
+    assert "Trout water" in html                            # on_trout pill
     assert "Stocked nearby" in html                         # stocked block
     assert "Gunpowder falls near glencoe, md" in html       # gauge sub-header
     assert 'data-site="01581920"' in html                   # chart placeholder
@@ -442,7 +444,7 @@ def test_build_river_popup_html():
     # Log-catch sections. <details> remains for the inner gauge sub-
     # accordions inside the Conditions tab.
     assert "bl-pills" in html                               # pill row exists
-    assert "bl-pill-trout" in html and "bl-pill-stocked" in html
+    assert "pill--trout" in html and "pill--stocked" in html
     assert "bl-stats" in html and "bl-stat-n" in html       # stat grid
     assert 'class="bl-tabs"' in html                        # tabbed body
     assert 'id="bl-tab-conditions"' in html                 # default-checked tab
@@ -481,19 +483,21 @@ def test_ranking_summary_phrasing():
                                             "value": str(cur_flow or 0)}],
             "conditions": cond, "historical_median": median}]}
 
+    # Numbers in the verdict get wrapped in <strong> (design-system
+    # spec); the substring matches need to allow for that markup.
     # 60 vs 80 median -> 25% below; 13C -> 55.4F ideal
     s = main._ranking_summary_html(river(60.0, 80.0, 13))
-    assert "25% below average" in s and "ideal" in s
+    assert "<strong>25%</strong> below average" in s and "ideal" in s
     assert "for this time of year" in s        # time-bound comparison
     # 160 vs 80 -> 100% above; 21C -> 69.8F too warm
     s = main._ranking_summary_html(river(160.0, 80.0, 21))
-    assert "100% above average" in s and "too warm" in s
+    assert "<strong>100%</strong> above average" in s and "too warm" in s
     # within 15% -> near normal
     s = main._ranking_summary_html(river(85.0, 80.0, 10))
     assert "near normal" in s
     # no median -> raw cfs; no temp
     s = main._ranking_summary_html(river(42.0, None, None))
-    assert "42 cfs" in s
+    assert "<strong>42</strong> cfs" in s
     # nothing -> graceful
     s = main._ranking_summary_html(river(None, None, None))
     assert "Limited live data" in s
