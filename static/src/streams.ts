@@ -404,10 +404,8 @@ declare global {
     highlightStream: typeof highlightStream;
     clearStreamHighlight: typeof clearStreamHighlight;
     onStreamClick: typeof onStreamClick;
-    // Bridged from app.js (rivers code, B1h):
-    allRivers?: River[];
-    stateRivers?: River[];
-    renderRivers?: () => void;
+    // allRivers / stateRivers / renderRivers are owned by rivers.ts
+    // (PR B1h) and declared canonically there.
   }
 }
 

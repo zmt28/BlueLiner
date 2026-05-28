@@ -64,6 +64,19 @@ export async function ensureTrout(state: string): Promise<void> {
   }
 }
 
+/** Invalidate the per-state cache so the next ensureTrout() refetches
+ *  for the (presumably new) state. Called from the state-selector
+ *  handler in app.js. Without this, switching states would keep
+ *  displaying the previous state's trout streams until reload.
+ *  (Bug: B1e's extraction left this as a bare `troutLoadedState =
+ *  null` write in app.js, which is a ReferenceError in strict mode --
+ *  ES modules are always strict -- so the trout/access state-switch
+ *  reset silently failed. B1h fixes it by routing through this
+ *  setter.) */
+export function resetTroutLoadedState(): void {
+  troutLoadedState = null;
+}
+
 // -- Access points ------------------------------------------------------
 
 // Type-coded markers, lazy-loaded per state via /api/access?state=.
@@ -138,6 +151,13 @@ export async function ensureAccess(state: string): Promise<void> {
   } finally {
     accessLoading = false;
   }
+}
+
+/** Counterpart to resetTroutLoadedState() for the access layer.
+ *  Same bug fix; same reason it has to be a setter and not a bare
+ *  variable write from app.js. */
+export function resetAccessLoadedState(): void {
+  accessLoadedState = null;
 }
 
 // -- Public lands (PAD-US) ----------------------------------------------
@@ -280,6 +300,8 @@ declare global {
     makeAccessIcon: typeof makeAccessIcon;
     accessPopupHtml: typeof accessPopupHtml;
     publicLandsPopupHtml: typeof publicLandsPopupHtml;
+    resetTroutLoadedState: typeof resetTroutLoadedState;
+    resetAccessLoadedState: typeof resetAccessLoadedState;
   }
 }
 
@@ -295,3 +317,5 @@ window.loadPublicLands = loadPublicLands;
 window.makeAccessIcon = makeAccessIcon;
 window.accessPopupHtml = accessPopupHtml;
 window.publicLandsPopupHtml = publicLandsPopupHtml;
+window.resetTroutLoadedState = resetTroutLoadedState;
+window.resetAccessLoadedState = resetAccessLoadedState;

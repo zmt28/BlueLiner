@@ -23,6 +23,7 @@
 let STATES = {};
 let currentSt = "MD";
 window.STATES = STATES;          // bridge: state.ts's currentState() reads this
+window.currentSt = currentSt;    // bridge: rivers.ts scheduleLazyRetry reads this
 const STATE_ZOOM = window.STATE_ZOOM;       // re-exposed from state.ts
 const DEVICE_HEADER = window.DEVICE_HEADER; // re-exposed from state.ts
 const deviceToken = window.deviceToken;     // re-exposed from state.ts
@@ -78,17 +79,18 @@ const clickableVisible = window.clickableVisible;
 // Wiring happens at init time so the tab's checkboxes drive add/remove
 // on the map.
 
-let allRivers = [];
-window.allRivers = allRivers;          // bridge: streams.ts _gaugedRiverFor reads via window
-// renderRivers is defined further down; bridged below its definition so
-// streams.ts's loadClickableStreams can trigger a re-render after a
-// viewport fetch updates the loaded reach name/lpid sets.
-// One representation per river: the NLDI flowline when we have it, else
-// a pin. riverLineBySite holds loaded line layers; riverGeomLoaded marks
-// site_nos already attempted (so we never refetch / never retry empties).
-const riverLineBySite = new Map();
-const riverGeomLoaded = new Set();    // site_nos with a final result (or empty)
-const riverGeomInFlight = new Set();  // site_nos being fetched right now
+// Rivers state machine -- allRivers, stateRivers, the per-site
+// riverLineBySite cache + dedup sets, renderRivers, riverPasses,
+// makeConditionIcon, loadRivers, loadViewportRivers, refreshForView,
+// loadRiverLines, startRiverLines, scheduleLazyRetry, the moveend
+// listener that drives viewport vs state mode -- ALL extracted to
+// static/src/rivers.ts in PR B1h. Re-exposed via window so the
+// state selector handler (and the lyr-fishable layer-toggle which
+// references renderRivers indirectly) keep working unchanged.
+const renderRivers = window.renderRivers;
+const loadRivers = window.loadRivers;
+const loadVisibleRiverLines = window.loadVisibleRiverLines;
+const populateHatchOptions = window.populateHatchOptions;
 
 // -- 1-yr USGS trend sparkline -- extracted to static/src/sparkline.ts
 // in PR B1c. Re-exposed here so existing call sites resolve.
@@ -224,92 +226,12 @@ map.on("moveend", () => {
   _publicLandsTimer = setTimeout(loadPublicLands, 500);
 });
 
-// -- Gauges --
-
-function populateHatchOptions() {
-  const sel = document.getElementById("hatch-select");
-  const cur = sel.value;
-  const set = new Set();
-  allRivers.forEach((r) => (r.active_hatches || []).forEach((h) => set.add(h)));
-  const insects = [...set].sort();
-  sel.innerHTML =
-    '<option value="any">Any</option>' +
-    '<option value="active">Active now</option>' +
-    insects.map((i) => `<option value="${esc(i)}">${esc(i)}</option>`).join("");
-  sel.value = [...sel.options].some((o) => o.value === cur) ? cur : "any";
-}
-
-function riverPasses(r) {
-  const cond = document.getElementById("cond-select").value;
-  const troutOnly = document.getElementById("trout-only").checked;
-  const stockedOnly = document.getElementById("stocked-only").checked;
-  const hatch = document.getElementById("hatch-select").value;
-  if (troutOnly && !r.on_trout) return false;
-  if (stockedOnly && !r.near_stocked) return false;
-  if (cond !== "any" && r.conditions.overall !== cond) return false;
-  const ah = r.active_hatches || [];
-  if (hatch === "active" && !ah.length) return false;
-  if (hatch !== "any" && hatch !== "active" && !ah.includes(hatch)) return false;
-  return true;
-}
-
-// Exactly one clickable representation per river:
-//   1. The NLDI flowline if loaded (riverLinesLayer), else
-//   2. Skip if the clickable-stream network already draws this river
-//      somewhere in the viewport -- the user can click the line, so a
-//      gauge dot here would just be a redundant target landing on the
-//      gauge centroid (which can fall on an unrelated tributary), else
-//   3. A pin (fallback for low zoom / clickable layer off / no matching
-//      NHD reach, e.g. tiny named creeks the network filters out).
-function renderRivers() {
-  riversLayer.clearLayers();
-  for (const r of allRivers) {
-    const line = r.site_no ? riverLineBySite.get(r.site_no) : null;
-    const pass = riverPasses(r);
-    if (line) {
-      if (pass && !riverLinesLayer.hasLayer(line)) riverLinesLayer.addLayer(line);
-      if (!pass && riverLinesLayer.hasLayer(line)) riverLinesLayer.removeLayer(line);
-      continue;  // line represents this river -- no redundant pin
-    }
-    if (!pass) continue;
-    if (_riverHasClickableReach(r)) continue;  // clickable network has it
-    const m = L.marker([r.lat, r.lon], { icon: makeConditionIcon(r.overall) });
-    const tBadge = r.on_trout
-      ? ' <span style="color:var(--bl-trout);font-size:11px">Trout</span>'
-      : "";
-    const sBadge = r.near_stocked
-      ? ' <span style="color:var(--bl-stocked);font-size:11px">Stocked</span>'
-      : "";
-    m.bindTooltip(
-      `<b>${esc(r.name)}</b>${tBadge}${sBadge}` +
-      `<br><span style="color:${r.color}">${esc(r.label)}</span>`
-    );
-    m._blRiver = r;
-    m.on("click", () => openRiverPanel(r, m, null));
-    riversLayer.addLayer(m);
-  }
-}
-window.renderRivers = renderRivers;     // bridge: streams.ts re-renders after viewport fetch
-
-// Shape-coded condition marker. Color + shape so colorblind anglers
-// get the same signal: filled disc for Good, filled + center dot for
-// Fair, filled + horizontal bar for Poor, dashed outline for No data.
-// CSS styling for the four variants lives in app.css under .marker*.
-const CONDITION_VARIANT = {
-  green: "good",
-  yellow: "fair",
-  red: "poor",
-  gray: "none",
-};
-function makeConditionIcon(overall) {
-  const variant = CONDITION_VARIANT[overall] || "none";
-  return L.divIcon({
-    className: "condition-marker-wrap",
-    html: `<div class="marker marker--${variant}"></div>`,
-    iconSize: [22, 22],
-    iconAnchor: [11, 11],
-  });
-}
+// -- Gauges + filters + render + line fetch (populateHatchOptions,
+// riverPasses, renderRivers, CONDITION_VARIANT, makeConditionIcon,
+// the per-site + bulk river-line fetchers, viewport vs state mode
+// switching, loadRivers, scheduleLazyRetry, the moveend listener)
+// -- all extracted to static/src/rivers.ts in PR B1h. Re-exposed
+// via window above.
 
 // Trout streams cover the whole state now (large). Load lazily -- only
 // when the user toggles the layer on -- and once per state, so the
@@ -319,233 +241,6 @@ function makeConditionIcon(overall) {
 // accessPopupHtml all moved to static/src/map-layers.ts in PR B1e.
 // Re-exposed at the top of this file via window rebinds.
 
-// -- Clickable river flowlines (USGS NLDI): lazy, viewport-bounded --
-// Loading every river's geometry at once is the trout-layer trap, so we
-// only fetch lines for rivers in the current view, when zoomed in,
-// debounced, concurrency-capped, and cached per site for the session.
-const RIVER_LINE_MIN_ZOOM = 9;
-const RIVER_LINE_MAX_PER_PASS = 30;     // batch size; we loop until done
-const RIVER_LINE_CONCURRENCY = 8;
-const RIVER_LINE_MAX_TOTAL = 400;       // safety ceiling per invocation
-let riverLinePass = 0;
-
-async function fetchRiverLine(r) {
-  try {
-    const fc = await fetch(
-      `/api/river_geom?site_no=${encodeURIComponent(r.site_no)}`
-    ).then((res) => res.json());
-    // Empty geometry is a final answer (NLDI has no flowline) -> pin
-    // fallback; mark loaded so we don't refetch it.
-    if (fc && fc.features && fc.features.length) {
-      const line = L.geoJSON(fc, {
-        style: { color: r.color, weight: 5, opacity: 0.6 },
-      });
-      line._blRiver = r;
-      line.on("click", () => openRiverPanel(
-        r, line, { color: r.color, weight: 5, opacity: 0.6 }));
-      riverLineBySite.set(r.site_no, line);   // renderRivers() places it
-    }
-    riverGeomLoaded.add(r.site_no);
-  } catch (_) {
-    // Transient failure: leave it unloaded so a later pass retries it.
-  } finally {
-    riverGeomInFlight.delete(r.site_no);
-  }
-}
-
-async function loadVisibleRiverLines() {
-  if (map.getZoom() < RIVER_LINE_MIN_ZOOM) return;
-  const pass = ++riverLinePass;
-  const c = map.getCenter();
-  let fetched = 0;
-
-  while (fetched < RIVER_LINE_MAX_TOTAL && pass === riverLinePass) {
-    if (map.getZoom() < RIVER_LINE_MIN_ZOOM) return;
-    const b = map.getBounds();
-    const todo = [];
-    for (const r of allRivers) {
-      if (!r.site_no) continue;
-      if (riverGeomLoaded.has(r.site_no) || riverGeomInFlight.has(r.site_no)) continue;
-      if (!riverPasses(r)) continue;        // don't fetch filtered-out rivers
-      if (!b.contains([r.lat, r.lon])) continue;
-      todo.push(r);
-    }
-    if (!todo.length) break;
-    // Center-out: the rivers the user is looking at fill in first.
-    todo.sort(
-      (a, z) =>
-        (a.lat - c.lat) ** 2 + (a.lon - c.lng) ** 2 -
-        ((z.lat - c.lat) ** 2 + (z.lon - c.lng) ** 2)
-    );
-    const batch = todo.slice(0, RIVER_LINE_MAX_PER_PASS);
-    let i = 0;
-    const worker = async () => {
-      while (i < batch.length && pass === riverLinePass) {
-        // Mark in-flight only for the one we're about to fetch, so a
-        // superseded pass can't strand markers (fetchRiverLine clears
-        // them in its finally).
-        const r = batch[i++];
-        riverGeomInFlight.add(r.site_no);
-        await fetchRiverLine(r);
-      }
-    };
-    await Promise.all(
-      Array.from({ length: Math.min(RIVER_LINE_CONCURRENCY, batch.length) }, worker)
-    );
-    fetched += batch.length;
-    if (pass === riverLinePass) renderRivers();  // lines progressively replace pins
-  }
-}
-
-// -- Hybrid loading: state overview when zoomed out, live viewport when in --
-const VIEWPORT_MIN_ZOOM = 9;
-let stateRivers = [];               // last per-state set (zoomed-out overview)
-window.stateRivers = stateRivers;    // bridge: streams.ts _gaugedRiverFor reads via window
-let viewportMode = false;
-const _viewportCache = new Map();   // rounded "w,s,e,n" -> rivers
-let _viewportSeq = 0;
-
-async function loadViewportRivers() {
-  const b = map.getBounds();
-  const round = (x) => x.toFixed(2);
-  const key = [b.getWest(), b.getSouth(), b.getEast(), b.getNorth()].map(round).join(",");
-  const seq = ++_viewportSeq;
-  let rivers = _viewportCache.get(key);
-  if (!rivers) {
-    try {
-      const q = `${b.getWest()},${b.getSouth()},${b.getEast()},${b.getNorth()}`;
-      const data = await fetch(
-        `/api/rivers?bbox=${encodeURIComponent(q)}`
-      ).then((r) => r.json());
-      rivers = (data && data.rivers) || [];
-      _viewportCache.set(key, rivers);
-      if (_viewportCache.size > 30) {
-        _viewportCache.delete(_viewportCache.keys().next().value);
-      }
-    } catch (_) { return; }   // keep current view; transient failure
-  }
-  if (seq !== _viewportSeq) return;       // a newer pan/zoom superseded us
-  viewportMode = true;
-  allRivers = rivers;
-  window.allRivers = allRivers;           // keep bridge in sync
-  populateHatchOptions();
-  renderRivers();
-  const q = `${b.getWest()},${b.getSouth()},${b.getEast()},${b.getNorth()}`;
-  startRiverLines(`bbox=${encodeURIComponent(q)}`);  // batched + re-poll
-  loadVisibleRiverLines();                           // per-site fallback (zoomed-in only)
-}
-
-function refreshForView() {
-  if (map.getZoom() >= VIEWPORT_MIN_ZOOM) {
-    loadViewportRivers();
-  } else if (viewportMode) {
-    viewportMode = false;                 // zoomed back out -> state overview
-    allRivers = stateRivers;
-    window.allRivers = allRivers;         // keep bridge in sync
-    populateHatchOptions();
-    renderRivers();
-  }
-}
-
-let _viewTimer = null;
-map.on("moveend", () => {
-  clearTimeout(_viewTimer);
-  _viewTimer = setTimeout(refreshForView, 400);
-});
-
-// Draw EVERY river as its precomputed flowline in one shot, at any zoom.
-// /api/river_lines is a single gzipped Postgres read (no per-river NLDI
-// fan-out), so lines appear immediately instead of trickling in.
-async function loadRiverLines(qs) {
-  let fc;
-  try {
-    fc = await fetch(`/api/river_lines?${qs}`).then((r) => r.json());
-  } catch (_) { return; }                 // keep pins; transient failure
-  if (!fc || !fc.features || !fc.features.length) return;
-  const bySite = new Map();
-  for (const f of fc.features) {
-    const p = f.properties || {};
-    if (!p.site_no) continue;
-    let g = bySite.get(p.site_no);
-    if (!g) { g = { type: "FeatureCollection", features: [], color: p.color }; bySite.set(p.site_no, g); }
-    g.features.push(f);
-  }
-  const riverBySite = new Map();
-  for (const r of allRivers) if (r.site_no) riverBySite.set(r.site_no, r);
-  for (const [sn, g] of bySite) {
-    if (riverLineBySite.has(sn)) continue;
-    const r = riverBySite.get(sn);
-    const color = (r && r.color) || g.color || "#2c6fbf";
-    const line = L.geoJSON(g, { style: { color, weight: 5, opacity: 0.6 } });
-    if (r) {
-      line._blRiver = r;
-      line.on("click", () => openRiverPanel(
-        r, line, { color, weight: 5, opacity: 0.6 }));
-    }
-    riverLineBySite.set(sn, line);
-    riverGeomLoaded.add(sn);              // per-site fallback now skips it
-  }
-  renderRivers();                         // lines replace pins
-}
-
-// Geometry is backfilled into Postgres asynchronously, so on a cold
-// state the first /api/river_lines may be partial/empty. Re-poll with
-// backoff, merging newly-ready lines, until every river has one (or we
-// give up -- some gauges genuinely have no NLDI flowline and stay pins).
-// A token cancels the loop the moment the state/viewport changes.
-let _linesToken = 0;
-async function startRiverLines(qs) {
-  const token = ++_linesToken;
-  const delays = [0, 6000, 10000, 16000, 24000, 35000, 50000];
-  for (let i = 0; i < delays.length; i++) {
-    if (token !== _linesToken) return;          // superseded by a newer view
-    if (delays[i]) {
-      await new Promise((r) => setTimeout(r, delays[i]));
-      if (token !== _linesToken) return;
-    }
-    await loadRiverLines(qs);
-    if (token !== _linesToken) return;
-    const missing = allRivers.some(
-      (r) => r.site_no && !riverLineBySite.has(r.site_no)
-    );
-    if (!missing) return;                       // fully covered -> done
-  }
-}
-
-// A lazy (never-visited) state returns [] while the background precompute
-// runs; refetch once so it fills in without the user reloading.
-let _lazyRetry = null;
-function scheduleLazyRetry(state) {
-  clearTimeout(_lazyRetry);
-  _lazyRetry = setTimeout(() => {
-    if (currentSt === state && !viewportMode) loadRivers(state);
-  }, 20000);
-}
-
-async function loadRivers(state) {
-  const data = await fetch(`/api/rivers?state=${state}`).then((r) => r.json());
-  stateRivers = (data && data.rivers) || [];
-  window.stateRivers = stateRivers;       // keep bridge in sync
-  riverLinesLayer.clearLayers();
-  riverLineBySite.clear();
-  riverGeomLoaded.clear();
-  riverGeomInFlight.clear();
-  _viewportCache.clear();
-  if (map.getZoom() >= VIEWPORT_MIN_ZOOM) {
-    loadViewportRivers();                 // already zoomed in: viewport drives
-  } else {
-    viewportMode = false;
-    allRivers = stateRivers;
-    window.allRivers = allRivers;         // keep bridge in sync
-    populateHatchOptions();
-    renderRivers();
-    if (stateRivers.length) {
-      startRiverLines(`state=${encodeURIComponent(state)}`);
-    } else {
-      scheduleLazyRetry(state);           // not computed yet -> auto-fill
-    }
-  }
-}
 
 // -- Saved pins --
 
@@ -644,13 +339,18 @@ document.getElementById("hatch-select").onchange = onFilterChange;
 document.getElementById("state-select").onchange = (e) => {
   const s = e.target.value;
   currentSt = s;
+  window.currentSt = s;                   // bridge: rivers.ts scheduleLazyRetry reads it
   history.replaceState(null, "", `/map?state=${s.toLowerCase()}`);
   map.setView(STATES[s].center, STATE_ZOOM);
   loadRivers(s);
-  // Refresh trout / access for the new state only if the layer is currently shown.
-  troutLoadedState = null;
+  // Refresh trout / access for the new state only if the layer is
+  // currently shown. PR B1h fix: route through map-layers.ts setters
+  // -- the bare `troutLoadedState = null` reads from B1e's extraction
+  // hit ReferenceError in strict mode (ES modules are always strict)
+  // so trout/access state-switch reset silently failed.
+  window.resetTroutLoadedState();
   if (map.hasLayer(troutLayer)) ensureTrout(s);
-  accessLoadedState = null;
+  window.resetAccessLoadedState();
   if (map.hasLayer(accessLayer)) ensureAccess(s);
 };
 
@@ -868,6 +568,7 @@ async function init() {
   }
   const state = currentState();
   currentSt = state;
+  window.currentSt = currentSt;   // bridge: rivers.ts scheduleLazyRetry reads this
   sel.value = state;
   map.setView(STATES[state].center, STATE_ZOOM);
   wireRiverPanel();
