@@ -43,82 +43,23 @@ const setBaseMap = window.setBaseMap;
 const currentBaseKey = window.currentBaseKey;
 const hydroLayer = window.hydroLayer;
 
-const troutLayer = L.geoJSON(null, {
-  style: { color: "#1abc9c", weight: 2.5, opacity: 0.7 },
-  onEachFeature: (f, l) => {
-    const p = f.properties || {};
-    const n = p.NAME || p.GNIS_Name || p.STream_Nam;
-    if (n) l.bindTooltip(String(n), { sticky: true });
-  },
-});
-
-// Access points: type-coded markers, lazy-loaded per state via
-// /api/access?state=. Different glyph + tone per access type so a
-// boat ramp is visually distinct from a walk-in trail at a glance.
-const ACCESS_TYPE_META = {
-  boat_ramp:      { glyph: "B", color: "#d97706" },
-  walk_in:        { glyph: "W", color: "#0891b2" },
-  wading_access:  { glyph: "W", color: "#0891b2" },
-  pier:           { glyph: "P", color: "#7c3aed" },
-  parking:        { glyph: "P", color: "#475569" },
-};
-const accessLayer = L.layerGroup();
-
-// Public-lands parcels (PAD-US). Vector polygons keyed off the
-// `public_access` tier rather than the manager type -- the angler's
-// primary question is "can I walk in here?", not "is this BLM or
-// USFS?" Two visual tiers: green for OA (Open Access) and dashed
-// yellow for RA (Restricted -- permit, walk-in, seasonal). UK/XA
-// features are filtered out at build time, not rendered. Loaded
-// per-viewport via /api/public_lands?bbox= -- same lazy bbox-bound
-// pattern as clickable streams.
-const PUBLIC_LANDS_STYLE = {
-  OA: { fillColor: "#2d6a4f", color: "#1b4332", fillOpacity: 0.28,
-        weight: 0.8, dashArray: null },
-  RA: { fillColor: "#eab308", color: "#854d0e", fillOpacity: 0.22,
-        weight: 1.0, dashArray: "4,4" },
-};
-const PUBLIC_LANDS_DEFAULT_STYLE = PUBLIC_LANDS_STYLE.OA;
-function publicLandsStyle(feature) {
-  const tier = (feature && feature.properties && feature.properties.public_access) || "OA";
-  return PUBLIC_LANDS_STYLE[tier] || PUBLIC_LANDS_DEFAULT_STYLE;
-}
-// Access-tier chip labels for the popup. PAD-US codes are terse;
-// expand to legible strings + map to chip CSS variants.
-const PA_ACCESS_LABEL = {
-  OA: "Open access",
-  RA: "Restricted access",
-  XA: "Closed",
-  UK: "Unknown",
-};
-function publicLandsPopupHtml(p) {
-  const tierCode = p.public_access || "UK";
-  const tierLabel = PA_ACCESS_LABEL[tierCode] || PA_ACCESS_LABEL.UK;
-  const tierChip =
-    `<span class="ap-chip pa-chip-${esc(tierCode)}">${esc(tierLabel)}</span>`;
-  const lines = [
-    `<div class="ap-name">${esc(p.unit_name || "Public land parcel")}</div>`,
-  ];
-  const sub = [];
-  if (p.manager_name) sub.push(esc(p.manager_name));
-  if (p.designation) sub.push(esc(p.designation));
-  if (sub.length) lines.push(`<div class="ap-meta">${sub.join(" &middot; ")}</div>`);
-  lines.push(`<div class="ap-meta" style="margin-top:6px">${tierChip}</div>`);
-  if (p.state_nm) {
-    lines.push(`<div class="ap-notes">${esc(p.state_nm)}</div>`);
-  }
-  return `<div class="ap-popup">${lines.join("")}</div>`;
-}
-const publicLandsLayer = L.geoJSON(null, {
-  style: publicLandsStyle,
-  onEachFeature: (f, layer) => {
-    layer.bindPopup(publicLandsPopupHtml(f.properties || {}), popupOpts());
-  },
-});
-
-const riverLinesLayer = L.layerGroup().addTo(map);
-const riversLayer = L.layerGroup().addTo(map);
-const pinsLayer = L.layerGroup().addTo(map);
+// -- Overlay layer groups -- extracted to static/src/map-layers.ts in
+// PR B1e. Owns trout / access / public-lands GeoJSON layers + their
+// lazy-load fetchers + popup HTML helpers, plus the bare layer-group
+// containers (riverLinesLayer, riversLayer, pinsLayer) that the
+// rivers / pins code in this file still populates.
+const troutLayer = window.troutLayer;
+const accessLayer = window.accessLayer;
+const publicLandsLayer = window.publicLandsLayer;
+const riverLinesLayer = window.riverLinesLayer;
+const riversLayer = window.riversLayer;
+const pinsLayer = window.pinsLayer;
+const ensureTrout = window.ensureTrout;
+const ensureAccess = window.ensureAccess;
+const loadPublicLands = window.loadPublicLands;
+const makeAccessIcon = window.makeAccessIcon;
+const accessPopupHtml = window.accessPopupHtml;
+const publicLandsPopupHtml = window.publicLandsPopupHtml;
 
 // Two stacked layers per feature: a thin styled visible line and a
 // transparent fat "hit casing" on top to catch finger taps on mobile
@@ -768,113 +709,9 @@ function makeConditionIcon(overall) {
 // when the user toggles the layer on -- and once per state, so the
 // initial map (layer off by default) is never blocked by a multi-MB
 // GeoJSON parse.
-let troutLoadedState = null;
-let troutLoading = false;
-
-async function ensureTrout(state) {
-  if (troutLoadedState === state || troutLoading) return;
-  troutLoading = true;
-  try {
-    const t = await fetch(`/api/trout?state=${state}`).then((r) => r.json());
-    troutLayer.clearLayers();
-    troutLayer.addData(t);
-    troutLoadedState = state;
-  } catch (_) {
-    /* leave layer empty; user can re-toggle to retry */
-  } finally {
-    troutLoading = false;
-  }
-}
-
-let accessLoadedState = null;
-let accessLoading = false;
-
-function makeAccessIcon(type) {
-  const meta = ACCESS_TYPE_META[type] || ACCESS_TYPE_META.walk_in;
-  return L.divIcon({
-    className: "access-marker",
-    html: `<div class="access-marker-pin" style="background:${meta.color}">`
-        + `${esc(meta.glyph)}</div>`,
-    iconSize: [22, 22],
-    iconAnchor: [11, 11],
-  });
-}
-
-function accessPopupHtml(p) {
-  const accessChip = p.access
-    ? `<span class="ap-chip ap-chip-${esc(p.access)}">${esc(p.access)}</span>`
-    : "";
-  const typeLabel = String(p.type || "walk_in").replace(/_/g, " ");
-  const notes = p.notes ? `<div class="ap-notes">${esc(p.notes)}</div>` : "";
-  const link = p.agency_url
-    ? `<div class="ap-link"><a href="${esc(p.agency_url)}" target="_blank" `
-    + `rel="noopener noreferrer">Agency info &rarr;</a></div>`
-    : "";
-  return `<div class="ap-popup">`
-    + `<div class="ap-name">${esc(p.name || "Access point")}</div>`
-    + `<div class="ap-meta">${esc(typeLabel)}${accessChip}</div>`
-    + notes
-    + link
-    + `</div>`;
-}
-
-// Public-lands fetch: bbox-bound, debounced on moveend, zoom-gated.
-// Mirrors loadClickableStreams contract: skip when toggled off, skip
-// at country-scale bboxes, replace the layer's contents wholesale on
-// each fetch (parcels are sparse enough at zoom 8+ that we don't need
-// the streams' "merge-with-loaded" gymnastics).
-// Matches STREAM_MIN_ZOOM and RIVER_LINE_MIN_ZOOM so all three layer
-// families appear/hide at the same zoom boundary -- previous staggered
-// 8/9/9 setup made the user see two distinct "snap" moments while
-// zooming through 8 -> 9.
-const PUBLIC_LANDS_MIN_ZOOM = 9;
-let _publicLandsReqId = 0;
-async function loadPublicLands() {
-  if (!map.hasLayer(publicLandsLayer)) return;
-  if (map.getZoom() < PUBLIC_LANDS_MIN_ZOOM) {
-    // Don't clear here: see the matching note in loadClickableStreams.
-    // Letting the previous frame's parcels linger across the
-    // zoom-threshold boundary eliminates the blink-off-blink-on
-    // flash users hit when pinching from zoom 10 to zoom 8.
-    return;
-  }
-  const b = map.getBounds();
-  // 4° cap matching loadClickableStreams.
-  if (b.getEast() - b.getWest() > 4 || b.getNorth() - b.getSouth() > 4) return;
-  const bbox = [b.getWest(), b.getSouth(), b.getEast(), b.getNorth()]
-    .map((x) => x.toFixed(4)).join(",");
-  const reqId = ++_publicLandsReqId;
-  try {
-    const fc = await fetch(
-      `/api/public_lands?bbox=${bbox}&zoom=${map.getZoom()}`
-    ).then((r) => r.json());
-    if (reqId !== _publicLandsReqId) return;        // newer pan superseded us
-    publicLandsLayer.clearLayers();
-    publicLandsLayer.addData(fc);
-  } catch (_) { /* transient; next moveend retries */ }
-}
-
-async function ensureAccess(state) {
-  if (accessLoadedState === state || accessLoading) return;
-  accessLoading = true;
-  try {
-    const fc = await fetch(`/api/access?state=${state}`).then((r) => r.json());
-    accessLayer.clearLayers();
-    for (const f of (fc.features || [])) {
-      const c = (f.geometry && f.geometry.coordinates) || null;
-      const p = f.properties || {};
-      if (!c || c.length < 2) continue;
-      const m = L.marker([c[1], c[0]], { icon: makeAccessIcon(p.type) });
-      m.bindPopup(accessPopupHtml(p), popupOpts());
-      accessLayer.addLayer(m);
-    }
-    accessLoadedState = state;
-  } catch (_) {
-    /* leave layer empty; user can re-toggle to retry */
-  } finally {
-    accessLoading = false;
-  }
-}
+// ensureTrout / ensureAccess / loadPublicLands / makeAccessIcon /
+// accessPopupHtml all moved to static/src/map-layers.ts in PR B1e.
+// Re-exposed at the top of this file via window rebinds.
 
 // -- Clickable river flowlines (USGS NLDI): lazy, viewport-bounded --
 // Loading every river's geometry at once is the trout-layer trap, so we
