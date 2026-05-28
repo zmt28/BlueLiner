@@ -20,12 +20,11 @@
          of CSS imports inside src/main.ts mirrors the historical
          tokens.css -> app.css -> leaflet.css order. -->
     <script type="module" src="/src/main.ts"></script>
-    <!-- Leaflet is still loaded as a global from the vendored copy
-         in PR B1a so the existing app.js (which uses `L` globally)
-         continues to work unchanged. Future PRs (B1b+) will migrate
-         to `import L from "leaflet"` inside TS modules; PR B2 swaps
-         the renderer to MapLibre. -->
-    <script src="/static/vendor/leaflet/leaflet.js"></script>
+    <!-- Leaflet: PR B1d moved this into the Vite-bundled module graph.
+         map-setup.ts `import L from "leaflet"` (npm package) and
+         publishes window.L for the still-monolithic app.js. The old
+         vendor <script> tag is gone (was loading Leaflet a second
+         time when in head + body of index.html before B1d). -->
     <!-- Lucide outline icons. Replaces the original emoji + unicode
          glyphs (bug, fish, mailbox, arrow) used in popups and modals.
          App calls window.lucide.createIcons() via a refreshIcons()
@@ -374,7 +373,6 @@
     <!-- Legend moved into the unified controls panel above (the Legend tab). -->
 
 
-    <script src="/static/vendor/leaflet/leaflet.js"></script>
     <!-- app.js moved to static/src/app.js in PR B1b; Vite imports it
          from main.ts so it's part of the bundled module graph. No
          standalone <script src="/static/app.js"> tag anymore. -->

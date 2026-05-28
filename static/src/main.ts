@@ -27,6 +27,7 @@ import "leaflet/dist/leaflet.css";
 import "./state";
 import "./util";
 import "./sparkline";
+import "./map-setup";
 
 // Legacy application code, now a Vite-managed module so it can `import`
 // from sibling TS modules. Vite bundles it into the production output;
