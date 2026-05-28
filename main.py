@@ -174,10 +174,13 @@ app.add_middleware(GZipMiddleware, minimum_size=1024)
 # stranding them on an old build. `no-cache` tells the browser AND any
 # intermediary cache to revalidate before serving -- Cloudflare won't
 # edge-cache a response with no-cache -- so deploys propagate. The
-# immutable vendored assets (/static/vendor, /static/icons) keep their
-# default long-lived caching.
-_NO_CACHE_PATHS = {"/", "/map", "/sw.js", "/static/app.js",
-                   "/static/app.css", "/static/manifest.webmanifest"}
+# Immutable Vite-hashed bundles under /static/dist/assets/ + the
+# vendored icons keep their default long-lived caching. The shell
+# routes below get an explicit no-cache so a new deploy propagates
+# immediately (the bundled JS/CSS filenames are content-hashed by
+# Vite, so /map serves a new index.html referencing the new hashes,
+# which busts the bundle cache on the first request).
+_NO_CACHE_PATHS = {"/", "/map", "/sw.js", "/static/manifest.webmanifest"}
 
 
 @app.middleware("http")
