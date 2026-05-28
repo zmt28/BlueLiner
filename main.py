@@ -442,11 +442,16 @@ def _hatch_section_html(zone: dict | None, active: list[dict] | None,
                     <div style="font-size:11px;color:#555">Hooks {e['hook_sizes']} &middot; {e['time_of_day']}</div>
                     <div style="font-size:11px;color:#1e8449">Try: {patterns}</div>
                 </div>"""
+    # No <details> wrapper -- the hatch content lives inside the
+    # dedicated Hatches tab in the new panel, so a collapsible inside
+    # an already-selected tab is redundant. Just emit the title + body
+    # as plain block content; the .bl-hatch class still controls the
+    # green-tinted styling of the title row.
     return f"""
-        <details class="bl-section bl-hatch">
-            <summary>{title}</summary>
+        <div class="bl-hatch">
+            <div class="bl-hatch-title">{title}</div>
             <div class="bl-section-body">{body}</div>
-        </details>"""
+        </div>"""
 
 
 def _trend_html(site_no: str | None) -> str:

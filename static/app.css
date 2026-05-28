@@ -32,6 +32,9 @@ html, body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
 }
 .header-right { display: flex; align-items: center; gap: 10px; }
 .ctrl {
+    /* nowrap so button labels never break mid-text on narrow screens
+       (the cause of the iPhone-portrait "Drop\na pin" wrap). */
+    white-space: nowrap;
     background: rgba(255,255,255,0.1);
     color: white;
     border: 1px solid rgba(255,255,255,0.2);
@@ -721,6 +724,23 @@ html, body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
 .bl-section[open] > summary { border-bottom: 1px solid #e5e7eb; }
 .bl-section-body { padding: 8px 12px 12px; }
 .bl-hatch > summary { background: #eef7f2; color: #0e6655; }
+/* Hatches tab: the section is no longer collapsible (it lives inside
+   its own tab so the <details> wrapper was redundant). The title
+   keeps the green-tinted background that signalled "hatch info"
+   under the old layout. */
+.bl-hatch {
+    border: 1px solid #e3efe8;
+    border-radius: 8px;
+    overflow: hidden;
+    margin-top: 4px;
+}
+.bl-hatch-title {
+    background: #eef7f2;
+    color: #0e6655;
+    padding: 10px 12px;
+    font-size: 14px;
+    font-weight: 600;
+}
 .bl-flow-chart { margin-top: 10px; min-height: 4px; }
 
 /* Selected river highlight on the map */
@@ -753,6 +773,11 @@ html, body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
        fits, with the tab bar peeking as an invitation to expand. */
     .river-panel.open.peek .river-panel-card { transform: translateY(62%); }
     .river-panel.open.full .river-panel-card { transform: none; }
+    /* At peek the body shouldn't scroll natively -- the body's
+       scroll would compete with the swipe-up-to-expand gesture and
+       a scroll-down would race the swipe-to-dismiss. Once expanded
+       to full, scrolling is restored. */
+    .river-panel.open.peek #river-panel-body { overflow: hidden; }
     /* Fallback if neither class is set: behave like the old open state. */
     .river-panel.open:not(.peek):not(.full) .river-panel-card { transform: none; }
     /* Backdrop only dims when fully expanded -- peek keeps the map
@@ -978,11 +1003,17 @@ html, body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
 /* -- Mobile layout -- */
 @media (max-width: 700px) {
     .header {
-        padding: 10px 14px;
+        padding: 10px 12px;
         padding-top: calc(10px + env(safe-area-inset-top));
+        gap: 8px;
     }
     .tagline { display: none; }
-    .logo { font-size: 20px; }
+    .logo { font-size: 18px; }
+    /* Tighten the right-side controls so logo + state + drop-pin + auth
+       + filters all fit on one row at iPhone-portrait widths. */
+    .header-right { gap: 6px; }
+    #controls { gap: 6px; }
+    .ctrl { padding: 5px 8px; font-size: 13px; }
     #map { top: calc(50px + env(safe-area-inset-top)); }
 
     /* On phones the filter popover takes the whole right edge. The
