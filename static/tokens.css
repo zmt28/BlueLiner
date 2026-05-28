@@ -1,0 +1,278 @@
+/* =========================================================================
+   Blueliner Design System — Foundations
+   Tokens lifted verbatim from the design system handoff (Claude Design).
+   All variables live on :root so they can be read from vanilla CSS, from
+   <style> blocks inside Python-rendered popup HTML in main.py, and from
+   inline style="" attributes baked into server-rendered markup. This file
+   is the single source of truth for color, type, spacing, radii,
+   elevation, motion, and z-index across the app.
+   ========================================================================= */
+
+:root {
+    /* ---------------------------------------------------------------------
+       COLOR — primitives
+       Cool blue-grays as the foundation (water/sky), a single warm copper
+       accent for action, and muted condition colors so a quick glance
+       reads as "tool", not "traffic light".
+       --------------------------------------------------------------------- */
+
+    /* Ink + surfaces — cool slate scale, used everywhere */
+    --bl-ink-900: #0B1622;   /* primary text on light, dark surface base */
+    --bl-ink-800: #1A2533;
+    --bl-ink-700: #2C3947;
+    --bl-ink-600: #46556A;   /* secondary text */
+    --bl-ink-500: #647489;   /* labels, captions */
+    --bl-ink-400: #8B97A8;   /* placeholder, muted icon */
+    --bl-ink-300: #B7C0CD;
+    --bl-ink-200: #D7DDE5;   /* border-strong */
+    --bl-ink-150: #E5E9EF;   /* border-default */
+    --bl-ink-100: #EEF1F5;   /* surface-3 (subtle fills) */
+    --bl-ink-50:  #F5F7FA;   /* surface-2 (card recess) */
+    --bl-ink-0:   #FFFFFF;   /* surface-1 (cards on page) */
+
+    /* River — the brand blue. Deep, desaturated, not gradient-y. */
+    --bl-river-900: #0B2A3A;   /* deepest, used for app-bar */
+    --bl-river-800: #103A4F;
+    --bl-river-700: #15506C;   /* primary brand */
+    --bl-river-600: #1E6B8E;
+    --bl-river-500: #2B89B0;   /* link / interactive */
+    --bl-river-400: #5BA8C8;
+    --bl-river-300: #95C5D9;
+    --bl-river-200: #C8E0EB;
+    --bl-river-100: #E5F0F5;
+    --bl-river-50:  #F2F8FB;
+
+    /* Copper — single warm accent, used sparingly for primary actions
+       and "drop a pin" affordances. Muted, leather-belt warm. */
+    --bl-copper-900: #5C2D14;
+    --bl-copper-700: #8C4220;
+    --bl-copper-600: #A45530;   /* primary button hover */
+    --bl-copper-500: #B66238;   /* primary button */
+    --bl-copper-400: #C97F58;
+    --bl-copper-200: #ECCDB8;
+    --bl-copper-100: #F6E6D9;
+
+    /* Conditions — muted, accessible, paired with icon shapes. */
+    --bl-cond-good-700:  #2F6B3D;
+    --bl-cond-good-500:  #4A8C5C;   /* moss */
+    --bl-cond-good-100:  #DDEBDF;
+    --bl-cond-good-50:   #EEF5F0;
+
+    --bl-cond-fair-700:  #8A5A14;
+    --bl-cond-fair-500:  #B7892F;   /* ochre */
+    --bl-cond-fair-100:  #F2E4C2;
+    --bl-cond-fair-50:   #F8F0DA;
+
+    --bl-cond-poor-700:  #8A3327;
+    --bl-cond-poor-500:  #B3473B;   /* clay */
+    --bl-cond-poor-100:  #EED0CC;
+    --bl-cond-poor-50:   #F5E1DD;
+
+    --bl-cond-none-700:  #4A5566;
+    --bl-cond-none-500:  #7F8B9C;   /* stone */
+    --bl-cond-none-100:  #DDE1E8;
+    --bl-cond-none-50:   #EEF0F3;
+
+    /* Map overlay accents — paired with shape, never the only signal */
+    --bl-trout:        #1F8A6E;     /* designated trout water (teal-green) */
+    --bl-trout-soft:   #D5EAE3;
+    --bl-stocked:      #B07A1A;     /* recently stocked (mustard) */
+    --bl-stocked-soft: #F2E4C2;
+    --bl-hatch:        #6B4A8C;     /* hatch active (slate-purple) */
+    --bl-hatch-soft:   #E2DAEC;
+    --bl-pin:          #C97F58;     /* user-dropped pin (matches copper) */
+    --bl-access:       #2B89B0;     /* access points (river blue) */
+    --bl-publand:      #4A6E3F;     /* public land tint */
+
+    /* ---------------------------------------------------------------------
+       COLOR — semantic
+       Read these in component CSS, not the primitives, so themes can shift
+       without touching every rule.
+       --------------------------------------------------------------------- */
+    --fg-1:           var(--bl-ink-900);
+    --fg-2:           var(--bl-ink-700);
+    --fg-3:           var(--bl-ink-500);
+    --fg-muted:       var(--bl-ink-400);
+    --fg-on-dark:     #F1F5F9;
+    --fg-on-dark-2:   #B7C0CD;
+    --fg-on-accent:   #FFFFFF;
+    --fg-link:        var(--bl-river-600);
+
+    --bg-page:        var(--bl-ink-50);
+    --bg-surface:     var(--bl-ink-0);
+    --bg-sunken:      var(--bl-ink-100);
+    --bg-app-bar:     var(--bl-river-900);
+    --bg-rail:        var(--bl-river-800);
+    --bg-hover:       var(--bl-ink-100);
+    --bg-pressed:     var(--bl-ink-150);
+    --bg-selected:    var(--bl-river-50);
+
+    --border-1:       var(--bl-ink-150);
+    --border-2:       var(--bl-ink-200);
+    --border-strong:  var(--bl-ink-300);
+    --border-focus:   var(--bl-river-500);
+
+    --accent:         var(--bl-copper-500);
+    --accent-hover:   var(--bl-copper-600);
+    --accent-soft:    var(--bl-copper-100);
+
+    /* ---------------------------------------------------------------------
+       TYPE — primitives
+       System stack only (the runtime has no font loader). Mono variant
+       enables tabular-nums so gauge readings align.
+       --------------------------------------------------------------------- */
+    --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Text",
+                 "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    --font-mono: ui-monospace, "SF Mono", "Menlo", "Consolas",
+                 "Roboto Mono", monospace;
+
+    /* Size scale — 7 named steps, all in px so editor + Leaflet popups
+       agree. Line-heights pair: tight for display, comfy for body. */
+    --fs-display:  32px;   --lh-display:  38px;
+    --fs-title:    22px;   --lh-title:    28px;
+    --fs-heading:  17px;   --lh-heading:  22px;
+    --fs-body:     15px;   --lh-body:     22px;
+    --fs-meta:     13px;   --lh-meta:     18px;
+    --fs-caption:  11px;   --lh-caption:  14px;
+
+    /* Tabular figures — gauge readings, sparkline tooltips. */
+    --fs-data-lg:  20px;   --lh-data-lg:  24px;
+    --fs-data:     15px;   --lh-data:     20px;
+    --fs-data-sm:  12px;   --lh-data-sm:  16px;
+
+    /* Weights — system fonts vary; keep this small + consistent. */
+    --fw-regular:  400;
+    --fw-medium:   500;
+    --fw-semibold: 600;
+    --fw-bold:     700;
+
+    --tracking-tight:   -0.01em;
+    --tracking-normal:  0;
+    --tracking-caption: 0.08em;   /* uppercase labels */
+    --tracking-mono:    0;
+
+    /* ---------------------------------------------------------------------
+       SPACING — 4px base scale (no in-between values allowed)
+       --------------------------------------------------------------------- */
+    --space-0:  0;
+    --space-1:  2px;
+    --space-2:  4px;
+    --space-3:  8px;
+    --space-4:  12px;
+    --space-5:  16px;
+    --space-6:  20px;
+    --space-7:  24px;
+    --space-8:  32px;
+    --space-9:  40px;
+    --space-10: 56px;
+    --space-11: 72px;
+
+    /* ---------------------------------------------------------------------
+       RADII
+       --------------------------------------------------------------------- */
+    --radius-1:    4px;     /* chips, inline tokens */
+    --radius-2:    8px;     /* buttons, inputs, small cards */
+    --radius-3:    12px;    /* cards, panels, modals */
+    --radius-4:    16px;    /* bottom sheet top corners */
+    --radius-pill: 999px;
+
+    /* ---------------------------------------------------------------------
+       ELEVATION — 4 levels mapped to UI roles
+       Cool-tinted shadows match the slate ink rather than going flat-black.
+       --------------------------------------------------------------------- */
+    --elev-0: none;
+    --elev-1: 0 1px 2px rgba(11, 22, 34, 0.06),
+              0 1px 1px rgba(11, 22, 34, 0.04);                /* resting card */
+    --elev-2: 0 4px 12px rgba(11, 22, 34, 0.08),
+              0 1px 2px rgba(11, 22, 34, 0.05);                /* raised popover */
+    --elev-3: 0 12px 28px rgba(11, 22, 34, 0.16),
+              0 4px 8px rgba(11, 22, 34, 0.06);                /* modal / sheet */
+    --elev-4: 0 24px 56px rgba(11, 22, 34, 0.24),
+              0 8px 16px rgba(11, 22, 34, 0.08);                /* drag preview */
+    --ring-focus: 0 0 0 2px var(--bg-surface),
+                  0 0 0 4px var(--bl-river-500);
+
+    /* ---------------------------------------------------------------------
+       MOTION — restrained, utilitarian
+       --------------------------------------------------------------------- */
+    --ease-out:  cubic-bezier(0.22, 0.61, 0.36, 1);
+    --ease-in:   cubic-bezier(0.55, 0, 1, 0.45);
+    --ease-snap: cubic-bezier(0.32, 0.72, 0, 1);     /* bottom-sheet snap */
+    --dur-fast:  120ms;
+    --dur-base:  180ms;
+    --dur-slow:  280ms;
+
+    /* ---------------------------------------------------------------------
+       LAYOUT
+       --------------------------------------------------------------------- */
+    --z-map:          1;
+    --z-overlay:      900;    /* map controls floating on top */
+    --z-app-bar:      1000;
+    --z-popover:      1100;   /* layers/filters/legend popover */
+    --z-river-panel:  1120;
+    --z-account-menu: 1130;
+    --z-sheet:        1140;
+    --z-modal:        1200;
+    --z-toast:        1300;
+}
+
+/* =========================================================================
+   SEMANTIC TEXT CLASSES
+   Use these in markup instead of restating font-size/weight every time.
+   ========================================================================= */
+
+.bl-display {
+    font-size: var(--fs-display);
+    line-height: var(--lh-display);
+    font-weight: var(--fw-bold);
+    letter-spacing: var(--tracking-tight);
+    color: var(--fg-1);
+}
+
+.bl-title {
+    font-size: var(--fs-title);
+    line-height: var(--lh-title);
+    font-weight: var(--fw-bold);
+    letter-spacing: var(--tracking-tight);
+    color: var(--fg-1);
+}
+
+.bl-heading {
+    font-size: var(--fs-heading);
+    line-height: var(--lh-heading);
+    font-weight: var(--fw-semibold);
+    color: var(--fg-1);
+}
+
+.bl-body {
+    font-size: var(--fs-body);
+    line-height: var(--lh-body);
+    color: var(--fg-2);
+}
+
+.bl-meta {
+    font-size: var(--fs-meta);
+    line-height: var(--lh-meta);
+    color: var(--fg-3);
+}
+
+.bl-caption {
+    font-size: var(--fs-caption);
+    line-height: var(--lh-caption);
+    font-weight: var(--fw-semibold);
+    text-transform: uppercase;
+    letter-spacing: var(--tracking-caption);
+    color: var(--fg-3);
+}
+
+/* Tabular numerals: any gauge reading, flow value, temperature,
+   length-of-fish, sparkline tooltip. Stops digits from dancing when
+   values change. PR 2 will sprinkle this across data displays. */
+.bl-num {
+    font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: "tnum";
+}
+.bl-num--lg { font-size: var(--fs-data-lg); line-height: var(--lh-data-lg); font-weight: var(--fw-semibold); }
+.bl-num--md { font-size: var(--fs-data);    line-height: var(--lh-data);    font-weight: var(--fw-medium); }
+.bl-num--sm { font-size: var(--fs-data-sm); line-height: var(--lh-data-sm); font-weight: var(--fw-medium); }
