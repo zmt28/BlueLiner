@@ -65,19 +65,13 @@ const publicLandsPopupHtml = window.publicLandsPopupHtml;
 // transparent fat "hit casing" on top to catch finger taps on mobile
 // (a 4px line is still a poor touch target). Visible is non-interactive
 // so clicks unambiguously go to the casing; both render the same FC.
-const clickableVisible = L.geoJSON(null, {
-  style: (f) => streamStyle(f.properties),
-  interactive: false,
-});
-const clickableHit = L.geoJSON(null, {
-  style: () => ({ color: "#000", weight: 16, opacity: 0, lineCap: "round" }),
-  onEachFeature: (f, l) => l.on("click", (e) => {
-    L.DomEvent.stop(e);
-    onStreamClick(f.properties, e.latlng);
-  }),
-});
-const clickableLayer = L.featureGroup(
-  [clickableVisible, clickableHit]).addTo(map);
+// Clickable-stream layers + their click handler extracted to
+// static/src/streams.ts in PR B1g. clickableLayer + clickableVisible
+// are still referenced by the rivers code below (renderRivers checks
+// _riverHasClickableReach + the lyr-fishable toggle binds clickableLayer);
+// re-exposed via window.
+const clickableLayer = window.clickableLayer;
+const clickableVisible = window.clickableVisible;
 
 // Layer visibility used to live in Leaflet's default top-right control;
 // it now sits inside the Layers tab of the unified #controls-panel.
@@ -85,6 +79,10 @@ const clickableLayer = L.featureGroup(
 // on the map.
 
 let allRivers = [];
+window.allRivers = allRivers;          // bridge: streams.ts _gaugedRiverFor reads via window
+// renderRivers is defined further down; bridged below its definition so
+// streams.ts's loadClickableStreams can trigger a re-render after a
+// viewport fetch updates the loaded reach name/lpid sets.
 // One representation per river: the NLDI flowline when we have it, else
 // a pin. riverLineBySite holds loaded line layers; riverGeomLoaded marks
 // site_nos already attempted (so we never refetch / never retry empties).
@@ -181,230 +179,24 @@ const autoLoadFlowChart = window.autoLoadFlowChart;
 const wireRiverPanel = window.wireRiverPanel;
 const wireSnapSheet = window.wireSnapSheet;
 
-// -- Clickable-stream network (Phase B) ------------------------------
-
-const STREAM_MIN_ZOOM = 9;          // below this, viewport is too large
-const STREAM_CLASS_COLORS = {
-  class_a: "#b8860b", wilderness: "#117a65", wild_reproduction: "#1e8449",
-  stocked: "#2c6fbf", designated: "#27ae60",
-};
-const STREAM_CLASS_LABEL = {
-  class_a: "Class A wild trout", wilderness: "Wilderness trout",
-  wild_reproduction: "Wild reproduction", stocked: "Stocked trout",
-  designated: "Designated trout",
-};
-// "trout" colors by class; "conditions" greys the network so the
-// gauged condition colors (green/yellow/red) read on top (Decision C).
-let streamColorMode = "trout";
-
-function streamColor(p) {
-  if (streamColorMode === "conditions") return "#9aa7b8";
-  return STREAM_CLASS_COLORS[p.trout_class] || "#8a9bb0";
-}
-function streamWeight(p) {
-  // Floor of 4px keeps even order-1 headwaters a tappable target (a 2px
-  // line is nearly impossible to hit on touch). Scales up with order.
-  return Math.max(4, Math.min(7, (p.streamorder || 3) * 0.9));
-}
-function streamStyle(p) {
-  return { color: streamColor(p), weight: streamWeight(p), opacity: 0.8 };
-}
-
-let _streamReqId = 0;
-// Names + levelpathids currently rendered in clickableVisible. The
-// dot-suppression logic below uses these to skip a gauge marker when
-// the same river is already reachable as a clickable line -- avoids
-// the "Antietam Creek dot on an unnamed tributary" surprise and the
-// Susquehanna's redundant dot-over-line.
-let _loadedClkNames = new Set();
-let _loadedClkLpids = new Set();
-
-async function loadClickableStreams() {
-  if (!map.hasLayer(clickableLayer)) return;       // toggled off
-  if (map.getZoom() < STREAM_MIN_ZOOM) {
-    // Earlier versions cleared the layer here. That made panning
-    // across the zoom-9 boundary blink the entire stream network
-    // off and back on. Now we just no-op; the previous frame's
-    // features linger until the next moveend at zoom 9+ replaces
-    // them. The bbox-area guard below + the per-zoom StreamOrder
-    // filter still prevent country-scale fetches when the user is
-    // way zoomed out.
-    return;
-  }
-  const b = map.getBounds();
-  // 4° cap (was 6°): at zoom 9 a 6° bbox is already country-scale on
-  // tall screens and a fast pinch-out can briefly cross the guard,
-  // firing a fetch that returns tens of thousands of features and
-  // locks the main thread.
-  if (b.getEast() - b.getWest() > 4 || b.getNorth() - b.getSouth() > 4) return;
-  const bbox = [b.getWest(), b.getSouth(), b.getEast(), b.getNorth()]
-    .map((x) => x.toFixed(4)).join(",");
-  const reqId = ++_streamReqId;
-  try {
-    const fc = await fetch(
-      `/api/clickable_streams?bbox=${bbox}&zoom=${map.getZoom()}`
-    ).then((r) => r.json());
-    if (reqId !== _streamReqId) return;            // a newer move superseded us
-    clickableVisible.clearLayers(); clickableHit.clearLayers();
-    clickableVisible.addData(fc); clickableHit.addData(fc);
-    if (_selStreamKey != null) _paintHighlight(_selStreamKey);
-    _loadedClkNames = new Set();
-    _loadedClkLpids = new Set();
-    for (const feat of (fc.features || [])) {
-      const p = feat.properties || {};
-      if (p.gnis_name) _loadedClkNames.add(p.gnis_name.trim().toLowerCase());
-      if (p.levelpathid != null) _loadedClkLpids.add(p.levelpathid);
-    }
-    renderRivers();          // dot vs line decision depends on these sets
-  } catch (_) { /* transient; next moveend retries */ }
-}
-
-// True when this river has at least one reach currently drawn in the
-// clickable network -- if so, the user can already click the line to
-// open the river panel, so a redundant gauge dot adds noise (and, for
-// rivers like Antietam Creek, lands the dot on an unrelated tributary
-// at the gauge-centroid). Falls back to false when the clickable layer
-// is off or zoomed below STREAM_MIN_ZOOM -- the dot is the only access
-// point then.
-function _riverHasClickableReach(r) {
-  if (!map.hasLayer(clickableLayer)) return false;
-  if (r.name && _loadedClkNames.has(r.name.trim().toLowerCase())) return true;
-  if (Array.isArray(r.levelpathids)) {
-    for (const lpid of r.levelpathids) {
-      if (_loadedClkLpids.has(lpid)) return true;
-    }
-  }
-  return false;
-}
-
-function restyleStreams() {
-  clickableVisible.setStyle((f) => streamStyle(f.properties));
-  if (_selStreamKey != null) _paintHighlight(_selStreamKey);
-}
-
-// Highlight every rendered reach sharing the clicked stream's *named-
-// river* identity (or LevelPathID for unnamed reaches). NHDPlusV2
-// frequently splits a single named river across multiple levelpathids
-// at HUC boundaries, so matching on lpid alone leaves the upper and
-// lower reaches of e.g. "Little Conestoga Creek" unhighlighted; the
-// composite key falls back to lpid only when the clicked reach has no
-// gnis_name (true for ~1/3 of order-1 headwaters). `_paintHighlight`
-// is idempotent so it can be re-applied after the clickable-streams
-// layer is rebuilt (pan/zoom moveend) or restyled (trout/conditions
-// mode toggle) -- without it, the red selection silently reverts to
-// the base style as soon as you pan the map. The repaint-after-fetch
-// path is what makes the highlight continue onto newly-loaded
-// segments of the same named river as the user pans along its reach.
-let _selStreamKey = null;
-function _featMatchesKey(f, key) {
-  if (!f || !key) return false;
-  if (key.name) return _normName(f.properties.gnis_name) === key.name;
-  return f.properties.levelpathid === key.lpid;
-}
-function _paintHighlight(key) {
-  clickableVisible.eachLayer((l) => {
-    if (_featMatchesKey(l.feature, key)) {
-      l.setStyle({ weight: 8, color: "#e74c3c", opacity: 0.95 });
-    }
-  });
-}
-function highlightStream(p) {
-  clearStreamHighlight();
-  const name = _normName(p && p.gnis_name);
-  _selStreamKey = { name: name || null, lpid: (p && p.levelpathid) ?? null };
-  _paintHighlight(_selStreamKey);
-}
-function clearStreamHighlight() {
-  if (_selStreamKey == null) return;
-  clickableVisible.eachLayer((l) => {
-    if (l.feature) l.setStyle(streamStyle(l.feature.properties));
-  });
-  _selStreamKey = null;
-}
-// Bridge for river-panel.ts's closeRiverPanel(), which clears both
-// highlights. Window assignment lives where the function is defined.
-// PR B1g moves clickable-streams into its own module + drops this.
-window.clearStreamHighlight = clearStreamHighlight;
-
-function _normName(s) { return (s || "").trim().toLowerCase(); }
-
-// A clickable-network reach belongs to a gauged river when a loaded river
-// shares either its GNIS name OR its NHD levelpath. Levelpath matching
-// catches reaches that NHD and NLDI label differently for the same
-// physical river (e.g., where NHD names a downstream tidal section
-// "Gunpowder River" and an upstream section "Gunpowder Falls" on the
-// same levelpath). When several rivers match, pick the one whose
-// representative point is nearest the click.
-function _gaugedRiverFor(p, latlng) {
-  const name = _normName(p.gnis_name);
-  const lpid = p.levelpathid;
-  if (!name && lpid == null) return null;
-  // Search BOTH the current set (viewport rivers when zoomed in) and the
-  // full state snapshot, deduped by site_no. Without the stateRivers
-  // fallback, clicking an upstream reach of a river whose gauges sit
-  // outside the current bbox (e.g., the Gunpowder above Glencoe) wouldn't
-  // find a match and would wrongly render as ungauged.
-  const seen = new Set();
-  const matches = [];
-  for (const list of [allRivers, stateRivers]) {
-    if (!list) continue;
-    for (const r of list) {
-      if (!r.site_no || seen.has(r.site_no)) continue;
-      const nameMatch = name && _normName(r.name) === name;
-      const lpidMatch = lpid != null && Array.isArray(r.levelpathids)
-        && r.levelpathids.includes(lpid);
-      if (nameMatch || lpidMatch) {
-        seen.add(r.site_no); matches.push(r);
-      }
-    }
-  }
-  if (matches.length <= 1 || !latlng) return matches[0] || null;
-  let best = matches[0], bestD = Infinity;
-  for (const r of matches) {
-    const dy = r.lat - latlng.lat, dx = r.lon - latlng.lng;
-    const d = dy * dy + dx * dx;
-    if (d < bestD) { bestD = d; best = r; }
-  }
-  return best;
-}
-
-function onStreamClick(p, latlng) {
-  highlightStream(p);                // whole-river emphasis, gauged or not
-  // Unify the two layers: if this reach is part of a gauged river, open
-  // that river's rich panel instead of the generic ungauged card, so the
-  // whole river behaves as one thing regardless of where you click.
-  const gauged = _gaugedRiverFor(p, latlng);
-  if (gauged) { openRiverPanel(gauged, null, null); return; }
-  const got = prepareRiverPanel();
-  if (!got) return;
-  const { panel, body } = got;
-  const cls = p.trout_class;
-  const label = STREAM_CLASS_LABEL[cls] || "No trout designation";
-  body.innerHTML =
-    `<div class="bl-card"><div class="bl-card-head">` +
-    `<div style="font-size:18px;font-weight:700;color:#1a1a2e">${esc(p.gnis_name || "Unnamed stream")}</div>` +
-    `<span class="stream-badge" style="background:${esc(streamColor(p))}">${esc(label)}</span>` +
-    `<span class="stream-badge" style="background:#64748b">Order ${esc(p.streamorder)}</span>` +
-    `<div class="bl-summary">Ungauged reach &mdash; no live USGS flow here. Showing what we know.</div>` +
-    `</div><div class="bl-card-body">` +
-    `<div class="bl-catch-cta"></div>` +
-    `<details class="bl-section bl-hatch"><summary>Hatching now</summary>` +
-    `<div class="bl-section-body">Hatch guidance for this reach's zone lands with the ungauged-card data wire-up.</div></details>` +
-    `<details class="bl-section" open><summary>Trout</summary>` +
-    `<div class="bl-section-body">${esc(label)}${cls ? " (state designation)" : ""}.</div></details>` +
-    `<details class="bl-section"><summary>Access &amp; land</summary>` +
-    `<div class="bl-section-body">Access points + public/private land coming in the TroutRoutes-depth phase.</div></details>` +
-    `<details class="bl-section"><summary>Conditions</summary>` +
-    `<div class="bl-section-body">No gauge on this reach. Nearest downstream gauge could provide context.</div></details>` +
-    `</div></div>`;
-  commitRiverPanelOpen(panel, body, "open");
-  // Catch CTA: the clicked point is a reasonable catch location for an
-  // ungauged stream (no representative gauge to attach to).
-  wireCatch(body, {
-    name: p.gnis_name, site_no: null,
-    lat: latlng ? latlng.lat : null, lon: latlng ? latlng.lng : null,
-  });
-}
+// -- Clickable-stream network -- entire block (style helpers, viewport
+// fetcher, highlight state machine, _gaugedRiverFor, onStreamClick)
+// extracted to static/src/streams.ts in PR B1g. Re-exposed here so the
+// remaining app.js code (controls-panel segment buttons, the moveend
+// debouncer, renderRivers) can keep calling by bare name. The
+// streamColorMode setter is intentionally a function call (not a
+// rebind) -- a `let X = window.X` for a primitive would freeze on
+// the initial value rather than tracking later mutations from
+// streams.ts.
+const streamColor = window.streamColor;
+const streamStyle = window.streamStyle;
+const restyleStreams = window.restyleStreams;
+const loadClickableStreams = window.loadClickableStreams;
+const _riverHasClickableReach = window._riverHasClickableReach;
+const highlightStream = window.highlightStream;
+const clearStreamHighlight = window.clearStreamHighlight;
+const onStreamClick = window.onStreamClick;
+const setStreamColorMode = window.setStreamColorMode;
 
 // Coloring-mode toggle (Decision C): Conditions vs Trout class.
 // Wiring lives with the unified filter popover, so it's just a DOM
@@ -413,7 +205,7 @@ function onStreamClick(p, latlng) {
 // filter, so it groups under "Show on map" rather than "Show rivers".
 document.querySelectorAll("#color-mode button").forEach((b) =>
   b.addEventListener("click", () => {
-    streamColorMode = b.dataset.mode;
+    setStreamColorMode(b.dataset.mode);
     document.querySelectorAll("#color-mode button").forEach((x) =>
       x.classList.toggle("on", x === b));
     restyleStreams();
@@ -497,6 +289,7 @@ function renderRivers() {
     riversLayer.addLayer(m);
   }
 }
+window.renderRivers = renderRivers;     // bridge: streams.ts re-renders after viewport fetch
 
 // Shape-coded condition marker. Color + shape so colorblind anglers
 // get the same signal: filled disc for Good, filled + center dot for
@@ -607,6 +400,7 @@ async function loadVisibleRiverLines() {
 // -- Hybrid loading: state overview when zoomed out, live viewport when in --
 const VIEWPORT_MIN_ZOOM = 9;
 let stateRivers = [];               // last per-state set (zoomed-out overview)
+window.stateRivers = stateRivers;    // bridge: streams.ts _gaugedRiverFor reads via window
 let viewportMode = false;
 const _viewportCache = new Map();   // rounded "w,s,e,n" -> rivers
 let _viewportSeq = 0;
@@ -633,6 +427,7 @@ async function loadViewportRivers() {
   if (seq !== _viewportSeq) return;       // a newer pan/zoom superseded us
   viewportMode = true;
   allRivers = rivers;
+  window.allRivers = allRivers;           // keep bridge in sync
   populateHatchOptions();
   renderRivers();
   const q = `${b.getWest()},${b.getSouth()},${b.getEast()},${b.getNorth()}`;
@@ -646,6 +441,7 @@ function refreshForView() {
   } else if (viewportMode) {
     viewportMode = false;                 // zoomed back out -> state overview
     allRivers = stateRivers;
+    window.allRivers = allRivers;         // keep bridge in sync
     populateHatchOptions();
     renderRivers();
   }
@@ -729,6 +525,7 @@ function scheduleLazyRetry(state) {
 async function loadRivers(state) {
   const data = await fetch(`/api/rivers?state=${state}`).then((r) => r.json());
   stateRivers = (data && data.rivers) || [];
+  window.stateRivers = stateRivers;       // keep bridge in sync
   riverLinesLayer.clearLayers();
   riverLineBySite.clear();
   riverGeomLoaded.clear();
@@ -739,6 +536,7 @@ async function loadRivers(state) {
   } else {
     viewportMode = false;
     allRivers = stateRivers;
+    window.allRivers = allRivers;         // keep bridge in sync
     populateHatchOptions();
     renderRivers();
     if (stateRivers.length) {

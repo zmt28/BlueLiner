@@ -215,8 +215,8 @@ declare global {
     clearRiverHighlight: typeof clearRiverHighlight;
     autoLoadFlowChart: typeof autoLoadFlowChart;
     wireRiverPanel: typeof wireRiverPanel;
-    // Wired by app.js (clickable-streams) and consumed by closeRiverPanel.
-    clearStreamHighlight?: () => void;
+    // clearStreamHighlight is declared canonically in streams.ts (PR
+    // B1g) as a required Window property; consumed by closeRiverPanel.
     // Wired by app.js (sparkline / catches) and consumed by openRiverPanel.
     wireTrend?: (root: HTMLElement) => void;
     wireCatch?: (root: HTMLElement, river: { name?: string }) => void;
