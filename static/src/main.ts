@@ -31,6 +31,7 @@ import "./map-setup";
 import "./map-layers";
 import "./snap-sheet";
 import "./river-panel";
+import "./streams";
 
 // Legacy application code, now a Vite-managed module so it can `import`
 // from sibling TS modules. Vite bundles it into the production output;
