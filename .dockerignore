@@ -19,3 +19,11 @@ data/nhdplus/*.gz
 # and pulled in via DATA_BASE_URL. Excluded from the image so the
 # resolve_data_file fallback never sees a stale local copy in prod.
 data/public_lands/*.gz
+
+# Frontend dev artifacts. The image's `frontend` build stage runs
+# `npm ci && npm run build` from a clean state; any node_modules/ or
+# pre-built static/dist/ that exists in a local checkout must not
+# leak into the python stage's `COPY . .` (bloat + risk of shipping
+# stale assets if the in-image rebuild somehow no-ops).
+node_modules/
+static/dist/
