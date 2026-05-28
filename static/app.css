@@ -163,7 +163,7 @@ html, body {
    open tab so the user can see which control the panel is currently
    focused on. */
 .ctrl-tab-btn { display: inline-flex; align-items: center; gap: 6px; }
-.ctrl-tab-btn .ctrl-icon { font-size: 14px; line-height: 1; }
+.ctrl-tab-btn .ctrl-icon { width: 14px; height: 14px; flex-shrink: 0; }
 .ctrl-tab-btn.active {
     background: var(--bl-river-500);
     color: var(--fg-on-accent);
@@ -285,25 +285,38 @@ html, body {
     position: relative;
 }
 /* Shape-coded condition swatches inside the Legend tab. Matches the
-   .cond-glyph treatment so colorblind users get the same signal: dot
-   on Fair, line on Poor, dashed outline on No data. */
+   .cond-glyph treatment so colorblind users get the same signal: a
+   small white pip on Fair, a short bar on Poor, dashed outline on
+   No data. The pip/bar are scaled to read as a SMALL center mark,
+   not dominate the disc (the wider 6x6 / 10x2 used in v1 made the
+   colored fill look like a hollow ring at 14px). */
 .legend-dot--good { background: var(--bl-cond-good-500); }
 .legend-dot--fair { background: var(--bl-cond-fair-500); }
 .legend-dot--fair::after {
     content: ""; position: absolute;
-    top: 4px; left: 4px; width: 6px; height: 6px;
+    top: 5px; left: 5px; width: 4px; height: 4px;
     border-radius: 50%; background: #fff;
 }
 .legend-dot--poor { background: var(--bl-cond-poor-500); }
 .legend-dot--poor::after {
     content: ""; position: absolute;
-    top: 6px; left: 2px; width: 10px; height: 2px;
+    top: 6px; left: 3px; width: 8px; height: 2px;
     background: #fff;
 }
 .legend-dot--none {
     background: var(--bl-cond-none-100);
     border: 1.5px dashed var(--bl-cond-none-500);
     box-sizing: border-box;
+}
+/* Saved-pin swatch in the legend: shape-mirror the actual map marker
+   (.bl-pin-dot is a copper teardrop). The legend tile is the same
+   teardrop but smaller, so the swatch reads as a hint of the marker. */
+.legend-dot--pin {
+    width: 12px;
+    height: 12px;
+    border-radius: 50% 50% 50% 0;
+    background: var(--bl-pin);
+    transform: rotate(-45deg);
 }
 
 /* Access-point markers: small colored discs with a single glyph
@@ -512,7 +525,13 @@ html, body {
     line-height: 1.45;
 }
 .modal-fine { font-size: var(--fs-meta); color: var(--fg-3); margin-top: var(--space-4); }
-.modal-icon { font-size: 40px; text-align: center; margin: var(--space-2) 0 var(--space-3); color: var(--bl-river-600); }
+.modal-icon {
+    width: 40px;
+    height: 40px;
+    color: var(--bl-river-600);
+    margin: var(--space-2) auto var(--space-3);
+    display: block;
+}
 
 .modal-card input[type="email"],
 .modal-card input[type="text"] {
@@ -639,66 +658,56 @@ html, body {
 
 .bl-card { color: var(--fg-1); }
 .bl-card-head {
-    padding: var(--space-4) 52px var(--space-4) var(--space-5);
+    padding: var(--space-5) 52px var(--space-4) var(--space-5);
     border-bottom: 1px solid var(--border-1);
     position: sticky; top: 0; background: var(--bg-surface); z-index: 1;
 }
 .bl-card-body { padding: var(--space-4) var(--space-5) calc(20px + env(safe-area-inset-bottom)); }
+/* Title row: river name on the left, condition badge on the right.
+   Title flexes so a long river name (e.g. "North Branch Patapsco
+   River") wraps below the badge instead of pushing it off-screen. */
+.panel-title-row {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: var(--space-4);
+}
 .bl-title {
-    font-size: 19px;
+    font-size: var(--fs-title);
+    line-height: var(--lh-title);
     font-weight: var(--fw-bold);
+    letter-spacing: var(--tracking-tight);
     color: var(--fg-1);
-    margin-bottom: 6px;
-    line-height: 1.2;
 }
-.bl-condition {
-    display: inline-block;
-    padding: 3px 10px;
-    border-radius: var(--radius-pill);
-    font-size: var(--fs-caption);
-    font-weight: var(--fw-bold);
-    border: 1.5px solid;
-    letter-spacing: 0.5px;
-}
-.bl-summary {
-    margin-top: var(--space-3);
-    font-size: var(--fs-meta);
-    color: var(--fg-2);
+/* Verdict callout: a colored box with the one-line plain-English read
+   on the river's condition. Tone modifiers (is-fair / is-poor /
+   is-none) tint the box to reinforce the headline badge color. */
+.panel-verdict {
+    margin-top: var(--space-4);
+    padding: var(--space-3) var(--space-4);
     background: var(--bl-river-50);
     border: 1px solid var(--bl-river-100);
     border-radius: var(--radius-2);
-    padding: 7px 10px;
-    line-height: 1.4;
+    color: var(--fg-2);
+    font-size: var(--fs-body);
+    line-height: 1.45;
 }
-/* Pill row -- one quick-readable line of property chips just under the
-   title. Lifted from TroutRoutes' "Popular / Tailwater / Public
-   Shoreline" header. Each pill renders conditionally on data, so an
-   ungauged ungauged-class stream gets a leaner header instead of a
-   row of empty space.
-   Existing .bl-pill* selectors retoned to the design system's overlay
-   palette (trout/stocked/hatch/access). PR 2 swaps the markup to the
-   canonical .pill family but the visual treatment matches now. */
+.panel-verdict strong { color: var(--fg-1); font-weight: var(--fw-semibold); }
+.panel-verdict.is-fair { background: var(--bl-cond-fair-50); border-color: var(--bl-cond-fair-100); }
+.panel-verdict.is-poor { background: var(--bl-cond-poor-50); border-color: var(--bl-cond-poor-100); }
+.panel-verdict.is-none { background: var(--bg-page); border-color: var(--border-1); color: var(--fg-3); }
+/* Pill row -- a quick-readable line of property chips just under the
+   title. Each pill renders conditionally on the river's data, so an
+   ungauged class-IV stream gets a leaner header instead of a row of
+   empty space. Per-pill styling now lives on the canonical .pill family
+   (defined further down with .pill--trout / --stocked / --hatch /
+   --access); .bl-pills is just the layout container. */
 .bl-pills {
     display: flex;
     flex-wrap: wrap;
     gap: 6px;
     margin-top: var(--space-3);
 }
-.bl-pill {
-    display: inline-flex;
-    align-items: center;
-    padding: 3px 10px;
-    border-radius: var(--radius-pill);
-    font-size: var(--fs-caption);
-    font-weight: var(--fw-semibold);
-    border: 1px solid;
-    line-height: 1.4;
-    white-space: nowrap;
-}
-.bl-pill-trout   { color: #0e6655; background: var(--bl-trout-soft);   border-color: var(--bl-trout); }
-.bl-pill-stocked { color: #7a4f0f; background: var(--bl-stocked-soft); border-color: var(--bl-stocked); }
-.bl-pill-hatch   { color: #4a2e66; background: var(--bl-hatch-soft);   border-color: var(--bl-hatch); }
-.bl-pill-access  { color: #0e4961; background: #D6EAF2;                border-color: var(--bl-access); }
 /* Four-up stat grid: gauges / active hatches / stocked nearby / access
    points. Each cell stacks a big numeric on a tiny label. Mirrors
    TroutRoutes' "3.8 mi Public Shoreline / 6 Access Points / ..." row. */
@@ -1104,7 +1113,7 @@ html, body {
        single row. Padding tightens too. */
     .ctrl-tab-btn .ctrl-label { display: none; }
     .ctrl-tab-btn { padding: 5px 8px; }
-    .ctrl-tab-btn .ctrl-icon { font-size: 16px; }
+    .ctrl-tab-btn .ctrl-icon { width: 16px; height: 16px; }
 
     /* Mobile controls panel: bottom-sheet with peek/full snap states
        matching the river panel UX. The card stays anchored to the
@@ -1254,4 +1263,54 @@ html, body {
 .btn--ghost:hover { background: var(--bg-hover); }
 .btn--full      { width: 100%; }
 .btn--sm        { padding: 6px 10px; font-size: var(--fs-meta); }
+
+/* Inline link with a trailing icon (e.g. "View on USGS [arrow]").
+   Matches the kit's gauge-link spec so the SVG aligns with the text
+   baseline at small sizes. */
+.gauge-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    font-size: var(--fs-meta);
+    color: var(--fg-link);
+    font-weight: var(--fw-medium);
+    text-decoration: none;
+}
+.gauge-link:hover { border-bottom: 1px solid currentColor; }
+.gauge-link i { width: 12px; height: 12px; }
+
+/* Shape-coded condition markers (gauge dots on the map). Replaces the
+   former pure-color circleMarker; the four variants pair color + shape
+   so a quick squint reads as a topographic tool, not a stoplight.
+   Rendered via L.divIcon; the .condition-marker-wrap wrapper from JS
+   gets the Leaflet positioning, the inner .marker carries the visual. */
+.condition-marker-wrap { background: transparent; border: none; }
+.marker {
+    width: 22px; height: 22px;
+    border-radius: 50%;
+    border: 2px solid var(--bg-surface);
+    box-shadow: 0 2px 6px rgba(11,22,34,0.4);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    cursor: pointer;
+    transition: transform var(--dur-fast) var(--ease-out);
+}
+.marker:hover { transform: scale(1.18); z-index: 5; }
+.marker--good { background: var(--bl-cond-good-500); }
+.marker--fair { background: var(--bl-cond-fair-500); }
+.marker--fair::after {
+    content: ""; width: 5px; height: 5px;
+    border-radius: 50%; background: #fff;
+}
+.marker--poor { background: var(--bl-cond-poor-500); }
+.marker--poor::after {
+    content: ""; width: 11px; height: 2.5px; background: #fff;
+}
+.marker--none {
+    background: var(--bl-cond-none-100);
+    border-style: dashed;
+    border-color: var(--bl-cond-none-500);
+}
 

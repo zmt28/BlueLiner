@@ -44,6 +44,12 @@ function popupOpts() {
 
 const map = L.map("map");
 
+// Any Leaflet popup that contains <i data-lucide="..."> nodes needs
+// Lucide to hydrate them when the popup mounts to the DOM. Single
+// global listener so each layer that binds a popup doesn't have to
+// remember it.
+map.on("popupopen", () => refreshIcons());
+
 // Base maps. Exactly one is on the map at a time; the active one sits
 // at the bottom of the layer stack so overlays (hydro, streams, gauges)
 // always render on top. Defaults to "street" (CARTO Light); the user's
@@ -401,6 +407,19 @@ let _panelHideTimer = null;
 let _selectedRiver = null;        // { layer, base } for highlight restore
 let _lastPanelOpenTs = 0;
 
+// Hydrates any freshly-injected <i data-lucide="..."> nodes to inline
+// SVG. Called after every dynamic HTML render so the server-rendered
+// river panel + Python-generated popup HTML show real icons instead
+// of empty <i> shells. Defensive: silently no-ops when Lucide hasn't
+// loaded yet (CDN script is deferred; an early panel open before the
+// script runs would otherwise throw).
+function refreshIcons(root) {
+  if (!window.lucide || !window.lucide.createIcons) return;
+  try {
+    window.lucide.createIcons(root ? { nameAttr: "data-lucide" } : undefined);
+  } catch (_) { /* ignore */ }
+}
+
 function openRiverPanel(river, layer, baseStyle) {
   const panel = document.getElementById("river-panel");
   const body = document.getElementById("river-panel-body");
@@ -424,6 +443,7 @@ function openRiverPanel(river, layer, baseStyle) {
   wireCatch(body, river);
   autoLoadFlowChart(body);
   highlightRiver(layer, baseStyle);
+  refreshIcons();
 }
 
 function closeRiverPanel() {
@@ -905,25 +925,41 @@ function renderRivers() {
     }
     if (!pass) continue;
     if (_riverHasClickableReach(r)) continue;  // clickable network has it
-    const m = L.circleMarker([r.lat, r.lon], {
-      radius: 8, color: r.color, weight: 2,
-      fill: true, fillColor: r.color, fillOpacity: 0.85,
-    });
+    const m = L.marker([r.lat, r.lon], { icon: makeConditionIcon(r.overall) });
     const tBadge = r.on_trout
-      ? ' <span style="color:#1abc9c;font-size:11px">&#x1f41f; Trout</span>'
+      ? ' <span style="color:var(--bl-trout);font-size:11px">Trout</span>'
       : "";
     const sBadge = r.near_stocked
-      ? ' <span style="color:#e67e22;font-size:11px">Stocked</span>'
+      ? ' <span style="color:var(--bl-stocked);font-size:11px">Stocked</span>'
       : "";
     m.bindTooltip(
       `<b>${esc(r.name)}</b>${tBadge}${sBadge}` +
       `<br><span style="color:${r.color}">${esc(r.label)}</span>`
     );
     m._blRiver = r;
-    m.on("click", () => openRiverPanel(
-      r, m, { weight: 2, opacity: 1 }));
+    m.on("click", () => openRiverPanel(r, m, null));
     riversLayer.addLayer(m);
   }
+}
+
+// Shape-coded condition marker. Color + shape so colorblind anglers
+// get the same signal: filled disc for Good, filled + center dot for
+// Fair, filled + horizontal bar for Poor, dashed outline for No data.
+// CSS styling for the four variants lives in app.css under .marker*.
+const CONDITION_VARIANT = {
+  green: "good",
+  yellow: "fair",
+  red: "poor",
+  gray: "none",
+};
+function makeConditionIcon(overall) {
+  const variant = CONDITION_VARIANT[overall] || "none";
+  return L.divIcon({
+    className: "condition-marker-wrap",
+    html: `<div class="marker marker--${variant}"></div>`,
+    iconSize: [22, 22],
+    iconAnchor: [11, 11],
+  });
 }
 
 // Trout streams cover the whole state now (large). Load lazily -- only
@@ -1590,6 +1626,11 @@ async function init() {
   await initAuth();
 }
 init();
+
+// Hydrate the static <i data-lucide="..."> nodes in the page shell
+// (header tab buttons, sign-in mailbox). Wrapped in load so the
+// deferred CDN script has finished parsing before we call into it.
+window.addEventListener("load", refreshIcons);
 
 // -- Accounts (Phase 1) ---------------------------------------------
 
