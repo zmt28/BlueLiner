@@ -1,3 +1,38 @@
+# Multi-stage build. Stage 1 produces the Vite frontend bundle
+# (static/dist/); stage 2 is the lean Python runtime that copies
+# the built assets in. The final image has no Node runtime.
+#
+# Added in PR #71 (hotfix). Before this, PRs #68/#69 moved CSS +
+# app.js into the Vite module graph but the Dockerfile only ran
+# `pip install` -- so production fell back to source index.html
+# which referenced /src/main.ts (a dev-only path) and the live
+# app loaded with no CSS and no JS. This file fixes that.
+
+# -- Stage 1: build the frontend bundle ------------------------------
+FROM node:20-alpine AS frontend
+
+WORKDIR /app
+
+# Copy lockfiles first so the npm cache layer is reusable across
+# rebuilds where only source changed (npm ci re-runs only when
+# package.json / package-lock.json change).
+COPY package.json package-lock.json ./
+RUN npm ci
+
+# Then the source Vite needs: index.html + src/ + the loose CSS
+# files (tokens.css, app.css) + the vendored Leaflet CSS imported
+# from leaflet/dist via the npm package. tsconfig is read by Vite
+# for path resolution; vite.config defines the entry + base path.
+COPY vite.config.ts tsconfig.json ./
+COPY static/ ./static/
+
+# Build -> static/dist/index.html + static/dist/assets/*. The dist
+# folder is what stage 2 copies in below; everything else in this
+# stage is discarded.
+RUN npm run build
+
+
+# -- Stage 2: Python runtime -----------------------------------------
 FROM python:3.11-slim
 
 ENV PYTHONUNBUFFERED=1 \
@@ -12,6 +47,12 @@ COPY requirements.txt .
 RUN pip install -r requirements.txt
 
 COPY . .
+
+# Overlay the built frontend bundle on top of the source tree. The
+# `static/dist/` from stage 1 is what main.py's /map endpoint serves
+# in production (it falls back to source static/index.html only when
+# dist/ is absent, i.e. dev mode).
+COPY --from=frontend /app/static/dist ./static/dist
 
 RUN useradd -m app && chown -R app /app
 USER app
