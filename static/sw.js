@@ -18,21 +18,20 @@ const swSelf = /** @type {any} */ (self);
 // name doesn't match the current CACHE constant, which forces every
 // returning browser to refetch the shell on next visit -- the only
 // reliable way to roll out a buggy client-side change.
-const CACHE = "blueliner-v20";
+const CACHE = "blueliner-v21";
 // Vite production builds emit fingerprinted asset filenames (e.g.
 // `/static/dist/assets/index-DkF7p.js`) so the SHELL list can no
 // longer enumerate them at SW build time. Strategy:
-//   - Pre-cache the entry route + manifest + icons + the legacy
-//     app.js (still the application code in PR B1a; PR B1b splits
-//     it into TS modules; PR B2 swaps Leaflet -> MapLibre).
-//   - Hashed Vite assets are picked up by the NETWORK-FIRST shell
-//     handler on first navigate, then cached for offline reloads.
-//   - tokens.css / app.css are no longer cached standalone -- in
-//     production the served HTML references only the Vite-bundled
-//     hashed CSS, which network-first picks up on first request.
+//   - Pre-cache the entry route + manifest + icons + Leaflet
+//     vendor (the latter is still loaded as a plain script tag
+//     for the global `L` in the legacy app.js -- PR B2 removes).
+//   - Hashed Vite assets (the bundled CSS + the entry JS that
+//     pulls in app.js as a module) are picked up by NETWORK-FIRST
+//     on first navigate, then cached for offline reloads.
+//   - app.js moved into static/src/ (Vite-managed) in PR B1b, so
+//     it's no longer served as a standalone /static/app.js.
 const SHELL = [
   "/map",
-  "/static/app.js",
   "/static/manifest.webmanifest",
   "/static/vendor/leaflet/leaflet.css",
   "/static/vendor/leaflet/leaflet.js",

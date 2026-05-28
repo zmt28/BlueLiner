@@ -1,28 +1,31 @@
 // Blueliner frontend entry point (Vite-managed).
 //
-// This file is the entry that Vite scans starting from
-// `static/index.html`. Its job in PR B1a is to declare the asset
-// graph -- pulling tokens.css, app.css, and Leaflet's CSS into the
-// module graph so Vite fingerprints them in the production build.
+// Imports CSS for Vite's asset graph, then the canonical TS modules
+// (each future module extraction lands here), then the legacy
+// app.js as a side-effect module. Order matters: TS modules with
+// window-side-effect bridges (state.ts, future util.ts, etc.) must
+// run BEFORE app.js so its globals are populated when app.js tries
+// to read them.
 //
 // Roadmap:
-//   - PR B1a (this PR): Vite live; CSS bundled + hashed. The actual
-//     application code stays in static/app.js, loaded as a regular
-//     script tag. Sets up the build pipeline.
-//   - PR B1b+: Incremental extraction of static/app.js into typed
-//     modules under static/src/{map,panels,data,ui,auth,catches}.
-//     Each PR carves out one domain (e.g. extract `state.ts` with
-//     STATES + deviceToken; extract `sparkline.ts` with the gauge
-//     trend renderer). One module per PR keeps the diff small and
-//     the regression surface tight.
-//   - PR B2: actual Leaflet -> MapLibre swap once the module split
-//     gives us seams to operate on layer-by-layer.
+//   - PR B1a: Vite pipeline live. (shipped)
+//   - PR B1b (this PR): app.js converted to a Vite-managed module;
+//     state.ts extracted as the first canonical TS module that
+//     app.js imports from. Pattern established for B1c+.
+//   - PR B1c+: Incrementally extract util.ts, sparkline.ts,
+//     map-setup.ts, ... -- one domain per PR.
+//   - PR B2: Leaflet -> MapLibre swap on the now-modularized seams.
 
 import "../tokens.css";
 import "../app.css";
 import "leaflet/dist/leaflet.css";
 
-// Sentinel so we can confirm in DevTools that the Vite-bundled entry
-// is loading. Logs once on first paint; harmless in production.
-// eslint-disable-next-line no-console
-console.info("[blueliner] vite entry loaded");
+// Canonical TS modules. Each one assigns to window on import for the
+// legacy app.js bridge (until app.js is itself fully extracted into
+// these modules and the window assignments can be dropped).
+import "./state";
+
+// Legacy application code, now a Vite-managed module so it can `import`
+// from sibling TS modules. Vite bundles it into the production output;
+// no separate <script src="/static/app.js"> tag in index.html anymore.
+import "./app.js";

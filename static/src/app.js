@@ -12,29 +12,21 @@
 
 // code -> { name, center }, loaded from /api/states (states.py is the
 // single source of truth). Populated during init().
+//
+// Note: STATES + currentSt stay in this legacy file for PR B1b --
+// they're hot mutable state that init() and the state selector
+// handler update throughout. They're mirrored to window so the
+// helpers extracted into static/src/state.ts (deviceToken,
+// DEVICE_HEADER, currentState, STATE_ZOOM) can read them. A
+// follow-up PR fully extracts the state-selector code path and
+// migrates these into state.ts proper.
 let STATES = {};
 let currentSt = "MD";
-const STATE_ZOOM = 7;
-
-function currentState() {
-  const p = new URLSearchParams(location.search).get("state") || "MD";
-  const s = p.toUpperCase();
-  return STATES[s] ? s : (STATES.MD ? "MD" : Object.keys(STATES)[0]);
-}
-
-// Opaque per-device token (no login). Persists in localStorage; sent on
-// every pins request so saved pins are scoped to this device/browser.
-function deviceToken() {
-  let t = localStorage.getItem("bl_device");
-  if (!t) {
-    t = (window.crypto && crypto.randomUUID)
-      ? crypto.randomUUID()
-      : String(Date.now()) + Math.random().toString(36).slice(2);
-    localStorage.setItem("bl_device", t);
-  }
-  return t;
-}
-const DEVICE_HEADER = { "X-Device-Token": deviceToken() };
+window.STATES = STATES;          // bridge: state.ts's currentState() reads this
+const STATE_ZOOM = window.STATE_ZOOM;       // re-exposed from state.ts
+const DEVICE_HEADER = window.DEVICE_HEADER; // re-exposed from state.ts
+const deviceToken = window.deviceToken;     // re-exposed from state.ts
+const currentState = window.currentState;   // re-exposed from state.ts
 
 function esc(s) {
   return String(s == null ? "" : s).replace(/[&<>"']/g, (c) => ({

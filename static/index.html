@@ -375,6 +375,8 @@
 
 
     <script src="/static/vendor/leaflet/leaflet.js"></script>
-    <script src="/static/app.js"></script>
+    <!-- app.js moved to static/src/app.js in PR B1b; Vite imports it
+         from main.ts so it's part of the bundled module graph. No
+         standalone <script src="/static/app.js"> tag anymore. -->
 </body>
 </html>
