@@ -20,11 +20,19 @@ COPY package.json package-lock.json ./
 RUN npm ci
 
 # Then the source Vite needs: index.html + src/ + the loose CSS
-# files (tokens.css, app.css) + the vendored Leaflet CSS imported
-# from leaflet/dist via the npm package. tsconfig is read by Vite
-# for path resolution; vite.config defines the entry + base path.
+# files (tokens.css, app.css) + maplibre-gl's CSS imported via the npm
+# package. tsconfig is read by Vite for path resolution; vite.config
+# defines the entry + base path.
 COPY vite.config.ts tsconfig.json ./
 COPY static/ ./static/
+
+# Optional MVT cutover (Path A): set this to the public R2 URL of the
+# clickable-stream PMTiles archive to render streams from vector tiles
+# instead of the GeoJSON endpoint. Unset = keep the GeoJSON path. Vite
+# inlines VITE_* env at build time, so it must be an ARG/ENV here. Render
+# can supply it as a build-time env var / docker build-arg.
+ARG VITE_STREAM_TILES_URL=""
+ENV VITE_STREAM_TILES_URL=$VITE_STREAM_TILES_URL
 
 # Build -> static/dist/index.html + static/dist/assets/*. The dist
 # folder is what stage 2 copies in below; everything else in this
