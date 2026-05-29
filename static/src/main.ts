@@ -32,6 +32,7 @@ import { wireRiverPanel } from "./river-panel";
 import "./streams";
 import { loadRivers } from "./rivers";
 import "./controls";
+import "./search";
 // Last three: auth + catches + pins all import from the modules above
 // (auth needs DEVICE_HEADER from state; catches needs sparkline + auth;
 // pins needs map-layers). They wire their own DOM at module-init.
@@ -61,6 +62,8 @@ async function init(): Promise<void> {
   // the URL is a no-op -- skip via syncUrl:false.
   setCurrentSt(state, { syncUrl: false });
   sel.value = state;
+  // Let the floating state pill mirror the populated select.
+  document.dispatchEvent(new Event("bl:states-loaded"));
   map.setView(getStates()[state].center, STATE_ZOOM);
   wireRiverPanel();
   loadRivers(state);

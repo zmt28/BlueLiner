@@ -87,7 +87,13 @@ function loadBaseMapPref(): BaseMapKey {
   }
 }
 
-export const map: L.Map = L.map("map");
+// Default zoom + attribution controls are off: the redesigned chrome
+// supplies its own bottom-right zoom/compass/locate stack (controls.ts)
+// and a static attribution string in the page (.map-attribution).
+export const map: L.Map = L.map("map", {
+  zoomControl: false,
+  attributionControl: false,
+});
 
 // Single global popupopen listener -- every layer that binds a popup
 // inherits Lucide hydration without having to register its own.

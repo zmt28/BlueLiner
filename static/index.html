@@ -33,171 +33,404 @@
     <script src="https://unpkg.com/lucide@latest" defer></script>
 </head>
 <body>
-    <div class="header">
-        <div class="header-left">
-            <div>
-                <div class="logo">Blue<span>liner</span></div>
-                <div class="tagline">Real-time stream conditions for fly fishermen</div>
+    <!-- =====================================================================
+         MAP CHROME (redesigned). Left icon rail + side panel on desktop
+         (>= 760px); bottom tab bar + bottom-sheet on mobile (< 760px).
+         Floating state/search pills sit on top of the map; the
+         compass / zoom / locate / drop-pin stack anchors bottom-right.
+         The Leaflet map (#map) fills the viewport underneath; all chrome
+         floats above it. Control element IDs (state-select, lyr-*,
+         cond-select, color-mode, basemap-mode, drop-pin, …) are preserved
+         so the existing map wiring in src/*.ts keeps driving the map.
+         ===================================================================== -->
+
+    <!-- Left rail (desktop nav). Hidden < 760px; replaced by .mobile-tabbar. -->
+    <aside class="rail" id="rail" aria-label="Map navigation">
+        <div class="rail-logo">
+            <div class="rail-logo-mark" title="Blueliner">
+                <svg viewBox="0 0 24 24" fill="none" stroke="#95C5D9" stroke-width="1.6" stroke-linecap="round" aria-hidden="true">
+                    <path d="M 3 9 Q 8 6 12 9 T 21 9" />
+                    <path d="M 3 14 Q 8 11 12 14 T 21 14" />
+                    <path d="M 3 19 Q 8 16 12 19 T 21 19" stroke="#5BA8C8"/>
+                </svg>
             </div>
         </div>
-        <div class="header-right">
-            <div id="controls">
-                <select id="state-select" class="ctrl" aria-label="State">
-                    <option value="MD">Loading states&hellip;</option>
-                </select>
-                <button id="drop-pin" class="ctrl" type="button">Drop a pin</button>
-                <span id="auth-slot"><!-- filled by JS: Sign in OR account button --></span>
-            </div>
-            <button id="ctrl-layers" class="ctrl ctrl-tab-btn" type="button"
-                    data-tab="layers" aria-controls="controls-panel"
-                    aria-expanded="false" aria-label="Map layers">
-                <i class="ctrl-icon" data-lucide="layers" aria-hidden="true"></i>
-                <span class="ctrl-label">Layers</span>
+        <nav class="rail-tabs" id="rail-tabs">
+            <button class="rail-tab" data-tab="layers" type="button"
+                    aria-controls="controls-panel" aria-expanded="false" title="Map Layers">
+                <i data-lucide="layers" aria-hidden="true"></i>
+                <span class="rail-tab-label">Map Layers</span>
             </button>
-            <button id="ctrl-filters" class="ctrl ctrl-tab-btn" type="button"
-                    data-tab="filters" aria-controls="controls-panel"
-                    aria-expanded="false" aria-label="Map filters">
-                <i class="ctrl-icon" data-lucide="sliders-horizontal" aria-hidden="true"></i>
-                <span class="ctrl-label">Filters</span>
+            <button class="rail-tab" data-tab="content" type="button"
+                    aria-controls="controls-panel" aria-expanded="false" title="My Content">
+                <i data-lucide="bookmark" aria-hidden="true"></i>
+                <span class="rail-tab-label">My Content</span>
             </button>
-            <button id="ctrl-legend" class="ctrl ctrl-tab-btn" type="button"
-                    data-tab="legend" aria-controls="controls-panel"
-                    aria-expanded="false" aria-label="Map legend">
-                <i class="ctrl-icon" data-lucide="info" aria-hidden="true"></i>
-                <span class="ctrl-label">Legend</span>
+            <button class="rail-tab" data-tab="filters" type="button"
+                    aria-controls="controls-panel" aria-expanded="false" title="Map Filters">
+                <i data-lucide="filter" aria-hidden="true"></i>
+                <span class="rail-tab-label">Map Filters</span>
             </button>
+            <button class="rail-tab" data-tab="legend" type="button"
+                    aria-controls="controls-panel" aria-expanded="false" title="Map Legend">
+                <i data-lucide="compass" aria-hidden="true"></i>
+                <span class="rail-tab-label">Map Legend</span>
+            </button>
+            <div class="rail-tabs-spacer"></div>
+        </nav>
+        <div class="rail-account">
+            <button class="rail-account-avatar" id="rail-avatar" type="button"
+                    title="Account" aria-label="Account">ZT</button>
+            <div class="rail-account-email" id="rail-email">Sign in</div>
+            <div class="rail-account-version">v 4.10.1</div>
         </div>
-    </div>
+    </aside>
 
     <div id="map"></div>
 
-    <!-- Unified controls panel: Layers / Filters / Legend in one tabbed sheet.
-         Mobile = bottom-sheet snap (matches river panel); desktop = top-right
-         floating popover. Three header buttons (#ctrl-layers, #ctrl-filters,
-         #ctrl-legend) open this panel directly to their tab. -->
-    <div id="controls-panel" class="controls-panel" hidden role="dialog"
-         aria-label="Map controls">
-        <div class="controls-panel-backdrop" data-close></div>
-        <aside class="controls-panel-card">
-            <div class="controls-panel-grip" role="button" tabindex="0"
-                 aria-label="Drag to resize, tap to expand"></div>
-            <button class="controls-panel-close" type="button" data-close
-                    aria-label="Close">&times;</button>
-            <div id="controls-panel-body">
-                <div class="ctrl-tabs">
-                    <input type="radio" name="ctrl-tab" id="ctrl-tab-layers" checked>
-                    <input type="radio" name="ctrl-tab" id="ctrl-tab-filters">
-                    <input type="radio" name="ctrl-tab" id="ctrl-tab-legend">
-                    <div class="ctrl-tab-bar">
-                        <label for="ctrl-tab-layers" class="ctrl-tab" data-tab="layers">Layers</label>
-                        <label for="ctrl-tab-filters" class="ctrl-tab" data-tab="filters">Filters</label>
-                        <label for="ctrl-tab-legend" class="ctrl-tab" data-tab="legend">Legend</label>
-                    </div>
-                    <div class="ctrl-tab-panels">
-                        <div class="ctrl-tab-panel" data-tab="layers">
-                            <section class="filter-section">
-                                <h4 class="filter-section-title">Base map</h4>
-                                <div class="filter-segment" id="basemap-mode" role="group">
-                                    <button type="button" data-base="street" class="on">Street</button>
-                                    <button type="button" data-base="satellite">Satellite</button>
-                                    <button type="button" data-base="topo">Topographic</button>
-                                </div>
-                            </section>
-                            <section class="filter-section">
-                                <h4 class="filter-section-title">Show on map</h4>
-                                <label class="filter-check">
-                                    <input type="checkbox" id="lyr-fishable" checked>
-                                    Fishable streams
-                                </label>
-                                <label class="filter-check">
-                                    <input type="checkbox" id="lyr-trout">
-                                    State trout streams
-                                </label>
-                                <label class="filter-check">
-                                    <input type="checkbox" id="lyr-usgs" checked>
-                                    USGS basemap streams
-                                </label>
-                                <label class="filter-check">
-                                    <input type="checkbox" id="lyr-access">
-                                    Access points
-                                </label>
-                                <label class="filter-check">
-                                    <input type="checkbox" id="lyr-public-lands">
-                                    Public lands
-                                </label>
-                                <label class="filter-check">
-                                    <input type="checkbox" id="lyr-pins" checked>
-                                    Saved pins
-                                </label>
-                            </section>
-                            <section class="filter-section">
-                                <h4 class="filter-section-title">Color streams by</h4>
-                                <div class="filter-segment" id="color-mode" role="group">
-                                    <button type="button" data-mode="trout" class="on">Trout class</button>
-                                    <button type="button" data-mode="conditions">Conditions</button>
-                                </div>
-                            </section>
-                        </div>
-                        <div class="ctrl-tab-panel" data-tab="filters">
-                            <section class="filter-section">
-                                <h4 class="filter-section-title">Show rivers that are&hellip;</h4>
-                                <label class="filter-row">
-                                    <span>Condition</span>
-                                    <select id="cond-select">
-                                        <option value="any">Any</option>
-                                        <option value="green">Good</option>
-                                        <option value="yellow">Fair</option>
-                                        <option value="red">Poor</option>
-                                        <option value="gray">No Data</option>
-                                    </select>
-                                </label>
-                                <label class="filter-row">
-                                    <span>Active hatch</span>
-                                    <select id="hatch-select">
-                                        <option value="any">Any</option>
-                                        <option value="active">Active now</option>
-                                    </select>
-                                </label>
-                                <label class="filter-check">
-                                    <input type="checkbox" id="trout-only">
-                                    On a trout stream
-                                </label>
-                                <label class="filter-check">
-                                    <input type="checkbox" id="stocked-only">
-                                    Near stocked water
-                                </label>
-                            </section>
-                            <button id="filter-reset" type="button" class="filter-reset">
-                                Reset filters
+    <!-- Floating chrome above the map. pointer-events:none on the wrapper so
+         map drags pass through where there is no control; each child opts
+         back in to pointer events. -->
+    <div class="map-chrome" id="map-chrome">
+        <div class="top-pills">
+            <!-- State picker. The native <select id="state-select"> remains the
+                 canonical value + accessibility target (visually hidden); the
+                 .state-pill mirrors it and dispatches change on selection so all
+                 existing state wiring stays intact. -->
+            <div class="state-pill-wrap" id="state-pill-wrap">
+                <button class="state-pill" id="state-pill" type="button"
+                        aria-haspopup="listbox" aria-expanded="false">
+                    <span id="state-pill-name">Maryland</span>
+                    <i data-lucide="chevron-down" aria-hidden="true"></i>
+                </button>
+                <div class="state-menu" id="state-menu" hidden></div>
+                <select id="state-select" class="visually-hidden" aria-label="State"
+                        tabindex="-1">
+                    <option value="MD">Loading states&hellip;</option>
+                </select>
+            </div>
+
+            <!-- Search. Desktop: always-expanded pill. Mobile: starts as a round
+                 icon button that expands on tap. -->
+            <div class="search-wrap" id="search-wrap">
+                <button class="search-icon-btn" id="search-icon-btn" type="button"
+                        title="Search" hidden>
+                    <i data-lucide="search" aria-hidden="true"></i>
+                </button>
+                <div class="search-pill" id="search-pill">
+                    <i data-lucide="search" aria-hidden="true"></i>
+                    <input id="search-input" type="text" autocomplete="off"
+                           placeholder="Search rivers, gauges, counties&hellip;"
+                           aria-label="Search rivers">
+                    <span class="search-pill-kbd">&#8984;K</span>
+                </div>
+                <div class="search-results" id="search-results" hidden></div>
+            </div>
+
+            <!-- Mobile-only account entry point (no profile tab on mobile). -->
+            <button class="mobile-avatar" id="mobile-avatar" type="button"
+                    title="Account" aria-label="Account">ZT</button>
+        </div>
+
+        <!-- Bottom-right control stack. -->
+        <div class="map-controls">
+            <button class="drop-pin-btn" id="drop-pin" type="button" title="Drop a pin"
+                    aria-label="Drop a pin">
+                <i data-lucide="map-pin" aria-hidden="true"></i>
+            </button>
+            <button class="compass" id="compass-btn" type="button" title="North"
+                    aria-label="North">
+                <svg viewBox="0 0 36 36" aria-hidden="true">
+                    <circle cx="18" cy="18" r="15" fill="none" stroke="#E5E9EF" stroke-width="1" />
+                    <text x="18" y="9" text-anchor="middle" font-size="8"
+                          font-family="ui-monospace, monospace" font-weight="700" fill="#B66238">N</text>
+                    <polygon points="18,11.5 21,18 18,17 15,18" fill="#B66238" />
+                    <polygon points="18,24.5 21,18 18,19 15,18" fill="#647489" />
+                </svg>
+            </button>
+            <div class="zoom-stack">
+                <button class="zoom-btn" id="zoom-in" type="button" title="Zoom in"
+                        aria-label="Zoom in"><i data-lucide="plus" aria-hidden="true"></i></button>
+                <button class="zoom-btn" id="zoom-out" type="button" title="Zoom out"
+                        aria-label="Zoom out"><i data-lucide="minus" aria-hidden="true"></i></button>
+            </div>
+            <button class="locate-btn" id="locate-btn" type="button" title="Locate me"
+                    aria-label="Locate me"><i data-lucide="locate-fixed" aria-hidden="true"></i></button>
+        </div>
+
+        <div class="map-attribution">&copy; OpenStreetMap &middot; CARTO &middot; USGS &middot; Esri</div>
+    </div>
+
+    <!-- Mobile bottom tab bar (hidden >= 760px). -->
+    <nav class="mobile-tabbar" id="mobile-tabbar" aria-label="Map navigation">
+        <button class="mobile-tab" data-tab="layers" type="button" aria-controls="controls-panel">
+            <i data-lucide="layers" aria-hidden="true"></i><span class="mobile-tab-label">Layers</span>
+        </button>
+        <button class="mobile-tab" data-tab="filters" type="button" aria-controls="controls-panel">
+            <i data-lucide="filter" aria-hidden="true"></i><span class="mobile-tab-label">Filters</span>
+        </button>
+        <button class="mobile-tab" data-tab="legend" type="button" aria-controls="controls-panel">
+            <i data-lucide="compass" aria-hidden="true"></i><span class="mobile-tab-label">Legend</span>
+        </button>
+        <button class="mobile-tab" data-tab="content" type="button" aria-controls="controls-panel">
+            <i data-lucide="bookmark" aria-hidden="true"></i><span class="mobile-tab-label">Saved</span>
+        </button>
+    </nav>
+
+    <!-- Unified panel: continuous side panel (desktop) / bottom sheet (mobile).
+         One body holds all five panes; JS shows the active one + sets the title.
+         Control IDs inside are preserved for the existing map wiring. -->
+    <div id="controls-panel" class="panel" hidden role="dialog" aria-label="Map controls">
+        <div class="panel-backdrop" data-close></div>
+        <section class="panel-card">
+            <div class="panel-handle" data-grip role="button" tabindex="0"
+                 aria-label="Drag down to close"></div>
+            <div class="panel-head">
+                <div class="panel-head-title" id="panel-title">Map Layers</div>
+                <button class="panel-head-close" type="button" data-close aria-label="Close">
+                    <i data-lucide="x" aria-hidden="true"></i>
+                </button>
+            </div>
+            <div class="panel-body" id="panel-body">
+
+                <!-- ===== Map Layers ===== -->
+                <div class="panel-pane" data-pane="layers">
+                    <section class="panel-section">
+                        <div class="panel-section-label">Base map</div>
+                        <div class="layer-tiles" id="basemap-mode" role="group" aria-label="Base map">
+                            <button type="button" class="layer-tile on" data-base="street">
+                                <span class="layer-tile-thumb">
+                                    <svg viewBox="0 0 68 68" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+                                        <rect width="68" height="68" fill="#EDEFE9" />
+                                        <g stroke="#D7B385" fill="none" stroke-linecap="round">
+                                            <path d="M -2 28 Q 14 26 26 30 T 70 26" stroke-width="2.5" />
+                                            <path d="M 22 -2 Q 24 18 28 32 T 36 70" stroke-width="2.5" />
+                                            <path d="M 50 -2 Q 52 22 58 40 T 64 70" stroke-width="1.6" />
+                                            <path d="M -2 50 Q 18 48 30 52 T 70 48" stroke-width="1.6" />
+                                        </g>
+                                        <path d="M 4 40 Q 18 36 30 42 T 56 44" stroke="#7AB0CC" stroke-width="1.2" fill="none" />
+                                    </svg>
+                                </span>
+                                <span class="layer-tile-content">
+                                    <span class="layer-tile-title">Street</span>
+                                    <span class="layer-tile-desc">OpenStreetMap roads, towns, and labels.</span>
+                                </span>
+                                <span class="layer-tile-radio"><span class="layer-tile-radio-dot"></span></span>
+                            </button>
+                            <button type="button" class="layer-tile" data-base="satellite">
+                                <span class="layer-tile-thumb">
+                                    <svg viewBox="0 0 68 68" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+                                        <defs><radialGradient id="sat-land" cx="40%" cy="35%" r="80%">
+                                            <stop offset="0%" stop-color="#5d6e3f" /><stop offset="100%" stop-color="#3a4a26" />
+                                        </radialGradient></defs>
+                                        <rect width="68" height="68" fill="url(#sat-land)" />
+                                        <ellipse cx="14" cy="18" rx="10" ry="6" fill="#2b3a1d" opacity="0.65" />
+                                        <ellipse cx="50" cy="48" rx="14" ry="9" fill="#2b3a1d" opacity="0.55" />
+                                        <path d="M 4 38 Q 18 30 30 36 T 56 42 L 64 50" stroke="#3a5f7a" stroke-width="2.4" fill="none" stroke-linecap="round" opacity="0.85" />
+                                    </svg>
+                                </span>
+                                <span class="layer-tile-content">
+                                    <span class="layer-tile-title">Satellite</span>
+                                    <span class="layer-tile-desc">Aerial imagery with light place labels.</span>
+                                </span>
+                                <span class="layer-tile-radio"><span class="layer-tile-radio-dot"></span></span>
+                            </button>
+                            <button type="button" class="layer-tile" data-base="topo">
+                                <span class="layer-tile-thumb">
+                                    <svg viewBox="0 0 68 68" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+                                        <rect width="68" height="68" fill="#F4EBDA" />
+                                        <g stroke="#A88660" fill="none">
+                                            <path d="M 14 40 Q 20 32 30 30 Q 42 30 48 36 Q 52 44 46 50 Q 36 56 24 52 Q 14 48 14 40 Z" stroke-width="0.6" />
+                                            <path d="M 18 40 Q 22 34 30 33 Q 40 33 44 38 Q 47 44 42 48 Q 34 52 26 49 Q 18 46 18 40 Z" stroke-width="0.6" />
+                                            <path d="M 24 40 Q 26 36 30 36 Q 36 36 38 39 Q 39 43 36 45 Q 32 47 28 46 Q 24 44 24 40 Z" stroke-width="0.6" />
+                                        </g>
+                                        <path d="M 4 22 Q 16 24 24 18 T 60 14" stroke="#7AB0CC" stroke-width="1.2" fill="none" />
+                                    </svg>
+                                </span>
+                                <span class="layer-tile-content">
+                                    <span class="layer-tile-title">Topo</span>
+                                    <span class="layer-tile-desc">USGS topographic with contour lines.</span>
+                                </span>
+                                <span class="layer-tile-radio"><span class="layer-tile-radio-dot"></span></span>
                             </button>
                         </div>
-                        <div class="ctrl-tab-panel" data-tab="legend">
-                            <section class="filter-section">
-                                <h4 class="filter-section-title">Fishing Conditions</h4>
-                                <div class="legend-item"><div class="legend-dot legend-dot--good"></div> Good</div>
-                                <div class="legend-item"><div class="legend-dot legend-dot--fair"></div> Fair</div>
-                                <div class="legend-item"><div class="legend-dot legend-dot--poor"></div> Poor</div>
-                                <div class="legend-item"><div class="legend-dot legend-dot--none"></div> No Data</div>
-                            </section>
-                            <section class="filter-section">
-                                <h4 class="filter-section-title">Stream colors</h4>
-                                <div class="legend-item"><div class="legend-dot" style="background:var(--bl-river-300)"></div> Streams (USGS)</div>
-                                <div class="legend-item"><div class="legend-dot" style="background:var(--bl-river-700)"></div> Fishable streams</div>
-                                <div class="legend-item"><div class="legend-dot" style="background:var(--bl-trout)"></div> Trout Stream</div>
-                                <div class="legend-item"><div class="legend-dot" style="background:var(--bl-access)"></div> Access Point</div>
-                                <div class="legend-item"><div class="legend-dot legend-dot--pin"></div> Saved Pin</div>
-                            </section>
-                            <section class="filter-section">
-                                <h4 class="filter-section-title">Public Lands (PAD-US)</h4>
-                                <div class="legend-item"><div class="legend-dot" style="background:var(--bl-publand)"></div> Open access &mdash; walk in</div>
-                                <div class="legend-item"><div class="legend-dot" style="background:var(--bl-stocked);border:1px dashed var(--bl-stocked-soft)"></div> Restricted &mdash; permit / walk-in / seasonal</div>
-                                <div class="legend-item" style="font-size:var(--fs-caption);color:var(--fg-3);line-height:1.3;margin-top:var(--space-2)">Uncolored = private or unknown. Popup shows manager + designation.</div>
-                            </section>
+                    </section>
+                    <section class="panel-section">
+                        <div class="panel-section-label">Show on map</div>
+                        <label class="filter-row-toggle">
+                            <span class="filter-row-icon"><i data-lucide="waves" aria-hidden="true"></i></span>
+                            <span class="filter-row-label">Fishable streams</span>
+                            <input type="checkbox" id="lyr-fishable" checked>
+                            <span class="filter-row-check"><i data-lucide="check" aria-hidden="true"></i></span>
+                        </label>
+                        <label class="filter-row-toggle">
+                            <span class="filter-row-icon"><i data-lucide="fish" aria-hidden="true"></i></span>
+                            <span class="filter-row-label">State trout streams</span>
+                            <input type="checkbox" id="lyr-trout">
+                            <span class="filter-row-check"><i data-lucide="check" aria-hidden="true"></i></span>
+                        </label>
+                        <label class="filter-row-toggle">
+                            <span class="filter-row-icon"><i data-lucide="droplets" aria-hidden="true"></i></span>
+                            <span class="filter-row-label">USGS basemap streams</span>
+                            <input type="checkbox" id="lyr-usgs" checked>
+                            <span class="filter-row-check"><i data-lucide="check" aria-hidden="true"></i></span>
+                        </label>
+                        <label class="filter-row-toggle">
+                            <span class="filter-row-icon"><i data-lucide="map-pin" aria-hidden="true"></i></span>
+                            <span class="filter-row-label">Access points</span>
+                            <input type="checkbox" id="lyr-access">
+                            <span class="filter-row-check"><i data-lucide="check" aria-hidden="true"></i></span>
+                        </label>
+                        <label class="filter-row-toggle">
+                            <span class="filter-row-icon"><i data-lucide="trees" aria-hidden="true"></i></span>
+                            <span class="filter-row-label">Public lands</span>
+                            <input type="checkbox" id="lyr-public-lands">
+                            <span class="filter-row-check"><i data-lucide="check" aria-hidden="true"></i></span>
+                        </label>
+                        <label class="filter-row-toggle">
+                            <span class="filter-row-icon"><i data-lucide="bookmark" aria-hidden="true"></i></span>
+                            <span class="filter-row-label">Saved pins</span>
+                            <input type="checkbox" id="lyr-pins" checked>
+                            <span class="filter-row-check"><i data-lucide="check" aria-hidden="true"></i></span>
+                        </label>
+                    </section>
+                    <section class="panel-section">
+                        <div class="panel-section-label">Color streams by</div>
+                        <div class="filter-segment" id="color-mode" role="group">
+                            <button type="button" data-mode="trout" class="on">Trout class</button>
+                            <button type="button" data-mode="conditions">Conditions</button>
                         </div>
-                    </div>
+                    </section>
                 </div>
+
+                <!-- ===== Map Filters & Settings ===== -->
+                <div class="panel-pane" data-pane="filters">
+                    <section class="panel-section">
+                        <div class="panel-section-label">Show rivers that are&hellip;</div>
+                        <label class="filter-row">
+                            <span>Condition</span>
+                            <select id="cond-select">
+                                <option value="any">Any</option>
+                                <option value="green">Good</option>
+                                <option value="yellow">Fair</option>
+                                <option value="red">Poor</option>
+                                <option value="gray">No Data</option>
+                            </select>
+                        </label>
+                        <label class="filter-row">
+                            <span>Active hatch</span>
+                            <select id="hatch-select">
+                                <option value="any">Any</option>
+                                <option value="active">Active now</option>
+                            </select>
+                        </label>
+                        <label class="filter-row-toggle">
+                            <span class="filter-row-icon"><i data-lucide="fish" aria-hidden="true"></i></span>
+                            <span class="filter-row-label">On a trout stream</span>
+                            <input type="checkbox" id="trout-only">
+                            <span class="filter-row-check"><i data-lucide="check" aria-hidden="true"></i></span>
+                        </label>
+                        <label class="filter-row-toggle">
+                            <span class="filter-row-icon"><i data-lucide="sprout" aria-hidden="true"></i></span>
+                            <span class="filter-row-label">Near stocked water</span>
+                            <input type="checkbox" id="stocked-only">
+                            <span class="filter-row-check"><i data-lucide="check" aria-hidden="true"></i></span>
+                        </label>
+                    </section>
+                    <button id="filter-reset" type="button" class="filter-reset">Reset filters</button>
+                </div>
+
+                <!-- ===== Map Legend ===== -->
+                <div class="panel-pane" data-pane="legend">
+                    <section class="panel-section">
+                        <div class="panel-section-label">Fishing conditions</div>
+                        <div class="legend-item"><div class="legend-dot legend-dot--good"></div> Good &mdash; flow &amp; temperature near ideal</div>
+                        <div class="legend-item"><div class="legend-dot legend-dot--fair"></div> Fair &mdash; flow or temperature off-ideal</div>
+                        <div class="legend-item"><div class="legend-dot legend-dot--poor"></div> Poor &mdash; fish stress; avoid wading</div>
+                        <div class="legend-item"><div class="legend-dot legend-dot--none"></div> No data &mdash; no live reading in range</div>
+                    </section>
+                    <section class="panel-section">
+                        <div class="panel-section-label">Stream colors</div>
+                        <div class="legend-item"><div class="legend-dot" style="background:var(--bl-river-300)"></div> Streams (USGS)</div>
+                        <div class="legend-item"><div class="legend-dot" style="background:var(--bl-river-700)"></div> Fishable streams</div>
+                        <div class="legend-item"><div class="legend-dot" style="background:var(--bl-trout)"></div> Trout stream</div>
+                        <div class="legend-item"><div class="legend-dot" style="background:var(--bl-access)"></div> Access point</div>
+                        <div class="legend-item"><div class="legend-dot legend-dot--pin"></div> Saved pin</div>
+                    </section>
+                    <section class="panel-section">
+                        <div class="panel-section-label">Public lands (PAD-US)</div>
+                        <div class="legend-item"><div class="legend-dot" style="background:var(--bl-publand)"></div> Open access &mdash; walk in</div>
+                        <div class="legend-item"><div class="legend-dot" style="background:var(--bl-stocked);border:1px dashed var(--bl-stocked-soft)"></div> Restricted &mdash; permit / walk-in / seasonal</div>
+                        <div class="legend-item" style="font-size:var(--fs-caption);color:var(--fg-3);line-height:1.3;margin-top:var(--space-2)">Uncolored = private or unknown. Popup shows manager + designation.</div>
+                    </section>
+                    <section class="panel-section">
+                        <div class="panel-section-label">Verdict scoring</div>
+                        <p class="panel-note">Each gauge is scored every 15&nbsp;minutes against its 30-year USGS median for that calendar day. A river's overall color is the worst of its gauges.</p>
+                    </section>
+                </div>
+
+                <!-- ===== My Content / Saved ===== -->
+                <div class="panel-pane" data-pane="content">
+                    <section class="panel-section">
+                        <div class="panel-section-label">Saved</div>
+                        <div class="profile-actions">
+                            <button type="button" class="profile-action" data-action="my-catches">
+                                <i data-lucide="fish" aria-hidden="true"></i>
+                                <span class="profile-action-label">Catch log</span>
+                                <span class="profile-action-meta"><i data-lucide="chevron-right" aria-hidden="true"></i></span>
+                            </button>
+                            <button type="button" class="profile-action" id="content-drop-pin">
+                                <i data-lucide="map-pin" aria-hidden="true"></i>
+                                <span class="profile-action-label">Drop a pin</span>
+                                <span class="profile-action-meta"><i data-lucide="chevron-right" aria-hidden="true"></i></span>
+                            </button>
+                        </div>
+                    </section>
+                    <section class="panel-section">
+                        <div class="panel-section-label">About your pins</div>
+                        <p class="panel-note">Saved pins are stored on this device. Sign in to keep them across devices &mdash; you'll be asked to claim them.</p>
+                    </section>
+                </div>
+
+                <!-- ===== My Profile ===== -->
+                <div class="panel-pane" data-pane="profile">
+                    <section class="panel-section">
+                        <div class="profile-card">
+                            <div class="profile-avatar" id="profile-avatar">ZT</div>
+                            <div style="min-width:0;flex:1">
+                                <div class="profile-name" id="profile-name">Guest</div>
+                                <div class="profile-email" id="profile-email">Not signed in</div>
+                            </div>
+                        </div>
+                    </section>
+                    <section class="panel-section">
+                        <div class="panel-section-label">Account</div>
+                        <div class="profile-actions">
+                            <button type="button" class="profile-action" data-action="signin" id="profile-signin">
+                                <i data-lucide="log-in" aria-hidden="true"></i>
+                                <span class="profile-action-label">Sign in</span>
+                                <span class="profile-action-meta"><i data-lucide="chevron-right" aria-hidden="true"></i></span>
+                            </button>
+                            <button type="button" class="profile-action" data-action="my-catches" id="profile-catches" hidden>
+                                <i data-lucide="fish" aria-hidden="true"></i>
+                                <span class="profile-action-label">My catches</span>
+                                <span class="profile-action-meta"><i data-lucide="chevron-right" aria-hidden="true"></i></span>
+                            </button>
+                            <button type="button" class="profile-action" data-action="settings" id="profile-settings" hidden>
+                                <i data-lucide="settings" aria-hidden="true"></i>
+                                <span class="profile-action-label">Settings</span>
+                                <span class="profile-action-meta"><i data-lucide="chevron-right" aria-hidden="true"></i></span>
+                            </button>
+                            <button type="button" class="profile-action" data-action="logout" id="profile-logout" hidden>
+                                <i data-lucide="log-out" aria-hidden="true"></i>
+                                <span class="profile-action-label">Sign out</span>
+                            </button>
+                        </div>
+                    </section>
+                </div>
+
             </div>
-        </aside>
+        </section>
     </div>
 
     <!-- River detail panel (drawer on desktop, bottom sheet on mobile) -->
@@ -210,14 +443,6 @@
                     aria-label="Close">&times;</button>
             <div id="river-panel-body"></div>
         </aside>
-    </div>
-
-    <!-- Account menu (dropdown under the email button) -->
-    <div id="account-menu" class="account-menu" hidden>
-        <div class="account-menu-email" id="account-menu-email"></div>
-        <button type="button" data-action="settings">Settings</button>
-        <button type="button" data-action="my-catches">My catches</button>
-        <button type="button" data-action="logout">Sign out</button>
     </div>
 
     <!-- Login modal -->

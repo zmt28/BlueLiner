@@ -8,9 +8,9 @@
  * Owns:
  *   - CURRENT_USER (module-private, exposed via getCurrentUser())
  *   - initAuth() async bootstrap (called from main.ts init)
- *   - loadAuthState(): fetches /api/me and updates the header slot
- *   - renderAuthSlot(): paints the "Sign in" button or the
- *     <name> ▾ account-menu trigger into the header
+ *   - loadAuthState(): fetches /api/me and refreshes the account UI
+ *   - renderAuthSlot(): paints the rail avatar + mobile avatar + the
+ *     profile pane (signed-in vs signed-out actions)
  *   - openModal/closeModal: the modal primitives (also exported on
  *     window so the legacy wireCatch + catch form code can call
  *     them without an import cycle)
@@ -75,43 +75,59 @@ async function loadAuthState(): Promise<void> {
   renderAuthSlot();
 }
 
-function renderAuthSlot(): void {
-  const slot = document.getElementById("auth-slot");
-  if (!slot) return;
-  slot.innerHTML = "";
-  const btn = document.createElement("button");
-  btn.type = "button";
-  btn.className = "ctrl";
-  if (CURRENT_USER) {
-    btn.id = "account-btn";
-    btn.textContent =
-      ((CURRENT_USER.display_name as string | undefined) ||
-        (CURRENT_USER.email as string | undefined) ||
-        "") + " ▾";
-    btn.addEventListener("click", toggleAccountMenu);
-  } else {
-    btn.id = "signin-btn";
-    btn.textContent = "Sign in";
-    btn.addEventListener("click", () => openModal("login-modal"));
-  }
-  slot.appendChild(btn);
+/** Two-letter initials from a display name or email local-part. */
+function userInitials(user: AuthMe): string {
+  const raw =
+    (user.display_name as string | undefined) ||
+    (user.email as string | undefined) ||
+    "";
+  const base = raw.replace(/@.*/, "");
+  const parts = base.split(/[\s._-]+/).filter(Boolean);
+  const a = parts[0]?.[0] || "?";
+  const b = parts.length > 1 ? parts[parts.length - 1][0] : "";
+  return (a + b).toUpperCase();
 }
 
-// -- Account menu --------------------------------------------------
+/** Paint the rail account block, the mobile avatar, and the profile pane
+ *  to reflect the signed-in / signed-out state. (Replaces the old header
+ *  auth slot + account-menu dropdown.) */
+function renderAuthSlot(): void {
+  const signedIn = !!CURRENT_USER;
+  const email = signedIn
+    ? ((CURRENT_USER!.email as string | undefined) || "")
+    : "";
+  const name = signedIn
+    ? ((CURRENT_USER!.display_name as string | undefined) || email)
+    : "";
+  const ini = signedIn ? userInitials(CURRENT_USER!) : "?";
 
-function toggleAccountMenu(): void {
-  const menu = document.getElementById("account-menu");
-  if (!menu) return;
-  const showing = !menu.hidden;
-  menu.hidden = showing;
-  if (!showing) {
-    (document.getElementById("account-menu-email") as HTMLElement).textContent =
-      CURRENT_USER ? ((CURRENT_USER.email as string | undefined) || "") : "";
-  }
+  const setText = (id: string, text: string): void => {
+    const el = document.getElementById(id);
+    if (el) el.textContent = text;
+  };
+  const setHidden = (id: string, hidden: boolean): void => {
+    const el = document.getElementById(id);
+    if (el) el.hidden = hidden;
+  };
+
+  setText("rail-avatar", ini);
+  setText("mobile-avatar", ini);
+  setText("rail-email", signedIn ? email : "Sign in");
+  setText("profile-avatar", ini);
+  setText("profile-name", signedIn ? name : "Guest");
+  setText("profile-email", signedIn ? email : "Not signed in");
+
+  setHidden("profile-signin", signedIn);
+  setHidden("profile-catches", !signedIn);
+  setHidden("profile-settings", !signedIn);
+  setHidden("profile-logout", !signedIn);
 }
 
 async function onAccountAction(action: string | undefined): Promise<void> {
-  (document.getElementById("account-menu") as HTMLElement).hidden = true;
+  if (action === "signin") {
+    openModal("login-modal");
+    return;
+  }
   if (action === "logout") {
     try {
       await fetch("/api/auth/logout", { method: "POST" });
@@ -144,21 +160,7 @@ function wireAuthHandlers(): void {
       document.querySelectorAll<HTMLElement>(".modal").forEach((m) => {
         m.hidden = true;
       });
-      const menu = document.getElementById("account-menu");
-      if (menu) menu.hidden = true;
     }
-  });
-  // Close account menu on outside click.
-  document.addEventListener("click", (e) => {
-    const menu = document.getElementById("account-menu");
-    if (!menu || menu.hidden) return;
-    const t = e.target as HTMLElement | null;
-    if (
-      t?.closest("#account-menu") ||
-      t?.closest("#account-btn")
-    )
-      return;
-    menu.hidden = true;
   });
 
   // Login form.
@@ -195,10 +197,13 @@ function wireAuthHandlers(): void {
       (document.getElementById("login-email") as HTMLInputElement).focus();
     });
 
-  // Account menu actions.
-  document.querySelectorAll<HTMLButtonElement>("#account-menu button").forEach((b) => {
-    b.addEventListener("click", () => onAccountAction(b.dataset.action));
-  });
+  // Account / profile actions (the profile pane replaces the old
+  // account-menu dropdown).
+  document
+    .querySelectorAll<HTMLButtonElement>(".profile-action[data-action]")
+    .forEach((b) => {
+      b.addEventListener("click", () => onAccountAction(b.dataset.action));
+    });
 
   // Claim modal.
   const claimBtn = document.getElementById("claim-confirm");
