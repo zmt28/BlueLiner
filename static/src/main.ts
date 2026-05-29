@@ -11,7 +11,7 @@
 
 import "../tokens.css";
 import "../app.css";
-import "leaflet/dist/leaflet.css";
+import "maplibre-gl/dist/maplibre-gl.css";
 
 // Module-init order matters: leaf modules first, then modules that
 // depend on them. Each one wires up its own DOM + window bridges as
@@ -25,7 +25,8 @@ import {
 } from "./state";
 import "./util";
 import "./sparkline";
-import { map } from "./map-setup";
+import { map, mapReady } from "./map-setup";
+import { centerLngLat } from "./coords";
 import "./map-layers";
 import "./snap-sheet";
 import { wireRiverPanel } from "./river-panel";
@@ -64,7 +65,10 @@ async function init(): Promise<void> {
   sel.value = state;
   // Let the floating state pill mirror the populated select.
   document.dispatchEvent(new Event("bl:states-loaded"));
-  map.setView(getStates()[state].center, STATE_ZOOM);
+  // Wait for the MapLibre style `load` so overlay sources/layers exist
+  // before the first data loads paint into them.
+  await mapReady();
+  map.jumpTo({ center: centerLngLat(getStates()[state].center), zoom: STATE_ZOOM });
   wireRiverPanel();
   loadRivers(state);
   loadPins();

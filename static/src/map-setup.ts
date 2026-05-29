@@ -1,116 +1,148 @@
 /**
- * Leaflet map initialization + base-map management. Extracted from the
- * legacy app.js (PR B1d).
+ * MapLibre GL JS map initialization + base-map management. Replaces the
+ * Leaflet map-setup (PR B2).
  *
  * Owns:
- *   - the singleton Leaflet map instance (`map`)
- *   - the three base tile providers (CARTO Light / Esri Satellite /
- *     USGS Topographic)
+ *   - the singleton MapLibre map instance (`map`)
+ *   - the three raster base providers (CARTO Light / Esri Satellite /
+ *     USGS Topographic) + the USGS Hydro Cached raster overlay, all as
+ *     raster sources/layers
  *   - active base-map state + bl_basemap localStorage persistence
- *   - the USGS Hydro Cached overlay (labeled rivers/streams)
- *   - the global popupopen -> refreshIcons() listener (any Leaflet
- *     popup that contains <i data-lucide="..."> nodes needs Lucide
- *     to hydrate them when the popup mounts to the DOM; doing it
- *     once at map-init is the single place that covers all layers)
+ *   - a "map ready" gate (onMapReady / mapReady) — MapLibre rejects
+ *     addSource/addLayer/setData before the style `load` fires, so every
+ *     overlay module registers its source+layer setup via onMapReady
+ *   - riverBySite: the site_no -> River registry that replaces Leaflet's
+ *     `_blRiver` layer property for river-line click resolution
+ *   - getGeoJSON(id): typed GeoJSONSource accessor for setData callers
  *
- * Window-bridged for the still-monolithic app.js:
- *   - map           used by every layer + event handler in app.js
- *   - setBaseMap    called from the controls panel handler
- *   - currentBaseKey  read by controls to set initial segment
- *   - hydroLayer    referenced by the layer-toggle checkbox
+ * Base-map switching swaps ONLY the `base` source/layer (re-inserted
+ * below the `hydro` layer). We never call map.setStyle, so overlay
+ * sources, their data, and feature-state survive a base change — no
+ * style.load re-attach dance needed.
  *
- * Future modules consume via ES import (no window indirection).
- *
- * NB: this module's top-level code calls `L.map("map")`, which
- * mounts to the #map element in static/index.html. Vite's <script
- * type="module"> tag is deferred so DOMContentLoaded has fired
- * before this runs -- the #map div exists.
+ * Coordinate order: MapLibre is [lng, lat]. All coordinates flow through
+ * helpers in coords.ts.
  */
 
-import * as L from "leaflet";
-import { refreshIcons } from "./util";
-
-// Expose L to the legacy app.js. Until PR B1d, Leaflet was loaded as
-// a global `<script src="/static/vendor/leaflet/leaflet.js">` and
-// app.js read the resulting window.L. Now Vite bundles the npm
-// `leaflet` package into the main chunk; we re-publish it on window
-// so app.js's bare `L.tileLayer(...)`, `L.marker(...)`, etc. resolve
-// to the SAME instance map-setup.ts uses for the singleton map.
-// (Bundled vs vendor-global L would have separate prototype chains
-// and break instanceof + Leaflet internals.) The vendor script tag
-// in index.html is removed in this PR.
-window.L = L;
+import maplibregl, {
+  Map as MaplibreMap,
+  GeoJSONSource,
+  RasterSourceSpecification,
+  StyleSpecification,
+} from "maplibre-gl";
 
 type BaseMapKey = "street" | "satellite" | "topo";
 
-// Base maps. Exactly one is on the map at a time; the active one
-// sits at the bottom of the layer stack so overlays (hydro, streams,
-// gauges) always render on top. Defaults to "street" (CARTO Light);
-// the user's last choice persists in localStorage["bl_basemap"]
-// across visits.
-const BASE_MAPS: Record<BaseMapKey, () => L.TileLayer> = {
-  street: () =>
-    L.tileLayer(
-      "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png",
-      {
-        attribution: "&copy; OpenStreetMap contributors &copy; CARTO",
-        subdomains: "abcd",
-        maxZoom: 19,
-      },
-    ),
-  satellite: () =>
-    L.tileLayer(
+const BASES: Record<BaseMapKey, RasterSourceSpecification> = {
+  street: {
+    type: "raster",
+    tiles: [
+      "https://a.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png",
+      "https://b.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png",
+      "https://c.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png",
+      "https://d.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png",
+    ],
+    tileSize: 256,
+    attribution: "&copy; OpenStreetMap contributors &copy; CARTO",
+    maxzoom: 19,
+  },
+  satellite: {
+    type: "raster",
+    tiles: [
       "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
-      {
-        attribution: "Source: Esri, Maxar, Earthstar Geographics",
-        maxZoom: 19,
-      },
-    ),
-  topo: () =>
-    L.tileLayer(
+    ],
+    tileSize: 256,
+    attribution: "Source: Esri, Maxar, Earthstar Geographics",
+    maxzoom: 19,
+  },
+  topo: {
+    type: "raster",
+    tiles: [
       "https://basemap.nationalmap.gov/arcgis/rest/services/USGSTopo/MapServer/tile/{z}/{y}/{x}",
-      {
-        attribution:
-          "USGS The National Map: National Boundaries Dataset, " +
-          "National Elevation Dataset, Geographic Names Information System.",
-        maxZoom: 16,
-      },
-    ),
+    ],
+    tileSize: 256,
+    attribution: "USGS The National Map",
+    maxzoom: 16,
+  },
+};
+
+const HYDRO: RasterSourceSpecification = {
+  type: "raster",
+  tiles: [
+    "https://basemap.nationalmap.gov/arcgis/rest/services/USGSHydroCached/MapServer/tile/{z}/{y}/{x}",
+  ],
+  tileSize: 256,
+  attribution: "Hydrography &copy; USGS The National Map",
+  maxzoom: 19,
 };
 
 function loadBaseMapPref(): BaseMapKey {
   try {
     const v = localStorage.getItem("bl_basemap");
-    return v && v in BASE_MAPS ? (v as BaseMapKey) : "street";
+    return v && v in BASES ? (v as BaseMapKey) : "street";
   } catch (_) {
     return "street";
   }
 }
 
-// Default zoom + attribution controls are off: the redesigned chrome
-// supplies its own bottom-right zoom/compass/locate stack (controls.ts)
-// and a static attribution string in the page (.map-attribution).
-export const map: L.Map = L.map("map", {
-  zoomControl: false,
-  attributionControl: false,
+let _currentBaseKey: BaseMapKey = loadBaseMapPref();
+
+// Empty style at construction; base/hydro (and module overlays) are added
+// on the `load` event, where addSource/addLayer are legal.
+const EMPTY_STYLE: StyleSpecification = {
+  version: 8,
+  sources: {},
+  layers: [],
+  glyphs: "https://demotiles.maplibre.org/font/{fontstack}/{range}.pbf",
+};
+
+export const map: MaplibreMap = new maplibregl.Map({
+  container: "map",
+  style: EMPTY_STYLE,
+  center: [-76.6, 39.0], // [lng, lat]; init() jumpTo's the real state center
+  zoom: 7,
+  attributionControl: false, // the chrome supplies a static attribution
 });
 
-// Single global popupopen listener -- every layer that binds a popup
-// inherits Lucide hydration without having to register its own.
-map.on("popupopen", () => refreshIcons());
+// site_no -> River, populated by rivers.ts. Replaces the `_blRiver`
+// property Leaflet layers carried; line clicks read feature props.site_no
+// and look the river up here.
+export const riverBySite = new Map<string, River>();
 
-let _currentBaseKey: BaseMapKey = loadBaseMapPref();
-let currentBaseLayer: L.TileLayer = BASE_MAPS[_currentBaseKey]().addTo(map);
+/** Typed accessor for a GeoJSON source (null until the map is ready and
+ *  the owning module has added it). */
+export function getGeoJSON(id: string): GeoJSONSource | null {
+  if (!map.getSource(id)) return null;
+  return map.getSource(id) as GeoJSONSource;
+}
+
+// -- Base + hydro wiring ---------------------------------------------
+
+function addBaseLayer(key: BaseMapKey): void {
+  map.addSource("base", BASES[key]);
+  // Insert below hydro if it exists, so the base always sits at the
+  // bottom of the stack.
+  const before = map.getLayer("hydro") ? "hydro" : undefined;
+  map.addLayer({ id: "base", type: "raster", source: "base" }, before);
+}
+
+function addHydroLayer(): void {
+  map.addSource("hydro", HYDRO);
+  map.addLayer({
+    id: "hydro",
+    type: "raster",
+    source: "hydro",
+    layout: { visibility: _hydroVisible ? "visible" : "none" },
+    paint: { "raster-opacity": 0.85 },
+  });
+}
 
 export function setBaseMap(key: BaseMapKey): void {
-  if (!BASE_MAPS[key] || key === _currentBaseKey) return;
-  map.removeLayer(currentBaseLayer);
+  if (!BASES[key] || key === _currentBaseKey) return;
   _currentBaseKey = key;
-  currentBaseLayer = BASE_MAPS[key]().addTo(map);
-  // Keep overlays on top: Leaflet re-stacks newly-added layers, but
-  // tile layers added later render *above* earlier ones, so set
-  // zIndex explicitly to push the base back behind hydro + everything.
-  currentBaseLayer.setZIndex(0);
+  if (map.getLayer("base")) map.removeLayer("base");
+  if (map.getSource("base")) map.removeSource("base");
+  addBaseLayer(key); // re-inserted below hydro, overlays untouched
   try {
     localStorage.setItem("bl_basemap", key);
   } catch (_) {
@@ -119,39 +151,55 @@ export function setBaseMap(key: BaseMapKey): void {
   window.currentBaseKey = key;
 }
 
-/** Active base-map key. Mirrored to window.currentBaseKey after each
- *  setBaseMap() call so the legacy app.js segmented-control wiring
- *  sees updates without us having to forward setters. */
 export function currentBaseKey(): BaseMapKey {
   return _currentBaseKey;
 }
 
-// Labeled rivers/streams: free national USGS "Hydro Cached" overlay
-// (no key, no deps). Transparent raster designed to sit on a
-// basemap. ArcGIS cached tiles are /tile/{level}/{row}/{col} ==
-// {z}/{y}/{x}.
-export const hydroLayer: L.TileLayer = L.tileLayer(
-  "https://basemap.nationalmap.gov/arcgis/rest/services/USGSHydroCached/MapServer/tile/{z}/{y}/{x}",
-  {
-    opacity: 0.85,
-    maxZoom: 19,
-    attribution: "Hydrography &copy; USGS The National Map",
-  },
-).addTo(map);
+let _hydroVisible = true; // lyr-usgs default checked
 
-// -- Window bridge for legacy app.js -----------------------------------
+/** Toggle the USGS hydro overlay (the lyr-usgs checkbox). Safe before
+ *  the map is ready: the desired state is applied when the layer mounts. */
+export function setHydroVisible(on: boolean): void {
+  _hydroVisible = on;
+  if (map.getLayer("hydro")) {
+    map.setLayoutProperty("hydro", "visibility", on ? "visible" : "none");
+  }
+}
+
+// -- Ready gate ------------------------------------------------------
+// addSource/addLayer/setData throw before the style `load` fires. Overlay
+// modules register their setup here; it runs once the base + hydro exist.
+
+let _ready = false;
+const _readyCbs: Array<() => void> = [];
+
+export function onMapReady(cb: () => void): void {
+  if (_ready) cb();
+  else _readyCbs.push(cb);
+}
+
+export function mapReady(): Promise<void> {
+  return new Promise((resolve) => onMapReady(resolve));
+}
+
+map.on("load", () => {
+  addBaseLayer(_currentBaseKey);
+  addHydroLayer();
+  _ready = true;
+  for (const cb of _readyCbs) cb();
+  _readyCbs.length = 0;
+});
+
+// -- Window bridge ---------------------------------------------------
 
 declare global {
   interface Window {
-    L: typeof L;
-    map: L.Map;
+    map: MaplibreMap;
     setBaseMap: typeof setBaseMap;
     currentBaseKey: BaseMapKey;
-    hydroLayer: L.TileLayer;
   }
 }
 
 window.map = map;
 window.setBaseMap = setBaseMap;
 window.currentBaseKey = _currentBaseKey;
-window.hydroLayer = hydroLayer;

@@ -39,11 +39,19 @@
 import { refreshIcons } from "./util";
 import { sparkline, wireSparkHover } from "./sparkline";
 import { wireSnapSheet } from "./snap-sheet";
+import { map } from "./map-setup";
+
+/** A river-lines feature reference for the selection highlight. With
+ *  promoteId site_no, `id` is the river's site_no. */
+export interface RiverHighlightRef {
+  source: string;
+  id: string | number;
+}
 
 // -- Panel state (module-private) --------------------------------------
 
 let _panelHideTimer: ReturnType<typeof setTimeout> | null = null;
-let _selectedRiver: { layer: L.Layer; base: L.PathOptions | null } | null = null;
+let _selectedFeature: RiverHighlightRef | null = null;
 let _lastPanelOpenTs = 0;
 
 // -- Panel-open primitives ---------------------------------------------
@@ -98,8 +106,7 @@ export function commitRiverPanelOpen(
 
 export function openRiverPanel(
   river: River,
-  layer: L.Layer | null,
-  baseStyle: L.PathOptions | null,
+  highlight: RiverHighlightRef | null = null,
 ): void {
   const got = prepareRiverPanel();
   if (!got) return;
@@ -111,7 +118,7 @@ export function openRiverPanel(
   if (window.wireTrend) window.wireTrend(body);
   if (window.wireCatch) window.wireCatch(body, river);
   autoLoadFlowChart(body);
-  highlightRiver(layer, baseStyle);
+  highlightRiver(highlight);
   refreshIcons();
 }
 
@@ -131,25 +138,19 @@ export function closeRiverPanel(): void {
 
 // -- Selection highlight (map-layer side) ------------------------------
 
-export function highlightRiver(
-  layer: L.Layer | null,
-  baseStyle: L.PathOptions | null,
-): void {
+export function highlightRiver(highlight: RiverHighlightRef | null): void {
   clearRiverHighlight();
-  if (!layer || typeof (layer as L.Path).setStyle !== "function") return;
-  _selectedRiver = { layer, base: baseStyle || null };
-  (layer as L.Path).setStyle({ weight: 8, opacity: 0.95 });
+  if (!highlight) return;
+  _selectedFeature = highlight;
+  // No-ops harmlessly if the feature isn't in the source yet.
+  map.setFeatureState(highlight, { selected: true });
 }
 
 export function clearRiverHighlight(): void {
-  if (
-    _selectedRiver &&
-    typeof (_selectedRiver.layer as L.Path).setStyle === "function" &&
-    _selectedRiver.base
-  ) {
-    (_selectedRiver.layer as L.Path).setStyle(_selectedRiver.base);
+  if (_selectedFeature) {
+    map.setFeatureState(_selectedFeature, { selected: false });
+    _selectedFeature = null;
   }
-  _selectedRiver = null;
 }
 
 // -- Primary-gauge flow chart (auto-loaded on panel open) --------------
@@ -172,8 +173,6 @@ export async function autoLoadFlowChart(root: HTMLElement): Promise<void> {
 }
 
 // -- Panel chrome wiring (close button, ESC, click-outside) ------------
-
-import { map } from "./map-setup";
 
 export function wireRiverPanel(): void {
   const panel = document.getElementById("river-panel");

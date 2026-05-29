@@ -17,6 +17,7 @@
 
 import { map } from "./map-setup";
 import { openRiverPanel } from "./river-panel";
+import { riverLngLat } from "./coords";
 import { refreshIcons, esc } from "./util";
 
 const MOBILE_BP = "(max-width: 759px)";
@@ -130,8 +131,8 @@ if (wrap && iconBtn && pill && input && results) {
   }
 
   function selectRiver(r: River): void {
-    map.setView([r.lat, r.lon], Math.max(map.getZoom(), 12));
-    openRiverPanel(r, null, null);
+    map.flyTo({ center: riverLngLat(r), zoom: Math.max(map.getZoom(), 12) });
+    openRiverPanel(r, null);
     focused = false;
     pill!.classList.remove("is-focused");
     results!.hidden = true;

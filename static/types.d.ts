@@ -242,11 +242,10 @@ interface AuthMe {
 /** Map from layer-toggle id (e.g. "lyr-fishable") to whether it's on. */
 type LayerPrefs = Record<string, boolean>;
 
-// Leaflet declaration-merging lives in static/leaflet-augment.d.ts
-// (a module file, so `declare module "leaflet"` augments rather than
-// replaces @types/leaflet -- this file is an ambient script so
-// `declare module` here would replace the package types and lose
-// every Leaflet class/function).
+// (PR B2 removed Leaflet. MapLibre GL JS ships its own types and is
+// imported as a module, so there's no ambient map-library augmentation
+// here anymore. River identity for map features flows via the
+// site_no -> River registry in map-setup.ts, not a layer property.)
 
 // ---------------------------------------------------------------------------
 // Lucide (CDN-loaded global)

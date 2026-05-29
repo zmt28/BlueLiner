@@ -1,87 +1,87 @@
 /**
- * Overlay layer groups + their lazy-load fetchers + popup helpers.
- * Extracted from the legacy app.js (PR B1e).
+ * Overlay layers + their lazy-load fetchers + popup helpers, on MapLibre
+ * GL JS (PR B2). Replaces the Leaflet layer-group version.
  *
  * Owns:
- *   - troutLayer            state-wide trout streams (lazy)
- *   - accessLayer           type-coded access-point markers (lazy)
- *   - publicLandsLayer      PAD-US parcels (bbox-bound, viewport)
- *   - riverLinesLayer       container for NLDI flowlines (populated
- *                            by the rivers code in app.js for now)
- *   - riversLayer           container for gauge-condition markers
- *                            (populated by renderRivers in app.js)
- *   - pinsLayer             container for saved-pin markers
- *                            (populated by the pin code in app.js)
- *   - the lazy-load functions: ensureTrout, ensureAccess, loadPublicLands
- *   - the per-layer style + popup-html helpers + the constants they
- *     depend on (ACCESS_TYPE_META, PUBLIC_LANDS_STYLE, PA_ACCESS_LABEL)
+ *   - trout            state-wide trout streams (GeoJSON source + line
+ *                       layer, lazy per-state)
+ *   - access           type-coded access-point HTML markers (lazy per-state)
+ *   - public-lands     PAD-US parcels (GeoJSON source + fill/line layers,
+ *                       bbox-bound viewport fetch)
+ *   - visibility setters + lazy-load fns: setTroutVisible / ensureTrout,
+ *     setAccessVisible / ensureAccess, setPublicLandsVisible / loadPublicLands
+ *   - the popup-html helpers (accessPopupHtml, publicLandsPopupHtml) and
+ *     the access-marker element factory
  *
- * Window-bridged for the still-monolithic app.js:
- *   - the six layer objects (toggled by layer-visibility checkboxes
- *     in the controls panel; populated/referenced by viewport
- *     loaders + the renderRivers / pins code in app.js)
- *   - ensureTrout, ensureAccess, loadPublicLands (called from layer-
- *     toggle handlers + moveend debouncers)
- *   - makeAccessIcon, accessPopupHtml, publicLandsPopupHtml (read
- *     by the lazy-load fetchers themselves, but exposed so other
- *     migrations can call them too)
+ * Sources/layers are added in onMapReady (MapLibre rejects addSource/
+ * addLayer before the style `load` fires). Initial visibility reflects
+ * the desired-state vars below, which controls.ts sets from saved prefs
+ * before `load`.
  */
 
-import * as L from "leaflet";
-import type { Feature, GeometryObject } from "geojson";
-import { map } from "./map-setup";
-import { esc, popupOpts } from "./util";
+import maplibregl, { Marker } from "maplibre-gl";
+import { map, onMapReady, getGeoJSON } from "./map-setup";
+import { esc } from "./util";
+import { makePopup, createLayerTooltip } from "./popups";
+
+const EMPTY_FC: GeoJsonFeatureCollection = { type: "FeatureCollection", features: [] };
+
+// Desired visibility (matches the HTML checkbox defaults; controls.ts
+// overrides from saved prefs before the map `load` fires).
+let _troutVisible = false;
+let _publicLandsVisible = false;
+let _accessVisible = false;
+
+function vis(on: boolean): "visible" | "none" {
+  return on ? "visible" : "none";
+}
 
 // -- Trout streams ------------------------------------------------------
 
-// Whole-state trout-stream geometry. Large; loaded only when the user
-// toggles the layer on (ensureTrout) and once per state, so the initial
-// map (layer off by default) is never blocked by a multi-MB parse.
-export const troutLayer: L.GeoJSON = L.geoJSON(null, {
-  style: { color: "#1abc9c", weight: 2.5, opacity: 0.7 },
-  onEachFeature: (f: GeoJsonFeature<TroutFeatureProps>, l: L.Layer) => {
-    const p = f.properties || {};
+onMapReady(() => {
+  map.addSource("trout", { type: "geojson", data: EMPTY_FC });
+  map.addLayer({
+    id: "trout",
+    type: "line",
+    source: "trout",
+    layout: { visibility: vis(_troutVisible), "line-cap": "round" },
+    paint: { "line-color": "#1abc9c", "line-width": 2.5, "line-opacity": 0.7 },
+  });
+  const tip = createLayerTooltip(map);
+  tip.bind("trout", (p) => {
     const n = p.NAME || p.GNIS_Name || p.STream_Nam;
-    if (n) l.bindTooltip(String(n), { sticky: true });
-  },
+    return n ? String(n) : null;
+  });
 });
 
 let troutLoadedState: string | null = null;
 let troutLoading = false;
+
+export function setTroutVisible(on: boolean): void {
+  _troutVisible = on;
+  if (map.getLayer("trout")) map.setLayoutProperty("trout", "visibility", vis(on));
+}
 
 export async function ensureTrout(state: string): Promise<void> {
   if (troutLoadedState === state || troutLoading) return;
   troutLoading = true;
   try {
     const t = await fetch(`/api/trout?state=${state}`).then((r) => r.json());
-    troutLayer.clearLayers();
-    troutLayer.addData(t);
+    getGeoJSON("trout")?.setData(t);
     troutLoadedState = state;
   } catch (_) {
-    /* leave layer empty; user can re-toggle to retry */
+    /* leave empty; user can re-toggle to retry */
   } finally {
     troutLoading = false;
   }
 }
 
-/** Invalidate the per-state cache so the next ensureTrout() refetches
- *  for the (presumably new) state. Called from the state-selector
- *  handler in app.js. Without this, switching states would keep
- *  displaying the previous state's trout streams until reload.
- *  (Bug: B1e's extraction left this as a bare `troutLoadedState =
- *  null` write in app.js, which is a ReferenceError in strict mode --
- *  ES modules are always strict -- so the trout/access state-switch
- *  reset silently failed. B1h fixes it by routing through this
- *  setter.) */
 export function resetTroutLoadedState(): void {
   troutLoadedState = null;
 }
 
 // -- Access points ------------------------------------------------------
 
-// Type-coded markers, lazy-loaded per state via /api/access?state=.
-// Different glyph + tone per access type so a boat ramp is visually
-// distinct from a walk-in trail at a glance.
 const ACCESS_TYPE_META: Record<string, { glyph: string; color: string }> = {
   boat_ramp: { glyph: "B", color: "#d97706" },
   walk_in: { glyph: "W", color: "#0891b2" },
@@ -89,18 +89,14 @@ const ACCESS_TYPE_META: Record<string, { glyph: string; color: string }> = {
   pier: { glyph: "P", color: "#7c3aed" },
   parking: { glyph: "P", color: "#475569" },
 };
-export const accessLayer: L.LayerGroup = L.layerGroup();
 
-export function makeAccessIcon(type: string | undefined): L.DivIcon {
+/** The DOM element for an access marker (the old divIcon HTML). */
+export function makeAccessElement(type: string | undefined): HTMLElement {
   const meta = ACCESS_TYPE_META[type ?? "walk_in"] || ACCESS_TYPE_META.walk_in;
-  return L.divIcon({
-    className: "access-marker",
-    html:
-      `<div class="access-marker-pin" style="background:${meta.color}">` +
-      `${esc(meta.glyph)}</div>`,
-    iconSize: [22, 22],
-    iconAnchor: [11, 11],
-  });
+  const wrap = document.createElement("div");
+  wrap.className = "access-marker";
+  wrap.innerHTML = `<div class="access-marker-pin" style="background:${meta.color}">${esc(meta.glyph)}</div>`;
+  return wrap;
 }
 
 export function accessPopupHtml(p: AccessFeatureProps): string {
@@ -123,8 +119,17 @@ export function accessPopupHtml(p: AccessFeatureProps): string {
   );
 }
 
+let accessMarkers: Marker[] = [];
 let accessLoadedState: string | null = null;
 let accessLoading = false;
+
+export function setAccessVisible(on: boolean): void {
+  _accessVisible = on;
+  for (const m of accessMarkers) {
+    if (on) m.addTo(map);
+    else m.remove();
+  }
+}
 
 export async function ensureAccess(state: string): Promise<void> {
   if (accessLoadedState === state || accessLoading) return;
@@ -133,7 +138,8 @@ export async function ensureAccess(state: string): Promise<void> {
     const fc: GeoJsonFeatureCollection<AccessFeatureProps> = await fetch(
       `/api/access?state=${state}`,
     ).then((r) => r.json());
-    accessLayer.clearLayers();
+    for (const m of accessMarkers) m.remove();
+    accessMarkers = [];
     for (const f of fc.features || []) {
       const c =
         f.geometry && "coordinates" in f.geometry
@@ -141,63 +147,31 @@ export async function ensureAccess(state: string): Promise<void> {
           : null;
       const p = f.properties || ({} as AccessFeatureProps);
       if (!c || c.length < 2) continue;
-      const m = L.marker([c[1], c[0]], { icon: makeAccessIcon(p.type) });
-      m.bindPopup(accessPopupHtml(p), popupOpts());
-      accessLayer.addLayer(m);
+      const m = new maplibregl.Marker({
+        element: makeAccessElement(p.type),
+        anchor: "center",
+      })
+        .setLngLat([c[0], c[1]]) // GeoJSON is already [lng, lat]
+        .setPopup(makePopup().setHTML(accessPopupHtml(p)));
+      accessMarkers.push(m);
+      if (_accessVisible) m.addTo(map);
     }
     accessLoadedState = state;
   } catch (_) {
-    /* leave layer empty; user can re-toggle to retry */
+    /* leave empty; user can re-toggle to retry */
   } finally {
     accessLoading = false;
   }
 }
 
-/** Counterpart to resetTroutLoadedState() for the access layer.
- *  Same bug fix; same reason it has to be a setter and not a bare
- *  variable write from app.js. */
 export function resetAccessLoadedState(): void {
   accessLoadedState = null;
 }
 
 // -- Public lands (PAD-US) ----------------------------------------------
+// Tier-keyed styling via `match` expressions on the public_access prop:
+// OA = open access (green), RA = restricted (dashed yellow), XA/UK hidden.
 
-// Vector polygons keyed off the `public_access` tier rather than the
-// manager type -- the angler's primary question is "can I walk in
-// here?", not "is this BLM or USFS?" Two visual tiers: green for OA
-// (Open Access) and dashed yellow for RA (Restricted -- permit,
-// walk-in, seasonal). UK/XA features are filtered out at build time,
-// not rendered. Loaded per-viewport via /api/public_lands?bbox= --
-// same lazy bbox-bound pattern as clickable streams.
-const PUBLIC_LANDS_STYLE: Record<PublicAccessTier, L.PathOptions> = {
-  OA: {
-    fillColor: "#2d6a4f",
-    color: "#1b4332",
-    fillOpacity: 0.28,
-    weight: 0.8,
-  },
-  RA: {
-    fillColor: "#eab308",
-    color: "#854d0e",
-    fillOpacity: 0.22,
-    weight: 1.0,
-    dashArray: "4,4",
-  },
-  XA: { fillColor: "#000", color: "#000", fillOpacity: 0, weight: 0 },
-  UK: { fillColor: "#000", color: "#000", fillOpacity: 0, weight: 0 },
-};
-const PUBLIC_LANDS_DEFAULT_STYLE = PUBLIC_LANDS_STYLE.OA;
-
-function publicLandsStyle(
-  feature?: Feature<GeometryObject, PublicLandsProps>,
-): L.PathOptions {
-  const tier =
-    (feature?.properties?.public_access as PublicAccessTier | undefined) || "OA";
-  return PUBLIC_LANDS_STYLE[tier] || PUBLIC_LANDS_DEFAULT_STYLE;
-}
-
-// Access-tier chip labels for the popup. PAD-US codes are terse;
-// expand to legible strings + map to chip CSS variants.
 const PA_ACCESS_LABEL: Record<PublicAccessTier, string> = {
   OA: "Open access",
   RA: "Restricted access",
@@ -216,47 +190,80 @@ export function publicLandsPopupHtml(p: PublicLandsProps): string {
   const manager = (p as { manager_name?: string }).manager_name;
   if (manager) sub.push(esc(manager));
   if (p.designation) sub.push(esc(p.designation));
-  if (sub.length) {
-    lines.push(`<div class="ap-meta">${sub.join(" &middot; ")}</div>`);
-  }
+  if (sub.length) lines.push(`<div class="ap-meta">${sub.join(" &middot; ")}</div>`);
   lines.push(`<div class="ap-meta" style="margin-top:6px">${tierChip}</div>`);
   const stateNm = (p as { state_nm?: string }).state_nm;
-  if (stateNm) {
-    lines.push(`<div class="ap-notes">${esc(stateNm)}</div>`);
-  }
+  if (stateNm) lines.push(`<div class="ap-notes">${esc(stateNm)}</div>`);
   return `<div class="ap-popup">${lines.join("")}</div>`;
 }
 
-export const publicLandsLayer: L.GeoJSON = L.geoJSON(null, {
-  style: publicLandsStyle,
-  onEachFeature: (f, layer) => {
-    layer.bindPopup(
-      publicLandsPopupHtml((f.properties || {}) as PublicLandsProps),
-      popupOpts(),
-    );
-  },
+onMapReady(() => {
+  map.addSource("public-lands", { type: "geojson", data: EMPTY_FC });
+  map.addLayer({
+    id: "public-lands-fill",
+    type: "fill",
+    source: "public-lands",
+    layout: { visibility: vis(_publicLandsVisible) },
+    paint: {
+      "fill-color": [
+        "match",
+        ["get", "public_access"],
+        "OA", "#2d6a4f",
+        "RA", "#eab308",
+        "#000",
+      ],
+      "fill-opacity": [
+        "match",
+        ["get", "public_access"],
+        "OA", 0.28,
+        "RA", 0.22,
+        0,
+      ],
+    },
+  });
+  map.addLayer({
+    id: "public-lands-line",
+    type: "line",
+    source: "public-lands",
+    layout: { visibility: vis(_publicLandsVisible) },
+    paint: {
+      "line-color": [
+        "match",
+        ["get", "public_access"],
+        "OA", "#1b4332",
+        "RA", "#854d0e",
+        "#000",
+      ],
+      "line-width": ["match", ["get", "public_access"], "OA", 0.8, "RA", 1.0, 0],
+      "line-opacity": ["match", ["get", "public_access"], "OA", 1, "RA", 1, 0],
+      "line-dasharray": ["match", ["get", "public_access"], "RA", ["literal", [4, 4]], ["literal", [1, 0]]],
+    },
+  });
+  const popup = makePopup();
+  map.on("click", "public-lands-fill", (e) => {
+    const f = e.features && e.features[0];
+    if (!f) return;
+    popup
+      .setLngLat(e.lngLat)
+      .setHTML(publicLandsPopupHtml((f.properties || {}) as PublicLandsProps))
+      .addTo(map);
+  });
 });
 
-// Public-lands fetch: bbox-bound, debounced on moveend, zoom-gated.
-// Mirrors loadClickableStreams contract: skip when toggled off, skip
-// at country-scale bboxes, replace the layer's contents wholesale on
-// each fetch (parcels are sparse enough at zoom 8+ that we don't
-// need the streams' "merge-with-loaded" gymnastics). Matches
-// STREAM_MIN_ZOOM and RIVER_LINE_MIN_ZOOM so all three layer
-// families appear/hide at the same zoom boundary.
 const PUBLIC_LANDS_MIN_ZOOM = 9;
 let _publicLandsReqId = 0;
 
-export async function loadPublicLands(): Promise<void> {
-  if (!map.hasLayer(publicLandsLayer)) return;
-  if (map.getZoom() < PUBLIC_LANDS_MIN_ZOOM) {
-    // Don't clear here: letting the previous frame's parcels linger
-    // across the zoom-threshold boundary eliminates the blink-off-
-    // blink-on flash users hit when pinching from zoom 10 to zoom 8.
-    return;
+export function setPublicLandsVisible(on: boolean): void {
+  _publicLandsVisible = on;
+  for (const id of ["public-lands-fill", "public-lands-line"]) {
+    if (map.getLayer(id)) map.setLayoutProperty(id, "visibility", vis(on));
   }
+}
+
+export async function loadPublicLands(): Promise<void> {
+  if (!_publicLandsVisible) return;
+  if (map.getZoom() < PUBLIC_LANDS_MIN_ZOOM) return;
   const b = map.getBounds();
-  // 4° cap matching loadClickableStreams.
   if (b.getEast() - b.getWest() > 4 || b.getNorth() - b.getSouth() > 4) return;
   const bbox = [b.getWest(), b.getSouth(), b.getEast(), b.getNorth()]
     .map((x) => x.toFixed(4))
@@ -267,55 +274,8 @@ export async function loadPublicLands(): Promise<void> {
       `/api/public_lands?bbox=${bbox}&zoom=${map.getZoom()}`,
     ).then((r) => r.json());
     if (reqId !== _publicLandsReqId) return; // newer pan superseded us
-    publicLandsLayer.clearLayers();
-    publicLandsLayer.addData(fc);
+    getGeoJSON("public-lands")?.setData(fc);
   } catch (_) {
     /* transient; next moveend retries */
   }
 }
-
-// -- Container layer groups ---------------------------------------------
-// These are bare LayerGroups that other code (renderRivers, the pin
-// fetcher, the river-line fetcher) populates. Adding to map at module
-// init means the order matches the legacy app.js -- riverLines and
-// rivers sit above public-lands + access by default.
-
-export const riverLinesLayer: L.LayerGroup = L.layerGroup().addTo(map);
-export const riversLayer: L.LayerGroup = L.layerGroup().addTo(map);
-export const pinsLayer: L.LayerGroup = L.layerGroup().addTo(map);
-
-// -- Window bridge for legacy app.js -----------------------------------
-
-declare global {
-  interface Window {
-    troutLayer: L.GeoJSON;
-    accessLayer: L.LayerGroup;
-    publicLandsLayer: L.GeoJSON;
-    riverLinesLayer: L.LayerGroup;
-    riversLayer: L.LayerGroup;
-    pinsLayer: L.LayerGroup;
-    ensureTrout: typeof ensureTrout;
-    ensureAccess: typeof ensureAccess;
-    loadPublicLands: typeof loadPublicLands;
-    makeAccessIcon: typeof makeAccessIcon;
-    accessPopupHtml: typeof accessPopupHtml;
-    publicLandsPopupHtml: typeof publicLandsPopupHtml;
-    resetTroutLoadedState: typeof resetTroutLoadedState;
-    resetAccessLoadedState: typeof resetAccessLoadedState;
-  }
-}
-
-window.troutLayer = troutLayer;
-window.accessLayer = accessLayer;
-window.publicLandsLayer = publicLandsLayer;
-window.riverLinesLayer = riverLinesLayer;
-window.riversLayer = riversLayer;
-window.pinsLayer = pinsLayer;
-window.ensureTrout = ensureTrout;
-window.ensureAccess = ensureAccess;
-window.loadPublicLands = loadPublicLands;
-window.makeAccessIcon = makeAccessIcon;
-window.accessPopupHtml = accessPopupHtml;
-window.publicLandsPopupHtml = publicLandsPopupHtml;
-window.resetTroutLoadedState = resetTroutLoadedState;
-window.resetAccessLoadedState = resetAccessLoadedState;

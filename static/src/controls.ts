@@ -28,31 +28,31 @@
  *   - rivers: loadRivers, renderRivers, loadVisibleRiverLines
  */
 
-import { map, currentBaseKey, setBaseMap } from "./map-setup";
+import { map, currentBaseKey, setBaseMap, setHydroVisible } from "./map-setup";
 import {
-  troutLayer,
-  accessLayer,
-  publicLandsLayer,
-  riversLayer,
-  pinsLayer,
   ensureTrout,
   ensureAccess,
   loadPublicLands,
   resetTroutLoadedState,
   resetAccessLoadedState,
+  setTroutVisible,
+  setAccessVisible,
+  setPublicLandsVisible,
 } from "./map-layers";
 import {
-  clickableLayer,
   loadClickableStreams,
   setStreamColorMode,
   restyleStreams,
+  setStreamsVisible,
 } from "./streams";
 import {
   loadRivers,
   loadVisibleRiverLines,
   renderRivers,
 } from "./rivers";
+import { setPinsVisible } from "./pins";
 import { getStates, setCurrentSt, STATE_ZOOM } from "./state";
+import { centerLngLat } from "./coords";
 import { refreshIcons } from "./util";
 
 // -- Filter controls -------------------------------------------------
@@ -77,16 +77,15 @@ function onFilterChange(): void {
   const s = (e.target as HTMLSelectElement).value;
   setCurrentSt(s); // updates URL + window mirror
   const catalog = getStates();
-  map.setView(catalog[s].center, STATE_ZOOM);
+  map.jumpTo({ center: centerLngLat(catalog[s].center), zoom: STATE_ZOOM });
   loadRivers(s);
   // Refresh trout / access for the new state only if the layer is
-  // currently shown. Routed through the setters in map-layers.ts
-  // (B1e: a bare `troutLoadedState = null` was ReferenceError in
-  // strict mode since the var is module-private there).
+  // currently shown (read the checkbox; the MapLibre layers always
+  // exist, only their visibility toggles).
   resetTroutLoadedState();
-  if (map.hasLayer(troutLayer)) ensureTrout(s);
+  if ((document.getElementById("lyr-trout") as HTMLInputElement).checked) ensureTrout(s);
   resetAccessLoadedState();
-  if (map.hasLayer(accessLayer)) ensureAccess(s);
+  if ((document.getElementById("lyr-access") as HTMLInputElement).checked) ensureAccess(s);
 };
 
 // -- Color-mode segmented control (trout class vs conditions) -------
@@ -272,20 +271,37 @@ setChromeOffset();
 
 document.getElementById("zoom-in")?.addEventListener("click", () => map.zoomIn());
 document.getElementById("zoom-out")?.addEventListener("click", () => map.zoomOut());
-// Leaflet renders north-up (no rotation), so the compass is a north
-// indicator; clicking it re-centers without changing zoom.
-document
-  .getElementById("compass-btn")
-  ?.addEventListener("click", () => map.setView(map.getCenter(), map.getZoom()));
 
+// MapLibre supports rotation/pitch, so the compass resets the map to
+// north-up; its needle rotates to track the current bearing.
+const compassBtn = document.getElementById("compass-btn");
+if (compassBtn) {
+  compassBtn.addEventListener("click", () =>
+    map.easeTo({ bearing: 0, pitch: 0 }),
+  );
+  map.on("rotate", () => {
+    compassBtn.style.transform = `rotate(${-map.getBearing()}deg)`;
+  });
+}
+
+// MapLibre has no map.locate; use the Geolocation API + flyTo.
 const locateBtn = document.getElementById("locate-btn") as HTMLButtonElement | null;
 if (locateBtn) {
   locateBtn.addEventListener("click", () => {
+    if (!navigator.geolocation) return;
     locateBtn.classList.add("is-active");
-    map.locate({ setView: true, maxZoom: 13 });
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        locateBtn.classList.remove("is-active");
+        map.flyTo({
+          center: [pos.coords.longitude, pos.coords.latitude],
+          zoom: 13,
+        });
+      },
+      () => locateBtn.classList.remove("is-active"),
+      { enableHighAccuracy: true, timeout: 10000 },
+    );
   });
-  map.on("locationfound", () => locateBtn.classList.remove("is-active"));
-  map.on("locationerror", () => locateBtn.classList.remove("is-active"));
 }
 
 // -- State pill (mirrors the hidden native #state-select) ----------
@@ -401,35 +417,33 @@ function saveLayerPref(id: string, on: boolean): void {
 
 const _layerPrefs: LayerPrefs = loadLayerPrefs();
 
+/**
+ * Wire a layer-visibility checkbox to a show/hide setter. MapLibre
+ * layers always exist (added on map load); we only toggle their
+ * `visibility`. `onShow` runs the lazy fetch the first time (and each
+ * time) the layer is shown. Applies the saved preference immediately so
+ * the desired state is set before the map `load` event mounts the layers
+ * (the setters store the desired flag and re-apply on mount).
+ */
 function wireLayerToggle(
   id: string,
-  layer: L.Layer,
-  onAdd?: () => void,
+  setVisible: (on: boolean) => void,
+  onShow?: () => void,
 ): void {
   const cb = document.getElementById(id) as HTMLInputElement;
-  // Apply saved preference if present, otherwise leave the HTML
-  // default.
   if (Object.prototype.hasOwnProperty.call(_layerPrefs, id)) {
     cb.checked = !!_layerPrefs[id];
   }
-  if (cb.checked && !map.hasLayer(layer)) {
-    map.addLayer(layer);
-    if (onAdd) onAdd();
-  } else if (!cb.checked && map.hasLayer(layer)) {
-    map.removeLayer(layer);
-  }
+  setVisible(cb.checked);
+  if (cb.checked && onShow) onShow();
   cb.addEventListener("change", () => {
-    if (cb.checked) {
-      map.addLayer(layer);
-      if (onAdd) onAdd();
-    } else {
-      map.removeLayer(layer);
-    }
+    setVisible(cb.checked);
+    if (cb.checked && onShow) onShow();
     saveLayerPref(id, cb.checked);
   });
 }
 
-wireLayerToggle("lyr-fishable", clickableLayer, loadClickableStreams);
+wireLayerToggle("lyr-fishable", setStreamsVisible, loadClickableStreams);
 // Toggling the clickable layer off needs to bring the gauge dots back
 // (since _riverHasClickableReach now returns false), so re-render.
 (document.getElementById("lyr-fishable") as HTMLInputElement).addEventListener(
@@ -438,22 +452,17 @@ wireLayerToggle("lyr-fishable", clickableLayer, loadClickableStreams);
     if (!(e.target as HTMLInputElement).checked) renderRivers();
   },
 );
-wireLayerToggle("lyr-usgs", window.hydroLayer);
-// Trout + access ensure-loaders read the CURRENT state at click time
+wireLayerToggle("lyr-usgs", setHydroVisible);
+// Trout + access ensure-loaders read the CURRENT state at show time
 // via getCurrentSt() (state may have changed since module-init).
-wireLayerToggle("lyr-trout", troutLayer, () =>
+wireLayerToggle("lyr-trout", setTroutVisible, () =>
   ensureTrout(window.getCurrentSt()),
 );
-wireLayerToggle("lyr-access", accessLayer, () =>
+wireLayerToggle("lyr-access", setAccessVisible, () =>
   ensureAccess(window.getCurrentSt()),
 );
-wireLayerToggle("lyr-public-lands", publicLandsLayer, loadPublicLands);
-wireLayerToggle("lyr-pins", pinsLayer);
-
-// Reference riversLayer so TS doesn't drop the import (kept because
-// future regressions might land a toggle for it; the rivers layer
-// itself is always added to the map at init in map-layers.ts).
-void riversLayer;
+wireLayerToggle("lyr-public-lands", setPublicLandsVisible, loadPublicLands);
+wireLayerToggle("lyr-pins", setPinsVisible);
 
 // -- Base-map segmented control ------------------------------------
 
