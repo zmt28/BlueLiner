@@ -682,6 +682,9 @@ html, body {
     position: fixed;
     inset: 0;
     z-index: 0;
+    /* Neutral skeleton tone shown under the chrome while the lazy map
+       chunk (MapLibre) downloads and the GL canvas mounts. */
+    background: #e7eaec;
 }
 /* Leaflet's own zoom/attribution controls are disabled (see map-setup.ts);
    our custom .map-controls + .map-attribution replace them. Keep any other
