@@ -3,10 +3,17 @@
  * NHDPlus reach layer users click to open the river panel (or the
  * ungauged-stream card).
  *
+ * Source modes (MVT spike, Path A): when VITE_STREAM_TILES_URL is set the
+ * "clickable-streams" source is a VECTOR source backed by a static PMTiles
+ * archive on R2 (read via the pmtiles:// protocol); otherwise it's the
+ * per-viewport GeoJSON source fed by /api/clickable_streams. Both use the
+ * same two line layers (styled visible + transparent fat "hit" casing),
+ * promoteId levelpathid, and click/highlight code — only the source +
+ * source-layer + the fetch-vs-tiles bookkeeping differ.
+ *
  * MapLibre specifics vs the old Leaflet version:
- *   - One GeoJSON source ("clickable-streams", promoteId levelpathid) +
- *     two line layers: a styled visible line and a transparent fat "hit"
- *     casing for touch. Clicks bind to the hit layer.
+ *   - Two line layers off one source: a styled visible line and a
+ *     transparent fat "hit" casing for touch. Clicks bind to the hit layer.
  *   - Color is a data-driven `match` on trout_class (or flat grey in
  *     conditions mode); width an `interpolate` on streamorder. The
  *     trout/conditions toggle is one setPaintProperty call.
@@ -14,9 +21,11 @@
  *     after each setData so it persists/extends as the user pans.
  */
 
-import maplibregl, { ExpressionSpecification } from "maplibre-gl";
+import maplibregl, { ExpressionSpecification, LayerSpecification } from "maplibre-gl";
+import { Protocol } from "pmtiles";
 import { map, onMapReady, getGeoJSON } from "./map-setup";
 import { esc } from "./util";
+import { STREAM_TILES_ENABLED, STREAM_TILES_URL, STREAM_SOURCE_LAYER } from "./config";
 import {
   prepareRiverPanel,
   commitRiverPanelOpen,
@@ -100,31 +109,58 @@ function visStr(on: boolean): "visible" | "none" {
 
 // -- Source + layers --------------------------------------------------
 
+// `source-layer` is required for a vector source and forbidden for geojson;
+// spread this into the layer specs so the same code serves both modes.
+const SRC_LAYER = STREAM_TILES_ENABLED ? { "source-layer": STREAM_SOURCE_LAYER } : {};
+
 onMapReady(() => {
-  map.addSource("clickable-streams", {
-    type: "geojson",
-    data: EMPTY_FC,
-    promoteId: "levelpathid",
-  });
+  if (STREAM_TILES_ENABLED) {
+    // Path A: static PMTiles on R2, read via the pmtiles:// protocol
+    // (HTTP range requests straight to the CDN). MapLibre fetches +
+    // caches + decodes tiles itself — no per-viewport GeoJSON fetch.
+    maplibregl.addProtocol("pmtiles", new Protocol().tile);
+    map.addSource("clickable-streams", {
+      type: "vector",
+      url: `pmtiles://${STREAM_TILES_URL}`,
+      promoteId: "levelpathid",
+    });
+  } else {
+    map.addSource("clickable-streams", {
+      type: "geojson",
+      data: EMPTY_FC,
+      promoteId: "levelpathid",
+    });
+  }
   map.addLayer({
     id: "clickable-streams",
     type: "line",
     source: "clickable-streams",
+    ...SRC_LAYER,
     layout: { visibility: visStr(_streamsVisible), "line-cap": "round" },
     paint: {
       "line-color": colorExpr(),
       "line-width": WIDTH_EXPR,
       "line-opacity": OPACITY_EXPR,
     },
-  });
+  } as LayerSpecification);
   // Transparent fat casing for touch targets; clicks bind here.
   map.addLayer({
     id: "clickable-streams-hit",
     type: "line",
     source: "clickable-streams",
+    ...SRC_LAYER,
     layout: { visibility: visStr(_streamsVisible), "line-cap": "round" },
     paint: { "line-color": "#000", "line-opacity": 0, "line-width": 16 },
-  });
+  } as LayerSpecification);
+  // In tile mode, rebuild the loaded-reach sets + re-apply highlight as new
+  // tiles arrive (the vector-tile analogue of re-apply-after-setData).
+  if (STREAM_TILES_ENABLED) {
+    map.on("sourcedata", (e) => {
+      if (e.sourceId === "clickable-streams" && e.isSourceLoaded) {
+        refreshLoadedFromTiles();
+      }
+    });
+  }
   map.on("click", "clickable-streams-hit", (e) => {
     const f = e.features && e.features[0];
     if (!f) return;
@@ -151,8 +187,30 @@ let _streamReqId = 0;
 let _loadedClkNames: Set<string> = new Set();
 let _loadedClkLpids: Set<number> = new Set();
 
+/** Tile mode: MapLibre already fetches/decodes tiles, so there's nothing to
+ *  fetch. Rebuild the loaded-reach name/lpid sets from the rendered tile
+ *  features (drives gauge-dot suppression in renderRivers) and re-apply the
+ *  active highlight. Called on moveend (via controls) + on tile arrival. */
+function refreshLoadedFromTiles(): void {
+  if (!map.getLayer("clickable-streams")) return;
+  const feats = map.queryRenderedFeatures({ layers: ["clickable-streams"] });
+  _loadedClkNames = new Set();
+  _loadedClkLpids = new Set();
+  for (const f of feats) {
+    const p = (f.properties || {}) as ClickableStreamProps;
+    if (p.gnis_name) _loadedClkNames.add(String(p.gnis_name).trim().toLowerCase());
+    if (p.levelpathid != null) _loadedClkLpids.add(Number(p.levelpathid));
+  }
+  if (_selStreamKey != null) _applyHighlight(_selStreamKey);
+  if (window.renderRivers) window.renderRivers();
+}
+
 export async function loadClickableStreams(): Promise<void> {
   if (!_streamsVisible) return; // toggled off
+  if (STREAM_TILES_ENABLED) {
+    refreshLoadedFromTiles();
+    return;
+  }
   if (map.getZoom() < STREAM_MIN_ZOOM) return;
   const b = map.getBounds();
   if (b.getEast() - b.getWest() > 4 || b.getNorth() - b.getSouth() > 4) return;
