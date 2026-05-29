@@ -22,10 +22,10 @@
  */
 
 import maplibregl, { ExpressionSpecification, LayerSpecification } from "maplibre-gl";
-import { Protocol } from "pmtiles";
 import { map, onMapReady, getGeoJSON } from "./map-setup";
 import { esc } from "./util";
 import { STREAM_TILES_ENABLED, STREAM_TILES_URL, STREAM_SOURCE_LAYER } from "./config";
+import { ensurePmtilesProtocol } from "./tiles";
 import {
   prepareRiverPanel,
   commitRiverPanelOpen,
@@ -118,7 +118,7 @@ onMapReady(() => {
     // Path A: static PMTiles on R2, read via the pmtiles:// protocol
     // (HTTP range requests straight to the CDN). MapLibre fetches +
     // caches + decodes tiles itself — no per-viewport GeoJSON fetch.
-    maplibregl.addProtocol("pmtiles", new Protocol().tile);
+    ensurePmtilesProtocol();
     map.addSource("clickable-streams", {
       type: "vector",
       url: `pmtiles://${STREAM_TILES_URL}`,
