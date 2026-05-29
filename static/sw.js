@@ -18,19 +18,18 @@ const swSelf = /** @type {any} */ (self);
 // name doesn't match the current CACHE constant, which forces every
 // returning browser to refetch the shell on next visit -- the only
 // reliable way to roll out a buggy client-side change.
-const CACHE = "blueliner-v22";
+const CACHE = "blueliner-v23";
 // Vite production builds emit fingerprinted asset filenames (e.g.
 // `/static/dist/assets/index-DkF7p.js`) so the SHELL list can no
 // longer enumerate them at SW build time. Strategy:
 //   - Pre-cache the entry route + manifest + icons. That's it.
-//   - Hashed Vite assets (the bundled CSS + the entry JS that
-//     pulls in app.js + the npm `leaflet` package as modules) are
-//     picked up by NETWORK-FIRST on first navigate, then cached
-//     for offline reloads.
-//   - Leaflet vendor entries dropped in PR B1d -- map-setup.ts
-//     now `import L from "leaflet"` (Vite-bundled). The vendored
-//     leaflet.js / leaflet.css under /static/vendor/ are no
-//     longer requested by the live app.
+//   - Hashed Vite assets (the bundled CSS, the tiny entry JS, and the
+//     lazy-loaded app chunk that carries MapLibre GL JS) are picked up
+//     by NETWORK-FIRST on first navigate, then cached for offline
+//     reloads. The dynamic-import map chunk (PR B2f) is just another
+//     hashed /static/dist asset, so it's covered by the same rule.
+//   - PR B2 swapped Leaflet for MapLibre GL JS (imported from npm and
+//     Vite-bundled); there are no vendored map assets to cache.
 const SHELL = [
   "/map",
   "/static/manifest.webmanifest",

@@ -682,11 +682,31 @@ html, body {
     position: fixed;
     inset: 0;
     z-index: 0;
+    /* Neutral skeleton tone shown under the chrome while the lazy map
+       chunk (MapLibre) downloads and the GL canvas mounts. */
+    background: #e7eaec;
 }
 /* Leaflet's own zoom/attribution controls are disabled (see map-setup.ts);
    our custom .map-controls + .map-attribution replace them. Keep any other
    Leaflet control panes above the map but below the chrome. */
-.leaflet-control-container { z-index: 5; }
+.maplibregl-control-container { z-index: 5; }
+/* Tall popups (hatch + several gauges) scroll inside the popup content
+   instead of overflowing the viewport — MapLibre has no maxHeight option,
+   so cap it here. */
+.maplibregl-popup-content {
+    max-height: 70vh;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+}
+/* Hover tooltip popups (trout names, marker labels): no padding/close. */
+.ml-tooltip .maplibregl-popup-content {
+    padding: 3px 8px;
+    font-size: 11px;
+    font-weight: 600;
+    box-shadow: var(--elev-1);
+}
+.ml-tooltip .maplibregl-popup-tip { display: none; }
 /* Legend rows. The bottom-left .legend container + toggle pill are
    gone -- the rows now live inside the unified controls panel's
    Legend tab. Only the per-row item + colored swatch styling stays. */
@@ -1490,17 +1510,9 @@ html, body {
 }
 
 /* Fluid popups so the card never exceeds a phone screen */
-.leaflet-popup-content table { max-width: 100%; }
-/* Leaflet's maxHeight scroll container: vertical scroll only, smooth on touch */
-.leaflet-popup-scrolled {
-    overflow-x: hidden;
-    overflow-y: auto;
-    -webkit-overflow-scrolling: touch;
-    overscroll-behavior: contain;
-}
+.maplibregl-popup-content table { max-width: 100%; }
 @media (max-width: 700px) {
-    .leaflet-popup-content-wrapper { max-width: 90vw; }
-    .leaflet-popup-content { width: auto !important; max-width: calc(90vw - 30px); }
+    .maplibregl-popup-content { max-width: 90vw; }
 }
 
 /* -- Mobile chrome layout (< 760px): hide rail, show bottom tab bar;

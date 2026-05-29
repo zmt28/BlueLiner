@@ -1,90 +1,26 @@
 // Blueliner frontend entry point (Vite-managed).
 //
-// Imports CSS for Vite's asset graph, then every TS module (each one
-// wires up its own DOM at module-init), then runs init() which does
-// the async bootstrap: fetch /api/states, set the initial state code +
-// view, kick off the first rivers + pins + auth fetches.
+// Kept deliberately tiny: it imports the global CSS eagerly (so the
+// static chrome shell in index.html is styled on first paint) and then
+// lazy-loads the interactive app — MapLibre GL JS + every map module —
+// as a separate chunk via dynamic import. That ~300 KB gzipped renderer
+// downloads/executes AFTER first paint instead of blocking it (PR B2f).
 //
-// PR B1j removes the last "legacy app.js" -- every concern is now a
-// TS module under static/src/. This file is the entire orchestrator;
-// there is no static/src/app.js anymore.
+// Vite code-splits the dynamic import into its own hashed chunk; the
+// service worker's networkFirst rule for /static/ caches it after the
+// first load, so returning/offline visits reuse it.
 
 import "../tokens.css";
 import "../app.css";
-import "leaflet/dist/leaflet.css";
+import "maplibre-gl/dist/maplibre-gl.css";
 
-// Module-init order matters: leaf modules first, then modules that
-// depend on them. Each one wires up its own DOM + window bridges as
-// a side effect of being imported.
-import {
-  STATE_ZOOM,
-  setStates,
-  setCurrentSt,
-  currentState,
-  getStates,
-} from "./state";
-import "./util";
-import "./sparkline";
-import { map } from "./map-setup";
-import "./map-layers";
-import "./snap-sheet";
-import { wireRiverPanel } from "./river-panel";
-import "./streams";
-import { loadRivers } from "./rivers";
-import "./controls";
-import "./search";
-// Last three: auth + catches + pins all import from the modules above
-// (auth needs DEVICE_HEADER from state; catches needs sparkline + auth;
-// pins needs map-layers). They wire their own DOM at module-init.
-import { initAuth } from "./auth";
-import "./catches";
-import { loadPins } from "./pins";
-
-import { refreshIcons } from "./util";
-
-// -- Async bootstrap ------------------------------------------------
-
-async function init(): Promise<void> {
-  const list: ApiState[] = await fetch("/api/states").then((r) => r.json());
-  // Populate the canonical state catalog (mutates state.ts's _states
-  // in place; existing window.STATES references stay valid).
-  setStates(list);
-  const sel = document.getElementById("state-select") as HTMLSelectElement;
-  sel.innerHTML = "";
-  for (const s of list) {
-    const opt = document.createElement("option");
-    opt.value = s.code;
-    opt.textContent = s.name;
-    sel.appendChild(opt);
-  }
-  const state = currentState();
-  // Init reads the active code from the URL, so syncing it back into
-  // the URL is a no-op -- skip via syncUrl:false.
-  setCurrentSt(state, { syncUrl: false });
-  sel.value = state;
-  // Let the floating state pill mirror the populated select.
-  document.dispatchEvent(new Event("bl:states-loaded"));
-  map.setView(getStates()[state].center, STATE_ZOOM);
-  wireRiverPanel();
-  loadRivers(state);
-  loadPins();
-  await initAuth();
-}
-
-init();
-
-// Hydrate the static <i data-lucide="..."> nodes in the page shell
-// (header tab buttons, sign-in mailbox). Wrapped in load so the
-// deferred CDN script has finished parsing before we call into it.
-window.addEventListener("load", () => refreshIcons());
+import("./app-boot");
 
 // -- Service worker -------------------------------------------------
-// Auto-reload once when a new service worker takes control, so a
-// deploy propagates fresh JS/CSS without a manual cache clear. Only
-// armed when the page is already controlled (a returning visit) --
-// on the very first visit there's no controller yet and no stale
-// assets to replace, so we skip the reload to avoid a pointless
-// first-load refresh.
+// Register early (independent of the map chunk) + auto-reload once when a
+// new worker takes control so a deploy propagates fresh JS/CSS without a
+// manual cache clear. Only armed when the page is already controlled (a
+// returning visit); the very first visit has no stale assets to replace.
 
 if ("serviceWorker" in navigator) {
   if (navigator.serviceWorker.controller) {

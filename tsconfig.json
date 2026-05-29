@@ -18,7 +18,7 @@
     "noUnusedParameters": false,
     "noFallthroughCasesInSwitch": true,
 
-    "types": ["leaflet"]
+    "types": []
   },
   "include": [
     "static/src/**/*.ts",

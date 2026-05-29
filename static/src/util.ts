@@ -31,23 +31,6 @@ export function esc(s: unknown): string {
 }
 
 /**
- * Leaflet popup options sized to the current viewport. maxHeight
- * forces an internal scroll container inside Leaflet so tall river
- * popups (hatch + several gauges) scroll within the popup rather
- * than overflowing the viewport.
- *
- * Re-evaluated on every call so a portrait/landscape rotation that
- * happens between popup opens picks up the new dimensions.
- */
-export function popupOpts(): L.PopupOptions {
-  return {
-    maxWidth: Math.min(420, (window.innerWidth || 420) - 32),
-    maxHeight: Math.round((window.innerHeight || 700) * 0.7),
-    autoPan: true,
-  };
-}
-
-/**
  * Hydrate any freshly-injected `<i data-lucide="...">` nodes to inline
  * SVG. Called after every dynamic HTML render so the server-rendered
  * river panel + Python-generated popup HTML show real icons instead
@@ -77,11 +60,9 @@ export function refreshIcons(root?: Element | null): void {
 declare global {
   interface Window {
     esc: typeof esc;
-    popupOpts: typeof popupOpts;
     refreshIcons: typeof refreshIcons;
   }
 }
 
 window.esc = esc;
-window.popupOpts = popupOpts;
 window.refreshIcons = refreshIcons;
