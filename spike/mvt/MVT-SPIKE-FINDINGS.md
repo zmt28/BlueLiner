@@ -10,9 +10,9 @@ a phasing recommendation. Nothing here is wired into the app.
 1. **The data is static reference data, and Cloudflare R2 is already in the
    stack** — so the natural fit is **static PMTiles built by tippecanoe and
    served from R2** (a CDN with HTTP range support). This bypasses the free
-   single-worker app server *and* Neon entirely, works at every zoom, and needs
+   single-worker app server *and* the database entirely, works at every zoom, and needs
    **no PostGIS migration**. This is the recommendation.
-2. **Geometry today is GeoJSON *text* in plain Postgres (Neon), not PostGIS.**
+2. **Geometry today is GeoJSON *text* in plain Postgres (no PostGIS extension).**
    The GiST index is on a built-in `box`, not a `geometry` column. So
    `ST_AsMVT` is **not** directly available — the "textbook" Postgres path
    requires enabling PostGIS + a geometry-column migration + reload-pipeline
@@ -49,7 +49,7 @@ a phasing recommendation. Nothing here is wired into the app.
   `scripts/build_public_lands.py` (~290K parcels). Rebuilt on data releases, not
   per-user, not live.
 - **Infra:** Render **free** web service, **single worker** (`WEB_CONCURRENCY=1`),
-  **ephemeral disk**, external **Neon free** Postgres. Large data artifacts are
+  **ephemeral disk**, an external managed Postgres. Large data artifacts are
   already hosted on **Cloudflare R2** and fetched at boot (`DATA_BASE_URL`,
   `data_source.py`). FastAPI `StaticFiles` does **not** support HTTP range
   requests (a PMTiles blocker *only if* served from the app — see below).
@@ -80,7 +80,7 @@ Build a `.pmtiles` archive from the GeoJSON we already produce, upload to R2
 next to the existing data artifacts; MapLibre reads it via the `pmtiles://`
 protocol with HTTP range requests **directly against R2** (a CDN).
 
-- **Pros:** zero runtime cost on the free web worker + Neon (tiles served from
+- **Pros:** zero runtime cost on the free web worker + the database (tiles served from
   R2/CDN, not the app); works at *every* zoom (tippecanoe does per-zoom
   simplification + feature-dropping); URL-cacheable + offline-cacheable; **no
   PostGIS**; reuses the existing build-pipeline + R2 muscle; the `StaticFiles`
@@ -109,7 +109,7 @@ bbox query**, clips with shapely, and encodes with `mapbox-vector-tile`
 
 ### C. PostGIS `ST_AsMVT` — not now
 
-Enable PostGIS on Neon, add a `geometry` column (populate via
+Enable PostGIS on the Postgres instance, add a `geometry` column (populate via
 `ST_GeomFromGeoJSON` at load), GiST-index it, then one `ST_AsMVT` query per
 tile.
 
@@ -117,7 +117,7 @@ tile.
   `ST_AsMVTGeom` clipping + `ST_SimplifyPreserveTopology` per zoom.
 - **Cons:** PostGIS extension + **geometry-column migration** + reworking
   `db.py` load + `build_*` scripts; pushes per-request CPU onto the **free
-  Neon** instance behind a single web worker. The data is static, so dynamic DB
+  managed Postgres** instance behind a single web worker. The data is static, so dynamic DB
   tiling is unnecessary overhead.
 - **When:** only if streams/lands become dynamic or per-user.
 
