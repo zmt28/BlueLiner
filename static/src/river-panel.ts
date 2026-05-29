@@ -218,8 +218,9 @@ declare global {
     // clearStreamHighlight is declared canonically in streams.ts (PR
     // B1g) as a required Window property; consumed by closeRiverPanel.
     // Wired by app.js (sparkline / catches) and consumed by openRiverPanel.
-    wireTrend?: (root: HTMLElement) => void;
-    wireCatch?: (root: HTMLElement, river: { name?: string }) => void;
+    // wireTrend / wireCatch are declared canonically in catches.ts (PR
+    // B1j); imported by openRiverPanel via window to avoid an import
+    // cycle (catches.ts -> auth.ts; river-panel.ts is a leaf here).
   }
 }
 
