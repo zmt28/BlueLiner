@@ -53,7 +53,7 @@ import {
   renderRivers,
 } from "./rivers";
 import { getStates, setCurrentSt, STATE_ZOOM } from "./state";
-import { wireSnapSheet } from "./snap-sheet";
+import { refreshIcons } from "./util";
 
 // -- Filter controls -------------------------------------------------
 // Each onchange re-runs the filter predicate + fetches lines for any
@@ -105,132 +105,273 @@ document.querySelectorAll<HTMLButtonElement>("#color-mode button").forEach((b) =
   }),
 );
 
-// -- Controls panel: Layers / Filters / Legend ---------------------
-// Three direct-entry header buttons open the panel to their tab. Each
-// button: opens panel if closed, switches tab if open on a different
-// tab, closes if open on its own tab.
+// -- Map chrome: rail (desktop) / tab bar (mobile) + side panel/sheet
+// The left rail tabs, the mobile bottom-tab-bar, and the account avatar
+// all toggle the one shared #controls-panel. On desktop it's a continuous
+// side panel anchored to the rail; on mobile it's a bottom sheet. Only one
+// pane is visible at a time; re-tapping the active tab (or X / backdrop /
+// ESC) closes it.
 
-const controlsPanel = document.getElementById("controls-panel") as HTMLElement;
-type CtrlTab = "layers" | "filters" | "legend";
+type PanelTab = "layers" | "filters" | "legend" | "content" | "profile";
 
-const _ctrlTabRadios: Record<CtrlTab, HTMLInputElement> = {
-  layers: document.getElementById("ctrl-tab-layers") as HTMLInputElement,
-  filters: document.getElementById("ctrl-tab-filters") as HTMLInputElement,
-  legend: document.getElementById("ctrl-tab-legend") as HTMLInputElement,
+const PANEL_TITLES: Record<PanelTab, string> = {
+  layers: "Map Layers",
+  filters: "Map Filters & Settings",
+  legend: "Map Legend",
+  content: "My Content",
+  profile: "My Profile",
 };
-const _ctrlHeaderBtns: Record<CtrlTab, HTMLButtonElement> = {
-  layers: document.getElementById("ctrl-layers") as HTMLButtonElement,
-  filters: document.getElementById("ctrl-filters") as HTMLButtonElement,
-  legend: document.getElementById("ctrl-legend") as HTMLButtonElement,
-};
-let _ctrlActiveTab: CtrlTab = "layers";
-let _ctrlHideTimer: ReturnType<typeof setTimeout> | null = null;
 
-function _setCtrlHeaderActive(tab: CtrlTab | null): void {
-  for (const [t, btn] of Object.entries(_ctrlHeaderBtns)) {
-    const on =
-      t === tab && !controlsPanel.hidden && controlsPanel.classList.contains("open");
-    btn.classList.toggle("active", on);
-    btn.setAttribute("aria-expanded", on ? "true" : "false");
-  }
-}
+const MOBILE_BP = "(max-width: 759px)";
+const RAIL_W = 88;
+const PANEL_W = 340;
 
-function _selectCtrlTab(tab: CtrlTab): void {
-  const radio = _ctrlTabRadios[tab];
-  if (radio) radio.checked = true;
-  _ctrlActiveTab = tab;
-  _setCtrlHeaderActive(tab);
-}
-
-function openControlsPanel(tab: CtrlTab): void {
-  if (_ctrlHideTimer) clearTimeout(_ctrlHideTimer);
-  _selectCtrlTab(tab);
-  controlsPanel.hidden = false;
-  const isMobile = window.matchMedia("(max-width: 700px)").matches;
-  controlsPanel.classList.remove("peek", "full");
-  requestAnimationFrame(() => {
-    controlsPanel.classList.add("open");
-    if (isMobile) controlsPanel.classList.add("peek");
-    _setCtrlHeaderActive(tab);
-  });
-}
-
-function closeControlsPanel(): void {
-  if (!controlsPanel || controlsPanel.hidden) return;
-  controlsPanel.classList.remove("open", "peek", "full");
-  _ctrlHideTimer = setTimeout(() => {
-    controlsPanel.hidden = true;
-  }, 240);
-  _setCtrlHeaderActive(null);
-}
-
-// Header buttons: tab direct-entry.
-for (const [tab, btn] of Object.entries(_ctrlHeaderBtns) as [CtrlTab, HTMLButtonElement][]) {
-  btn.addEventListener("click", (e) => {
-    e.stopPropagation();
-    const open = !controlsPanel.hidden && controlsPanel.classList.contains("open");
-    if (open && _ctrlActiveTab === tab) {
-      closeControlsPanel();
-    } else if (open) {
-      _selectCtrlTab(tab);
-      // On mobile a tab switch while at peek means the user is
-      // engaging with the panel; promote to full (matching the
-      // river-panel rule).
-      if (
-        window.matchMedia("(max-width: 700px)").matches &&
-        controlsPanel.classList.contains("peek")
-      ) {
-        controlsPanel.classList.remove("peek");
-        controlsPanel.classList.add("full");
-      }
-    } else {
-      openControlsPanel(tab);
-    }
-  });
-}
-
-// X button + backdrop -> close.
-controlsPanel.querySelectorAll<HTMLElement>("[data-close]").forEach((el) =>
-  el.addEventListener("click", closeControlsPanel),
+const panel = document.getElementById("controls-panel") as HTMLElement;
+const panelTitle = document.getElementById("panel-title") as HTMLElement;
+const panelCard = panel.querySelector(".panel-card") as HTMLElement;
+const railTabs = Array.from(
+  document.querySelectorAll<HTMLButtonElement>("#rail-tabs .rail-tab"),
 );
+const mobileTabs = Array.from(
+  document.querySelectorAll<HTMLButtonElement>("#mobile-tabbar .mobile-tab"),
+);
+const panes: Record<string, HTMLElement> = {};
+panel.querySelectorAll<HTMLElement>(".panel-pane").forEach((p) => {
+  if (p.dataset.pane) panes[p.dataset.pane] = p;
+});
+
+let activeTab: PanelTab | null = null;
+let panelHideTimer: ReturnType<typeof setTimeout> | null = null;
+
+function isMobileView(): boolean {
+  return window.matchMedia(MOBILE_BP).matches;
+}
+
+/** Shift the floating chrome (pills + controls) to the right of the rail,
+ *  and further right when the side panel is open. On mobile the chrome
+ *  spans the full width. */
+function setChromeOffset(): void {
+  const left = isMobileView() ? 0 : RAIL_W + (activeTab !== null ? PANEL_W : 0);
+  document.documentElement.style.setProperty("--map-left", `${left}px`);
+}
+
+function reflectActive(): void {
+  for (const b of [...railTabs, ...mobileTabs]) {
+    const on = b.dataset.tab === activeTab;
+    b.classList.toggle("is-active", on);
+    b.setAttribute("aria-expanded", on ? "true" : "false");
+  }
+  document
+    .getElementById("rail-avatar")
+    ?.classList.toggle("is-active", activeTab === "profile");
+}
+
+function showPane(tab: PanelTab): void {
+  for (const [id, el] of Object.entries(panes)) {
+    el.classList.toggle("is-active", id === tab);
+  }
+  panelTitle.textContent = PANEL_TITLES[tab];
+}
+
+function openPanel(tab: PanelTab): void {
+  if (panelHideTimer) {
+    clearTimeout(panelHideTimer);
+    panelHideTimer = null;
+  }
+  activeTab = tab;
+  showPane(tab);
+  panel.hidden = false;
+  panelCard.style.transform = ""; // clear any leftover drag transform
+  requestAnimationFrame(() => panel.classList.add("open"));
+  reflectActive();
+  setChromeOffset();
+  refreshIcons();
+}
+
+function closePanel(): void {
+  if (panel.hidden) return;
+  panel.classList.remove("open");
+  activeTab = null;
+  reflectActive();
+  setChromeOffset();
+  panelHideTimer = setTimeout(() => {
+    panel.hidden = true;
+  }, 300);
+}
+
+function toggleTab(tab: PanelTab): void {
+  if (activeTab === tab) closePanel();
+  else openPanel(tab);
+}
+
+for (const b of [...railTabs, ...mobileTabs]) {
+  b.addEventListener("click", () => toggleTab(b.dataset.tab as PanelTab));
+}
+document
+  .getElementById("rail-avatar")
+  ?.addEventListener("click", () => toggleTab("profile"));
+document
+  .getElementById("mobile-avatar")
+  ?.addEventListener("click", () => toggleTab("profile"));
+document.getElementById("content-drop-pin")?.addEventListener("click", () => {
+  closePanel();
+  document.getElementById("drop-pin")?.click();
+});
+
+// X button + (mobile) backdrop -> close.
+panel
+  .querySelectorAll<HTMLElement>("[data-close]")
+  .forEach((el) => el.addEventListener("click", closePanel));
 
 // ESC closes from any state.
 document.addEventListener("keydown", (e) => {
-  if (e.key === "Escape" && !controlsPanel.hidden) closeControlsPanel();
+  if (e.key === "Escape" && !panel.hidden) closePanel();
 });
 
-// Click-outside closes (desktop popover behavior).
-document.addEventListener("click", (e) => {
-  if (controlsPanel.hidden) return;
-  const target = e.target as Node | null;
-  if (target && controlsPanel.contains(target)) return;
-  if (
-    target &&
-    Object.values(_ctrlHeaderBtns).some((b) => b.contains(target))
-  )
-    return;
-  closeControlsPanel();
-});
+// Keep the chrome offset correct across the breakpoint.
+window.addEventListener("resize", setChromeOffset);
+setChromeOffset();
 
-// In-panel tab switching: clicking a tab label updates the header's
-// active highlight.
-for (const [tab, radio] of Object.entries(_ctrlTabRadios) as [CtrlTab, HTMLInputElement][]) {
-  radio.addEventListener("change", () => {
-    if (radio.checked) {
-      _ctrlActiveTab = tab;
-      _setCtrlHeaderActive(tab);
+// Mobile: drag the sheet handle down to dismiss.
+(function wireSheetDrag(): void {
+  const handle = panel.querySelector<HTMLElement>("[data-grip]");
+  if (!handle) return;
+  let startY = 0;
+  let dy = 0;
+  let dragging = false;
+  handle.addEventListener("pointerdown", (e) => {
+    if (!isMobileView()) return;
+    dragging = true;
+    startY = e.clientY;
+    dy = 0;
+    panelCard.classList.add("dragging");
+    try {
+      handle.setPointerCapture(e.pointerId);
+    } catch (_) {
+      /* not all browsers */
     }
   });
+  handle.addEventListener("pointermove", (e) => {
+    if (!dragging) return;
+    dy = Math.max(0, e.clientY - startY);
+    panelCard.style.transform = `translateY(${dy}px)`;
+  });
+  function end(): void {
+    if (!dragging) return;
+    dragging = false;
+    panelCard.classList.remove("dragging");
+    const shouldClose = dy > 90;
+    panelCard.style.transform = "";
+    if (shouldClose) closePanel();
+  }
+  handle.addEventListener("pointerup", end);
+  handle.addEventListener("pointercancel", end);
+})();
+
+// -- Bottom-right map controls (zoom / compass / locate) -----------
+
+document.getElementById("zoom-in")?.addEventListener("click", () => map.zoomIn());
+document.getElementById("zoom-out")?.addEventListener("click", () => map.zoomOut());
+// Leaflet renders north-up (no rotation), so the compass is a north
+// indicator; clicking it re-centers without changing zoom.
+document
+  .getElementById("compass-btn")
+  ?.addEventListener("click", () => map.setView(map.getCenter(), map.getZoom()));
+
+const locateBtn = document.getElementById("locate-btn") as HTMLButtonElement | null;
+if (locateBtn) {
+  locateBtn.addEventListener("click", () => {
+    locateBtn.classList.add("is-active");
+    map.locate({ setView: true, maxZoom: 13 });
+  });
+  map.on("locationfound", () => locateBtn.classList.remove("is-active"));
+  map.on("locationerror", () => locateBtn.classList.remove("is-active"));
 }
 
-// Snap-sheet behavior on mobile.
-wireSnapSheet(controlsPanel, {
-  cardSelector: ".controls-panel-card",
-  gripSelector: ".controls-panel-grip",
-  bodySelector: "#controls-panel-body",
-  tabSelector: ".ctrl-tab",
-  onClose: closeControlsPanel,
+// -- State pill (mirrors the hidden native #state-select) ----------
+// The native <select id="state-select"> stays the canonical value +
+// keyboard target; selecting from the pill writes it and dispatches a
+// change so the existing state-selector handler (above) does the work.
+
+const statePill = document.getElementById("state-pill") as HTMLButtonElement;
+const statePillName = document.getElementById("state-pill-name") as HTMLElement;
+const stateMenu = document.getElementById("state-menu") as HTMLElement;
+const stateSelectEl = document.getElementById("state-select") as HTMLSelectElement;
+
+function updateStatePillName(): void {
+  const opt = stateSelectEl.options[stateSelectEl.selectedIndex];
+  statePillName.textContent = opt ? opt.textContent : stateSelectEl.value;
+}
+
+function buildStateMenu(query: string): void {
+  const q = query.trim().toLowerCase();
+  const rows: string[] = [];
+  for (const opt of Array.from(stateSelectEl.options)) {
+    const code = opt.value;
+    const name = opt.textContent || code;
+    if (q && !name.toLowerCase().includes(q) && !code.toLowerCase().includes(q))
+      continue;
+    const active = code === stateSelectEl.value;
+    rows.push(
+      `<button type="button" class="state-menu-item${active ? " is-active" : ""}" data-code="${code}">` +
+        `<span class="state-pill-flag">${code}</span><span>${name}</span>` +
+        `${active ? '<i data-lucide="check"></i>' : ""}</button>`,
+    );
+  }
+  const safe = query.replace(/"/g, "&quot;");
+  stateMenu.innerHTML =
+    `<div class="state-menu-search"><i data-lucide="search"></i>` +
+    `<input type="text" placeholder="Search states…" id="state-menu-input" value="${safe}"></div>` +
+    (rows.length ? rows.join("") : `<div class="state-menu-empty">No states</div>`);
+  refreshIcons();
+  const input = document.getElementById("state-menu-input") as HTMLInputElement | null;
+  if (input) {
+    input.addEventListener("input", () => buildStateMenu(input.value));
+    if (query) {
+      input.focus();
+      input.setSelectionRange(query.length, query.length);
+    }
+  }
+  stateMenu.querySelectorAll<HTMLButtonElement>(".state-menu-item").forEach((b) =>
+    b.addEventListener("click", () => {
+      const code = b.dataset.code;
+      if (code && code !== stateSelectEl.value) {
+        stateSelectEl.value = code;
+        stateSelectEl.dispatchEvent(new Event("change"));
+      }
+      updateStatePillName();
+      closeStateMenu();
+    }),
+  );
+}
+
+function openStateMenu(): void {
+  buildStateMenu("");
+  stateMenu.hidden = false;
+  statePill.setAttribute("aria-expanded", "true");
+  setTimeout(() => document.getElementById("state-menu-input")?.focus(), 0);
+}
+
+function closeStateMenu(): void {
+  stateMenu.hidden = true;
+  statePill.setAttribute("aria-expanded", "false");
+}
+
+statePill.addEventListener("click", (e) => {
+  e.stopPropagation();
+  if (stateMenu.hidden) openStateMenu();
+  else closeStateMenu();
 });
+document.addEventListener("click", (e) => {
+  if (stateMenu.hidden) return;
+  const t = e.target as Node | null;
+  if (t && (stateMenu.contains(t) || statePill.contains(t))) return;
+  closeStateMenu();
+});
+// Reflect both pill-driven and programmatic (init) selection changes.
+stateSelectEl.addEventListener("change", updateStatePillName);
+document.addEventListener("bl:states-loaded", updateStatePillName);
+updateStatePillName();
 
 // -- Layer visibility checkboxes + bl_layers persistence -----------
 // Saved preference per layer id (e.g. "lyr-fishable" -> true). New
