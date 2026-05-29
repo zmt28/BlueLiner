@@ -19,3 +19,14 @@ export const STREAM_TILES_ENABLED: boolean = STREAM_TILES_URL.length > 0;
 
 /** The MVT layer name baked by tippecanoe (must match --layer in the build). */
 export const STREAM_SOURCE_LAYER = "streams";
+
+/**
+ * VITE_PUBLIC_LANDS_TILES_URL — when set to the public R2 URL of the
+ * public-lands PMTiles archive, the PAD-US parcels render from vector tiles
+ * instead of the per-viewport `/api/public_lands` GeoJSON path (MVT M2).
+ * Default (unset) keeps the GeoJSON behaviour. See
+ * scripts/build_public_lands_tiles.sh.
+ */
+export const PUBLIC_LANDS_TILES_URL: string = (_env.VITE_PUBLIC_LANDS_TILES_URL || "").trim();
+export const PUBLIC_LANDS_TILES_ENABLED: boolean = PUBLIC_LANDS_TILES_URL.length > 0;
+export const PUBLIC_LANDS_SOURCE_LAYER = "public_lands";

@@ -19,10 +19,16 @@
  * before `load`.
  */
 
-import maplibregl, { Marker } from "maplibre-gl";
+import maplibregl, { Marker, LayerSpecification } from "maplibre-gl";
 import { map, onMapReady, getGeoJSON } from "./map-setup";
 import { esc } from "./util";
 import { makePopup, createLayerTooltip } from "./popups";
+import {
+  PUBLIC_LANDS_TILES_ENABLED,
+  PUBLIC_LANDS_TILES_URL,
+  PUBLIC_LANDS_SOURCE_LAYER,
+} from "./config";
+import { ensurePmtilesProtocol } from "./tiles";
 
 const EMPTY_FC: GeoJsonFeatureCollection = { type: "FeatureCollection", features: [] };
 
@@ -197,12 +203,28 @@ export function publicLandsPopupHtml(p: PublicLandsProps): string {
   return `<div class="ap-popup">${lines.join("")}</div>`;
 }
 
+// `source-layer` is required for a vector source, forbidden for geojson.
+const PL_SRC_LAYER = PUBLIC_LANDS_TILES_ENABLED
+  ? { "source-layer": PUBLIC_LANDS_SOURCE_LAYER }
+  : {};
+
 onMapReady(() => {
-  map.addSource("public-lands", { type: "geojson", data: EMPTY_FC });
+  if (PUBLIC_LANDS_TILES_ENABLED) {
+    // M2 Path A: static PMTiles on R2, read via pmtiles://. MapLibre
+    // fetches/decodes tiles; loadPublicLands becomes a no-op.
+    ensurePmtilesProtocol();
+    map.addSource("public-lands", {
+      type: "vector",
+      url: `pmtiles://${PUBLIC_LANDS_TILES_URL}`,
+    });
+  } else {
+    map.addSource("public-lands", { type: "geojson", data: EMPTY_FC });
+  }
   map.addLayer({
     id: "public-lands-fill",
     type: "fill",
     source: "public-lands",
+    ...PL_SRC_LAYER,
     layout: { visibility: vis(_publicLandsVisible) },
     paint: {
       "fill-color": [
@@ -220,11 +242,12 @@ onMapReady(() => {
         0,
       ],
     },
-  });
+  } as LayerSpecification);
   map.addLayer({
     id: "public-lands-line",
     type: "line",
     source: "public-lands",
+    ...PL_SRC_LAYER,
     layout: { visibility: vis(_publicLandsVisible) },
     paint: {
       "line-color": [
@@ -238,7 +261,7 @@ onMapReady(() => {
       "line-opacity": ["match", ["get", "public_access"], "OA", 1, "RA", 1, 0],
       "line-dasharray": ["match", ["get", "public_access"], "RA", ["literal", [4, 4]], ["literal", [1, 0]]],
     },
-  });
+  } as LayerSpecification);
   const popup = makePopup();
   map.on("click", "public-lands-fill", (e) => {
     const f = e.features && e.features[0];
@@ -261,6 +284,7 @@ export function setPublicLandsVisible(on: boolean): void {
 }
 
 export async function loadPublicLands(): Promise<void> {
+  if (PUBLIC_LANDS_TILES_ENABLED) return; // tiles handled by MapLibre
   if (!_publicLandsVisible) return;
   if (map.getZoom() < PUBLIC_LANDS_MIN_ZOOM) return;
   const b = map.getBounds();

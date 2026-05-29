@@ -26,13 +26,15 @@ RUN npm ci
 COPY vite.config.ts tsconfig.json ./
 COPY static/ ./static/
 
-# Optional MVT cutover (Path A): set this to the public R2 URL of the
-# clickable-stream PMTiles archive to render streams from vector tiles
-# instead of the GeoJSON endpoint. Unset = keep the GeoJSON path. Vite
-# inlines VITE_* env at build time, so it must be an ARG/ENV here. Render
-# can supply it as a build-time env var / docker build-arg.
+# Optional MVT cutover (Path A): set these to the public R2 URLs of the
+# PMTiles archives to render streams / public lands from vector tiles
+# instead of the GeoJSON endpoints. Unset = keep the GeoJSON path. Vite
+# inlines VITE_* env at build time, so they must be ARG/ENV here. Render
+# can supply them as build-time env vars / docker build-args.
 ARG VITE_STREAM_TILES_URL=""
 ENV VITE_STREAM_TILES_URL=$VITE_STREAM_TILES_URL
+ARG VITE_PUBLIC_LANDS_TILES_URL=""
+ENV VITE_PUBLIC_LANDS_TILES_URL=$VITE_PUBLIC_LANDS_TILES_URL
 
 # Build -> static/dist/index.html + static/dist/assets/*. The dist
 # folder is what stage 2 copies in below; everything else in this
