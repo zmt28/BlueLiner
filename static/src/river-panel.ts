@@ -100,6 +100,9 @@ export function commitRiverPanelOpen(
     }
   });
   _lastPanelOpenTs = Date.now();
+  // Opening the drawer (gauged river, ungauged stream, or search select)
+  // is a POI selection — tell the rail panel to close.
+  document.dispatchEvent(new Event("bl:poi-open"));
 }
 
 // -- Open / close ------------------------------------------------------

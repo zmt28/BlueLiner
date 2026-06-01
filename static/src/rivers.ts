@@ -71,7 +71,15 @@ onMapReady(() => {
     source: "river-lines",
     layout: { "line-cap": "round" },
     paint: {
-      "line-color": ["coalesce", ["get", "color"], "#2c6fbf"],
+      // Selected flowline turns red (matches the clickable-streams highlight);
+      // otherwise the river's condition color. Without the selected case the
+      // green flowline, drawn above clickable-streams, masks its red highlight.
+      "line-color": [
+        "case",
+        ["boolean", ["feature-state", "selected"], false],
+        "#e74c3c",
+        ["coalesce", ["get", "color"], "#2c6fbf"],
+      ],
       "line-width": [
         "case",
         ["boolean", ["feature-state", "selected"], false],

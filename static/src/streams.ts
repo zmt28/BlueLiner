@@ -369,7 +369,12 @@ export function onStreamClick(
   highlightStream(p);
   const gauged = _gaugedRiverFor(p, lngLat);
   if (gauged) {
-    openRiverPanel(gauged, null);
+    // Also highlight the gauged river's flowline (drawn above clickable-streams),
+    // so the selection reads red even where the flowline would mask it.
+    openRiverPanel(
+      gauged,
+      gauged.site_no ? { source: "river-lines", id: gauged.site_no } : null,
+    );
     return;
   }
   const got = prepareRiverPanel();

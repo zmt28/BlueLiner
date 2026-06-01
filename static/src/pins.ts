@@ -40,6 +40,10 @@ export function addPinMarker(p: Pin): void {
       `<div class="pin-meta">${esc(p.created_at)}</div>` +
       `<button class="pin-del" type="button">Delete</button></div>`,
   );
+  // Selecting a pin is a POI click -> close the rail panel.
+  el.addEventListener("click", () =>
+    document.dispatchEvent(new Event("bl:poi-open")),
+  );
   const marker = new maplibregl.Marker({ element: el, anchor: "bottom" })
     .setLngLat([p.lon, p.lat])
     .setPopup(popup);
