@@ -9,12 +9,9 @@ Copies:
                   `id` is omitted so BIGSERIAL on the new DB assigns fresh
                   ids; clients refetch /api/pins on every load and never
                   persist ids, so renumbering is invisible.
-  - `river_geom`  immutable per `site_no`. Preserving it skips the
-                  first-cycle NLDI backfill on the new DB so clickable
-                  lines appear immediately after cutover.
 
-`river_snapshot` and `river_stats` are deliberately NOT copied -- the
-refresher regenerates them within one cycle.
+`river_snapshot`, `river_stats`, and `gauge_meta` are deliberately NOT
+copied -- the refresher regenerates them within a cycle or two.
 
 Usage:
     OLD_DATABASE_URL=postgresql://... \\
@@ -23,7 +20,7 @@ Usage:
 
 The script is idempotent: re-running inserts only new pins (id is fresh
 each insert, but pins migrated twice would duplicate -- run once near
-the cutover, not on a loop) and skips already-present river_geom rows.
+the cutover, not on a loop).
 """
 
 import os
@@ -79,20 +76,5 @@ with psycopg.connect(OLD, row_factory=dict_row) as src, \
         dst.commit()
     print(f"[migrate] pins:       attempted={len(pins):>5}  "
           f"new total={_count(dst, 'pins'):>5}")
-
-    with src.cursor() as cur:
-        cur.execute("SELECT site_no, geojson, created_at FROM river_geom")
-        geom = cur.fetchall()
-    if geom:
-        with dst.cursor() as cur:
-            cur.executemany(
-                "INSERT INTO river_geom (site_no, geojson, created_at) "
-                "VALUES (%(site_no)s, %(geojson)s, %(created_at)s) "
-                "ON CONFLICT (site_no) DO NOTHING",
-                geom,
-            )
-        dst.commit()
-    print(f"[migrate] river_geom: attempted={len(geom):>5}  "
-          f"new total={_count(dst, 'river_geom'):>5}")
 
 print("[migrate] done.")

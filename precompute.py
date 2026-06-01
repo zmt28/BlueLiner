@@ -1,11 +1,12 @@
 """
 Out-of-band refresher.
 
-Precomputes per-state river snapshots and flowline geometry into
-Postgres so user requests are fast local reads, never blocked on USGS /
-NLDI / ArcGIS. This is the single mechanism behind "the map loads
-instantly": `/api/rivers` and `/api/river_lines` just read what this
-module has already assembled.
+Precomputes per-state river snapshots into Postgres so user requests are
+fast local reads, never blocked on USGS / NLDI / ArcGIS. This is the
+single mechanism behind "the map loads instantly": `/api/rivers` just
+reads what this module has already assembled. A second pass backfills each
+gauge's authoritative NHD identity (gauge_meta: gnis_name + levelpathid)
+so rivers group correctly and clicked reaches match by levelpath.
 
 Standalone on purpose -- the in-process loop in `main.lifespan` calls
 it now; a Render Cron Job / worker (or the `/internal/refresh` endpoint)
@@ -31,9 +32,9 @@ logger = logging.getLogger("blueliner.precompute")
 _DEFAULT_FOCUSED = ["MD", "VA", "WV", "PA", "DE", "NJ", "NY", "NC", "TN",
                     "KY", "OH"]
 
-# Geometry backfill is off the request path; modest parallelism gets a
-# state's lines populated fast without hammering NLDI or memory.
-_GEOM_BACKFILL_CONCURRENCY = 8
+# gauge_meta backfill is off the request path; modest parallelism gets a
+# state's gauge identities populated fast without hammering NLDI or memory.
+_GAUGE_META_BACKFILL_CONCURRENCY = 8
 
 
 def focused_states() -> list[str]:
@@ -44,62 +45,43 @@ def focused_states() -> list[str]:
     return [s for s in _DEFAULT_FOCUSED if s in STATES]
 
 
-async def _backfill_geometry(rivers: list[dict]) -> None:
-    """Persist NLDI flowline geometry AND authoritative NHD identity
-    (gauge_meta) for this state's gauges. Both are immutable per site,
-    so once is enough; subsequent cycles short-circuit on the DB."""
+async def _backfill_gauge_meta(rivers: list[dict]) -> None:
+    """Persist authoritative NHD identity (gauge_meta: gnis_name +
+    levelpathid) for this state's gauges so `_assemble_rivers` groups
+    rivers by NHD identity and the client can match a clicked reach by
+    levelpath. Immutable per site, so once is enough; subsequent cycles
+    short-circuit on the DB."""
     import main
 
     site_nos = [r["site_no"] for r in rivers if r.get("site_no")]
     if not site_nos:
         return
     try:
-        have_geom = await asyncio.to_thread(db.get_river_geoms, site_nos)
-    except Exception:
-        have_geom = {}
-    try:
         have_meta = await asyncio.to_thread(db.get_gauge_metas, site_nos)
     except Exception:
         have_meta = {}
-    todo_geom = [
-        sn for sn in site_nos
-        if sn not in have_geom
-        # Stale-schema rows (no _walk_version, or older than current)
-        # get refetched so logic changes propagate without ops effort.
-        or have_geom[sn].get("_walk_version") != main._GEOM_SCHEMA_VERSION
-    ]
     todo_meta = [sn for sn in site_nos if sn not in have_meta]
-    if not todo_geom and not todo_meta:
+    if not todo_meta:
         return
 
-    sem = asyncio.Semaphore(_GEOM_BACKFILL_CONCURRENCY)
+    sem = asyncio.Semaphore(_GAUGE_META_BACKFILL_CONCURRENCY)
 
-    async def _backfill_one_geom(sn: str) -> None:
-        async with sem:
-            try:
-                await asyncio.to_thread(main._nldi_flowline, sn)
-            except Exception as exc:
-                logger.warning("geom backfill failed for %s: %s", sn, exc)
-
-    async def _backfill_one_meta(sn: str) -> None:
+    async def _backfill_one(sn: str) -> None:
         async with sem:
             try:
                 await asyncio.to_thread(main._nldi_gauge_meta, sn)
             except Exception as exc:
                 logger.warning("gauge_meta backfill failed for %s: %s", sn, exc)
 
-    await asyncio.gather(
-        *(_backfill_one_geom(sn) for sn in todo_geom),
-        *(_backfill_one_meta(sn) for sn in todo_meta),
-    )
+    await asyncio.gather(*(_backfill_one(sn) for sn in todo_meta))
 
 
 async def refresh_state(st: str, *, backfill: bool = True) -> list[dict]:
     """Assemble a state's rivers from USGS and persist the snapshot (and,
-    unless deferred, its flowline geometry). Returns the rivers list ([]
+    unless deferred, its gauges' NHD identity). Returns the rivers list ([]
     on USGS empty/failure, which deliberately does not overwrite a good
     prior snapshot). `backfill=False` lets refresh_focused land every
-    state's data fast, then backfill geometry in a second pass."""
+    state's data fast, then backfill gauge_meta in a second pass."""
     import main
 
     st = st.upper()
@@ -119,7 +101,7 @@ async def refresh_state(st: str, *, backfill: bool = True) -> list[dict]:
     await asyncio.to_thread(db.put_river_snapshot, st, rivers)
     main._state_rivers_cache[st] = rivers  # warm L1 so next request is instant
     if backfill:
-        await _backfill_geometry(rivers)
+        await _backfill_gauge_meta(rivers)
     logger.info("refresh %s: persisted %d rivers", st, len(rivers))
     return rivers
 
@@ -129,8 +111,8 @@ _refresh_running = False
 
 async def refresh_focused() -> None:
     """One full cycle over the focused states. Data first (every focused
-    state's snapshot lands quickly), geometry second -- so no state's
-    clickable lines wait behind another state's slow NLDI backfill.
+    state's snapshot lands quickly), gauge_meta second -- so no state's
+    river identities wait behind another state's slow NLDI backfill.
 
     Single-flight: the in-process scheduler and the external GitHub
     Actions cron both call this; if a cycle is already running we skip
@@ -151,8 +133,9 @@ async def refresh_focused() -> None:
                 logger.warning("refresh_focused: %s data failed: %s", st, exc)
         for st, rivers in persisted.items():
             try:
-                await _backfill_geometry(rivers)
+                await _backfill_gauge_meta(rivers)
             except Exception as exc:
-                logger.warning("refresh_focused: %s geometry failed: %s", st, exc)
+                logger.warning("refresh_focused: %s gauge_meta failed: %s",
+                               st, exc)
     finally:
         _refresh_running = False

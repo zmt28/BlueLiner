@@ -1,7 +1,7 @@
 name: Refresh Blueliner precompute
 
 # Triggers the background refresher that keeps every focused state's
-# river snapshot + flowline geometry warm in Postgres. ~30 min matches
+# river snapshot + gauge identity (gauge_meta) warm in Postgres. ~30 min matches
 # USGS update cadence; the in-process refresher also runs (this is the
 # belt that makes sure it happens even when nobody's on the site).
 #
