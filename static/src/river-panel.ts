@@ -191,6 +191,15 @@ export function wireRiverPanel(): void {
   map.on("click", () => {
     if (Date.now() - _lastPanelOpenTs > 300) closeRiverPanel();
   });
+  // renderRivers() re-`setData`s the river-lines GeoJSON on every viewport
+  // change, and setData clears feature-state — which would drop the red
+  // selection as the user pans/zooms. Re-apply it whenever the source
+  // reloads (mirrors how streams.ts re-applies on sourcedata).
+  map.on("sourcedata", (e) => {
+    if (e.sourceId === "river-lines" && e.isSourceLoaded && _selectedFeature) {
+      map.setFeatureState(_selectedFeature, { selected: true });
+    }
+  });
 }
 
 // -- Snap-sheet wiring at module init ----------------------------------
