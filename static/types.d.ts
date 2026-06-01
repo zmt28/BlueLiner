@@ -175,12 +175,6 @@ type GeoJsonGeometry =
   | { type: "Polygon"; coordinates: [number, number][][] }
   | { type: "MultiPolygon"; coordinates: [number, number][][][] };
 
-/** /api/river_lines + /api/river_geom feature properties. */
-interface RiverLineProps {
-  site_no?: string;
-  color?: string;
-}
-
 /** /api/trout feature properties. Different states use different
     column names; the app tries each in turn. */
 interface TroutFeatureProps {

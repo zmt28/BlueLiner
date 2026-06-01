@@ -8,11 +8,9 @@ from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, EmailStr
 from pydantic import BaseModel, Field
-from shapely.geometry import shape, mapping
 import httpx
 from datetime import datetime, timezone
 from collections import defaultdict
-from concurrent.futures import ThreadPoolExecutor
 import asyncio
 import hashlib
 import json
@@ -54,26 +52,13 @@ _VAA_BUNDLED_PATH = os.path.join(os.path.dirname(__file__), "data",
 
 # Module-level caches. All bounded (LruTtl) -- unbounded per-state dicts
 # were the runtime memory growth behind the 512MB OOM. Both are also
-# persisted in Postgres (db.river_stats / db.river_geom) so this is just
+# persisted in Postgres (db.river_stats / db.gauge_meta) so this is just
 # the fast L1 in front of a durable, cross-restart store.
 _stats_cache: LruTtl = LruTtl(maxsize=6000)
-# site_no -> NLDI flowline FeatureCollection. TTL'd so a transient empty
-# (NLDI failure) retries later; successful geometry also lives in the DB.
-_river_geom_cache: LruTtl = LruTtl(maxsize=1024, ttl=900.0)
-# site_no -> {"comid", "gnis_name"} (the authoritative NHD identity).
-# Immutable per site -- DB is the durable store; this is L1. TTL'd so
-# transient NLDI failures retry; successful meta is also in Postgres.
+# site_no -> {"comid", "gnis_name", "levelpathid"} (the authoritative NHD
+# identity). Immutable per site -- DB is the durable store; this is L1. TTL'd
+# so transient NLDI failures retry; successful meta is also in Postgres.
 _gauge_meta_cache: LruTtl = LruTtl(maxsize=2048, ttl=900.0)
-# comid -> {"gnis_name"} for individual NHD flowline reaches. Used to
-# trim a navigation walk so it doesn't continue past a confluence onto
-# a differently-named river. Many comids per gauge, so bigger maxsize.
-_comid_meta_cache: LruTtl = LruTtl(maxsize=8192, ttl=900.0)
-
-# Bumped when walk distances or filtering logic change -- river_geom
-# rows written under an older version are treated as cache-misses so
-# they're refetched on next access, instead of serving stale geometry
-# forever. (Geometry is otherwise immutable per site.)
-_GEOM_SCHEMA_VERSION = 3
 
 STATIC_DIR = os.path.join(os.path.dirname(__file__), "static")
 
@@ -1282,84 +1267,6 @@ async def api_rivers(
                         max_age=300)
 
 
-async def _river_lines_payload(
-    rivers: list[dict],
-) -> tuple[dict, list[dict]]:
-    """Merge persisted flowlines for these rivers into one
-    FeatureCollection -- a pure Postgres read, no external calls. Each
-    feature carries site_no + color so the client styles + popups it.
-    Also returns the rivers still missing geometry so the caller can
-    prioritize backfilling exactly what the user is looking at."""
-    by_site = {r["site_no"]: r for r in rivers if r.get("site_no")}
-    if not by_site:
-        return {"type": "FeatureCollection", "features": []}, []
-    geoms = await asyncio.to_thread(db.get_river_geoms, list(by_site))
-    feats: list[dict] = []
-    for sn, fc in geoms.items():
-        color = by_site.get(sn, {}).get("color")
-        for f in fc.get("features", []):
-            feats.append({"type": "Feature",
-                          "properties": {"site_no": sn, "color": color},
-                          "geometry": f.get("geometry")})
-    missing = [by_site[sn] for sn in by_site if sn not in geoms]
-    return {"type": "FeatureCollection", "features": feats}, missing
-
-
-_lines_backfilling: set[str] = set()
-
-
-def _schedule_lines_backfill(rivers: list[dict]) -> None:
-    """Background NLDI backfill for the rivers the user is viewing right
-    now -- prioritizes their state's geometry over the periodic
-    refresher's round-robin so clickable lines appear fast on first
-    visit. Deduped; no-ops without a running loop (unit tests)."""
-    todo = [r for r in rivers
-            if r.get("site_no") and r["site_no"] not in _lines_backfilling]
-    if not todo:
-        return
-    for r in todo:
-        _lines_backfilling.add(r["site_no"])
-
-    async def _run():
-        try:
-            import precompute
-            await precompute._backfill_geometry(todo)
-        except Exception as exc:
-            logger.warning("lines backfill failed: %s", exc)
-        finally:
-            for r in todo:
-                _lines_backfilling.discard(r["site_no"])
-
-    try:
-        asyncio.create_task(_run())
-    except RuntimeError:
-        for r in todo:
-            _lines_backfilling.discard(r["site_no"])
-
-
-@app.get("/api/river_lines")
-async def api_river_lines(
-    request: Request,
-    state: str = Query(default="MD", description="Two-letter state code."),
-    bbox: str | None = Query(default=None, description="west,south,east,north"),
-):
-    """Every precomputed clickable flowline for a state/viewport in one
-    gzipped payload -- a pure Postgres read, never blocks on NLDI. This
-    replaces the slow per-river /api/river_geom fan-out."""
-    if bbox is not None:
-        rivers = await _rivers_for_bbox(_parse_bbox(bbox))
-    else:
-        states_to_load = _resolve_states(state)
-        if states_to_load is None:
-            raise HTTPException(status_code=400,
-                                detail=f"Unsupported state: {state}")
-        rivers = await _rivers_for_states(states_to_load)
-    payload, missing = await _river_lines_payload(rivers)
-    if missing:
-        _schedule_lines_backfill(missing)  # prioritize the viewed state
-    return _cached_json(request, payload, max_age=300)
-
-
 _REFRESH_TOKEN = os.environ.get("REFRESH_TOKEN", "")
 
 
@@ -1422,184 +1329,16 @@ async def api_access(request: Request,
     return _cached_response(request, body, max_age=3600, s_max_age=86400)
 
 
-_EMPTY_FC = {"type": "FeatureCollection", "features": []}
-
-
-def _simplify_fc(fc: dict, tol: float = 0.0005) -> dict:
-    """Decimate flowline vertices (~50m) before persisting/serving so the
-    merged per-state /api/river_lines payload stays small. Best-effort
-    per feature; on any geometry error keep the original."""
-    out: list[dict] = []
-    for f in fc.get("features", []):
-        try:
-            g = shape(f["geometry"]).simplify(tol)
-            if g.is_empty:
-                continue
-            out.append({"type": "Feature",
-                        "properties": f.get("properties", {}),
-                        "geometry": mapping(g)})
-        except Exception:
-            out.append(f)
-    return {"type": "FeatureCollection", "features": out}
-
-
-def _fetch_nav(client: httpx.Client, base: str, nav: str, dist: str) -> list:
-    try:
-        r = _nldi_get(client, f"{base}/{nav}/flowlines",
-                      params={"distance": dist})
-        if r is None:
-            return []
-        r.raise_for_status()
-        return r.json().get("features", [])
-    except Exception:
-        return []
-
-
-def _nldi_flowline(site_no: str) -> dict:
-    """Main-stem flowline around a USGS gauge from USGS NLDI.
-
-    Three-tier filter against the "tributary flowline visually extends
-    onto the larger main stem at the confluence" failure mode:
-
-      1. **LevelPathID** (preferred). The gauge's COMID has a NHDPlusV2
-         LevelPathID -- a deterministic ID for the river's main path
-         through confluences. Walk the full reach (UM 75 / DM 40 km),
-         then drop any feature whose LevelPathID disagrees. No string
-         matching, no fallback to unfiltered: an empty result means
-         "we couldn't identify the same river," which is honest.
-      2. **gnis_name** (degraded). For gauges outside the loaded VAA
-         regions (i.e. nhdplus_vaa has no row for the COMID), fall
-         back to NHD's name field via per-COMID NLDI lookups. Less
-         reliable because NHD's name attribution is incomplete; the
-         no-fallback rule still applies.
-      3. **No filter** (last resort). No gnis_name either -> conservative
-         short walk (UM 15 / DM 10 km), no filter; just bounded by
-         walk distance.
-
-    Served from process LRU -> Postgres -> NLDI with write-through.
-    Rows written under an older walk/filter schema (no `_walk_version`,
-    or older than the current constant) are treated as misses so they
-    refetch."""
-    if site_no in _river_geom_cache:
-        return _river_geom_cache[site_no]
-    try:
-        stored = db.get_river_geom(site_no)
-    except Exception as exc:
-        logger.warning("river_geom read failed for %s: %s", site_no, exc)
-        stored = None
-    if (stored is not None
-            and stored.get("_walk_version") == _GEOM_SCHEMA_VERSION):
-        _river_geom_cache[site_no] = stored
-        return stored
-
-    meta = _nldi_gauge_meta(site_no)
-    target_lpid = meta.get("levelpathid") if meta else None
-    target_gnis = (meta.get("gnis_name") or "").strip().lower() if meta else ""
-    have_identity = bool(target_lpid or target_gnis)
-    nav = (("UM", "75"), ("DM", "40")) if have_identity \
-          else (("UM", "15"), ("DM", "10"))
-
-    base = f"https://api.water.usgs.gov/nldi/linked-data/nwissite/USGS-{site_no}/navigation"
-    feats: list[dict] = []
-    try:
-        with httpx.Client(timeout=15.0, headers={"User-Agent": USER_AGENT}) as c:
-            with ThreadPoolExecutor(max_workers=2) as ex:
-                parts = list(ex.map(
-                    lambda nd: _fetch_nav(c, base, nd[0], nd[1]), nav))
-            for p in parts:
-                feats.extend(p)
-    except Exception:
-        feats = []
-
-    if feats:
-        if target_lpid is not None:
-            feats = _filter_flowlines_by_levelpath(feats, int(target_lpid))
-        elif target_gnis:
-            feats = _filter_flowlines_by_gnis(feats, target_gnis)
-
-    if feats:
-        fc = _simplify_fc({"type": "FeatureCollection", "features": feats})
-        fc["_walk_version"] = _GEOM_SCHEMA_VERSION
-        _river_geom_cache[site_no] = fc
-        try:
-            db.put_river_geom(site_no, fc)
-        except Exception as exc:
-            logger.warning("river_geom persist failed for %s: %s", site_no, exc)
-        return fc
-    _river_geom_cache[site_no] = _EMPTY_FC  # transient: TTL retries later
-    return _EMPTY_FC
-
-
-def _extract_comid(feature: dict) -> int | None:
-    """Pull NHDPlus COMID from a flowline feature's properties.
-    NLDI returns it under `nhdplus_comid`; some older responses
-    used `comid`."""
-    props = feature.get("properties") or {}
-    cid = props.get("nhdplus_comid") or props.get("comid")
-    if cid is None or cid == "":
-        return None
-    try:
-        return int(cid)
-    except (TypeError, ValueError):
-        return None
-
-
-def _filter_flowlines_by_levelpath(features: list[dict],
-                                   target_lpid: int) -> list[dict]:
-    """Keep only flowline features sharing the gauge's NHDPlusV2
-    LevelPathID. One batched DB query for the COMIDs in the walk.
-    No fallback to unfiltered: empty is honest. If the bundled VAA
-    doesn't cover the walked COMIDs at all (e.g. an out-of-region
-    walk hop), the caller's tier-2 gnis filter still won't run --
-    so geometry can disappear entirely if filtering wipes it,
-    which is intentional ("never wrong, sometimes empty")."""
-    comids = [_extract_comid(f) for f in features]
-    have = [c for c in comids if c is not None]
-    if not have:
-        return features                          # nothing to look up
-    try:
-        vaas = db.get_vaas(have)
-    except Exception as exc:
-        logger.warning("get_vaas failed (%d comids): %s", len(have), exc)
-        return features                          # degrade to unfiltered
-    return [f for f, c in zip(features, comids)
-            if c is not None
-            and (vaas.get(c) or {}).get("levelpathid") == target_lpid]
-
-
-def _filter_flowlines_by_gnis(features: list[dict], target: str) -> list[dict]:
-    """Tier-2 fallback when no LevelPathID is available: filter by
-    NHD gnis_name. Per-COMID lookups run in parallel and are cached
-    forever in Postgres. No fallback to unfiltered (previous safety
-    net was exactly what re-introduced the cross-river bleed)."""
-    comids = []
-    for f in features:
-        props = f.get("properties") or {}
-        cid = props.get("nhdplus_comid") or props.get("comid") or ""
-        comids.append(str(cid) if cid else "")
-    if not any(comids):
-        return features                          # nothing to filter against
-    with ThreadPoolExecutor(max_workers=8) as ex:
-        names = list(ex.map(_comid_gnis_lower, comids))
-    return [f for f, n in zip(features, names) if n == target]
-
-
-def _comid_gnis_lower(comid: str) -> str:
-    if not comid:
-        return ""
-    return (_comid_meta(comid).get("gnis_name") or "").strip().lower()
-
-
 _NLDI_BASE = "https://api.water.usgs.gov/nldi/linked-data"
 
 # Retry/backoff for NLDI throttling. USGS NLDI rate-limits at ~10
 # req/s/IP and starts returning 429 quickly when the focused-states
-# geom backfill fans out hundreds of navigation calls. Without retry
-# the gauge just lost its flowline for the full refresh interval (~45
-# min) -- the geometry would render as an unnamed dot on the map.
-# Exponential backoff with jitter retries the call a few times so the
-# transient throttle window passes; longer outages still fail clean
-# and retry on the next refresh cycle.
+# gauge_meta backfill fans out navigation calls. Without retry the gauge
+# just lost its NHD identity for the full refresh interval (~45 min) --
+# the river would fall back to the station-name grouping heuristic and
+# lose its levelpath-based reach matching. Exponential backoff with jitter
+# retries the call a few times so the transient throttle window passes;
+# longer outages still fail clean and retry on the next refresh cycle.
 _NLDI_RETRY_STATUSES = (429, 503)
 _NLDI_MAX_RETRIES = 3       # 4 attempts total (initial + 3 retries)
 _NLDI_BACKOFF_BASE = 0.5    # seconds; doubles each attempt
@@ -1723,65 +1462,6 @@ def _nldi_gauge_meta(site_no: str) -> dict:
         except Exception as exc:
             logger.warning("gauge_meta persist failed for %s: %s", site_no, exc)
     return meta
-
-
-def _comid_meta(comid: str) -> dict:
-    """NHD attributes ({gnis_name}) for an individual flowline reach by
-    COMID. Same caching pattern as _nldi_gauge_meta -- process LRU ->
-    Postgres -> NLDI with write-through; empties not persisted so they
-    retry. One call per unfamiliar COMID; subsequent gauges on the
-    same river hit Postgres."""
-    if not comid:
-        return {}
-    if comid in _comid_meta_cache:
-        return _comid_meta_cache[comid]
-    try:
-        stored = db.get_comid_meta(comid)
-    except Exception as exc:
-        logger.warning("comid_meta read failed for %s: %s", comid, exc)
-        stored = None
-    if stored is not None:
-        _comid_meta_cache[comid] = stored
-        return stored
-
-    meta: dict = {}
-    try:
-        with httpx.Client(timeout=10.0, headers={"User-Agent": USER_AGENT}) as c:
-            r = _nldi_get(c, f"{_NLDI_BASE}/comid/{comid}")
-            if r is None:
-                raise httpx.RequestError("comid lookup failed")
-            r.raise_for_status()
-            feats = r.json().get("features") or []
-            if feats:
-                gnis = feats[0].get("properties", {}).get("gnis_name")
-                meta = {"gnis_name": gnis or None}
-    except Exception:
-        meta = {}
-
-    _comid_meta_cache[comid] = meta
-    if meta:
-        try:
-            db.put_comid_meta(comid, meta)
-        except Exception as exc:
-            logger.warning("comid_meta persist failed for %s: %s", comid, exc)
-    return meta
-
-
-@app.get("/api/river_geom")
-async def api_river_geom(
-    request: Request,
-    site_no: str = Query(..., pattern=r"^[0-9A-Za-z-]{4,20}$",
-                         description="USGS site number"),
-):
-    """Clickable river flowline geometry (USGS NLDI), cached per site.
-
-    Real geometry is ~immutable per site (invalidated only by bumping
-    `_GEOM_SCHEMA_VERSION`), so cache hard. Empty results mean NLDI
-    failed transiently -- short TTL so the edge retries soon."""
-    fc = await asyncio.to_thread(_nldi_flowline, site_no)
-    if not fc.get("features"):
-        return _cached_json(request, fc, max_age=60, s_max_age=300)
-    return _cached_json(request, fc, max_age=86400, s_max_age=604800)
 
 
 @app.get("/api/history")

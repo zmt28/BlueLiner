@@ -309,51 +309,6 @@ def test_arcgis_keyset_no_progress_guard(monkeypatch):
     assert calls["n"] == 3                      # metadata + page0 + page1(stop)
 
 
-def test_nldi_flowline_merges_and_caches(monkeypatch):
-    main._river_geom_cache.clear()
-    monkeypatch.setattr(db, "get_river_geom", lambda s: None)
-    monkeypatch.setattr(db, "put_river_geom", lambda s, fc: None)
-    # No gnis_name -> conservative walk, no per-feature filter
-    monkeypatch.setattr(main, "_nldi_gauge_meta", lambda s: {})
-    calls = {"n": 0}
-
-    class FakeClient:
-        def __init__(self, *a, **k): pass
-        def __enter__(self): return self
-        def __exit__(self, *a): return False
-        def get(self, url, params=None):
-            calls["n"] += 1
-            seg = {"type": "Feature",
-                   "geometry": {"type": "LineString",
-                                "coordinates": [[-77, 39], [-77.1, 39.1]]},
-                   "properties": {}}
-            return _FakeResp({"type": "FeatureCollection", "features": [seg]})
-
-    monkeypatch.setattr(main.httpx, "Client", FakeClient)
-    fc = main._nldi_flowline("01589000")
-    assert fc["type"] == "FeatureCollection" and len(fc["features"]) == 2  # UM+DM
-    assert fc["_walk_version"] == main._GEOM_SCHEMA_VERSION
-    assert calls["n"] == 2
-    fc2 = main._nldi_flowline("01589000")           # cached -> no new calls
-    assert calls["n"] == 2 and fc2 is fc
-
-
-def test_nldi_flowline_graceful(monkeypatch):
-    main._river_geom_cache.clear()
-    monkeypatch.setattr(db, "get_river_geom", lambda s: None)
-    monkeypatch.setattr(db, "put_river_geom", lambda s, fc: None)
-
-    class Boom:
-        def __init__(self, *a, **k): pass
-        def __enter__(self): return self
-        def __exit__(self, *a): return False
-        def get(self, *a, **k): raise RuntimeError("nldi down")
-
-    monkeypatch.setattr(main.httpx, "Client", Boom)
-    assert main._nldi_flowline("99999999") == {"type": "FeatureCollection",
-                                               "features": []}
-
-
 def test_states_in_bbox():
     import states
     md_area = states.states_in_bbox(-79.0, 38.0, -76.0, 40.0)
@@ -524,17 +479,10 @@ def test_lru_ttl_evicts_by_size_and_ttl(monkeypatch):
 
 # -- durable cross-restart caches (speed: survive deploys) --
 
-def test_db_river_geom_and_stats_roundtrip(tmp_path, monkeypatch):
+def test_db_river_stats_roundtrip(tmp_path, monkeypatch):
     import datetime as _dt
     monkeypatch.setattr(db, "DB_PATH", str(tmp_path / "t.db"))
     db.init_db()
-
-    fc = {"type": "FeatureCollection", "features": [1, 2]}
-    assert db.get_river_geom("S1") is None
-    db.put_river_geom("S1", fc)
-    assert db.get_river_geom("S1") == fc
-    db.put_river_geom("S1", {"type": "FeatureCollection", "features": [9]})
-    assert db.get_river_geom("S1")["features"] == [9]      # upsert overwrites
 
     assert db.get_river_stats(["A", "B"]) == {}
     db.put_river_stats("A", {"5-19": 80.0})
@@ -547,119 +495,6 @@ def test_db_river_geom_and_stats_roundtrip(tmp_path, monkeypatch):
             db._ph("UPDATE river_stats SET created_at = ? WHERE site_no = ?"),
             (old, "A"))
     assert db.get_river_stats(["A"]) == {}                 # >30d -> excluded
-
-
-def test_nldi_flowline_uses_db_cache(tmp_path, monkeypatch):
-    monkeypatch.setattr(db, "DB_PATH", str(tmp_path / "t.db"))
-    db.init_db()
-    main._river_geom_cache.clear()
-    saved = {"type": "FeatureCollection",
-             "features": [{"type": "Feature",
-                           "geometry": {"type": "LineString",
-                                        "coordinates": [[-77, 39], [-77.1, 39.1]]},
-                           "properties": {}}],
-             # current schema version => DB hit serves directly
-             "_walk_version": main._GEOM_SCHEMA_VERSION}
-    db.put_river_geom("01581920", saved)
-
-    class NoNet:
-        def __init__(self, *a, **k): pass
-        def __enter__(self): return self
-        def __exit__(self, *a): return False
-        def get(self, *a, **k):
-            raise AssertionError("DB hit should preempt the network")
-
-    monkeypatch.setattr(main.httpx, "Client", NoNet)
-    assert main._nldi_flowline("01581920") == saved       # straight from the DB
-
-
-def test_nldi_flowline_refetches_stale_schema(tmp_path, monkeypatch):
-    """A row written under an older walk/filter schema is treated as a
-    cache-miss so logic changes propagate without operational cleanup."""
-    monkeypatch.setattr(db, "DB_PATH", str(tmp_path / "t.db"))
-    db.init_db()
-    main._river_geom_cache.clear()
-    monkeypatch.setattr(main, "_nldi_gauge_meta", lambda s: {})  # no filter
-    # Pre-existing row with no _walk_version: stale by definition.
-    db.put_river_geom("01589000", {"type": "FeatureCollection",
-                                   "features": [{"old": True}]})
-
-    refetched = {"n": 0}
-
-    class FakeClient:
-        def __init__(self, *a, **k): pass
-        def __enter__(self): return self
-        def __exit__(self, *a): return False
-        def get(self, *a, **k):
-            refetched["n"] += 1
-            return _FakeResp({"type": "FeatureCollection", "features": [{
-                "type": "Feature",
-                "geometry": {"type": "LineString",
-                             "coordinates": [[-77, 39], [-77.1, 39.1]]},
-                "properties": {}}]})
-
-    monkeypatch.setattr(main.httpx, "Client", FakeClient)
-    fc = main._nldi_flowline("01589000")
-    assert refetched["n"] == 2                  # UM + DM refetched
-    assert fc["_walk_version"] == main._GEOM_SCHEMA_VERSION
-
-
-def test_nldi_flowline_filters_cross_river_segments(monkeypatch):
-    """The Gunpowder/Georges-Run case: walk returns features from two
-    rivers; per-COMID gnis filter keeps only the gauge's own river."""
-    main._river_geom_cache.clear()
-    main._comid_meta_cache.clear()
-    monkeypatch.setattr(db, "get_river_geom", lambda s: None)
-    monkeypatch.setattr(db, "put_river_geom", lambda s, fc: None)
-    monkeypatch.setattr(
-        main, "_nldi_gauge_meta",
-        lambda s: {"comid": "111", "gnis_name": "Georges Run"})
-
-    # Two NLDI flowline features: one ON Georges Run, one on Gunpowder.
-    seg_own = {"type": "Feature", "properties": {"nhdplus_comid": "111"},
-               "geometry": {"type": "LineString",
-                            "coordinates": [[-76.69, 39.61], [-76.69, 39.60]]}}
-    seg_other = {"type": "Feature", "properties": {"nhdplus_comid": "222"},
-                 "geometry": {"type": "LineString",
-                              "coordinates": [[-76.69, 39.55], [-76.7, 39.5]]}}
-
-    def fake_walk(client, base, nav, dist):
-        return [seg_own] if nav == "UM" else [seg_other]
-
-    monkeypatch.setattr(main, "_fetch_nav", fake_walk)
-    monkeypatch.setattr(
-        main, "_comid_meta",
-        lambda c: {"gnis_name": "Georges Run"} if c == "111"
-                  else {"gnis_name": "Gunpowder Falls"})
-    monkeypatch.setattr(main.httpx, "Client",
-                        lambda *a, **k: _CtxNoop())
-
-    fc = main._nldi_flowline("01580000")
-    assert len(fc["features"]) == 1
-    assert fc["features"][0]["properties"]["nhdplus_comid"] == "111"
-
-
-class _CtxNoop:
-    def __enter__(self): return self
-    def __exit__(self, *a): return False
-    def get(self, *a, **k): raise AssertionError("fetcher monkeypatched")
-
-
-def test_comid_meta_short_circuits_on_db(tmp_path, monkeypatch):
-    monkeypatch.setattr(db, "DB_PATH", str(tmp_path / "t.db"))
-    db.init_db()
-    main._comid_meta_cache.clear()
-    db.put_comid_meta("111", {"gnis_name": "Gunpowder Falls"})
-
-    class NoNet:
-        def __init__(self, *a, **k): pass
-        def __enter__(self): return self
-        def __exit__(self, *a): return False
-        def get(self, *a, **k):
-            raise AssertionError("DB hit should preempt the NLDI call")
-
-    monkeypatch.setattr(main.httpx, "Client", NoNet)
-    assert main._comid_meta("111") == {"gnis_name": "Gunpowder Falls"}
 
 
 # -- stats off the hot path (speed: no 20s stall) --
@@ -830,7 +665,7 @@ def test_precompute_refresh_state_persists(tmp_path, monkeypatch):
     monkeypatch.setattr(main, "_usgs_iv", fake_iv)
     monkeypatch.setattr(main, "_ensure_medians_cached", no_medians)
     monkeypatch.setattr(main, "_trout_for_state", lambda st: None)
-    monkeypatch.setattr(precompute, "_backfill_geometry", no_backfill)
+    monkeypatch.setattr(precompute, "_backfill_gauge_meta", no_backfill)
 
     out = asyncio.run(precompute.refresh_state("MD"))
     assert len(out) == 1 and out[0]["name"] == "Gunpowder Falls"
@@ -839,26 +674,6 @@ def test_precompute_refresh_state_persists(tmp_path, monkeypatch):
     rivers, _ = snap
     assert rivers and rivers[0]["name"] == "Gunpowder Falls"
     assert main._state_rivers_cache.get("MD") == rivers   # L1 warmed
-
-
-def test_river_lines_payload_from_db(tmp_path, monkeypatch):
-    import asyncio
-    monkeypatch.setattr(db, "DB_PATH", str(tmp_path / "t.db"))
-    db.init_db()
-    fc = {"type": "FeatureCollection", "features": [
-        {"type": "Feature", "properties": {},
-         "geometry": {"type": "LineString",
-                      "coordinates": [[-77, 39], [-77.1, 39.1]]}}]}
-    db.put_river_geom("01581920", fc)
-    rivers = [{"site_no": "01581920", "color": "#2ecc71"},
-              {"site_no": "99999999", "color": "#e74c3c"}]  # no geom -> miss
-    out, missing = asyncio.run(main._river_lines_payload(rivers))
-    assert out["type"] == "FeatureCollection"
-    assert len(out["features"]) == 1
-    f = out["features"][0]
-    assert f["properties"] == {"site_no": "01581920", "color": "#2ecc71"}
-    assert f["geometry"]["type"] == "LineString"
-    assert len(missing) == 1 and missing[0]["site_no"] == "99999999"
 
 
 def test_refresh_focused_single_flight(monkeypatch):
@@ -1070,7 +885,7 @@ def _seed_vaa(tmp_path, monkeypatch, rows):
             conn.commit()
 
 
-def test_db_vaa_lookup_single_and_batched(tmp_path, monkeypatch):
+def test_db_vaa_lookup_single(tmp_path, monkeypatch):
     _seed_vaa(tmp_path, monkeypatch, [
         {"comid": 100, "levelpathid": 5000, "gnis_name": "Gunpowder Falls"},
         {"comid": 200, "levelpathid": 6000, "gnis_name": "Minebank Run"},
@@ -1078,9 +893,7 @@ def test_db_vaa_lookup_single_and_batched(tmp_path, monkeypatch):
     ])
     assert db.get_vaa(100)["levelpathid"] == 5000
     assert db.get_vaa(999) is None                                # absent
-    got = db.get_vaas([100, 200, 999])
-    assert set(got) == {100, 200}
-    assert got[100]["gnis_name"] == "Gunpowder Falls"
+    assert db.get_vaa(200)["gnis_name"] == "Minebank Run"
 
 
 def test_bulk_load_vaa_idempotent(tmp_path, monkeypatch):
@@ -1108,47 +921,6 @@ def test_bulk_load_vaa_idempotent(tmp_path, monkeypatch):
     assert db.get_vaa(100)["gnis_name"] == "Gunpowder Falls"
 
 
-def test_filter_flowlines_by_levelpath_keeps_only_matching(tmp_path, monkeypatch):
-    """The Georges-Run-onto-Gunpowder case, by LevelPathID this time:
-    walked features span two LevelPathIDs; filter keeps only the
-    gauge's path."""
-    _seed_vaa(tmp_path, monkeypatch, [
-        {"comid": 111, "levelpathid": 5000, "gnis_name": "Georges Run"},
-        {"comid": 222, "levelpathid": 9999, "gnis_name": "Gunpowder Falls"},
-        {"comid": 333, "levelpathid": 9999, "gnis_name": "Gunpowder Falls"},
-    ])
-    feats = [
-        {"type": "Feature", "properties": {"nhdplus_comid": "111"},
-         "geometry": {"type": "LineString",
-                      "coordinates": [[-76.69, 39.61], [-76.69, 39.60]]}},
-        {"type": "Feature", "properties": {"nhdplus_comid": "222"},
-         "geometry": {"type": "LineString",
-                      "coordinates": [[-76.69, 39.55], [-76.70, 39.50]]}},
-        {"type": "Feature", "properties": {"nhdplus_comid": "333"},
-         "geometry": {"type": "LineString",
-                      "coordinates": [[-76.71, 39.45], [-76.72, 39.40]]}},
-    ]
-    kept = main._filter_flowlines_by_levelpath(feats, target_lpid=5000)
-    assert len(kept) == 1
-    assert kept[0]["properties"]["nhdplus_comid"] == "111"
-
-
-def test_filter_flowlines_by_levelpath_no_fallback_on_mismatch(tmp_path, monkeypatch):
-    """Critical: when no features share the target LevelPathID, return
-    empty -- never fall back to the unfiltered set. (That fallback is
-    exactly what re-introduced the cross-confluence bleed previously.)"""
-    _seed_vaa(tmp_path, monkeypatch, [
-        {"comid": 222, "levelpathid": 9999, "gnis_name": "Gunpowder Falls"},
-    ])
-    feats = [
-        {"type": "Feature", "properties": {"nhdplus_comid": "222"},
-         "geometry": {"type": "LineString",
-                      "coordinates": [[-76.69, 39.55], [-76.70, 39.50]]}},
-    ]
-    kept = main._filter_flowlines_by_levelpath(feats, target_lpid=5000)
-    assert kept == []
-
-
 def test_nldi_gauge_meta_includes_levelpath_when_vaa_loaded(tmp_path, monkeypatch):
     """gauge_meta carries `levelpathid` pulled from the local VAA when
     the gauge's COMID is present."""
@@ -1173,49 +945,6 @@ def test_nldi_gauge_meta_includes_levelpath_when_vaa_loaded(tmp_path, monkeypatc
     assert meta["comid"] == "12345"
     assert meta["gnis_name"] == "Gunpowder Falls"
     assert meta["levelpathid"] == 5000
-
-
-def test_nldi_flowline_prefers_levelpath_filter(tmp_path, monkeypatch):
-    """When VAA covers the gauge AND the walked features, the
-    LevelPathID filter runs (not the gnis fallback)."""
-    _seed_vaa(tmp_path, monkeypatch, [
-        {"comid": 12345, "levelpathid": 5000, "gnis_name": "Gunpowder Falls"},
-        {"comid": 111, "levelpathid": 5000, "gnis_name": "Gunpowder Falls"},
-        {"comid": 222, "levelpathid": 9999, "gnis_name": "Long Green Creek"},
-    ])
-    main._river_geom_cache.clear()
-    monkeypatch.setattr(
-        main, "_nldi_gauge_meta",
-        lambda s: {"comid": "12345", "gnis_name": "Gunpowder Falls",
-                   "levelpathid": 5000})
-    gnis_called = {"n": 0}
-
-    def fake_gnis_filter(feats, target):
-        gnis_called["n"] += 1
-        return feats
-
-    monkeypatch.setattr(main, "_filter_flowlines_by_gnis", fake_gnis_filter)
-
-    seg_own = {"type": "Feature", "properties": {"nhdplus_comid": "111"},
-               "geometry": {"type": "LineString",
-                            "coordinates": [[-76.69, 39.61], [-76.69, 39.60]]}}
-    seg_other = {"type": "Feature", "properties": {"nhdplus_comid": "222"},
-                 "geometry": {"type": "LineString",
-                              "coordinates": [[-76.69, 39.55], [-76.7, 39.5]]}}
-
-    monkeypatch.setattr(
-        main, "_fetch_nav",
-        lambda c, b, nav, dist: [seg_own] if nav == "UM" else [seg_other])
-
-    class CtxNoop:
-        def __enter__(self): return self
-        def __exit__(self, *a): return False
-        def get(self, *a, **k): raise AssertionError("fetcher monkeypatched")
-    monkeypatch.setattr(main.httpx, "Client", lambda *a, **k: CtxNoop())
-
-    fc = main._nldi_flowline("01581920")
-    assert gnis_called["n"] == 0                         # gnis tier didn't run
-    assert [f["properties"]["nhdplus_comid"] for f in fc["features"]] == ["111"]
 
 
 def test_shell_no_cache_middleware():
@@ -1316,7 +1045,6 @@ def test_caches_sized_for_lower_48_fanout():
     set without thrashing. Regression-protect the maxsize bumps."""
     assert main._state_rivers_cache.maxsize >= 48
     assert main._stats_cache.maxsize >= 6000
-    assert main._river_geom_cache.maxsize >= 1024
 
 
 # -- NLDI backoff on 429/503 throttling --

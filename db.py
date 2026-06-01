@@ -105,17 +105,10 @@ def init_db() -> None:
         cur.execute(
             "CREATE INDEX IF NOT EXISTS idx_pins_owner ON pins (owner_token)"
         )
-        # Durable cross-restart caches. site_no is a stable USGS id, so the
-        # PK doubles as the cache key. river_geom is immutable per site
-        # (NLDI flowline geometry never changes); river_stats carries a
-        # created_at so callers can treat medians as stale after ~30 days.
-        # Identical DDL on both backends (TEXT PK works everywhere).
-        cur.execute(
-            "CREATE TABLE IF NOT EXISTS river_geom ("
-            " site_no TEXT PRIMARY KEY,"
-            " geojson TEXT NOT NULL,"
-            " created_at TEXT NOT NULL)"
-        )
+        # Durable cross-restart cache. site_no is a stable USGS id, so the
+        # PK doubles as the cache key; river_stats carries a created_at so
+        # callers can treat medians as stale after ~30 days. Identical DDL
+        # on both backends (TEXT PK works everywhere).
         cur.execute(
             "CREATE TABLE IF NOT EXISTS river_stats ("
             " site_no TEXT PRIMARY KEY,"
@@ -133,23 +126,14 @@ def init_db() -> None:
             " payload TEXT NOT NULL,"
             " updated_at TEXT NOT NULL)"
         )
-        # Authoritative per-gauge NHD identity: comid + gnis_name from
-        # NLDI. Used to label rivers by their real NHD name (so a small
-        # tributary's gauge doesn't visually label the larger river its
-        # flowline reaches). Immutable per site -- once cached, forever.
+        # Authoritative per-gauge NHD identity: comid + gnis_name +
+        # levelpathid from NLDI/VAA. Used to label rivers by their real NHD
+        # name (so a small tributary's gauge doesn't visually label the
+        # larger river) and to match clicked reaches by levelpath. Immutable
+        # per site -- once cached, forever.
         cur.execute(
             "CREATE TABLE IF NOT EXISTS gauge_meta ("
             " site_no TEXT PRIMARY KEY,"
-            " payload TEXT NOT NULL,"
-            " created_at TEXT NOT NULL)"
-        )
-        # Per-COMID NHD attributes (just gnis_name today). Lets us trim
-        # an NLDI flowline walk to only the segments that share the
-        # gauge's GNIS name, so a tributary gauge's downstream walk no
-        # longer continues past the confluence onto the main stem.
-        cur.execute(
-            "CREATE TABLE IF NOT EXISTS comid_meta ("
-            " comid TEXT PRIMARY KEY,"
             " payload TEXT NOT NULL,"
             " created_at TEXT NOT NULL)"
         )
@@ -175,11 +159,15 @@ def init_db() -> None:
             "ON nhdplus_vaa(levelpathid)"
         )
         # clickable_streams + public_lands were retired when those layers
-        # moved to static vector tiles (M3). Drop the legacy tables so
-        # existing deployments reclaim the storage -- a one-time cleanup
-        # (a no-op once dropped); removable once all envs have migrated.
+        # moved to static vector tiles (M3). river_geom + comid_meta were
+        # retired with the river-lines flowline layer (its client layer went
+        # in PR #90; this drops the now-dead server cache). Drop the legacy
+        # tables so existing deployments reclaim the storage -- a one-time
+        # cleanup (a no-op once dropped); removable once all envs migrated.
         cur.execute("DROP TABLE IF EXISTS clickable_streams")
         cur.execute("DROP TABLE IF EXISTS public_lands")
+        cur.execute("DROP TABLE IF EXISTS river_geom")
+        cur.execute("DROP TABLE IF EXISTS comid_meta")
         # Real user accounts (Phase 1). Magic-link auth: no passwords
         # to manage. `display_name` defaults to the email's local part
         # at first sign-in; `deleted_at` enables soft delete so
@@ -350,55 +338,6 @@ def _upsert(table: str, key: str, payload_col: str, payload: str,
         conn.cursor().execute(sql, (key, payload, ts))
 
 
-def get_river_geom(site_no: str) -> dict | None:
-    """Cached NLDI flowline FeatureCollection for a site, or None.
-
-    Geometry is immutable per site, so there is no staleness check.
-    """
-    with _conn() as conn:
-        cur = conn.cursor()
-        cur.execute(
-            _ph("SELECT geojson FROM river_geom WHERE site_no = ?"),
-            (site_no,),
-        )
-        row = cur.fetchone()
-    if not row:
-        return None
-    try:
-        return json.loads(row["geojson"])
-    except (ValueError, TypeError):
-        return None
-
-
-def put_river_geom(site_no: str, fc: dict) -> None:
-    _upsert("river_geom", site_no, "geojson", json.dumps(fc))
-
-
-def get_river_geoms(site_nos: list[str]) -> dict[str, dict]:
-    """Batched flowline lookup for the /api/river_lines payload -- one
-    query instead of a per-site connection in a loop."""
-    if not site_nos:
-        return {}
-    placeholders = ",".join("?" for _ in site_nos)
-    with _conn() as conn:
-        cur = conn.cursor()
-        cur.execute(
-            _ph(
-                "SELECT site_no, geojson FROM river_geom "
-                f"WHERE site_no IN ({placeholders})"
-            ),
-            tuple(site_nos),
-        )
-        rows = cur.fetchall()
-    out: dict[str, dict] = {}
-    for r in rows:
-        try:
-            out[r["site_no"]] = json.loads(r["geojson"])
-        except (ValueError, TypeError):
-            continue
-    return out
-
-
 def get_river_snapshot(state: str) -> tuple[list, str] | None:
     """(rivers, updated_at_iso) for a state's last precomputed snapshot,
     or None if it has never been computed."""
@@ -468,26 +407,6 @@ def put_gauge_meta(site_no: str, meta: dict) -> None:
     _upsert("gauge_meta", site_no, "payload", json.dumps(meta))
 
 
-def get_comid_meta(comid: str) -> dict | None:
-    """gnis_name (and friends) for an NHD COMID, or None."""
-    with _conn() as conn:
-        cur = conn.cursor()
-        cur.execute(
-            _ph("SELECT payload FROM comid_meta WHERE comid = ?"), (comid,))
-        row = cur.fetchone()
-    if not row:
-        return None
-    try:
-        return json.loads(row["payload"])
-    except (ValueError, TypeError):
-        return None
-
-
-def put_comid_meta(comid: str, meta: dict) -> None:
-    _upsert("comid_meta", comid, "payload", json.dumps(meta),
-            key_col="comid")
-
-
 _VAA_COLS = ("comid", "hydroseq", "levelpathid", "streamlevel",
              "gnis_name", "lengthkm")
 
@@ -504,23 +423,6 @@ def get_vaa(comid: int) -> dict | None:
     if not row:
         return None
     return {k: row[k] for k in _VAA_COLS}
-
-
-def get_vaas(comids: list[int]) -> dict[int, dict]:
-    """Batched NHDPlusV2 attribute lookup -- one query for many COMIDs.
-    Used by the per-flowline LevelPathID filter in _nldi_flowline."""
-    if not comids:
-        return {}
-    ints = [int(c) for c in comids if c]
-    placeholders = ",".join("?" for _ in ints)
-    with _conn() as conn:
-        cur = conn.cursor()
-        cur.execute(
-            _ph(f"SELECT {','.join(_VAA_COLS)} FROM nhdplus_vaa "
-                f"WHERE comid IN ({placeholders})"),
-            tuple(ints))
-        rows = cur.fetchall()
-    return {r["comid"]: {k: r[k] for k in _VAA_COLS} for r in rows}
 
 
 def vaa_loaded() -> bool:

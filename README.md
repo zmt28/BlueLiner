@@ -150,7 +150,7 @@ Then flip `DATABASE_URL` in Render to the new connection string; the deploy's id
 
 ### Why the map is fast (precompute architecture)
 
-User requests never block on USGS/NLDI/ArcGIS. A background refresher (`precompute.py`) periodically assembles each focused state's rivers and flowline geometry and persists them to Postgres; `/api/rivers` and `/api/river_lines` are then pure DB reads (gzipped, `ETag`/`Cache-Control`, service-worker stale-while-revalidate). Because snapshots live in Postgres they survive a free-tier cold start, so even a just-woken worker paints from the last snapshot instead of a 25s live fetch. Non-focused states are computed lazily on first visit, then persisted.
+User requests never block on USGS/NLDI/ArcGIS. A background refresher (`precompute.py`) periodically assembles each focused state's rivers (and backfills each gauge's authoritative NHD identity) and persists them to Postgres; `/api/rivers` is then a pure DB read (gzipped, `ETag`/`Cache-Control`, service-worker stale-while-revalidate). Because snapshots live in Postgres they survive a free-tier cold start, so even a just-woken worker paints from the last snapshot instead of a 25s live fetch. Non-focused states are computed lazily on first visit, then persisted.
 
 Two GitHub Actions workflows in `.github/workflows/` close the loop:
 
@@ -224,9 +224,6 @@ Each monitoring station is scored based on current readings:
 - `GET /api/states` -- supported states (code, name, map center); drives the selector
 - `GET /streams?state=MD` -- raw live stream data from USGS NWIS for the specified state
 - `GET /api/rivers?state=MD` -- gauges grouped into rivers (rating, hatch, stocking, aggregated popup) as JSON
-- `GET /api/river_lines?state=MD` (or `?bbox=`) -- river flowline geometry as GeoJSON
-- `GET /api/river_geom?site_no=01581920` -- a single river's flowline geometry
-- `GET /api/clickable_streams?bbox=west,south,east,north&zoom=10` -- per-stream NHDPlus reaches for the viewport (zoom-gated); pure Postgres read via GiST `bbox &&`
 - `GET /api/trout?state=MD` -- designated trout water as GeoJSON (non-blocking; warms in the background)
 - `GET /api/access?state=MD` -- access points (ramps / walk-ins / piers / parking / wading) as GeoJSON; bundled baseline + state-DNR live overlay when configured
 - `GET /api/public_lands?bbox=west,south,east,north&zoom=10` -- PAD-US parcels overlapping the viewport (zoom-gated; capped at 500 features); pure Postgres read via GiST `bbox &&`
