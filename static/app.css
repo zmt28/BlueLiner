@@ -763,6 +763,13 @@ html, body {
     background: var(--bl-pin);
     transform: rotate(-45deg);
 }
+.legend-dot--stocked { background: var(--bl-stocked); position: relative; }
+.legend-dot--stocked::after {
+    content: ""; position: absolute;
+    top: 50%; left: 50%; width: 5px; height: 5px;
+    transform: translate(-50%, -50%);
+    border-radius: 50%; background: #fff;
+}
 
 /* Access-point markers: small colored discs with a single glyph
    (B/W/P) indicating the access type. Sits on top of the base map
@@ -779,6 +786,24 @@ html, body {
     border: 2px solid var(--bg-surface);
     box-shadow: 0 1px 3px rgba(11,22,34,0.35);
     cursor: pointer;
+}
+/* Stocked-water markers: a solid bl-stocked dot with a white center, so it
+   reads distinctly from the type-glyph access pins. */
+.stocked-marker { background: transparent; border: none; }
+.stocked-marker-pin {
+    width: 16px; height: 16px;
+    border-radius: 50%;
+    background: var(--bl-stocked);
+    border: 2px solid var(--bg-surface);
+    box-shadow: 0 1px 3px rgba(11,22,34,0.35);
+    position: relative;
+    cursor: pointer;
+}
+.stocked-marker-pin::after {
+    content: ""; position: absolute;
+    top: 50%; left: 50%; width: 5px; height: 5px;
+    transform: translate(-50%, -50%);
+    border-radius: 50%; background: #fff;
 }
 .ap-popup { font-size: var(--fs-meta); line-height: 1.4; color: var(--fg-1); }
 .ap-name { font-weight: var(--fw-bold); font-size: 14px; margin-bottom: 2px; }
