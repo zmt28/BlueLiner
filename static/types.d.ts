@@ -196,6 +196,35 @@ interface ClickableStreamProps {
   [key: string]: unknown;
 }
 
+/** /api/reach_detail response: context for an ungauged reach the user
+    clicked (hatches for its zone + nearby access/stocking). Conditions are
+    omitted -- the card shows a note since there's no gauge on the reach. */
+interface ReachHatchEntry {
+  common_name?: string;
+  insect?: string;
+  hook_sizes?: string;
+  time_of_day?: string;
+  patterns?: string[];
+}
+interface ReachAccessEntry {
+  name?: string;
+  type?: string;
+  access?: string;
+  notes?: string | null;
+  agency_url?: string | null;
+}
+interface ReachStockedEntry {
+  water?: string;
+  species?: string[];
+  category?: string;
+  agency_url?: string | null;
+}
+interface ReachDetail {
+  hatch: { zone?: string | null; active: ReachHatchEntry[] };
+  access: ReachAccessEntry[];
+  stocked: ReachStockedEntry[];
+}
+
 /** Semantic stream-classification bucket (uniform meaning across states): the
     raw per-state `trout_class` designations collapse into one of these. */
 type StreamBucket = "wild" | "stocked" | "unclassified";

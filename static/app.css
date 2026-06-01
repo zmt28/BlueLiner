@@ -1245,6 +1245,20 @@ html, body {
 .bl-section[open] > summary::after { transform: none; }
 .bl-section[open] > summary { border-bottom: 1px solid var(--border-1); }
 .bl-section-body { padding: var(--space-3) var(--space-4) var(--space-4); }
+/* Ungauged-reach card: compact rows for hatch / stocked / access lists,
+   filled async from /api/reach_detail. */
+.bl-reach-msg { font-size: var(--fs-meta); color: var(--fg-3); line-height: 1.4; }
+.bl-reach-sub {
+    font-size: var(--fs-caption); font-weight: var(--fw-semibold);
+    text-transform: uppercase; letter-spacing: var(--tracking-caption);
+    color: var(--fg-3); margin-bottom: var(--space-2);
+}
+.bl-reach-row { padding: var(--space-2) 0; border-top: 1px solid var(--border-1); }
+.bl-reach-row:first-of-type { border-top: none; }
+.bl-reach-row-title { font-size: var(--fs-meta); font-weight: var(--fw-semibold); color: var(--fg-1); }
+.bl-reach-sci { font-weight: 400; font-style: italic; color: var(--fg-3); font-size: var(--fs-caption); }
+.bl-reach-row-meta { font-size: var(--fs-caption); color: var(--fg-2); margin-top: 1px; }
+.bl-reach-row-try { font-size: var(--fs-caption); color: var(--bl-cond-good-700); margin-top: 1px; }
 .bl-hatch > summary { background: var(--bl-cond-good-50); color: var(--bl-cond-good-700); }
 /* Hatches tab: the section is no longer collapsible (it lives inside
    its own tab so the <details> wrapper was redundant). The title
