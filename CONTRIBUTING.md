@@ -161,42 +161,13 @@ so `resolve_data_file` always falls through to R2 in prod; dev
 unaffected. Unset `DATA_BASE_URL` to roll back -- the app uses
 whatever's bundled locally.
 
-### Postgres GiST bbox index (one-time migration)
-
-`init_db()` adds a `bbox box GENERATED STORED` column on
-`clickable_streams` + a GiST index on it (Postgres only -- SQLite stays
-on the 4-range b-tree path). Fresh deploys get this automatically. For
-**existing Postgres installs that pre-date the GiST migration**, the
-`ALTER TABLE ADD COLUMN` synchronously backfills 742K+ rows on first
-boot, which on a free-tier Postgres takes 3-5 min and blocks startup.
-To skip the startup penalty, run the migration manually in TablePlus
-(or `psql`) before the first deploy carrying this code:
-
-```sql
-ALTER TABLE clickable_streams
-  ADD COLUMN IF NOT EXISTS bbox box GENERATED ALWAYS AS (
-    box(
-      point(min_lon::double precision, min_lat::double precision),
-      point(max_lon::double precision, max_lat::double precision)
-    )
-  ) STORED;
-
-CREATE INDEX IF NOT EXISTS idx_clk_bbox_gist
-  ON clickable_streams USING GIST (bbox);
-
-ANALYZE clickable_streams;
-```
-
-After this, state-scale viewport queries that previously took 10s+ (and
-killed the gunicorn worker at the 120s timeout under concurrent panning)
-return in <100ms via `bbox && box(point(west, south), point(east, north))`.
-
 ### Refreshing PAD-US (public-lands overlay)
 
 `data/public_lands/public_lands.geojson.gz` is the bundled vector
 overlay for the "Public lands" filter checkbox. National (~80-150 MB
-gzipped) so it lives on R2 alongside the NHDPlus files; dev runs
-without it (loader no-ops cleanly, the layer just stays empty).
+gzipped) so it lives on R2 alongside the NHDPlus files. It's the
+input to the public-lands PMTiles build (scripts/build_public_lands_tiles.sh);
+the app serves those tiles from R2, not the GeoJSON directly.
 
 PAD-US 4.0 ships as a single ~1.6 GB geodatabase ZIP on ScienceBase.
 **ScienceBase routes files >1 GB through a captcha-gated, one-shot
@@ -248,19 +219,15 @@ To roll a new PAD-US vintage (4.0 -> 4.1 -> ...):
        data/public_lands/public_lands.geojson.gz \
        s3://bluelines-data/v1/public_lands.geojson.gz
    ```
-4. **Truncate the table** in TablePlus, then redeploy in Render:
-   ```sql
-   TRUNCATE public_lands;
+4. **Rebuild + upload the vector tiles.** Public lands is served as
+   PMTiles from R2 now -- there's no `public_lands` DB table anymore:
+   ```sh
+   INPUT=data/public_lands/public_lands.geojson.gz \
+   R2_BUCKET=bluelines-data R2_PREFIX=v1 R2_ENDPOINT="$R2_ENDPOINT" \
+     scripts/build_public_lands_tiles.sh --upload
    ```
-   `db.bulk_load_public_lands` skips when the table has any rows, so
-   refreshing requires the truncate. (Future work: a manifest table
-   that compares sha256 + row count and reloads automatically when
-   the upstream file changes.)
-5. **VACUUM ANALYZE** the table once the load completes so the
-   planner uses `idx_pl_bbox_gist` immediately:
-   ```sql
-   VACUUM ANALYZE public_lands;
-   ```
+   The client reads it via `VITE_PUBLIC_LANDS_TILES_URL` (already set in
+   Render), so no redeploy is needed unless that env changes.
 
 ## Validating
 
