@@ -3,13 +3,11 @@
  * GL JS (PR B2). Replaces the Leaflet layer-group version.
  *
  * Owns:
- *   - trout            state-wide trout streams (GeoJSON source + line
- *                       layer, lazy per-state)
  *   - access           type-coded access-point HTML markers (lazy per-state)
  *   - public-lands     PAD-US parcels (GeoJSON source + fill/line layers,
  *                       bbox-bound viewport fetch)
- *   - visibility setters + lazy-load fns: setTroutVisible / ensureTrout,
- *     setAccessVisible / ensureAccess, setPublicLandsVisible
+ *   - visibility setters + lazy-load fns: setAccessVisible / ensureAccess,
+ *     setPublicLandsVisible
  *   - the popup-html helpers (accessPopupHtml, publicLandsPopupHtml) and
  *     the access-marker element factory
  *
@@ -20,9 +18,9 @@
  */
 
 import maplibregl, { Marker, LayerSpecification } from "maplibre-gl";
-import { map, onMapReady, getGeoJSON } from "./map-setup";
+import { map, onMapReady } from "./map-setup";
 import { esc } from "./util";
-import { makePopup, createLayerTooltip } from "./popups";
+import { makePopup } from "./popups";
 import {
   PUBLIC_LANDS_TILES_ENABLED,
   PUBLIC_LANDS_TILES_URL,
@@ -30,60 +28,13 @@ import {
 } from "./config";
 import { ensurePmtilesProtocol } from "./tiles";
 
-const EMPTY_FC: GeoJsonFeatureCollection = { type: "FeatureCollection", features: [] };
-
 // Desired visibility (matches the HTML checkbox defaults; controls.ts
 // overrides from saved prefs before the map `load` fires).
-let _troutVisible = false;
 let _publicLandsVisible = false;
 let _accessVisible = false;
 
 function vis(on: boolean): "visible" | "none" {
   return on ? "visible" : "none";
-}
-
-// -- Trout streams ------------------------------------------------------
-
-onMapReady(() => {
-  map.addSource("trout", { type: "geojson", data: EMPTY_FC });
-  map.addLayer({
-    id: "trout",
-    type: "line",
-    source: "trout",
-    layout: { visibility: vis(_troutVisible), "line-cap": "round" },
-    paint: { "line-color": "#1abc9c", "line-width": 2.5, "line-opacity": 0.7 },
-  });
-  const tip = createLayerTooltip(map);
-  tip.bind("trout", (p) => {
-    const n = p.NAME || p.GNIS_Name || p.STream_Nam;
-    return n ? String(n) : null;
-  });
-});
-
-let troutLoadedState: string | null = null;
-let troutLoading = false;
-
-export function setTroutVisible(on: boolean): void {
-  _troutVisible = on;
-  if (map.getLayer("trout")) map.setLayoutProperty("trout", "visibility", vis(on));
-}
-
-export async function ensureTrout(state: string): Promise<void> {
-  if (troutLoadedState === state || troutLoading) return;
-  troutLoading = true;
-  try {
-    const t = await fetch(`/api/trout?state=${state}`).then((r) => r.json());
-    getGeoJSON("trout")?.setData(t);
-    troutLoadedState = state;
-  } catch (_) {
-    /* leave empty; user can re-toggle to retry */
-  } finally {
-    troutLoading = false;
-  }
-}
-
-export function resetTroutLoadedState(): void {
-  troutLoadedState = null;
 }
 
 // -- Access points ------------------------------------------------------

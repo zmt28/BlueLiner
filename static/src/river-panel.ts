@@ -9,10 +9,9 @@
  *   - the singleton panel state (_panelHideTimer, _selectedRiver,
  *     _lastPanelOpenTs) -- module-private; helpers below mediate
  *     reads/writes from outside this module
- *   - openRiverPanel(river, layer, baseStyle)  for gauged rivers
- *   - closeRiverPanel()
- *   - highlightRiver / clearRiverHighlight    for the clicked map
- *     layer's selection style
+ *   - openRiverPanel(river)                    for gauged rivers
+ *   - closeRiverPanel()                        (clears the clickable-
+ *     streams highlight via window.clearStreamHighlight)
  *   - autoLoadFlowChart(root)                 primary-gauge sparkline
  *   - wireRiverPanel()                        close button + ESC +
  *                                              click-outside handlers
@@ -41,17 +40,9 @@ import { sparkline, wireSparkHover } from "./sparkline";
 import { wireSnapSheet } from "./snap-sheet";
 import { map } from "./map-setup";
 
-/** A river-lines feature reference for the selection highlight. With
- *  promoteId site_no, `id` is the river's site_no. */
-export interface RiverHighlightRef {
-  source: string;
-  id: string | number;
-}
-
 // -- Panel state (module-private) --------------------------------------
 
 let _panelHideTimer: ReturnType<typeof setTimeout> | null = null;
-let _selectedFeature: RiverHighlightRef | null = null;
 let _lastPanelOpenTs = 0;
 
 // -- Panel-open primitives ---------------------------------------------
@@ -107,10 +98,7 @@ export function commitRiverPanelOpen(
 
 // -- Open / close ------------------------------------------------------
 
-export function openRiverPanel(
-  river: River,
-  highlight: RiverHighlightRef | null = null,
-): void {
+export function openRiverPanel(river: River): void {
   const got = prepareRiverPanel();
   if (!got) return;
   const { panel, body } = got;
@@ -121,7 +109,6 @@ export function openRiverPanel(
   if (window.wireTrend) window.wireTrend(body);
   if (window.wireCatch) window.wireCatch(body, river);
   autoLoadFlowChart(body);
-  highlightRiver(highlight);
   refreshIcons();
 }
 
@@ -132,28 +119,8 @@ export function closeRiverPanel(): void {
   _panelHideTimer = setTimeout(() => {
     panel.hidden = true;
   }, 240);
-  clearRiverHighlight();
-  // clearStreamHighlight lives in the clickable-streams code in
-  // app.js for PR B1f; reach via window. B1g's streams.ts extraction
-  // will let this be a direct ES import.
+  // Deselect the highlighted river reaches (the clickable-streams network).
   if (window.clearStreamHighlight) window.clearStreamHighlight();
-}
-
-// -- Selection highlight (map-layer side) ------------------------------
-
-export function highlightRiver(highlight: RiverHighlightRef | null): void {
-  clearRiverHighlight();
-  if (!highlight) return;
-  _selectedFeature = highlight;
-  // No-ops harmlessly if the feature isn't in the source yet.
-  map.setFeatureState(highlight, { selected: true });
-}
-
-export function clearRiverHighlight(): void {
-  if (_selectedFeature) {
-    map.setFeatureState(_selectedFeature, { selected: false });
-    _selectedFeature = null;
-  }
 }
 
 // -- Primary-gauge flow chart (auto-loaded on panel open) --------------
@@ -187,18 +154,9 @@ export function wireRiverPanel(): void {
     if (e.key === "Escape") closeRiverPanel();
   });
   // Clicking the empty map closes the panel. Guarded so the same
-  // click that opened it (via a layer) doesn't immediately close it.
+  // click that opened it (via a marker/layer) doesn't immediately close it.
   map.on("click", () => {
     if (Date.now() - _lastPanelOpenTs > 300) closeRiverPanel();
-  });
-  // renderRivers() re-`setData`s the river-lines GeoJSON on every viewport
-  // change, and setData clears feature-state — which would drop the red
-  // selection as the user pans/zooms. Re-apply it whenever the source
-  // reloads (mirrors how streams.ts re-applies on sourcedata).
-  map.on("sourcedata", (e) => {
-    if (e.sourceId === "river-lines" && e.isSourceLoaded && _selectedFeature) {
-      map.setFeatureState(_selectedFeature, { selected: true });
-    }
   });
 }
 
@@ -222,8 +180,6 @@ declare global {
     closeRiverPanel: typeof closeRiverPanel;
     prepareRiverPanel: typeof prepareRiverPanel;
     commitRiverPanelOpen: typeof commitRiverPanelOpen;
-    highlightRiver: typeof highlightRiver;
-    clearRiverHighlight: typeof clearRiverHighlight;
     autoLoadFlowChart: typeof autoLoadFlowChart;
     wireRiverPanel: typeof wireRiverPanel;
     // clearStreamHighlight is declared canonically in streams.ts (PR
@@ -239,7 +195,5 @@ window.openRiverPanel = openRiverPanel;
 window.closeRiverPanel = closeRiverPanel;
 window.prepareRiverPanel = prepareRiverPanel;
 window.commitRiverPanelOpen = commitRiverPanelOpen;
-window.highlightRiver = highlightRiver;
-window.clearRiverHighlight = clearRiverHighlight;
 window.autoLoadFlowChart = autoLoadFlowChart;
 window.wireRiverPanel = wireRiverPanel;

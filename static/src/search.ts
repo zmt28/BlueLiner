@@ -17,6 +17,7 @@
 
 import { map } from "./map-setup";
 import { openRiverPanel } from "./river-panel";
+import { highlightStream } from "./streams";
 import { riverLngLat } from "./coords";
 import { refreshIcons, esc } from "./util";
 
@@ -132,7 +133,12 @@ if (wrap && iconBtn && pill && input && results) {
 
   function selectRiver(r: River): void {
     map.flyTo({ center: riverLngLat(r), zoom: Math.max(map.getZoom(), 12) });
-    openRiverPanel(r, null);
+    openRiverPanel(r);
+    // Highlight the selected river's reaches in the clickable network.
+    highlightStream({
+      gnis_name: r.name,
+      levelpathid: r.levelpathids && r.levelpathids.length ? r.levelpathids[0] : null,
+    } as ClickableStreamProps);
     focused = false;
     pill!.classList.remove("is-focused");
     results!.hidden = true;

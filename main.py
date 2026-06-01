@@ -930,6 +930,7 @@ async def _assemble_rivers(time_series: list, trout_layers: list,
             "site_name": site_name, "site_no": site_no,
             "variables": variables, "conditions": conditions,
             "historical_median": historical_median,
+            "lat": latitude, "lon": longitude,
         })
 
     rivers: list[dict] = []
@@ -969,6 +970,15 @@ async def _assemble_rivers(time_series: list, trout_layers: list,
             "hatch_zone": zone["name"],
             "active_hatches": [e["common_name"] for e in active],
             "levelpathids": sorted(g["levelpathids"]),
+            # Per-gauge points (each USGS site's own location + condition) so
+            # the client can render one condition icon per gauge. Trimmed --
+            # popup_html (server-rendered) keeps the full per-gauge detail.
+            "gauges": [
+                {"lat": gg["lat"], "lon": gg["lon"], "site_no": gg["site_no"],
+                 "site_name": gg["site_name"],
+                 "conditions": {"overall": gg["conditions"]["overall"]}}
+                for gg in river["gauges"]
+            ],
             "popup_html": build_river_popup_html(river),
         })
     return rivers
