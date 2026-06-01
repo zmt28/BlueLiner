@@ -20,11 +20,9 @@
  * Cross-module deps:
  *   - state: getStates, setCurrentSt, STATE_ZOOM
  *   - map-setup: map, currentBaseKey, setBaseMap
- *   - map-layers: the 6 layer groups + ensureTrout + ensureAccess +
- *     loadPublicLands + the reset helpers
- *   - snap-sheet: wireSnapSheet
- *   - streams: setStreamColorMode, restyleStreams, clickableLayer,
- *     loadClickableStreams
+ *   - map-layers: the layer visibility setters + ensureTrout + ensureAccess
+ *     + the reset helpers
+ *   - streams: setStreamColorMode, restyleStreams, loadClickableStreams
  *   - rivers: loadRivers, renderRivers, loadVisibleRiverLines
  */
 
@@ -32,7 +30,6 @@ import { map, currentBaseKey, setBaseMap, setHydroVisible } from "./map-setup";
 import {
   ensureTrout,
   ensureAccess,
-  loadPublicLands,
   resetTroutLoadedState,
   resetAccessLoadedState,
   setTroutVisible,
@@ -466,7 +463,7 @@ wireLayerToggle("lyr-trout", setTroutVisible, () =>
 wireLayerToggle("lyr-access", setAccessVisible, () =>
   ensureAccess(window.getCurrentSt()),
 );
-wireLayerToggle("lyr-public-lands", setPublicLandsVisible, loadPublicLands);
+wireLayerToggle("lyr-public-lands", setPublicLandsVisible);
 wireLayerToggle("lyr-pins", setPinsVisible);
 
 // -- Base-map segmented control ------------------------------------
@@ -500,12 +497,9 @@ if (basemapSeg) {
 // coexist on the same event.) -----------------------------------------
 
 let _streamTimer: ReturnType<typeof setTimeout> | null = null;
-let _publicLandsTimer: ReturnType<typeof setTimeout> | null = null;
 map.on("moveend", () => {
   if (_streamTimer) clearTimeout(_streamTimer);
   _streamTimer = setTimeout(loadClickableStreams, 500);
-  if (_publicLandsTimer) clearTimeout(_publicLandsTimer);
-  _publicLandsTimer = setTimeout(loadPublicLands, 500);
 });
 
 // -- Reset filters button -----------------------------------------
