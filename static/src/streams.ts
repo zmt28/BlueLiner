@@ -26,6 +26,7 @@ import { map, onMapReady } from "./map-setup";
 import { esc } from "./util";
 import { STREAM_TILES_ENABLED, STREAM_TILES_URL, STREAM_SOURCE_LAYER } from "./config";
 import { ensurePmtilesProtocol } from "./tiles";
+import { setStockedStyleActive } from "./map-layers";
 import {
   prepareRiverPanel,
   commitRiverPanelOpen,
@@ -176,7 +177,13 @@ export function setStreamStyle(key: StreamStyle): void {
     map.setPaintProperty("clickable-streams", "line-color", colorExpr());
     map.setPaintProperty("clickable-streams", "line-opacity", opacityExpr());
   }
+  // The Stocked style force-shows the stocked-waters markers.
+  setStockedStyleActive(key === "stocked");
 }
+
+// Seed the stocked-marker coupling from the persisted style (setStreamStyle
+// isn't called on load -- the layer paints from _streamStyle at map-ready).
+setStockedStyleActive(_streamStyle === "stocked");
 
 const WIDTH_EXPR: ExpressionSpecification = [
   "case",

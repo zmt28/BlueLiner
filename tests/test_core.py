@@ -125,6 +125,54 @@ def test_access_unsupported_state_is_empty():
     assert fc == {"type": "FeatureCollection", "features": []}
 
 
+def test_stocking_geojson_shape():
+    """The /api/stocking response shape: GeoJSON Points with the stocked
+    water's fields (season pre-formatted) in properties for direct pin +
+    popup rendering."""
+    import stocking
+    fc = stocking.stocking_geojson("MD")
+    assert fc["type"] == "FeatureCollection"
+    assert fc["features"], "MD should have baseline stocked waters"
+    f0 = fc["features"][0]
+    assert f0["geometry"]["type"] == "Point"
+    lon, lat = f0["geometry"]["coordinates"]
+    assert -180 <= lon <= 180 and -90 <= lat <= 90
+    props = f0["properties"]
+    assert set(props) >= {"water", "species", "category", "season",
+                          "agency_url", "source"}
+    assert isinstance(props["species"], list)
+    assert "lat" not in props and "lon" not in props
+    # Unsupported state -> empty FC.
+    assert stocking.stocking_geojson("XX") == {"type": "FeatureCollection",
+                                               "features": []}
+
+
+def test_stocking_features_to_points_skips_bad(caplog):
+    """A malformed live feature is skipped (and logged), not allowed to
+    drop the whole overlay -- replacing the old silent pass."""
+    import stocking
+    feats = [
+        {"geometry": {"type": "Point", "coordinates": [-77.0, 39.0]},
+         "properties": {"WATER": "Good Creek", "SPECIES": "Brown, Rainbow"}},
+        {"geometry": None, "properties": {"WATER": "No geom"}},   # skipped
+        {"properties": {"WATER": "Missing geom key"}},            # skipped
+    ]
+    pts = stocking._features_to_points(feats, "http://agency")
+    assert len(pts) == 1
+    p = pts[0]
+    assert p["water"] == "Good Creek"
+    assert p["species"] == ["Brown", "Rainbow"]
+    assert p["lat"] == 39.0 and p["lon"] == -77.0
+
+
+def test_stocking_season_from_props():
+    import stocking
+    assert stocking._season_from_props({"SEASON_MONTHS": "3-6"}) == (3, 6)
+    assert stocking._season_from_props({}) == (1, 12)           # absent
+    assert stocking._season_from_props({"Season": "spring"}) == (1, 12)  # no nums
+    assert stocking._season_from_props({"SEASON_MONTHS": "99-6"}) == (1, 12)  # bad
+
+
 def test_nearby_access_proximity_and_ordering():
     """Spatial query mirrors stocking.nearby_stocked: nearest-first,
     bounded by ~buffer_deg. Used for any future 'nearby access' popup

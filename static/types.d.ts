@@ -233,6 +233,18 @@ type StreamBucket = "wild" | "stocked" | "unclassified";
     wild + stocked; the single styles emphasize one bucket and fade the rest. */
 type StreamStyle = "wild" | "stocked" | "all";
 
+/** /api/stocking feature properties (one per stocked water). */
+interface StockedFeatureProps {
+  water?: string;
+  species?: string[];
+  category?: string;
+  /** Pre-formatted season label, e.g. "Year-round" or "Mar–Jun". */
+  season?: string;
+  agency_url?: string | null;
+  source?: "baseline" | "live" | string;
+  [key: string]: unknown;
+}
+
 /** /api/access feature properties. */
 type AccessType = "boat_ramp" | "walk_in" | "pier" | "parking" | string;
 

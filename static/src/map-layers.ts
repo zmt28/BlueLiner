@@ -4,12 +4,15 @@
  *
  * Owns:
  *   - access           type-coded access-point HTML markers (lazy per-state)
+ *   - stocked          stocked-water HTML markers (lazy per-state); shown
+ *                       when the toggle is on OR the Stocked map style is active
  *   - public-lands     PAD-US parcels (GeoJSON source + fill/line layers,
  *                       bbox-bound viewport fetch)
  *   - visibility setters + lazy-load fns: setAccessVisible / ensureAccess,
+ *     setStockedVisible / setStockedStyleActive / ensureStocked,
  *     setPublicLandsVisible
- *   - the popup-html helpers (accessPopupHtml, publicLandsPopupHtml) and
- *     the access-marker element factory
+ *   - the popup-html helpers (accessPopupHtml, stockedPopupHtml,
+ *     publicLandsPopupHtml) and the marker element factories
  *
  * Sources/layers are added in onMapReady (MapLibre rejects addSource/
  * addLayer before the style `load` fires). Initial visibility reflects
@@ -19,6 +22,7 @@
 
 import maplibregl, { Marker, LayerSpecification } from "maplibre-gl";
 import { map, onMapReady } from "./map-setup";
+import { getCurrentSt } from "./state";
 import { esc } from "./util";
 import { makePopup } from "./popups";
 import {
@@ -125,6 +129,109 @@ export async function ensureAccess(state: string): Promise<void> {
 
 export function resetAccessLoadedState(): void {
   accessLoadedState = null;
+}
+
+// -- Stocked waters -----------------------------------------------------
+// Curated + live stocking points (one pin each). Shown when EITHER the
+// "Stocked waters" toggle is on OR the Stocked map style is active -- so the
+// style surfaces real stocking locations on top of the stocked-stream color.
+
+let stockedMarkers: Marker[] = [];
+let stockedLoadedState: string | null = null;
+let stockedLoading = false;
+let _stockedToggle = false; // the lyr-stocked checkbox
+let _stockedStyleActive = false; // the Stocked map style
+
+function makeStockedElement(): HTMLElement {
+  const wrap = document.createElement("div");
+  wrap.className = "stocked-marker";
+  wrap.innerHTML = `<div class="stocked-marker-pin"></div>`;
+  return wrap;
+}
+
+export function stockedPopupHtml(p: StockedFeatureProps): string {
+  const species = (p.species || []).join(", ");
+  const meta = [species, p.category ? esc(p.category) : "",
+                p.season ? esc(p.season) : ""].filter(Boolean).join(" &middot; ");
+  const link = p.agency_url
+    ? `<div class="ap-link"><a href="${esc(p.agency_url)}" target="_blank" ` +
+      `rel="noopener noreferrer">Stocking schedule &rarr;</a></div>`
+    : "";
+  return (
+    `<div class="ap-popup">` +
+    `<div class="ap-name">${esc(p.water || "Stocked water")}</div>` +
+    (meta ? `<div class="ap-meta">${meta}</div>` : "") +
+    link +
+    `</div>`
+  );
+}
+
+function _stockedShouldShow(): boolean {
+  return _stockedToggle || _stockedStyleActive;
+}
+
+function _applyStockedVisibility(): void {
+  const on = _stockedShouldShow();
+  for (const m of stockedMarkers) {
+    if (on) m.addTo(map);
+    else m.remove();
+  }
+  if (on) ensureStocked(getCurrentSt());
+}
+
+/** Wired to the lyr-stocked checkbox (the wireLayerToggle setter). */
+export function setStockedVisible(on: boolean): void {
+  _stockedToggle = on;
+  _applyStockedVisibility();
+}
+
+/** Called by streams.ts setStreamStyle -- the Stocked style force-shows the
+ *  layer regardless of the toggle. */
+export function setStockedStyleActive(on: boolean): void {
+  _stockedStyleActive = on;
+  _applyStockedVisibility();
+}
+
+/** State changed: drop the cache and reload only if the layer is showing. */
+export function refreshStockedForState(state: string): void {
+  stockedLoadedState = null;
+  if (_stockedShouldShow()) ensureStocked(state);
+}
+
+export async function ensureStocked(state: string): Promise<void> {
+  if (stockedLoadedState === state || stockedLoading) return;
+  stockedLoading = true;
+  try {
+    const fc: GeoJsonFeatureCollection<StockedFeatureProps> = await fetch(
+      `/api/stocking?state=${state}`,
+    ).then((r) => r.json());
+    for (const m of stockedMarkers) m.remove();
+    stockedMarkers = [];
+    const show = _stockedShouldShow();
+    for (const f of fc.features || []) {
+      const c =
+        f.geometry && "coordinates" in f.geometry
+          ? (f.geometry.coordinates as [number, number])
+          : null;
+      const p = f.properties || ({} as StockedFeatureProps);
+      if (!c || c.length < 2) continue;
+      const el = makeStockedElement();
+      // Selecting a stocked water is a POI click -> close the rail panel.
+      el.addEventListener("click", () =>
+        document.dispatchEvent(new Event("bl:poi-open")),
+      );
+      const m = new maplibregl.Marker({ element: el, anchor: "center" })
+        .setLngLat([c[0], c[1]])
+        .setPopup(makePopup().setHTML(stockedPopupHtml(p)));
+      stockedMarkers.push(m);
+      if (show) m.addTo(map);
+    }
+    stockedLoadedState = state;
+  } catch (_) {
+    /* leave empty; user can re-toggle to retry */
+  } finally {
+    stockedLoading = false;
+  }
 }
 
 // -- Public lands (PAD-US) ----------------------------------------------

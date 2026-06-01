@@ -30,6 +30,8 @@ import {
   ensureAccess,
   resetAccessLoadedState,
   setAccessVisible,
+  setStockedVisible,
+  refreshStockedForState,
   setPublicLandsVisible,
 } from "./map-layers";
 import {
@@ -72,6 +74,9 @@ function onFilterChange(): void {
   // their visibility toggles).
   resetAccessLoadedState();
   if ((document.getElementById("lyr-access") as HTMLInputElement).checked) ensureAccess(s);
+  // Stocked markers reload for the new state if they're showing (toggle or
+  // the Stocked map style); refreshStockedForState owns that decision.
+  refreshStockedForState(s);
 };
 
 // -- Map chrome: rail (desktop) / tab bar (mobile) + side panel/sheet
@@ -425,6 +430,9 @@ wireLayerToggle("lyr-usgs", setHydroVisible);
 wireLayerToggle("lyr-access", setAccessVisible, () =>
   ensureAccess(window.getCurrentSt()),
 );
+// setStockedVisible already triggers the lazy load via its visibility apply,
+// so no onShow callback is needed here.
+wireLayerToggle("lyr-stocked", setStockedVisible);
 wireLayerToggle("lyr-public-lands", setPublicLandsVisible);
 wireLayerToggle("lyr-pins", setPinsVisible);
 
