@@ -1302,22 +1302,7 @@ def test_resolve_data_file_downloads_when_configured(tmp_path, monkeypatch):
     assert out != missing and open(out, "rb").read() == b"remote-bytes"
 
 
-# -- lower-48 scale: bbox lat index + cache sizing --
-
-def test_clickable_streams_has_both_bbox_indexes(tmp_path, monkeypatch):
-    """At national scale the lon-only index leaves half the table for
-    the lat predicate to scan; init_db must create both."""
-    monkeypatch.setattr(db, "DB_PATH", str(tmp_path / "t.db"))
-    db.init_db()
-    with db._conn() as conn:
-        cur = conn.cursor()
-        cur.execute(
-            "SELECT name FROM sqlite_master "
-            "WHERE type='index' AND tbl_name='clickable_streams'")
-        names = {row[0] for row in cur.fetchall()}
-    assert "idx_clk_lon" in names
-    assert "idx_clk_lat" in names
-
+# -- lower-48 scale: cache sizing --
 
 def test_caches_sized_for_lower_48_fanout():
     """48-state lazy fanout: caches must hold the full national working
@@ -1325,42 +1310,6 @@ def test_caches_sized_for_lower_48_fanout():
     assert main._state_rivers_cache.maxsize >= 48
     assert main._stats_cache.maxsize >= 6000
     assert main._river_geom_cache.maxsize >= 1024
-
-
-# -- Public lands (PAD-US 4.0): schema --
-
-def test_public_lands_has_bbox_indexes(tmp_path, monkeypatch):
-    """init_db() must create both the b-tree lat + lon indexes (used
-    by the SQLite dev path) on public_lands. The PG GiST index is
-    only built on the Postgres backend so it's not exercised here --
-    Phase B verification covers it via EXPLAIN ANALYZE in prod."""
-    monkeypatch.setattr(db, "DB_PATH", str(tmp_path / "t.db"))
-    db.init_db()
-    with db._conn() as conn:
-        cur = conn.cursor()
-        cur.execute(
-            "SELECT name FROM sqlite_master "
-            "WHERE type='index' AND tbl_name='public_lands'")
-        names = {row[0] for row in cur.fetchall()}
-    assert "idx_pl_lon" in names
-    assert "idx_pl_lat" in names
-    assert "idx_pl_mgr" in names
-
-
-def test_polygon_bbox_handles_polygon_and_multipolygon():
-    """The bulk loader computes per-feature bbox from raw geometry
-    coords without going through shapely (faster). Verify both
-    Polygon and MultiPolygon shapes -- regression guard for the
-    common ijson-Decimal-coord shape."""
-    poly_coords = [[[-77.5, 38.5], [-77.0, 38.5], [-77.0, 39.0],
-                    [-77.5, 39.0], [-77.5, 38.5]]]
-    w, s, e, n = db._polygon_bbox(poly_coords, "Polygon")
-    assert (w, s, e, n) == (-77.5, 38.5, -77.0, 39.0)
-    multi_coords = [poly_coords,
-                    [[[-78.0, 37.0], [-77.5, 37.0], [-77.5, 37.5],
-                      [-78.0, 37.5], [-78.0, 37.0]]]]
-    w, s, e, n = db._polygon_bbox(multi_coords, "MultiPolygon")
-    assert (w, s, e, n) == (-78.0, 37.0, -77.0, 39.0)
 
 
 # -- NLDI backoff on 429/503 throttling --

@@ -51,14 +51,6 @@ _REFRESH_INTERVAL = float(os.environ.get("REFRESH_INTERVAL", str(45 * 60)))
 # NHDPlusV2 VAA lookup -- bundled with the repo, loaded once at startup.
 _VAA_BUNDLED_PATH = os.path.join(os.path.dirname(__file__), "data",
                                  "nhdplus", "vaa.csv.gz")
-_CLICKABLE_BUNDLED_PATH = os.path.join(os.path.dirname(__file__), "data",
-                                       "nhdplus", "clickable_streams.geojson.gz")
-# Public-lands parcels (Phase B). Like the clickable streams file, the
-# national PAD-US export lives on R2 and is fetched via DATA_BASE_URL;
-# dev runs without a bundled fallback (the loader no-ops when absent).
-_PUBLIC_LANDS_BUNDLED_PATH = os.path.join(
-    os.path.dirname(__file__), "data", "public_lands",
-    "public_lands.geojson.gz")
 
 # Module-level caches. All bounded (LruTtl) -- unbounded per-state dicts
 # were the runtime memory growth behind the 512MB OOM. Both are also
@@ -117,31 +109,8 @@ async def lifespan(app: FastAPI):
         except Exception as exc:
             logger.warning("NHDPlus VAA load failed: %s "
                            "(falling back to gnis filter)", exc)
-        # Clickable-stream network (Phase B). ~100K flowlines from the
-        # bundled GeoJSON, served by viewport bbox + zoom tier. Idempotent.
-        try:
-            n = await asyncio.to_thread(
-                lambda: db.bulk_load_clickable_streams(
-                    data_source.resolve_data_file(
-                        _CLICKABLE_BUNDLED_PATH,
-                        "clickable_streams.geojson.gz")))
-            if n:
-                logger.info("Clickable streams loaded: %d rows", n)
-        except Exception as exc:
-            logger.warning("Clickable-streams load failed: %s", exc)
-        # Public-lands parcels (PAD-US 4.0). Loader is idempotent and
-        # no-ops cleanly when the file isn't present (dev without R2);
-        # in prod the bytes come from DATA_BASE_URL/public_lands.geojson.gz.
-        try:
-            n = await asyncio.to_thread(
-                lambda: db.bulk_load_public_lands(
-                    data_source.resolve_data_file(
-                        _PUBLIC_LANDS_BUNDLED_PATH,
-                        "public_lands.geojson.gz")))
-            if n:
-                logger.info("Public lands loaded: %d parcels", n)
-        except Exception as exc:
-            logger.warning("Public-lands load failed: %s", exc)
+        # (Clickable-streams + public-lands are served as static vector
+        # tiles from R2 now; their boot-time DB ingest was retired in M3.)
 
     # The refresher is what makes the map instant: it keeps each focused
     # state's snapshot + flowline geometry warm in Postgres so requests
