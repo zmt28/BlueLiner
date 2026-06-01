@@ -11,11 +11,14 @@
  * MapLibre specifics vs the old Leaflet version:
  *   - Two line layers off one source: a styled visible line and a
  *     transparent fat "hit" casing for touch. Clicks bind to the hit layer.
- *   - Color is a data-driven `match` on trout_class (streams are always
- *     trout-class colored now -- live conditions live on the per-gauge
- *     icons); width an `interpolate` on streamorder.
+ *   - Color is a data-driven `match` on trout_class, collapsed into three
+ *     semantic buckets (wild / stocked-managed / unclassified). The active
+ *     "Map Style" (wild / stocked / all) chooses which buckets are emphasized
+ *     vs faded -- swapped at runtime via setPaintProperty, no refetch. Width
+ *     is an `interpolate` on streamorder.
  *   - Selection highlight is feature-state ("selected"); re-applied
- *     after each setData so it persists/extends as the user pans.
+ *     after each setData so it persists/extends as the user pans, and it
+ *     survives a style swap (feature-state is independent of paint).
  */
 
 import maplibregl, { ExpressionSpecification, LayerSpecification } from "maplibre-gl";
@@ -29,14 +32,36 @@ import {
   openRiverPanel,
 } from "./river-panel";
 
-const STREAM_CLASS_COLORS: Record<string, string> = {
-  class_a: "#b8860b",
-  wilderness: "#117a65",
-  wild_reproduction: "#1e8449",
-  stocked: "#2c6fbf",
-  designated: "#27ae60",
+// -- Stream classification: three universal buckets ------------------
+// The tiles carry the raw per-state agency designation in `trout_class`
+// (PA: class_a/wilderness/wild_reproduction/stocked; VA: wild_reproduction;
+// MD: designated; everywhere else: null). Those don't form a tier that means
+// the same thing across states, so we collapse them into three buckets that
+// DO carry uniform meaning, then color by bucket.
+
+/** trout_class value -> semantic bucket. Unlisted / null -> "unclassified". */
+const STREAM_BUCKET: Record<string, StreamBucket> = {
+  class_a: "wild",
+  wilderness: "wild",
+  wild_reproduction: "wild",
+  stocked: "stocked",
+  designated: "stocked",
 };
 
+const BUCKET_COLOR: Record<StreamBucket, string> = {
+  wild: "#1e8449", // green -- agency-confirmed wild reproduction
+  stocked: "#2c6fbf", // blue -- stocked / managed trout water
+  unclassified: "#8a9bb0", // grey -- network reach with no trout designation
+};
+
+/** Faded color for reaches a Map Style de-emphasizes (de-emphasized buckets +
+ *  always-unclassified). Same grey as the unclassified bucket / legend swatch;
+ *  it recedes via low opacity (see bucketOpacityMatch), not a different hue. */
+const FAINT = BUCKET_COLOR.unclassified;
+
+/** Full per-state designation labels, kept for the (detail-rich) ungauged
+ *  card -- the map only shows the three buckets, but the card can name the
+ *  exact agency designation. */
 export const STREAM_CLASS_LABEL: Record<string, string> = {
   class_a: "Class A wild trout",
   wilderness: "Wilderness trout",
@@ -45,37 +70,112 @@ export const STREAM_CLASS_LABEL: Record<string, string> = {
   designated: "Designated trout",
 };
 
+export function streamBucket(p: ClickableStreamProps): StreamBucket {
+  const cls = p.trout_class;
+  return (cls && STREAM_BUCKET[String(cls)]) || "unclassified";
+}
+
 let _streamsVisible = true; // lyr-fishable default checked
 
-/** Per-class color, used by the ungauged-card badge. Streams are always
- *  colored by trout class (the trout/conditions toggle was removed -- live
- *  conditions live on the per-gauge icons now). */
+/** Bucket color, used by the ungauged-card badge. */
 export function streamColor(p: ClickableStreamProps): string {
-  const cls = p.trout_class;
-  return (cls && STREAM_CLASS_COLORS[String(cls)]) || "#8a9bb0";
+  return BUCKET_COLOR[streamBucket(p)];
+}
+
+// -- Map Style (which buckets a style emphasizes) --------------------
+// A "Map Style" is a viewing lens over the one stream network: it chooses
+// which buckets render in full color vs faded. Mirrors the base-map switcher
+// (setBaseMap in map-setup.ts): persisted to localStorage, swapped at runtime
+// via setPaintProperty.
+
+const STREAM_STYLE_BUCKETS: Record<StreamStyle, StreamBucket[]> = {
+  wild: ["wild"],
+  stocked: ["stocked"],
+  all: ["wild", "stocked"],
+};
+
+function loadStreamStylePref(): StreamStyle {
+  try {
+    const v = localStorage.getItem("bl_stream_style");
+    if (v === "wild" || v === "stocked" || v === "all") return v;
+  } catch (_) {
+    /* localStorage unavailable */
+  }
+  return "all";
+}
+
+let _streamStyle: StreamStyle = loadStreamStylePref();
+
+export function currentStreamStyle(): StreamStyle {
+  return _streamStyle;
 }
 
 // -- Paint expressions ------------------------------------------------
 
-const TROUT_COLOR_MATCH: ExpressionSpecification = [
-  "match",
-  ["get", "trout_class"],
-  "class_a", "#b8860b",
-  "wilderness", "#117a65",
-  "wild_reproduction", "#1e8449",
-  "stocked", "#2c6fbf",
-  "designated", "#27ae60",
-  "#8a9bb0",
-] as unknown as ExpressionSpecification;
+/** Build the trout_class -> color `match` for a style: emphasized buckets get
+ *  their bucket color, the rest fade to grey. */
+function bucketColorMatch(style: StreamStyle): ExpressionSpecification {
+  const shown = new Set(STREAM_STYLE_BUCKETS[style]);
+  const colorFor = (b: StreamBucket): string =>
+    shown.has(b) ? BUCKET_COLOR[b] : FAINT;
+  return [
+    "match",
+    ["get", "trout_class"],
+    "class_a", colorFor("wild"),
+    "wilderness", colorFor("wild"),
+    "wild_reproduction", colorFor("wild"),
+    "stocked", colorFor("stocked"),
+    "designated", colorFor("stocked"),
+    FAINT, // unclassified is never "emphasized" -- always faint
+  ] as unknown as ExpressionSpecification;
+}
 
 function colorExpr(): ExpressionSpecification {
-  // Always trout-class colored; red when selected.
+  // Red when selected, else the active style's bucket coloring.
   return [
     "case",
     ["boolean", ["feature-state", "selected"], false],
     "#e74c3c",
-    TROUT_COLOR_MATCH,
+    bucketColorMatch(_streamStyle),
   ] as unknown as ExpressionSpecification;
+}
+
+/** Emphasized buckets sit at full opacity; faded buckets recede. */
+function bucketOpacityMatch(style: StreamStyle): ExpressionSpecification {
+  const shown = new Set(STREAM_STYLE_BUCKETS[style]);
+  const opFor = (b: StreamBucket): number => (shown.has(b) ? 0.85 : 0.3);
+  return [
+    "match",
+    ["get", "trout_class"],
+    "class_a", opFor("wild"),
+    "wilderness", opFor("wild"),
+    "wild_reproduction", opFor("wild"),
+    "stocked", opFor("stocked"),
+    "designated", opFor("stocked"),
+    0.3, // unclassified -- always receded
+  ] as unknown as ExpressionSpecification;
+}
+
+function opacityExpr(): ExpressionSpecification {
+  return [
+    "case",
+    ["boolean", ["feature-state", "selected"], false],
+    0.95,
+    bucketOpacityMatch(_streamStyle),
+  ] as unknown as ExpressionSpecification;
+}
+
+export function setStreamStyle(key: StreamStyle): void {
+  _streamStyle = key;
+  try {
+    localStorage.setItem("bl_stream_style", key);
+  } catch (_) {
+    /* localStorage unavailable; in-memory state still reflects */
+  }
+  if (map.getLayer("clickable-streams")) {
+    map.setPaintProperty("clickable-streams", "line-color", colorExpr());
+    map.setPaintProperty("clickable-streams", "line-opacity", opacityExpr());
+  }
 }
 
 const WIDTH_EXPR: ExpressionSpecification = [
@@ -83,13 +183,6 @@ const WIDTH_EXPR: ExpressionSpecification = [
   ["boolean", ["feature-state", "selected"], false],
   8,
   ["interpolate", ["linear"], ["coalesce", ["get", "streamorder"], 3], 1, 4, 7, 7],
-] as unknown as ExpressionSpecification;
-
-const OPACITY_EXPR: ExpressionSpecification = [
-  "case",
-  ["boolean", ["feature-state", "selected"], false],
-  0.95,
-  0.8,
 ] as unknown as ExpressionSpecification;
 
 function visStr(on: boolean): "visible" | "none" {
@@ -120,7 +213,7 @@ onMapReady(() => {
     paint: {
       "line-color": colorExpr(),
       "line-width": WIDTH_EXPR,
-      "line-opacity": OPACITY_EXPR,
+      "line-opacity": opacityExpr(),
     },
   } as LayerSpecification);
   // Transparent fat casing for touch targets; clicks bind here.

@@ -255,6 +255,15 @@
                             </button>
                         </div>
                     </section>
+                    <section class="panel-section">
+                        <div class="panel-section-label">Map style</div>
+                        <div class="filter-segment" id="stream-style" role="group" aria-label="Map style">
+                            <button type="button" data-style="wild">Wild Trout</button>
+                            <button type="button" data-style="stocked">Stocked</button>
+                            <button type="button" data-style="all" class="on">All Trout</button>
+                        </div>
+                        <p class="panel-note">Recolors the stream network through one lens. Wild and stocked/managed streams show in color; the rest fade back.</p>
+                    </section>
                 </div>
 
                 <!-- ===== Map Filters & Settings ===== -->
@@ -331,13 +340,11 @@
                         <div class="legend-item"><div class="legend-dot legend-dot--none"></div> No data &mdash; no live reading in range</div>
                     </section>
                     <section class="panel-section">
-                        <div class="panel-section-label">Streams (by trout class)</div>
-                        <div class="legend-item"><div class="legend-dot" style="background:#b8860b"></div> Class A wild trout</div>
-                        <div class="legend-item"><div class="legend-dot" style="background:#117a65"></div> Wilderness trout</div>
-                        <div class="legend-item"><div class="legend-dot" style="background:#1e8449"></div> Wild reproduction</div>
-                        <div class="legend-item"><div class="legend-dot" style="background:#2c6fbf"></div> Stocked trout</div>
-                        <div class="legend-item"><div class="legend-dot" style="background:#27ae60"></div> Designated trout</div>
-                        <div class="legend-item"><div class="legend-dot" style="background:#8a9bb0"></div> Unclassified</div>
+                        <div class="panel-section-label">Stream class</div>
+                        <div class="legend-item"><div class="legend-dot" style="background:#1e8449"></div> Wild trout &mdash; agency-confirmed wild reproduction</div>
+                        <div class="legend-item"><div class="legend-dot" style="background:#2c6fbf"></div> Stocked / managed &mdash; stocked or designated trout water</div>
+                        <div class="legend-item"><div class="legend-dot" style="background:#8a9bb0"></div> Unclassified &mdash; no trout designation</div>
+                        <div class="legend-item" style="font-size:var(--fs-caption);color:var(--fg-3);line-height:1.3;margin-top:var(--space-2)">The Map Style (Map Layers tab) emphasizes Wild, Stocked, or both.</div>
                     </section>
                     <section class="panel-section">
                         <div class="panel-section-label">Other</div>
