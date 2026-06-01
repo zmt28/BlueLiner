@@ -35,6 +35,8 @@ import {
 import {
   loadClickableStreams,
   setStreamsVisible,
+  setStreamStyle,
+  currentStreamStyle,
 } from "./streams";
 import {
   loadRivers,
@@ -443,6 +445,29 @@ if (basemapSeg) {
         "button[data-base]",
       )) {
         sib.classList.toggle("on", sib.dataset.base === key);
+      }
+    });
+  }
+}
+
+// -- Map Style segmented control (stream coloring lens) ------------
+// Mirrors the base-map control: reflect the persisted style, and on click
+// restyle the stream network (setPaintProperty under the hood -- no refetch).
+
+const streamStyleSeg = document.getElementById("stream-style");
+if (streamStyleSeg) {
+  const initialStyle = currentStreamStyle();
+  for (const btn of streamStyleSeg.querySelectorAll<HTMLButtonElement>(
+    "button[data-style]",
+  )) {
+    btn.classList.toggle("on", btn.dataset.style === initialStyle);
+    btn.addEventListener("click", () => {
+      const key = btn.dataset.style as StreamStyle;
+      setStreamStyle(key);
+      for (const sib of streamStyleSeg.querySelectorAll<HTMLButtonElement>(
+        "button[data-style]",
+      )) {
+        sib.classList.toggle("on", sib.dataset.style === key);
       }
     });
   }

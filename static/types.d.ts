@@ -194,10 +194,21 @@ interface TroutFeatureProps {
 interface ClickableStreamProps {
   gnis_name?: string | null;
   levelpathid?: number;
-  trout_class?: number | null;
+  /** Raw per-state agency designation baked into the tiles, e.g. "class_a",
+      "wilderness", "wild_reproduction", "stocked", "designated", or null. The
+      client collapses these into StreamBucket values for coloring. */
+  trout_class?: string | null;
   streamorder?: number;
   [key: string]: unknown;
 }
+
+/** Semantic stream-classification bucket (uniform meaning across states): the
+    raw per-state `trout_class` designations collapse into one of these. */
+type StreamBucket = "wild" | "stocked" | "unclassified";
+
+/** Map Style: the viewing lens over the stream network. "all" emphasizes both
+    wild + stocked; the single styles emphasize one bucket and fade the rest. */
+type StreamStyle = "wild" | "stocked" | "all";
 
 /** /api/access feature properties. */
 type AccessType = "boat_ramp" | "walk_in" | "pier" | "parking" | string;
