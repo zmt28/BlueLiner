@@ -319,6 +319,29 @@ def test_states_in_bbox():
     assert states.states_in_bbox(-30.0, 10.0, -29.0, 11.0) == []  # Atlantic ocean
 
 
+def test_point_in_state():
+    import states
+    assert states.point_in_state(39.4, -76.4) == "MD"       # Gunpowder Falls
+    assert states.point_in_state(39.0, -105.5) == "CO"      # Colorado Rockies
+    assert states.point_in_state(10.0, -30.0) is None       # Atlantic ocean
+
+
+def test_reach_detail_payload_shape():
+    # Gunpowder Falls, MD -- a reach with hatch zone + likely nearby data.
+    payload = main._reach_detail_payload(39.4, -76.4, "Gunpowder Falls")
+    assert set(payload) == {"hatch", "access", "stocked"}
+    assert isinstance(payload["hatch"]["active"], list)
+    assert isinstance(payload["access"], list)
+    assert isinstance(payload["stocked"], list)
+    # Hatch entries are trimmed to the card's fields.
+    for e in payload["hatch"]["active"]:
+        assert set(e) >= {"common_name", "patterns"}
+        assert len(e["patterns"]) <= 2
+    # Ocean point -> no state -> empty access/stocked, hatch still resolves.
+    empty = main._reach_detail_payload(10.0, -30.0, None)
+    assert empty["access"] == [] and empty["stocked"] == []
+
+
 def test_parse_bbox(monkeypatch):
     assert main._parse_bbox("-77,38,-76,39") == (-77.0, 38.0, -76.0, 39.0)
     for bad in ("1,2,3", "a,b,c,d", "-76,38,-77,39",      # short / nan / w>e

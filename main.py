@@ -20,7 +20,7 @@ import random
 import re
 import time
 
-from states import STATES, STATE_BBOX, states_in_bbox
+from states import STATES, STATE_BBOX, states_in_bbox, point_in_state
 from trout import load_trout_streams, is_near_trout_stream
 import trout
 from arcgis import USER_AGENT
@@ -1327,6 +1327,64 @@ async def api_access(request: Request,
     # changes rarely. Long browser cache + day-long CDN cache like
     # /api/trout.
     return _cached_response(request, body, max_age=3600, s_max_age=86400)
+
+
+def _reach_hatch_block(name: str, lat: float, lon: float) -> dict:
+    """Active hatches for a reach's zone (curated override by name, else
+    the geographic zone for the point). Trimmed to what the ungauged
+    card renders."""
+    zone = hatches.zone_for_river(name or "", lat, lon)
+    active = hatches.active_hatches(zone, datetime.now(timezone.utc).month)
+    return {
+        "zone": zone.get("name"),
+        "active": [
+            {"common_name": e.get("common_name"), "insect": e.get("insect"),
+             "hook_sizes": e.get("hook_sizes"), "time_of_day": e.get("time_of_day"),
+             "patterns": (e.get("patterns") or [])[:2]}
+            for e in active[:6]
+        ],
+    }
+
+
+def _reach_detail_payload(lat: float, lon: float, name: str | None) -> dict:
+    """Hatch + nearby access/stocking for an ungauged reach at lat/lon.
+    Synchronous (cached, in-memory lookups); the endpoint runs it off the
+    event loop. ~0.03 deg ~= 3 km, matching the gauged panel's buffers."""
+    hatch = _reach_hatch_block(name or "", lat, lon)
+    state = point_in_state(lat, lon)
+    access: list[dict] = []
+    stocked: list[dict] = []
+    if state:
+        apts = access_points.load_access_points(state)
+        spts = stocking.stocked_points(state)
+        access = [
+            {"name": a.get("name"), "type": a.get("type"),
+             "access": a.get("access"), "notes": a.get("notes"),
+             "agency_url": a.get("agency_url")}
+            for a in access_points.nearby_access(lat, lon, apts, buffer_deg=0.03)[:6]
+        ]
+        stocked = [
+            {"water": s.get("water"), "species": s.get("species") or [],
+             "category": s.get("category"), "agency_url": s.get("agency_url")}
+            for s in stocking.nearby_stocked(lat, lon, spts, buffer_deg=0.03)[:6]
+        ]
+    return {"hatch": hatch, "access": access, "stocked": stocked}
+
+
+@app.get("/api/reach_detail")
+async def api_reach_detail(
+    request: Request,
+    lat: float = Query(..., ge=-90, le=90),
+    lon: float = Query(..., ge=-180, le=180),
+    name: str | None = Query(default=None, max_length=120),
+):
+    """Context for an ungauged stream reach the user clicked: active
+    hatches for its zone, plus nearby access points and stocked waters.
+    Conditions are intentionally omitted (no gauge on the reach); the
+    card shows a short note instead. All inputs are already public map
+    data, so no auth."""
+    payload = await asyncio.to_thread(_reach_detail_payload, lat, lon, name)
+    return _cached_json(request, payload, max_age=300)
 
 
 _NLDI_BASE = "https://api.water.usgs.gov/nldi/linked-data"

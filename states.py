@@ -105,3 +105,17 @@ def states_in_bbox(west: float, south: float, east: float,
             continue
         out.append(code)
     return out
+
+
+def point_in_state(lat: float, lon: float) -> str | None:
+    """The state whose bounding box contains the point, or None. Boxes
+    overlap at the edges, so on a tie the smallest-area box wins -- the
+    tighter fit is the better guess for a point near a shared border."""
+    best: str | None = None
+    best_area = float("inf")
+    for code, (la0, la1, lo0, lo1) in STATE_BBOX.items():
+        if la0 <= lat <= la1 and lo0 <= lon <= lo1:
+            area = (la1 - la0) * (lo1 - lo0)
+            if area < best_area:
+                best_area, best = area, code
+    return best
