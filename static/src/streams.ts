@@ -279,11 +279,20 @@ function _featMatchesKey(p: ClickableStreamProps, key: SelStreamKey): boolean {
 function _applyHighlight(key: SelStreamKey): void {
   const src = "clickable-streams";
   if (!map.getSource(src)) return;
-  const feats = map.querySourceFeatures(src);
+  // Vector (tile) sources require a sourceLayer for querySourceFeatures +
+  // feature-state; GeoJSON sources ignore it.
+  const feats = STREAM_TILES_ENABLED
+    ? map.querySourceFeatures(src, { sourceLayer: STREAM_SOURCE_LAYER })
+    : map.querySourceFeatures(src);
   for (const f of feats) {
     if (f.id == null) continue;
     if (_featMatchesKey((f.properties || {}) as ClickableStreamProps, key)) {
-      map.setFeatureState({ source: src, id: f.id }, { selected: true });
+      map.setFeatureState(
+        STREAM_TILES_ENABLED
+          ? { source: src, sourceLayer: STREAM_SOURCE_LAYER, id: f.id }
+          : { source: src, id: f.id },
+        { selected: true },
+      );
     }
   }
 }
@@ -301,7 +310,11 @@ export function highlightStream(p: ClickableStreamProps): void {
 export function clearStreamHighlight(): void {
   if (_selStreamKey == null) return;
   if (map.getSource("clickable-streams")) {
-    map.removeFeatureState({ source: "clickable-streams" });
+    map.removeFeatureState(
+      STREAM_TILES_ENABLED
+        ? { source: "clickable-streams", sourceLayer: STREAM_SOURCE_LAYER }
+        : { source: "clickable-streams" },
+    );
   }
   _selStreamKey = null;
 }
