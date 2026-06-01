@@ -20,16 +20,18 @@ Dev dependencies (NOT in runtime requirements.txt):
     pip install dbfread py7zr httpx geopandas shapely
 
 Run from repo root:
-    python scripts/build_clickable_streams.py                  # all regions
-    python scripts/build_clickable_streams.py --regions MA_02   # a subset
+    python scripts/build_clickable_streams.py                  # all 21 VPUs (lower 48)
+    python scripts/build_clickable_streams.py --regions 02,05   # a subset
     python scripts/build_clickable_streams.py --skip-download   # reuse cache
 
-The build is region-streaming: each NHDPlus region's geometry is read,
-joined, then discarded, so peak memory is ~(global COMID attr table + one
-region's geometry) rather than every region at once -- this is what lets the
-region list grow toward lower-48 coverage. Archives download+extract into
---cache-dir (default $TMPDIR/blueliner_nhd_cache) and persist across runs, so
---skip-download can reuse them. Features stream straight to the gzip output.
+The build covers the lower-48 NHDPlusV2 Vector Processing Units (the `VPUS`
+table); archive URLs are discovered from the S3 listing at build time so the
+per-release vintage suffixes never need hardcoding. It is region-streaming:
+each region's geometry is read, joined, then discarded, so peak memory is
+~(global COMID attr table + one region's geometry) rather than every region
+at once. Archives download+extract into --cache-dir (default
+$TMPDIR/blueliner_nhd_cache) and persist across runs, so --skip-download can
+reuse them. Features stream straight to the gzip output.
 """
 
 import argparse
@@ -37,10 +39,12 @@ import glob
 import gzip
 import json
 import os
+import re
 import sys
 import tempfile
 import time
 from collections import defaultdict
+from urllib.parse import quote
 
 import geopandas as gpd
 import httpx
@@ -50,25 +54,51 @@ from dbfread import DBF
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 OUT_PATH = os.path.join(ROOT, "data", "nhdplus", "clickable_streams.geojson.gz")
-S3 = "https://dmap-data-commons-ow.s3.amazonaws.com/NHDPlusV21/Data"
+S3_BUCKET = "https://dmap-data-commons-ow.s3.amazonaws.com"
 
 MIN_ORDER = 3
 SIMPLIFY_TOL = 0.0003
 COORD_GRID = 1e-5
 
-# For lower-48 national coverage, extend this list to all HUC-2
-# archives (HUC-01 through HUC-18 with sub-archive splits) by mirroring
-# the entries below; archive vintage suffixes (`_NHDSnapshot_<n>` /
-# `_NHDPlusAttributes_<n>`) vary per region -- consult the EPA
-# NHDPlusV21 S3 bucket index. PA/VA/MD trout endpoints below stay as-is;
-# other states ship without a `trout_class` tag (deferred enrichment).
+# ── NHDPlusV2 Vector Processing Units (VPUs) for the lower 48 ──
+# Each VPU lives under a Drainage Area directory `NHDPlus<DA>/`; multi-VPU
+# DAs additionally nest a `NHDPlus<VPU>/` subdir. The archive *vintage*
+# suffixes (`_NHDSnapshot_<n>` / `_NHDPlusAttributes_<n>`) differ per VPU and
+# get bumped on re-release, so rather than hardcode (and rot) them we resolve
+# the real archive URLs from the S3 bucket listing at build time
+# (discover_archive). Adding/auditing a region is then just this table.
+# (Caribbean/Hawaii/Pacific-Islands DAs are intentionally excluded.)
+_MULTI_VPU_DA = {"SA", "MS", "CO"}
+
+VPUS = [
+    ("01", "NE", "Northeast"),
+    ("02", "MA", "Mid-Atlantic"),
+    ("03N", "SA", "South Atlantic North"),
+    ("03S", "SA", "South Atlantic South"),
+    ("03W", "SA", "South Atlantic West"),
+    ("04", "GL", "Great Lakes"),
+    ("05", "MS", "Ohio"),
+    ("06", "MS", "Tennessee"),
+    ("07", "MS", "Upper Mississippi"),
+    ("08", "MS", "Lower Mississippi"),
+    ("09", "SR", "Souris-Red-Rainy"),
+    ("10L", "MS", "Lower Missouri"),
+    ("10U", "MS", "Upper Missouri"),
+    ("11", "MS", "Arkansas-White-Red"),
+    ("12", "TX", "Texas-Gulf"),
+    ("13", "RG", "Rio Grande"),
+    ("14", "CO", "Upper Colorado"),
+    ("15", "CO", "Lower Colorado"),
+    ("16", "GB", "Great Basin"),
+    ("17", "PN", "Pacific Northwest"),
+    ("18", "CA", "California"),
+]
+
+# Region descriptors consumed by the build. `snap`/`attr` URLs are resolved
+# lazily (discover_archive) since they carry per-release vintage suffixes.
 REGIONS = [
-    {"id": "MA_02", "label": "Mid-Atlantic (HUC-02)",
-     "snap": f"{S3}/NHDPlusMA/NHDPlusV21_MA_02_NHDSnapshot_04.7z",
-     "attr": f"{S3}/NHDPlusMA/NHDPlusV21_MA_02_NHDPlusAttributes_09.7z"},
-    {"id": "MS_05", "label": "Ohio (HUC-05)",
-     "snap": f"{S3}/NHDPlusMS/NHDPlus05/NHDPlusV21_MS_05_NHDSnapshot_06.7z",
-     "attr": f"{S3}/NHDPlusMS/NHDPlus05/NHDPlusV21_MS_05_NHDPlusAttributes_09.7z"},
+    {"id": vpu, "da": da, "vpu": vpu, "label": f"{label} (VPU {vpu})"}
+    for vpu, da, label in VPUS
 ]
 
 # --- PA PASDA trout layers ---
@@ -115,6 +145,36 @@ def download(url: str, dest: str) -> None:
     print(f"{os.path.getsize(dest) / 1e6:.0f} MB")
 
 
+def _list_s3_keys(prefix: str) -> list[str]:
+    """Anonymous S3 list-type=2 for object keys under `prefix`. Callers pass a
+    narrow prefix (a specific component filename stem) so a single page of
+    results suffices -- no continuation-token handling needed."""
+    url = f"{S3_BUCKET}/?list-type=2&prefix={quote(prefix, safe='')}"
+    with httpx.Client(timeout=60.0,
+                      headers={"User-Agent": USER_AGENT}) as client:
+        r = client.get(url)
+        r.raise_for_status()
+        return re.findall(r"<Key>([^<]+)</Key>", r.text)
+
+
+def discover_archive(da: str, vpu: str, component: str) -> str:
+    """Resolve the full URL of a region's `component` archive (NHDSnapshot or
+    NHDPlusAttributes) from the live S3 listing, picking the highest vintage.
+    The vintage suffix (`_<n>.7z`) rots across releases, so we never hardcode
+    it. Excludes the same-prefixed FGDB variant (e.g. NHDSnapshotFGDB)."""
+    subdir = f"NHDPlus{vpu}/" if da in _MULTI_VPU_DA else ""
+    stem = (f"NHDPlusV21/Data/NHDPlus{da}/{subdir}"
+            f"NHDPlusV21_{da}_{vpu}_{component}")
+    keys = _list_s3_keys(stem)
+    pat = re.compile(rf"_{re.escape(component)}_(\d+)\.7z$")
+    cands = [(int(m.group(1)), k) for k in keys if (m := pat.search(k))]
+    if not cands:
+        raise RuntimeError(
+            f"no {component} archive found under {stem} (keys: {keys})")
+    _, key = max(cands)
+    return f"{S3_BUCKET}/{key}"
+
+
 def extract(archive: str, workdir: str, suffixes: list[str]) -> None:
     with py7zr.SevenZipFile(archive, mode="r") as z:
         targets = [n for n in z.getnames()
@@ -156,10 +216,12 @@ def prepare_region(region: dict, cache_dir: str, skip_download: bool) -> tuple[s
         return shp_hits[0], vaa_hits[0]
 
     print(f"[{region['id']}] {region['label']}")
+    snap_url = discover_archive(region["da"], region["vpu"], "NHDSnapshot")
+    attr_url = discover_archive(region["da"], region["vpu"], "NHDPlusAttributes")
     snap = os.path.join(work, "snap.7z")
     attr = os.path.join(work, "attr.7z")
-    download(region["snap"], snap)
-    download(region["attr"], attr)
+    download(snap_url, snap)
+    download(attr_url, attr)
     print("  extracting flowline geometry + VAA ...")
     extract(snap, work, ["NHDFlowline.shp", "NHDFlowline.shx",
                          "NHDFlowline.dbf", "NHDFlowline.prj"])
