@@ -11,9 +11,9 @@
  * MapLibre specifics vs the old Leaflet version:
  *   - Two line layers off one source: a styled visible line and a
  *     transparent fat "hit" casing for touch. Clicks bind to the hit layer.
- *   - Color is a data-driven `match` on trout_class (or flat grey in
- *     conditions mode); width an `interpolate` on streamorder. The
- *     trout/conditions toggle is one setPaintProperty call.
+ *   - Color is a data-driven `match` on trout_class (streams are always
+ *     trout-class colored now -- live conditions live on the per-gauge
+ *     icons); width an `interpolate` on streamorder.
  *   - Selection highlight is feature-state ("selected"); re-applied
  *     after each setData so it persists/extends as the user pans.
  */
@@ -45,17 +45,12 @@ export const STREAM_CLASS_LABEL: Record<string, string> = {
   designated: "Designated trout",
 };
 
-let streamColorMode: "trout" | "conditions" = "trout";
 let _streamsVisible = true; // lyr-fishable default checked
 
-export function setStreamColorMode(mode: "trout" | "conditions"): void {
-  streamColorMode = mode;
-  window.streamColorMode = mode;
-}
-
-/** Per-class color, also used for the ungauged-card badge. */
+/** Per-class color, used by the ungauged-card badge. Streams are always
+ *  colored by trout class (the trout/conditions toggle was removed -- live
+ *  conditions live on the per-gauge icons now). */
 export function streamColor(p: ClickableStreamProps): string {
-  if (streamColorMode === "conditions") return "#9aa7b8";
   const cls = p.trout_class;
   return (cls && STREAM_CLASS_COLORS[String(cls)]) || "#8a9bb0";
 }
@@ -74,12 +69,12 @@ const TROUT_COLOR_MATCH: ExpressionSpecification = [
 ] as unknown as ExpressionSpecification;
 
 function colorExpr(): ExpressionSpecification {
-  const base = streamColorMode === "conditions" ? "#9aa7b8" : TROUT_COLOR_MATCH;
+  // Always trout-class colored; red when selected.
   return [
     "case",
     ["boolean", ["feature-state", "selected"], false],
     "#e74c3c",
-    base,
+    TROUT_COLOR_MATCH,
   ] as unknown as ExpressionSpecification;
 }
 
@@ -137,10 +132,10 @@ onMapReady(() => {
     layout: { visibility: visStr(_streamsVisible), "line-cap": "round" },
     paint: { "line-color": "#000", "line-opacity": 0, "line-width": 16 },
   } as LayerSpecification);
-  // Rebuild the loaded-reach sets + re-apply highlight as new tiles arrive.
+  // Re-apply the selection highlight as new tiles arrive (pan/zoom).
   map.on("sourcedata", (e) => {
     if (e.sourceId === "clickable-streams" && e.isSourceLoaded) {
-      refreshLoadedFromTiles();
+      reapplyStreamHighlight();
     }
   });
   map.on("click", "clickable-streams-hit", (e) => {
@@ -163,51 +158,20 @@ export function setStreamsVisible(on: boolean): void {
   }
 }
 
-// -- Loaded-reach bookkeeping -----------------------------------------
+// -- Highlight re-apply on tile load ----------------------------------
+// New tiles arriving (pan/zoom) don't carry the prior feature-state, so the
+// selected river's reaches must be re-highlighted as they load.
 
-let _loadedClkNames: Set<string> = new Set();
-let _loadedClkLpids: Set<number> = new Set();
-
-/** MapLibre fetches/decodes the tiles, so there's nothing to fetch. Rebuild
- *  the loaded-reach name/lpid sets from the rendered tile features (drives
- *  gauge-dot suppression in renderRivers) and re-apply the active highlight.
- *  Called on moveend (via controls) + on tile arrival. */
-function refreshLoadedFromTiles(): void {
-  if (!map.getLayer("clickable-streams")) return;
-  const feats = map.queryRenderedFeatures({ layers: ["clickable-streams"] });
-  _loadedClkNames = new Set();
-  _loadedClkLpids = new Set();
-  for (const f of feats) {
-    const p = (f.properties || {}) as ClickableStreamProps;
-    if (p.gnis_name) _loadedClkNames.add(String(p.gnis_name).trim().toLowerCase());
-    if (p.levelpathid != null) _loadedClkLpids.add(Number(p.levelpathid));
-  }
+export function reapplyStreamHighlight(): void {
+  if (!_streamsVisible) return;
   if (_selStreamKey != null) _applyHighlight(_selStreamKey);
-  if (window.renderRivers) window.renderRivers();
 }
 
-/** Refresh the loaded-reach bookkeeping after the viewport settles (the
- *  moveend hook in controls.ts). Named for its long-standing callers. */
+/** Kept as the moveend hook name (controls.ts) -- re-applies the highlight
+ *  once the viewport settles. (Gauge dots are no longer suppressed by the
+ *  clickable network, so there's nothing else to refresh here.) */
 export function loadClickableStreams(): void {
-  if (!_streamsVisible) return; // toggled off
-  refreshLoadedFromTiles();
-}
-
-export function _riverHasClickableReach(r: River): boolean {
-  if (!_streamsVisible) return false;
-  if (r.name && _loadedClkNames.has(r.name.trim().toLowerCase())) return true;
-  if (Array.isArray(r.levelpathids)) {
-    for (const lpid of r.levelpathids) {
-      if (_loadedClkLpids.has(lpid)) return true;
-    }
-  }
-  return false;
-}
-
-export function restyleStreams(): void {
-  if (map.getLayer("clickable-streams")) {
-    map.setPaintProperty("clickable-streams", "line-color", colorExpr());
-  }
+  reapplyStreamHighlight();
 }
 
 // -- Highlight (feature-state) ----------------------------------------
@@ -319,12 +283,9 @@ export function onStreamClick(
   highlightStream(p);
   const gauged = _gaugedRiverFor(p, lngLat);
   if (gauged) {
-    // Also highlight the gauged river's flowline (drawn above clickable-streams),
-    // so the selection reads red even where the flowline would mask it.
-    openRiverPanel(
-      gauged,
-      gauged.site_no ? { source: "river-lines", id: gauged.site_no } : null,
-    );
+    // The clicked reach already carries the red selection highlight
+    // (highlightStream above); the gauged river's panel just opens.
+    openRiverPanel(gauged);
     return;
   }
   const got = prepareRiverPanel();
@@ -364,24 +325,16 @@ export function onStreamClick(
 
 declare global {
   interface Window {
-    streamColorMode: "trout" | "conditions";
-    setStreamColorMode: typeof setStreamColorMode;
     streamColor: typeof streamColor;
-    restyleStreams: typeof restyleStreams;
     loadClickableStreams: typeof loadClickableStreams;
-    _riverHasClickableReach: typeof _riverHasClickableReach;
     highlightStream: typeof highlightStream;
     clearStreamHighlight: typeof clearStreamHighlight;
     onStreamClick: typeof onStreamClick;
   }
 }
 
-window.streamColorMode = streamColorMode;
-window.setStreamColorMode = setStreamColorMode;
 window.streamColor = streamColor;
-window.restyleStreams = restyleStreams;
 window.loadClickableStreams = loadClickableStreams;
-window._riverHasClickableReach = _riverHasClickableReach;
 window.highlightStream = highlightStream;
 window.clearStreamHighlight = clearStreamHighlight;
 window.onStreamClick = onStreamClick;

@@ -1,11 +1,10 @@
 /**
  * UI wiring for everything in the page chrome that drives the map:
  *   - state selector dropdown
- *   - filter controls (cond / hatch / trout-only / stocked-only) +
+ *   - filter controls (cond / hatch / stocked-only) +
  *     the reset button
- *   - color-mode segmented control (trout class vs conditions)
  *   - base-map segmented control (street / satellite / topo)
- *   - layer-visibility checkboxes (6) + bl_layers localStorage
+ *   - layer-visibility checkboxes + bl_layers localStorage
  *     persistence + wireLayerToggle helper
  *   - the unified controls panel (Layers / Filters / Legend tabbed
  *     sheet, with 3 header-button direct-entry points, ESC + click-
@@ -20,31 +19,25 @@
  * Cross-module deps:
  *   - state: getStates, setCurrentSt, STATE_ZOOM
  *   - map-setup: map, currentBaseKey, setBaseMap
- *   - map-layers: the layer visibility setters + ensureTrout + ensureAccess
+ *   - map-layers: the layer visibility setters + ensureAccess
  *     + the reset helpers
- *   - streams: setStreamColorMode, restyleStreams, loadClickableStreams
- *   - rivers: loadRivers, renderRivers, loadVisibleRiverLines
+ *   - streams: loadClickableStreams, setStreamsVisible
+ *   - rivers: loadRivers, renderRivers
  */
 
 import { map, currentBaseKey, setBaseMap, setHydroVisible } from "./map-setup";
 import {
-  ensureTrout,
   ensureAccess,
-  resetTroutLoadedState,
   resetAccessLoadedState,
-  setTroutVisible,
   setAccessVisible,
   setPublicLandsVisible,
 } from "./map-layers";
 import {
   loadClickableStreams,
-  setStreamColorMode,
-  restyleStreams,
   setStreamsVisible,
 } from "./streams";
 import {
   loadRivers,
-  loadVisibleRiverLines,
   renderRivers,
 } from "./rivers";
 import { setPinsVisible } from "./pins";
@@ -53,18 +46,14 @@ import { centerLngLat } from "./coords";
 import { refreshIcons } from "./util";
 
 // -- Filter controls -------------------------------------------------
-// Each onchange re-runs the filter predicate + fetches lines for any
-// newly-passing in-view rivers (so a filter that lets MORE rivers
-// through doesn't leave them as pins when their flowline could be
-// loaded).
+// Each onchange re-runs the filter predicate, which rebuilds the
+// per-gauge condition markers for the rivers that now pass.
 
 function onFilterChange(): void {
   renderRivers();
-  loadVisibleRiverLines();
 }
 
 (document.getElementById("cond-select") as HTMLSelectElement).onchange = onFilterChange;
-(document.getElementById("trout-only") as HTMLInputElement).onchange = onFilterChange;
 (document.getElementById("stocked-only") as HTMLInputElement).onchange = onFilterChange;
 (document.getElementById("hatch-select") as HTMLSelectElement).onchange = onFilterChange;
 
@@ -76,30 +65,12 @@ function onFilterChange(): void {
   const catalog = getStates();
   map.jumpTo({ center: centerLngLat(catalog[s].center), zoom: STATE_ZOOM });
   loadRivers(s);
-  // Refresh trout / access for the new state only if the layer is
-  // currently shown (read the checkbox; the MapLibre layers always
-  // exist, only their visibility toggles).
-  resetTroutLoadedState();
-  if ((document.getElementById("lyr-trout") as HTMLInputElement).checked) ensureTrout(s);
+  // Refresh access for the new state only if the layer is currently
+  // shown (read the checkbox; the MapLibre layers always exist, only
+  // their visibility toggles).
   resetAccessLoadedState();
   if ((document.getElementById("lyr-access") as HTMLInputElement).checked) ensureAccess(s);
 };
-
-// -- Color-mode segmented control (trout class vs conditions) -------
-// Restyles the clickable stream network. It's a viewing aid, not a
-// filter, so it groups under "Show on map" rather than "Show
-// rivers".
-
-document.querySelectorAll<HTMLButtonElement>("#color-mode button").forEach((b) =>
-  b.addEventListener("click", () => {
-    const mode = b.dataset.mode as "trout" | "conditions";
-    setStreamColorMode(mode);
-    document.querySelectorAll("#color-mode button").forEach((x) =>
-      x.classList.toggle("on", x === b),
-    );
-    restyleStreams();
-  }),
-);
 
 // -- Map chrome: rail (desktop) / tab bar (mobile) + side panel/sheet
 // The left rail tabs, the mobile bottom-tab-bar, and the account avatar
@@ -446,20 +417,9 @@ function wireLayerToggle(
 }
 
 wireLayerToggle("lyr-fishable", setStreamsVisible, loadClickableStreams);
-// Toggling the clickable layer off needs to bring the gauge dots back
-// (since _riverHasClickableReach now returns false), so re-render.
-(document.getElementById("lyr-fishable") as HTMLInputElement).addEventListener(
-  "change",
-  (e) => {
-    if (!(e.target as HTMLInputElement).checked) renderRivers();
-  },
-);
 wireLayerToggle("lyr-usgs", setHydroVisible);
-// Trout + access ensure-loaders read the CURRENT state at show time
-// via getCurrentSt() (state may have changed since module-init).
-wireLayerToggle("lyr-trout", setTroutVisible, () =>
-  ensureTrout(window.getCurrentSt()),
-);
+// The access ensure-loader reads the CURRENT state at show time via
+// getCurrentSt() (state may have changed since module-init).
 wireLayerToggle("lyr-access", setAccessVisible, () =>
   ensureAccess(window.getCurrentSt()),
 );
@@ -507,7 +467,6 @@ map.on("moveend", () => {
 (document.getElementById("filter-reset") as HTMLButtonElement).onclick = () => {
   (document.getElementById("cond-select") as HTMLSelectElement).value = "any";
   (document.getElementById("hatch-select") as HTMLSelectElement).value = "any";
-  (document.getElementById("trout-only") as HTMLInputElement).checked = false;
   (document.getElementById("stocked-only") as HTMLInputElement).checked = false;
   onFilterChange();
 };

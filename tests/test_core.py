@@ -700,6 +700,13 @@ def test_assemble_rivers_no_block_when_no_medians(monkeypatch):
     assert len(rivers) == 1 and rivers[0]["name"] == "Gunpowder Falls"
     assert calls["nos"] == ["01581920"]          # discharge -> medians requested
     assert rivers[0]["conditions"]["overall"] in ("green", "yellow", "red")
+    # Per-gauge points carry the USGS site's own coordinates so the client
+    # can render one condition icon per gauge at its real location.
+    gauges = rivers[0]["gauges"]
+    assert len(gauges) == 1
+    assert gauges[0]["lat"] == 39.566 and gauges[0]["lon"] == -76.605
+    assert gauges[0]["site_no"] == "01581920"
+    assert gauges[0]["conditions"]["overall"] in ("green", "yellow", "red")
 
 
 def test_rivers_for_bbox_caps_state_fanout(monkeypatch):

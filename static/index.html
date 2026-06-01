@@ -40,7 +40,7 @@
          compass / zoom / locate / drop-pin stack anchors bottom-right.
          The Leaflet map (#map) fills the viewport underneath; all chrome
          floats above it. Control element IDs (state-select, lyr-*,
-         cond-select, color-mode, basemap-mode, drop-pin, …) are preserved
+         cond-select, basemap-mode, drop-pin, …) are preserved
          so the existing map wiring in src/*.ts keeps driving the map.
          ===================================================================== -->
 
@@ -255,13 +255,6 @@
                             </button>
                         </div>
                     </section>
-                    <section class="panel-section">
-                        <div class="panel-section-label">Color streams by</div>
-                        <div class="filter-segment" id="color-mode" role="group">
-                            <button type="button" data-mode="trout" class="on">Trout class</button>
-                            <button type="button" data-mode="conditions">Conditions</button>
-                        </div>
-                    </section>
                 </div>
 
                 <!-- ===== Map Filters & Settings ===== -->
@@ -286,12 +279,6 @@
                             </select>
                         </label>
                         <label class="filter-row-toggle">
-                            <span class="filter-row-icon"><i data-lucide="fish" aria-hidden="true"></i></span>
-                            <span class="filter-row-label">On a trout stream</span>
-                            <input type="checkbox" id="trout-only">
-                            <span class="filter-row-check"><i data-lucide="check" aria-hidden="true"></i></span>
-                        </label>
-                        <label class="filter-row-toggle">
                             <span class="filter-row-icon"><i data-lucide="sprout" aria-hidden="true"></i></span>
                             <span class="filter-row-label">Near stocked water</span>
                             <input type="checkbox" id="stocked-only">
@@ -308,14 +295,8 @@
                             <span class="filter-row-check"><i data-lucide="check" aria-hidden="true"></i></span>
                         </label>
                         <label class="filter-row-toggle">
-                            <span class="filter-row-icon"><i data-lucide="fish" aria-hidden="true"></i></span>
-                            <span class="filter-row-label">State trout streams</span>
-                            <input type="checkbox" id="lyr-trout">
-                            <span class="filter-row-check"><i data-lucide="check" aria-hidden="true"></i></span>
-                        </label>
-                        <label class="filter-row-toggle">
                             <span class="filter-row-icon"><i data-lucide="droplets" aria-hidden="true"></i></span>
-                            <span class="filter-row-label">USGS basemap streams</span>
+                            <span class="filter-row-label">All waterways</span>
                             <input type="checkbox" id="lyr-usgs" checked>
                             <span class="filter-row-check"><i data-lucide="check" aria-hidden="true"></i></span>
                         </label>
@@ -343,17 +324,24 @@
                 <!-- ===== Map Legend ===== -->
                 <div class="panel-pane" data-pane="legend">
                     <section class="panel-section">
-                        <div class="panel-section-label">Fishing conditions</div>
+                        <div class="panel-section-label">Gauges (live conditions)</div>
                         <div class="legend-item"><div class="legend-dot legend-dot--good"></div> Good &mdash; flow &amp; temperature near ideal</div>
                         <div class="legend-item"><div class="legend-dot legend-dot--fair"></div> Fair &mdash; flow or temperature off-ideal</div>
                         <div class="legend-item"><div class="legend-dot legend-dot--poor"></div> Poor &mdash; fish stress; avoid wading</div>
                         <div class="legend-item"><div class="legend-dot legend-dot--none"></div> No data &mdash; no live reading in range</div>
                     </section>
                     <section class="panel-section">
-                        <div class="panel-section-label">Stream colors</div>
-                        <div class="legend-item"><div class="legend-dot" style="background:var(--bl-river-300)"></div> Streams (USGS)</div>
-                        <div class="legend-item"><div class="legend-dot" style="background:var(--bl-river-700)"></div> Fishable streams</div>
-                        <div class="legend-item"><div class="legend-dot" style="background:var(--bl-trout)"></div> Trout stream</div>
+                        <div class="panel-section-label">Streams (by trout class)</div>
+                        <div class="legend-item"><div class="legend-dot" style="background:#b8860b"></div> Class A wild trout</div>
+                        <div class="legend-item"><div class="legend-dot" style="background:#117a65"></div> Wilderness trout</div>
+                        <div class="legend-item"><div class="legend-dot" style="background:#1e8449"></div> Wild reproduction</div>
+                        <div class="legend-item"><div class="legend-dot" style="background:#2c6fbf"></div> Stocked trout</div>
+                        <div class="legend-item"><div class="legend-dot" style="background:#27ae60"></div> Designated trout</div>
+                        <div class="legend-item"><div class="legend-dot" style="background:#8a9bb0"></div> Unclassified</div>
+                    </section>
+                    <section class="panel-section">
+                        <div class="panel-section-label">Other</div>
+                        <div class="legend-item"><div class="legend-dot" style="background:var(--bl-river-300)"></div> All waterways</div>
                         <div class="legend-item"><div class="legend-dot" style="background:var(--bl-access)"></div> Access point</div>
                         <div class="legend-item"><div class="legend-dot legend-dot--pin"></div> Saved pin</div>
                     </section>
@@ -365,7 +353,7 @@
                     </section>
                     <section class="panel-section">
                         <div class="panel-section-label">Verdict scoring</div>
-                        <p class="panel-note">Each gauge is scored every 15&nbsp;minutes against its 30-year USGS median for that calendar day. A river's overall color is the worst of its gauges.</p>
+                        <p class="panel-note">Each gauge icon is scored every 15&nbsp;minutes against its 30-year USGS median for that calendar day, then colored Good / Fair / Poor. When a river has several gauges, its overall verdict is the worst of them.</p>
                     </section>
                 </div>
 

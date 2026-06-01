@@ -48,6 +48,18 @@ interface Gauge {
   historical_median: number | null;
 }
 
+/** A gauge point for on-map rendering: the USGS site's own location +
+    its condition. Trimmed from the full Gauge (the river panel's
+    server-rendered popup_html keeps the rest). One condition icon is
+    drawn per GaugePoint. */
+interface GaugePoint {
+  lat: number;
+  lon: number;
+  site_no: string | null;
+  site_name: string;
+  conditions: { overall: ConditionKey };
+}
+
 /** A river in the /api/rivers response. Server-assembled from one or
     more gauges + NHD/NLDI/trout-stream context. */
 interface River {
@@ -69,8 +81,8 @@ interface River {
   levelpathids: number[];
   /** Pre-rendered HTML for the river-detail panel body. */
   popup_html: string;
-  /** Optional: server-attached convenience fields used by the client. */
-  gauges?: Gauge[];
+  /** Per-gauge points (location + condition) -- one condition icon each. */
+  gauges: GaugePoint[];
   active?: unknown[];
   stocked_waters?: unknown[];
   access_count?: number;
