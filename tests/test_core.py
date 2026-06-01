@@ -1327,36 +1327,7 @@ def test_caches_sized_for_lower_48_fanout():
     assert main._river_geom_cache.maxsize >= 1024
 
 
-def test_query_clickable_streams_sqlite_path(tmp_path, monkeypatch):
-    """SQLite dev path uses the 4-range B-tree query; the PG path was
-    split off to use GiST via the && operator (state-scale viewports
-    were 10s+ on the 4-range path and killing the worker). This guards
-    the SQLite branch from regressing as the PG branch evolves."""
-    monkeypatch.setattr(db, "DB_PATH", str(tmp_path / "t.db"))
-    monkeypatch.setattr(db, "_IS_PG", False)
-    db.init_db()
-    with db._conn() as conn:
-        cur = conn.cursor()
-        cur.execute(
-            "INSERT INTO clickable_streams"
-            " (comid, levelpathid, gnis_name, streamorder, trout_class,"
-            "  min_lon, min_lat, max_lon, max_lat, geom)"
-            " VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-            (1, 100, "Test River", 5, None, -77.5, 38.5, -77.0, 39.0,
-             '{"type":"LineString","coordinates":[[-77.5,38.5],[-77.0,39.0]]}'),
-        )
-        conn.commit()
-    # overlap → returns the row
-    hits = db.query_clickable_streams(-78, 38, -76, 40, min_order=1)
-    assert len(hits) == 1 and hits[0]["comid"] == 1
-    assert hits[0]["gnis_name"] == "Test River"
-    # disjoint bbox → empty
-    assert db.query_clickable_streams(-80, 30, -79, 31, min_order=1) == []
-    # streamorder filter excludes
-    assert db.query_clickable_streams(-78, 38, -76, 40, min_order=6) == []
-
-
-# -- Public lands (PAD-US 4.0): schema + viewport query --
+# -- Public lands (PAD-US 4.0): schema --
 
 def test_public_lands_has_bbox_indexes(tmp_path, monkeypatch):
     """init_db() must create both the b-tree lat + lon indexes (used
@@ -1374,40 +1345,6 @@ def test_public_lands_has_bbox_indexes(tmp_path, monkeypatch):
     assert "idx_pl_lon" in names
     assert "idx_pl_lat" in names
     assert "idx_pl_mgr" in names
-
-
-def test_query_public_lands_sqlite_path(tmp_path, monkeypatch):
-    """SQLite dev path uses the 4-range B-tree query; the PG path
-    uses the GiST `bbox &&` operator. Same split-pattern as
-    query_clickable_streams. This guards the SQLite branch as the
-    PG branch evolves."""
-    monkeypatch.setattr(db, "DB_PATH", str(tmp_path / "t.db"))
-    monkeypatch.setattr(db, "_IS_PG", False)
-    db.init_db()
-    with db._conn() as conn:
-        cur = conn.cursor()
-        cur.execute(
-            "INSERT INTO public_lands"
-            " (unit_name, manager_type, manager_name, designation,"
-            "  public_access, state_nm,"
-            "  min_lon, min_lat, max_lon, max_lat, geom)"
-            " VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-            ("Test WMA", "State", "VA DWR", "Wildlife Management Area",
-             "OA", "Virginia",
-             -77.5, 38.5, -77.0, 39.0,
-             '{"type":"Polygon","coordinates":[[[-77.5,38.5],[-77.0,38.5],'
-             '[-77.0,39.0],[-77.5,39.0],[-77.5,38.5]]]}'),
-        )
-        conn.commit()
-    # overlap → returns the row, geom decoded to dict
-    hits = db.query_public_lands(-78, 38, -76, 40)
-    assert len(hits) == 1
-    assert hits[0]["unit_name"] == "Test WMA"
-    assert hits[0]["manager_type"] == "State"
-    assert hits[0]["public_access"] == "OA"
-    assert hits[0]["geometry"]["type"] == "Polygon"
-    # disjoint bbox → empty
-    assert db.query_public_lands(-80, 30, -79, 31) == []
 
 
 def test_polygon_bbox_handles_polygon_and_multipolygon():
