@@ -20,9 +20,19 @@ Dev dependencies (NOT in runtime requirements.txt):
     pip install dbfread py7zr httpx geopandas shapely
 
 Run from repo root:
-    python scripts/build_clickable_streams.py
+    python scripts/build_clickable_streams.py                  # all regions
+    python scripts/build_clickable_streams.py --regions MA_02   # a subset
+    python scripts/build_clickable_streams.py --skip-download   # reuse cache
+
+The build is region-streaming: each NHDPlus region's geometry is read,
+joined, then discarded, so peak memory is ~(global COMID attr table + one
+region's geometry) rather than every region at once -- this is what lets the
+region list grow toward lower-48 coverage. Archives download+extract into
+--cache-dir (default $TMPDIR/blueliner_nhd_cache) and persist across runs, so
+--skip-download can reuse them. Features stream straight to the gzip output.
 """
 
+import argparse
 import glob
 import gzip
 import json
@@ -131,27 +141,39 @@ def vaa_attrs(dbf_path: str) -> dict[int, dict]:
     return out
 
 
-def load_nhd_region(region: dict, tmp: str):
-    """Download+extract NHDPlus for one region. Returns (gdf_4326, vaa_dict)."""
-    print(f"[{region['id']}] {region['label']}")
-    work = os.path.join(tmp, region["id"])
+def prepare_region(region: dict, cache_dir: str, skip_download: bool) -> tuple[str, str]:
+    """Ensure one region's NHDFlowline shapefile + PlusFlowlineVAA.dbf are
+    extracted under `cache_dir/<id>`, downloading the .7z archives unless a
+    cached extract is already present (with --skip-download). Returns the
+    (shapefile, vaa_dbf) paths so both passes can re-read geometry from disk
+    without holding every region in memory at once."""
+    work = os.path.join(cache_dir, region["id"])
     os.makedirs(work, exist_ok=True)
+    shp_hits = glob.glob(f"{work}/**/NHDFlowline.shp", recursive=True)
+    vaa_hits = glob.glob(f"{work}/**/PlusFlowlineVAA.dbf", recursive=True)
+    if skip_download and shp_hits and vaa_hits:
+        print(f"[{region['id']}] {region['label']} — reusing cached extract")
+        return shp_hits[0], vaa_hits[0]
+
+    print(f"[{region['id']}] {region['label']}")
     snap = os.path.join(work, "snap.7z")
     attr = os.path.join(work, "attr.7z")
     download(region["snap"], snap)
     download(region["attr"], attr)
-
     print("  extracting flowline geometry + VAA ...")
     extract(snap, work, ["NHDFlowline.shp", "NHDFlowline.shx",
                          "NHDFlowline.dbf", "NHDFlowline.prj"])
     extract(attr, work, ["PlusFlowlineVAA.dbf"])
     shp = glob.glob(f"{work}/**/NHDFlowline.shp", recursive=True)[0]
     vaa_dbf = glob.glob(f"{work}/**/PlusFlowlineVAA.dbf", recursive=True)[0]
+    return shp, vaa_dbf
 
-    attrs = vaa_attrs(vaa_dbf)
+
+def read_region_gdf(shp: str) -> gpd.GeoDataFrame:
+    """Read one region's flowline geometry, reprojected to EPSG:4326. Read
+    lazily per-region (and discarded after use) to bound peak memory."""
     gdf = gpd.read_file(shp)
-    gdf = gdf.to_crs(4326)
-    return gdf, attrs
+    return gdf.to_crs(4326)
 
 
 # ──────────────────────── ArcGIS keyset pagination ────────────────────────
@@ -277,17 +299,6 @@ def fetch_trout_pa() -> dict[str, gpd.GeoDataFrame]:
 
 # ──────────────────────── Join trout to NHD COMIDs ────────────────────────
 
-def trout_comids_md(md_gdf: gpd.GeoDataFrame,
-                    nhd_gdf: gpd.GeoDataFrame,
-                    all_attrs: dict[int, dict]) -> dict[int, str]:
-    """MD: spatial join. MD ComIDs are NHDPlus HR, not V2, so key join
-    against our V2 COMIDs won't match."""
-    print("  MD spatial join: designated ...")
-    out = spatial_join_trout(md_gdf, nhd_gdf, "designated", all_attrs)
-    print(f"    {len(out)} COMIDs matched")
-    return out
-
-
 def spatial_join_trout(trout_gdf: gpd.GeoDataFrame,
                        nhd_gdf: gpd.GeoDataFrame,
                        trout_class: str,
@@ -308,6 +319,14 @@ def spatial_join_trout(trout_gdf: gpd.GeoDataFrame,
     comids = set(int(c) for c in joined[id_col].unique() if c is not None)
     out = {c: trout_class for c in comids if c in all_attrs}
     return out
+
+
+def _bbox_overlap(a, b) -> bool:
+    """True if two (minx, miny, maxx, maxy) bounds intersect. Used to skip
+    spatial joins between a state's trout layer and regions it can't touch --
+    each state overlaps only 1-2 of the ~18 NHDPlus regions, so this is what
+    keeps per-state joins from scaling with national geometry."""
+    return not (a[2] < b[0] or b[2] < a[0] or a[3] < b[1] or b[3] < a[1])
 
 
 # ──────────────────────── NHDPlus topology ────────────────────────
@@ -396,21 +415,11 @@ PA_WILD_TROUT_VALIDATION = [
 
 def validate_pa_coverage(clickable_comids: set[int],
                          trout_comids: dict[int, str],
-                         all_attrs: dict[int, dict],
-                         nhd_gdfs: list[gpd.GeoDataFrame]) -> None:
-    """Check that well-known PA wild-trout streams are clickable."""
+                         name_to_comids: dict[str, set[int]]) -> None:
+    """Check that well-known PA wild-trout streams are clickable. `name_to_comids`
+    is collected during the emit pass (for the validation names only) so we don't
+    retain every region's GeoDataFrame just to validate."""
     print("\n── PA wild-trout validation ──")
-    name_to_comids: dict[str, set[int]] = defaultdict(set)
-    for gdf in nhd_gdfs:
-        gnis_col = next((c for c in gdf.columns if c.lower() == "gnis_name"), None)
-        id_col = next(c for c in gdf.columns if c.lower() == "comid")
-        if not gnis_col:
-            continue
-        for _, row in gdf.iterrows():
-            nm = row[gnis_col]
-            if nm and str(nm).strip():
-                name_to_comids[str(nm).strip()].add(int(row[id_col]))
-
     hits = 0
     misses = []
     for name in PA_WILD_TROUT_VALIDATION:
@@ -435,115 +444,157 @@ def validate_pa_coverage(clickable_comids: set[int],
 
 # ──────────────────────── Main ────────────────────────
 
-def main() -> int:
+def parse_args(argv: list[str]) -> argparse.Namespace:
+    ids = ",".join(r["id"] for r in REGIONS)
+    p = argparse.ArgumentParser(
+        description="Build data/nhdplus/clickable_streams.geojson.gz")
+    p.add_argument("--regions", default="",
+                   help=f"Comma-separated region ids to build (default: all). "
+                        f"Available: {ids}")
+    p.add_argument("--cache-dir",
+                   default=os.path.join(tempfile.gettempdir(),
+                                        "blueliner_nhd_cache"),
+                   help="Where NHDPlus .7z archives are downloaded + extracted. "
+                        "Persists across runs so --skip-download can reuse them.")
+    p.add_argument("--skip-download", action="store_true",
+                   help="Reuse already-extracted archives in --cache-dir "
+                        "instead of re-fetching (much faster on repeat runs).")
+    return p.parse_args(argv)
+
+
+def main(argv: list[str] | None = None) -> int:
+    args = parse_args(sys.argv[1:] if argv is None else argv)
     os.makedirs(os.path.dirname(OUT_PATH), exist_ok=True)
+    os.makedirs(args.cache_dir, exist_ok=True)
 
-    # ── Step 1: Download NHDPlus regions ──
-    all_attrs: dict[int, dict] = {}
-    nhd_gdfs: list[gpd.GeoDataFrame] = []
-    with tempfile.TemporaryDirectory() as tmp:
-        for region in REGIONS:
-            gdf, attrs = load_nhd_region(region, tmp)
-            nhd_gdfs.append(gdf)
-            all_attrs.update(attrs)
+    by_id = {r["id"]: r for r in REGIONS}
+    if args.regions.strip():
+        want = [s.strip() for s in args.regions.split(",") if s.strip()]
+        missing = [w for w in want if w not in by_id]
+        if missing:
+            print(f"unknown region id(s): {', '.join(missing)}; "
+                  f"available: {', '.join(by_id)}", file=sys.stderr)
+            return 2
+        regions = [by_id[w] for w in want]
+    else:
+        regions = REGIONS
+    print(f"Building {len(regions)} region(s): "
+          f"{', '.join(r['id'] for r in regions)}")
+    print(f"NHDPlus cache: {args.cache_dir}\n")
 
-    print(f"\nNHDPlus: {len(all_attrs):,} COMIDs across {len(REGIONS)} regions")
-
-    # ── Step 2: Fetch state trout GIS ──
-    print()
+    # ── Step 1: Fetch state trout GIS (small; held in memory once) ──
     va_gdf = fetch_trout_va()
     md_gdf = fetch_trout_md()
     pa_gdfs = fetch_trout_pa()
-
-    # ── Step 3: Join trout to NHD COMIDs ──
-    print("\n── Joining trout data to NHD COMIDs ──")
-    trout_comids: dict[int, str] = {}  # comid -> trout_class (first wins)
-
-    nhd_combined = gpd.GeoDataFrame(
-        gpd.pd.concat(nhd_gdfs, ignore_index=True),
-        crs="EPSG:4326"
-    )
-
-    # MD: spatial join (MD ComIDs are NHDPlus HR, not V2)
+    # Ordered trout sources -- precedence is MD designated, then VA wild, then
+    # the PA layers (first writer wins per COMID, matching the old MD→VA→PA
+    # order). Each carries its lon/lat bounds for the per-region bbox prefilter.
+    trout_sources: list[tuple[str, gpd.GeoDataFrame, tuple]] = []
     if md_gdf is not None:
-        md_trout = trout_comids_md(md_gdf, nhd_combined, all_attrs)
-        for c, cls in md_trout.items():
-            trout_comids.setdefault(c, cls)
-
-    # VA: spatial join (VA REACHCODE is state-specific, not NHD)
+        trout_sources.append(("designated", md_gdf, tuple(md_gdf.total_bounds)))
     if va_gdf is not None:
-        print("  VA spatial join: wild_reproduction ...")
-        va_trout = spatial_join_trout(
-            va_gdf, nhd_combined, "wild_reproduction", all_attrs)
-        print(f"    {len(va_trout)} COMIDs matched")
-        for c, cls in va_trout.items():
-            trout_comids.setdefault(c, cls)
+        trout_sources.append(("wild_reproduction", va_gdf,
+                              tuple(va_gdf.total_bounds)))
+    for cls, g in pa_gdfs.items():
+        trout_sources.append((cls, g, tuple(g.total_bounds)))
 
-    # PA: spatial join for each layer (no NHD keys in PASDA)
-    for trout_class, pa_gdf in pa_gdfs.items():
-        print(f"  PA spatial join: {trout_class} ...")
-        pa_trout = spatial_join_trout(pa_gdf, nhd_combined, trout_class, all_attrs)
-        print(f"    {len(pa_trout)} COMIDs matched")
-        for c, cls in pa_trout.items():
-            trout_comids.setdefault(c, cls)
+    # ── Step 2: Pass 1 — region-streaming attrs + trout joins ──
+    # Each region's geometry is read, joined, then DISCARDED; only the
+    # lightweight COMID attr table and the trout-COMID map survive between
+    # regions, so peak memory is ~all_attrs + one region's geometry.
+    print("\n── Pass 1: NHD attrs + trout joins (region-streaming) ──")
+    region_paths: dict[str, tuple[str, str]] = {}
+    all_attrs: dict[int, dict] = {}
+    trout_comids: dict[int, str] = {}  # comid -> trout_class (first wins)
+    for region in regions:
+        shp, vaa_dbf = prepare_region(region, args.cache_dir, args.skip_download)
+        region_paths[region["id"]] = (shp, vaa_dbf)
+        all_attrs.update(vaa_attrs(vaa_dbf))
+        # Only the geometry is needed for joins; skip the read entirely when
+        # there are no trout layers to join (e.g. enrichment-free regions).
+        if trout_sources:
+            gdf = read_region_gdf(shp)
+            rbounds = tuple(gdf.total_bounds)
+            for cls, tgdf, tbounds in trout_sources:
+                if not _bbox_overlap(rbounds, tbounds):
+                    continue
+                matched = spatial_join_trout(tgdf, gdf, cls, all_attrs)
+                if matched:
+                    print(f"  [{region['id']}] {cls}: {len(matched):,} COMIDs")
+                for c, k in matched.items():
+                    trout_comids.setdefault(c, k)
+            del gdf  # free this region's geometry before the next
 
-    print(f"\nTotal trout COMIDs: {len(trout_comids):,}")
+    print(f"\nNHDPlus: {len(all_attrs):,} COMIDs across {len(regions)} region(s)")
+    print(f"Total trout COMIDs: {len(trout_comids):,}")
     by_class = defaultdict(int)
     for cls in trout_comids.values():
         by_class[cls] += 1
     for cls, n in sorted(by_class.items()):
         print(f"  {cls}: {n:,}")
 
-    # ── Step 4: Compute upstream tributaries ──
+    # ── Step 3: Upstream tributaries (topology only — no geometry) ──
     print("\n── Computing upstream tributaries (order >= 3) ──")
     upstream_graph = build_upstream_graph(all_attrs)
     trib_comids = collect_upstream_tributaries(
-        set(trout_comids.keys()), upstream_graph, all_attrs
-    )
+        set(trout_comids.keys()), upstream_graph, all_attrs)
     print(f"  {len(trib_comids):,} upstream tributary COMIDs (order >= {MIN_ORDER})")
 
-    # ── Step 5: Build the clickable set ──
-    # Clickable = order>=3 base  ∪  trout COMIDs (any order)  ∪  trout tributaries
-    clickable_comids: set[int] = set()
-    for comid, a in all_attrs.items():
-        order = a.get("streamorder")
-        if order is not None and order >= MIN_ORDER:
-            clickable_comids.add(comid)
+    # ── Step 4: Clickable set = order>=3 ∪ trout ∪ trout tributaries ──
+    clickable_comids: set[int] = {
+        comid for comid, a in all_attrs.items()
+        if a.get("streamorder") is not None and a["streamorder"] >= MIN_ORDER
+    }
     clickable_comids.update(trout_comids.keys())
     clickable_comids.update(trib_comids)
 
-    # ── Step 6: Emit features ──
-    print(f"\n── Building features ({len(clickable_comids):,} clickable COMIDs) ──")
-    id_cols = []
-    gnis_cols = []
-    for gdf in nhd_gdfs:
-        id_cols.append(next(c for c in gdf.columns if c.lower() == "comid"))
-        gnis_cols.append(next((c for c in gdf.columns if c.lower() == "gnis_name"), None))
-
+    # ── Step 5: Pass 2 — re-read geometry per region, STREAM features out ──
+    # Features are written one at a time to the gzip stream rather than held in
+    # a list, so output size doesn't bound memory either.
+    print(f"\n── Pass 2: emitting features "
+          f"({len(clickable_comids):,} clickable COMIDs) ──")
+    val_names = set(PA_WILD_TROUT_VALIDATION)
+    name_to_comids: dict[str, set[int]] = defaultdict(set)
     emitted: set[int] = set()
-    all_feats: list[dict] = []
-    for gdf, id_col, gnis_col in zip(nhd_gdfs, id_cols, gnis_cols):
-        for _, row in gdf.iterrows():
-            comid = int(row[id_col])
-            if comid in emitted or comid not in clickable_comids:
-                continue
-            tc = trout_comids.get(comid)
-            feat = build_feature(comid, row, gnis_col, all_attrs, tc)
-            if feat:
-                all_feats.append(feat)
+    n_feats = 0
+    raw_bytes = len('{"type":"FeatureCollection","features":[]}')
+    with gzip.open(OUT_PATH, "wt", encoding="utf-8") as out:
+        out.write('{"type":"FeatureCollection","features":[')
+        for region in regions:
+            shp, _ = region_paths[region["id"]]
+            gdf = read_region_gdf(shp)
+            id_col = next(c for c in gdf.columns if c.lower() == "comid")
+            gnis_col = next((c for c in gdf.columns
+                             if c.lower() == "gnis_name"), None)
+            for _, row in gdf.iterrows():
+                comid = int(row[id_col])
+                # Validation-name tracking spans ALL rows (incl. non-clickable)
+                # so a MISS can report how many NHD COMIDs the name had.
+                if gnis_col:
+                    nm = row[gnis_col]
+                    if nm and str(nm).strip() in val_names:
+                        name_to_comids[str(nm).strip()].add(comid)
+                if comid in emitted or comid not in clickable_comids:
+                    continue
+                feat = build_feature(comid, row, gnis_col, all_attrs,
+                                     trout_comids.get(comid))
+                if not feat:
+                    continue
+                seg = ("," if n_feats else "") + json.dumps(
+                    feat, separators=(",", ":"))
+                out.write(seg)
+                raw_bytes += len(seg)
+                n_feats += 1
                 emitted.add(comid)
+            del gdf  # free before the next region
+        out.write("]}")
 
-    fc = {"type": "FeatureCollection", "features": all_feats}
-    body = json.dumps(fc, separators=(",", ":"))
-    with gzip.open(OUT_PATH, "wt", encoding="utf-8") as f:
-        f.write(body)
     size = os.path.getsize(OUT_PATH)
-    print(f"\n[done] {len(all_feats):,} flowlines -> {OUT_PATH} "
-          f"({size / 1e6:.1f} MB gz, {len(body) / 1e6:.1f} MB raw)")
+    print(f"\n[done] {n_feats:,} flowlines -> {OUT_PATH} "
+          f"({size / 1e6:.1f} MB gz, ~{raw_bytes / 1e6:.1f} MB raw)")
 
-    # ── Step 7: PA validation ──
-    validate_pa_coverage(clickable_comids, trout_comids, all_attrs, nhd_gdfs)
-
+    # ── Step 6: PA validation ──
+    validate_pa_coverage(clickable_comids, trout_comids, name_to_comids)
     return 0
 
 
