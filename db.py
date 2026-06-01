@@ -216,8 +216,7 @@ def init_db() -> None:
         # state-scale the planner picks just one and the other predicate
         # becomes a heap filter -- 10s+ queries that pile up and kill
         # the worker at the gunicorn 120s timeout. GiST handles all
-        # four bbox sides in one index lookup via the && operator;
-        # query_clickable_streams below uses it on the PG path. The
+        # four bbox sides in one index lookup via the && operator. The
         # `bbox` column is GENERATED STORED so writes don't need any
         # extra wiring; SQLite has no GiST and stays on the 4-range path.
         if _IS_PG:
@@ -733,8 +732,7 @@ def _feature_bbox(coords, gtype) -> tuple:
 # Drop the [x, y, z] Z dimension (NHD geometry is 3D but we only need 2D
 # centerlines on the map) and round to 5 decimals (~1m precision -- well
 # below stream-width resolution). Cuts the served GeoJSON payload by
-# roughly 60% raw / 30% gzipped per /api/clickable_streams response,
-# which is the biggest egress lever in the app.
+# roughly 60% raw / 30% gzipped, applied at load time.
 def _trim_geom(geom: dict) -> dict:
     gtype = geom.get("type")
     coords = geom.get("coordinates")
@@ -809,8 +807,7 @@ def bulk_load_clickable_streams(geojson_gz_path: str) -> int:
                     str(p["trout_class"]) if p.get("trout_class") else None,
                     float(w), float(s), float(e), float(n),
                     # Trim before persisting so fresh loads bake the savings into
-                    # the DB; query_clickable_streams also trims at read to cover
-                    # already-loaded rows. default=float coerces ijson Decimals.
+                    # the DB. default=float coerces ijson Decimals.
                     json.dumps(_trim_geom(geom), separators=(",", ":"),
                                default=float),
                 ))
@@ -819,54 +816,6 @@ def bulk_load_clickable_streams(geojson_gz_path: str) -> int:
         _flush()
         conn.commit()
     return total
-
-
-def query_clickable_streams(west: float, south: float, east: float,
-                            north: float, min_order: int = 1,
-                            limit: int = 4000) -> list[dict]:
-    """Clickable streams whose bounding box overlaps the viewport and
-    whose StreamOrder >= min_order (the zoom tier). Capped for safety.
-
-    Postgres uses the GiST bbox index via the `&&` overlap operator,
-    which handles all four bbox sides in one index lookup -- state-scale
-    viewports come back in <100ms instead of the 10s+ the 4-range
-    B-tree path took (which was killing the gunicorn worker under
-    concurrent panning). SQLite has no GiST so the dev path keeps the
-    original 4-range query, served by the b-tree lat/lon indexes.
-    """
-    import json
-    if _IS_PG:
-        sql = ("SELECT comid, levelpathid, gnis_name, streamorder,"
-               " trout_class, geom FROM clickable_streams"
-               " WHERE streamorder >= %s"
-               " AND bbox && box(point(%s, %s), point(%s, %s))"
-               " ORDER BY streamorder DESC LIMIT %s")
-        params = (int(min_order), west, south, east, north, int(limit))
-    else:
-        sql = ("SELECT comid, levelpathid, gnis_name, streamorder,"
-               " trout_class, geom FROM clickable_streams"
-               " WHERE streamorder >= ?"
-               " AND max_lon >= ? AND min_lon <= ?"
-               " AND max_lat >= ? AND min_lat <= ?"
-               " ORDER BY streamorder DESC LIMIT ?")
-        params = (int(min_order), west, east, south, north, int(limit))
-    with _conn() as conn:
-        cur = conn.cursor()
-        cur.execute(sql, params)
-        rows = cur.fetchall()
-    out = []
-    for r in rows:
-        try:
-            geom = json.loads(r["geom"])
-        except (ValueError, TypeError):
-            continue
-        out.append({
-            "comid": r["comid"], "levelpathid": r["levelpathid"],
-            "gnis_name": r["gnis_name"], "streamorder": r["streamorder"],
-            "trout_class": r["trout_class"],
-            "geometry": _trim_geom(geom),    # idempotent on already-trimmed rows
-        })
-    return out
 
 
 # -- Public lands (PAD-US 4.0): vector parcels with click-to-identify --
@@ -966,48 +915,6 @@ def _polygon_bbox(coords, gtype) -> tuple:
     if not lons:
         raise ValueError("empty polygon")
     return min(lons), min(lats), max(lons), max(lats)
-
-
-def query_public_lands(west: float, south: float, east: float,
-                       north: float, limit: int = 500) -> list[dict]:
-    """Public-land parcels whose bounding box overlaps the viewport.
-    Mirrors `query_clickable_streams`: GiST `&&` on Postgres, 4-range
-    B-tree on SQLite. Caller is expected to zoom-gate before hitting
-    this (the API endpoint does)."""
-    import json
-    if _IS_PG:
-        sql = ("SELECT unit_name, manager_type, manager_name, designation,"
-               " public_access, state_nm, geom FROM public_lands"
-               " WHERE bbox && box(point(%s, %s), point(%s, %s))"
-               " ORDER BY manager_type LIMIT %s")
-        params = (west, south, east, north, int(limit))
-    else:
-        sql = ("SELECT unit_name, manager_type, manager_name, designation,"
-               " public_access, state_nm, geom FROM public_lands"
-               " WHERE max_lon >= ? AND min_lon <= ?"
-               " AND max_lat >= ? AND min_lat <= ?"
-               " ORDER BY manager_type LIMIT ?")
-        params = (west, east, south, north, int(limit))
-    with _conn() as conn:
-        cur = conn.cursor()
-        cur.execute(sql, params)
-        rows = cur.fetchall()
-    out: list[dict] = []
-    for r in rows:
-        try:
-            geom = json.loads(r["geom"])
-        except (ValueError, TypeError):
-            continue
-        out.append({
-            "unit_name": r["unit_name"],
-            "manager_type": r["manager_type"],
-            "manager_name": r["manager_name"],
-            "designation": r["designation"],
-            "public_access": r["public_access"],
-            "state_nm": r["state_nm"],
-            "geometry": geom,
-        })
-    return out
 
 
 _STATS_MAX_AGE = timedelta(days=30)

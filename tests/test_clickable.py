@@ -1,13 +1,15 @@
-"""Phase B backend: clickable-stream network load + viewport/tier query
-+ endpoint. Offline -- a tiny synthetic GeoJSON fixture, no network."""
+"""Phase B backend: clickable-stream network bulk-load. Offline -- a tiny
+synthetic GeoJSON fixture, no network.
 
-import asyncio
+The viewport/tier query (db.query_clickable_streams) + the
+/api/clickable_streams endpoint were retired when the network moved to
+static vector tiles (M3); the loader + the bundled data file remain (the
+tiles are built from that file), so this keeps the load coverage."""
+
 import gzip
 import json
-from types import SimpleNamespace
 
 import db
-import main
 
 
 def _fixture(tmp_path):
@@ -46,76 +48,3 @@ def test_bulk_load_idempotent(tmp_path, monkeypatch):
     assert db.bulk_load_clickable_streams(path) == 3
     assert db.bulk_load_clickable_streams(path) == 0      # already loaded
     assert db.clickable_loaded() is True
-
-
-def test_viewport_and_tier_filtering(tmp_path, monkeypatch):
-    _fresh(tmp_path, monkeypatch)
-    db.bulk_load_clickable_streams(_fixture(tmp_path))
-    box = (-78.0, 40.6, -77.3, 41.0)                      # covers all three
-    assert len(db.query_clickable_streams(*box, min_order=1)) == 3
-    assert len(db.query_clickable_streams(*box, min_order=4)) == 2  # drops order-1
-    assert len(db.query_clickable_streams(*box, min_order=6)) == 1  # Big River only
-    # viewport that excludes Big River's bbox
-    east_box = (-77.55, 40.65, -77.3, 41.0)
-    names = {r["gnis_name"] for r in db.query_clickable_streams(*east_box, min_order=1)}
-    assert "Big River" not in names and "Penns Creek" in names
-    # geometry round-trips
-    r = db.query_clickable_streams(*box, min_order=6)[0]
-    assert r["geometry"]["type"] == "LineString"
-    assert r["trout_class"] is None and r["streamorder"] == 6
-
-
-def test_min_order_for_zoom_tiers():
-    f = main._min_order_for_zoom
-    assert f(7) == 6 and f(8) == 5 and f(9) == 4
-    assert f(10) == 3 and f(11) == 3
-    # Order-1 headwaters appear at zoom 14, not 13 -- previous tiers
-    # introduced them all at zoom 13 in a single visible jump, which
-    # the user perceived as "things flickering on/off when panning."
-    assert f(12) == 2 and f(13) == 2 and f(14) == 1
-    assert f(16) == 1                                    # clamps
-
-
-def test_endpoint_returns_filtered_featurecollection(tmp_path, monkeypatch):
-    _fresh(tmp_path, monkeypatch)
-    db.bulk_load_clickable_streams(_fixture(tmp_path))
-    req = SimpleNamespace(headers={})
-    # zoom 14 -> min_order 1 -> all three in a wide bbox
-    resp = asyncio.run(main.api_clickable_streams(
-        req, bbox="-78.0,40.6,-77.3,41.0", zoom=14))
-    fc = json.loads(resp.body)
-    assert fc["type"] == "FeatureCollection"
-    assert len(fc["features"]) == 3
-    assert {"comid", "levelpathid", "gnis_name", "streamorder",
-            "trout_class"} <= set(fc["features"][0]["properties"])
-    # zoom 13 now sits at min_order 2 -- excludes the order-1 headwater
-    resp13 = asyncio.run(main.api_clickable_streams(
-        req, bbox="-78.0,40.6,-77.3,41.0", zoom=13))
-    assert len(json.loads(resp13.body)["features"]) == 2
-    # zoom 9 -> min_order 4 -> Big River + Penns Creek only
-    resp9 = asyncio.run(main.api_clickable_streams(
-        req, bbox="-78.0,40.6,-77.3,41.0", zoom=9))
-    assert len(json.loads(resp9.body)["features"]) == 2
-
-
-def test_query_strips_z_and_rounds(tmp_path, monkeypatch):
-    """Served geometry drops the NHD Z dimension and rounds coords to
-    5 decimals (the egress trim)."""
-    import gzip, json
-    _fresh(tmp_path, monkeypatch)
-    fc = {"type": "FeatureCollection", "features": [{
-        "type": "Feature",
-        "properties": {"comid": 9, "levelpathid": 9, "gnis_name": "Z River",
-                       "streamorder": 5, "trout_class": None},
-        "geometry": {"type": "LineString", "coordinates": [
-            [-77.391410000000001, 39.505370000000006, 0.0],
-            [-77.39304000000001, 39.504940000000005, 0.0]]},
-    }]}
-    path = tmp_path / "z.geojson.gz"
-    with gzip.open(path, "wt", encoding="utf-8") as f:
-        json.dump(fc, f)
-    db.bulk_load_clickable_streams(str(path))
-    r = db.query_clickable_streams(-78, 39, -77, 40, min_order=1)[0]
-    coords = r["geometry"]["coordinates"]
-    assert all(len(c) == 2 for c in coords)            # Z stripped
-    assert coords[0] == [-77.39141, 39.50537]          # rounded to 5 decimals
