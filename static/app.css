@@ -307,7 +307,7 @@ html, body {
     color: var(--fg-2); flex-shrink: 0;
 }
 .search-result-icon i { width: 14px; height: 14px; }
-.search-result-text { flex: 1; min-width: 0; }
+.search-result-text { flex: 1; min-width: 0; display: flex; flex-direction: column; }
 .search-result-name { font-size: var(--fs-body); color: var(--fg-1); font-weight: var(--fw-medium); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .search-result-meta { font-size: var(--fs-meta); color: var(--fg-3); margin-top: 1px; }
 .search-result-cond {
@@ -541,9 +541,13 @@ html, body {
     background: var(--bg-surface);
     transition: border-color var(--dur-fast) var(--ease-out);
 }
-.filter-row-check i { width: 14px; height: 14px; color: var(--bl-river-700); opacity: 0; }
+/* Target svg too: Lucide replaces the <i data-lucide="check"> with an <svg>
+   on hydration, so an `i`-only rule never matches the rendered checkmark. */
+.filter-row-check i,
+.filter-row-check svg { width: 14px; height: 14px; color: var(--bl-river-700); opacity: 0; }
 .filter-row-toggle input:checked ~ .filter-row-check { border-color: var(--bl-river-700); }
-.filter-row-toggle input:checked ~ .filter-row-check i { opacity: 1; }
+.filter-row-toggle input:checked ~ .filter-row-check i,
+.filter-row-toggle input:checked ~ .filter-row-check svg { opacity: 1; }
 .filter-row-toggle:hover .filter-row-label { color: var(--fg-1); }
 .filter-row-toggle input:focus-visible ~ .filter-row-check { box-shadow: var(--ring-focus); }
 

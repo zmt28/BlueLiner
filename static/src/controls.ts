@@ -227,6 +227,11 @@ document.addEventListener("keydown", (e) => {
   if (e.key === "Escape" && !panel.hidden) closePanel();
 });
 
+// Selecting any map POI (river / stream / access / pin) closes the rail
+// panel so the opened drawer/popup isn't hidden behind it. POI handlers
+// dispatch "bl:poi-open"; closePanel() no-ops when nothing is open.
+document.addEventListener("bl:poi-open", () => closePanel());
+
 // Keep the chrome offset correct across the breakpoint.
 window.addEventListener("resize", setChromeOffset);
 setChromeOffset();

@@ -153,10 +153,12 @@ export async function ensureAccess(state: string): Promise<void> {
           : null;
       const p = f.properties || ({} as AccessFeatureProps);
       if (!c || c.length < 2) continue;
-      const m = new maplibregl.Marker({
-        element: makeAccessElement(p.type),
-        anchor: "center",
-      })
+      const el = makeAccessElement(p.type);
+      // Selecting an access point is a POI click -> close the rail panel.
+      el.addEventListener("click", () =>
+        document.dispatchEvent(new Event("bl:poi-open")),
+      );
+      const m = new maplibregl.Marker({ element: el, anchor: "center" })
         .setLngLat([c[0], c[1]]) // GeoJSON is already [lng, lat]
         .setPopup(makePopup().setHTML(accessPopupHtml(p)));
       accessMarkers.push(m);
