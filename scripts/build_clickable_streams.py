@@ -380,6 +380,10 @@ def fetch_arcgis_features(query_url: str, page_size: int = 1000) -> list[dict]:
     user_where = src.get("where", "1=1")
     common = {
         "f": "geojson", "outSR": "4326", "returnGeometry": "true",
+        # Drop Z/M ordinates: layers flagged hasZ/hasM (e.g. NY's PolylineZM
+        # reaches) otherwise emit null Z values in the GeoJSON, which shapely
+        # parses as float(None). No-op for plain 2D layers.
+        "returnZ": "false", "returnM": "false",
         "outFields": src.get("outFields", "*"),
         "resultRecordCount": str(page_size),
     }
