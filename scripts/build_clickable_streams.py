@@ -138,6 +138,37 @@ MD_TROUT_URL = (
 # a builder-only COMID list.)
 MD_SEED_PATH = os.path.join(ROOT, "data", "nhdplus", "MD_designated_comids.json")
 
+# --- Northeast single-bucket trout layers ---
+# Each layer maps wholesale to one trout_class (the agency publishes a single
+# wild- or stocked-trout layer, with no per-feature category to split on), so
+# they reuse the existing wild_reproduction/stocked classes -> the frontend
+# (streams.ts) needs no change; only the tile data widens. Source CRS varies
+# (NJ 3424, VT/ME State Plane/UTM, MA 26986) but fetch_arcgis_features always
+# requests outSR=4326, so the server reprojects for us.
+# NOTE: VT "Brook Trout Waters" is EBTJV catchment polygons (subwatersheds with
+# brook trout), not stream centerlines -- the spatial join tags every NHD
+# flowline inside each polygon, so VT renders coarser than the line-based states.
+NE_TROUT_LAYERS = [
+    {"state": "NJ", "class": "stocked",
+     "label": "NJ Trout Stocked Streams",
+     "url": ("https://mapsdep.nj.gov/arcgis/rest/services/Features/"
+             "Environmental_admin/MapServer/35/query?where=1%3D1")},
+    {"state": "VT", "class": "wild_reproduction",
+     "label": "VT Brook Trout Waters",
+     "url": ("https://anrmaps.vermont.gov/arcgis/rest/services/map_services/"
+             "MAP_ANR_ANRATLASFISHWILDLIFE_WM_NOCACHE/MapServer/49/"
+             "query?where=1%3D1")},
+    {"state": "MA", "class": "wild_reproduction",
+     "label": "MA Coldwater Fisheries Resources",
+     "url": ("https://arcgisserver.digital.mass.gov/arcgisserver/rest/services/"
+             "AGOL/DFW_CFR/FeatureServer/0/query?where=1%3D1")},
+    {"state": "ME", "class": "wild_reproduction",
+     "label": "ME Wild Brook Trout Priority Conservation Areas",
+     "url": ("https://gis.maine.gov/arcgis/rest/services/ifw/"
+             "IFW_Wild_BKT_Priority_Conservation_Areas/MapServer/0/"
+             "query?where=1%3D1")},
+]
+
 USER_AGENT = "Blueliner/1.0 (+https://blueliner.app)"
 REQUEST_TIMEOUT = 20.0
 TOTAL_BUDGET = 120.0
@@ -440,6 +471,18 @@ def fetch_trout_pa() -> dict[str, gpd.GeoDataFrame]:
     return results
 
 
+def fetch_trout_ne(spec: dict) -> gpd.GeoDataFrame | None:
+    """A single-bucket Northeast trout layer (whole layer -> spec['class'])."""
+    print(f"[trout] {spec['label']} ...")
+    feats = fetch_arcgis_features(spec["url"])
+    if not feats:
+        print("  WARNING: no features returned")
+        return None
+    gdf = gpd.GeoDataFrame.from_features(feats, crs="EPSG:4326")
+    print(f"  {len(gdf)} features")
+    return gdf
+
+
 # ──────────────────────── Join trout to NHD COMIDs ────────────────────────
 
 def spatial_join_trout(trout_gdf: gpd.GeoDataFrame,
@@ -637,6 +680,12 @@ def main(argv: list[str] | None = None) -> int:
                               tuple(va_gdf.total_bounds)))
     for cls, g in pa_gdfs.items():
         trout_sources.append((cls, g, tuple(g.total_bounds)))
+    # Northeast single-bucket layers (NJ/VT/MA/ME). States don't overlap, so
+    # their position in the precedence order vs MD/VA/PA is immaterial.
+    for spec in NE_TROUT_LAYERS:
+        g = fetch_source(spec["state"], lambda s=spec: fetch_trout_ne(s))
+        if g is not None and len(g):
+            trout_sources.append((spec["class"], g, tuple(g.total_bounds)))
 
     seeded = sorted(k for k, v in trout_status.items() if v == "bundled-seed")
     if seeded:
