@@ -135,6 +135,7 @@ USER_AGENT = "Blueliner/1.0 (+https://blueliner.app)"
 REQUEST_TIMEOUT = 20.0
 TOTAL_BUDGET = 120.0
 MAX_PAGES = 80
+MAX_RETRIES = 5  # per-request retries (transport errors + 5xx) before giving up
 SPATIAL_JOIN_BUFFER_DEG = 0.001  # ~100 m
 
 
@@ -245,10 +246,12 @@ def read_region_gdf(shp: str) -> gpd.GeoDataFrame:
 
 
 def write_manifest(path: str, region_ids: list[str], resolved: dict,
-                   feature_count: int, trout_class_counts: dict) -> None:
+                   feature_count: int, trout_class_counts: dict,
+                   trout_status: dict) -> None:
     """Provenance sidecar for a built artifact: which regions, which exact NHD
     archive vintages were resolved (so a release is reproducible / auditable),
-    the feature count, and the trout-class histogram. Answers 'what is live?'
+    the feature count, the trout-class histogram, and which state trout sources
+    were reachable (so a degraded build is visible). Answers 'what is live?'
     when shipped alongside the .geojson.gz / .pmtiles."""
     import datetime
     manifest = {
@@ -259,6 +262,7 @@ def write_manifest(path: str, region_ids: list[str], resolved: dict,
         "regions": region_ids,
         "feature_count": feature_count,
         "trout_class_counts": dict(sorted(trout_class_counts.items())),
+        "trout_sources": dict(sorted(trout_status.items())),
         "archives": resolved,  # {region_id: {snap: url, attr: url}}
     }
     with open(path, "w", encoding="utf-8") as f:
@@ -267,10 +271,38 @@ def write_manifest(path: str, region_ids: list[str], resolved: dict,
 
 # ──────────────────────── ArcGIS keyset pagination ────────────────────────
 
-def _discover_oid_field(client: httpx.Client, layer_url: str) -> str | None:
+def _http_get_retry(client: httpx.Client, url: str, params: dict,
+                    deadline: float) -> httpx.Response:
+    """GET with exponential backoff on transport errors and 5xx responses.
+
+    State GIS servers (e.g. MD's DNR ArcGIS) intermittently refuse connections
+    or 503 under load; a single blip shouldn't abort a multi-region build. Gives
+    up after MAX_RETRIES or when the next backoff would pass `deadline`, raising
+    the last error so the caller can decide whether to degrade or fail."""
+    err: Exception | None = None
+    for attempt in range(1, MAX_RETRIES + 1):
+        try:
+            resp = client.get(url, params=params)
+            if resp.status_code < 500:
+                return resp
+            err = httpx.HTTPStatusError(
+                f"server returned {resp.status_code}",
+                request=resp.request, response=resp)
+        except httpx.TransportError as e:
+            err = e
+        wait = min(2 ** attempt, 16)
+        if attempt >= MAX_RETRIES or time.monotonic() + wait > deadline:
+            break
+        print(f"    retry {attempt}/{MAX_RETRIES} after {err} (waiting {wait}s)")
+        time.sleep(wait)
+    raise err  # type: ignore[misc]
+
+
+def _discover_oid_field(client: httpx.Client, layer_url: str,
+                        deadline: float) -> str | None:
     """Find the OID field name from the layer metadata, checking actual fields."""
     try:
-        r = client.get(layer_url, params={"f": "json"})
+        r = _http_get_retry(client, layer_url, {"f": "json"}, deadline)
         r.raise_for_status()
         meta = r.json()
         declared = meta.get("objectIdField")
@@ -302,7 +334,7 @@ def fetch_arcgis_features(query_url: str, page_size: int = 1000) -> list[dict]:
     deadline = time.monotonic() + TOTAL_BUDGET
     with httpx.Client(timeout=REQUEST_TIMEOUT,
                       headers={"User-Agent": USER_AGENT}) as client:
-        oid = _discover_oid_field(client, layer_url)
+        oid = _discover_oid_field(client, layer_url, deadline)
         last: int | None = None
         for _ in range(MAX_PAGES):
             if time.monotonic() > deadline:
@@ -314,7 +346,7 @@ def fetch_arcgis_features(query_url: str, page_size: int = 1000) -> list[dict]:
                 params["orderByFields"] = f"{oid} ASC"
             else:
                 params["where"] = user_where
-            resp = client.get(base, params=params)
+            resp = _http_get_retry(client, base, params, deadline)
             resp.raise_for_status()
             batch = resp.json().get("features", [])
             if not batch:
@@ -511,6 +543,10 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
                    help="Don't delete each region's extract after emitting it. "
                         "Default is to delete (bounds peak disk to ~one region) "
                         "so a full lower-48 build fits a small CI runner.")
+    p.add_argument("--require-trout", action="store_true",
+                   help="Fail (exit 3) if any state trout source can't be "
+                        "fetched, instead of degrading to untagged geometry. "
+                        "Use for canonical/published release builds.")
     p.add_argument("--manifest", default="",
                    help="Also write a provenance manifest JSON (regions, "
                         "resolved NHD archive vintages, feature count) here.")
@@ -538,9 +574,27 @@ def main(argv: list[str] | None = None) -> int:
     print(f"NHDPlus cache: {args.cache_dir}\n")
 
     # ── Step 1: Fetch state trout GIS (small; held in memory once) ──
-    va_gdf = fetch_trout_va()
-    md_gdf = fetch_trout_md()
-    pa_gdfs = fetch_trout_pa()
+    # These are third-party state ArcGIS servers that occasionally go down. After
+    # _http_get_retry has exhausted its backoff, a source is reported unreachable
+    # rather than aborting the whole build: the clickable geometry still ships, it
+    # just isn't trout-tagged for that state. A canonical release should pass
+    # --require-trout so an incomplete artifact never gets published silently.
+    trout_status: dict[str, str] = {}  # source label -> "ok" | "unreachable"
+
+    def fetch_source(label: str, fn):
+        try:
+            result = fn()
+            trout_status[label] = "ok"
+            return result
+        except Exception as e:  # transport/HTTP error after retries
+            print(f"  WARNING: {label} trout source unreachable: {e}")
+            trout_status[label] = "unreachable"
+            return None
+
+    md_gdf = fetch_source("MD", fetch_trout_md)
+    va_gdf = fetch_source("VA", fetch_trout_va)
+    pa_gdfs = fetch_source("PA", fetch_trout_pa) or {}
+
     # Ordered trout sources -- precedence is MD designated, then VA wild, then
     # the PA layers (first writer wins per COMID, matching the old MD→VA→PA
     # order). Each carries its lon/lat bounds for the per-region bbox prefilter.
@@ -552,6 +606,15 @@ def main(argv: list[str] | None = None) -> int:
                               tuple(va_gdf.total_bounds)))
     for cls, g in pa_gdfs.items():
         trout_sources.append((cls, g, tuple(g.total_bounds)))
+
+    unreachable = sorted(k for k, v in trout_status.items() if v != "ok")
+    if unreachable:
+        print(f"\n⚠ trout sources unreachable: {', '.join(unreachable)} — "
+              f"clickable geometry still builds, but those states are untagged.")
+        if args.require_trout:
+            print("--require-trout set; refusing to ship an incomplete release.",
+                  file=sys.stderr)
+            return 3
 
     # ── Step 2: VPU-streaming build ──
     # One region at a time: download → join trout → emit clickable features →
@@ -653,7 +716,7 @@ def main(argv: list[str] | None = None) -> int:
     # ── Step 4: provenance manifest (for the build/ship runbook) ──
     if args.manifest:
         write_manifest(args.manifest, [r["id"] for r in regions], resolved,
-                       n_feats, dict(by_class))
+                       n_feats, dict(by_class), trout_status)
         print(f"[manifest] wrote {args.manifest}")
     return 0
 

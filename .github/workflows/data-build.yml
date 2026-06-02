@@ -63,9 +63,13 @@ jobs:
       - name: Build clickable streams
         env:
           REGIONS: ${{ inputs.regions }}
+          UPLOAD: ${{ inputs.upload }}
         run: |
           args=(--manifest data/nhdplus/clickable_streams.manifest.json)
           if [ -n "$REGIONS" ]; then args+=(--regions "$REGIONS"); fi
+          # When actually publishing, fail rather than ship a release that's
+          # missing a state's trout tagging because its ArcGIS server was down.
+          if [ "$UPLOAD" = "true" ]; then args+=(--require-trout); fi
           python scripts/build_clickable_streams.py "${args[@]}"
 
       - name: Sanity gate
