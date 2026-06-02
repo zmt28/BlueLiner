@@ -213,7 +213,7 @@ def prepare_region(region: dict, cache_dir: str, skip_download: bool) -> tuple[s
     vaa_hits = glob.glob(f"{work}/**/PlusFlowlineVAA.dbf", recursive=True)
     if skip_download and shp_hits and vaa_hits:
         print(f"[{region['id']}] {region['label']} — reusing cached extract")
-        return shp_hits[0], vaa_hits[0]
+        return shp_hits[0], vaa_hits[0], {}
 
     print(f"[{region['id']}] {region['label']}")
     snap_url = discover_archive(region["da"], region["vpu"], "NHDSnapshot")
@@ -228,7 +228,7 @@ def prepare_region(region: dict, cache_dir: str, skip_download: bool) -> tuple[s
     extract(attr, work, ["PlusFlowlineVAA.dbf"])
     shp = glob.glob(f"{work}/**/NHDFlowline.shp", recursive=True)[0]
     vaa_dbf = glob.glob(f"{work}/**/PlusFlowlineVAA.dbf", recursive=True)[0]
-    return shp, vaa_dbf
+    return shp, vaa_dbf, {"snap": snap_url, "attr": attr_url}
 
 
 def read_region_gdf(shp: str) -> gpd.GeoDataFrame:
@@ -236,6 +236,27 @@ def read_region_gdf(shp: str) -> gpd.GeoDataFrame:
     lazily per-region (and discarded after use) to bound peak memory."""
     gdf = gpd.read_file(shp)
     return gdf.to_crs(4326)
+
+
+def write_manifest(path: str, region_ids: list[str], resolved: dict,
+                   feature_count: int, trout_class_counts: dict) -> None:
+    """Provenance sidecar for a built artifact: which regions, which exact NHD
+    archive vintages were resolved (so a release is reproducible / auditable),
+    the feature count, and the trout-class histogram. Answers 'what is live?'
+    when shipped alongside the .geojson.gz / .pmtiles."""
+    import datetime
+    manifest = {
+        "generated_at": datetime.datetime.now(datetime.timezone.utc)
+                                 .isoformat(timespec="seconds"),
+        "git_sha": os.environ.get("GITHUB_SHA"),
+        "builder": "build_clickable_streams.py",
+        "regions": region_ids,
+        "feature_count": feature_count,
+        "trout_class_counts": dict(sorted(trout_class_counts.items())),
+        "archives": resolved,  # {region_id: {snap: url, attr: url}}
+    }
+    with open(path, "w", encoding="utf-8") as f:
+        json.dump(manifest, f, indent=2, sort_keys=True)
 
 
 # ──────────────────────── ArcGIS keyset pagination ────────────────────────
@@ -521,6 +542,9 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
     p.add_argument("--skip-download", action="store_true",
                    help="Reuse already-extracted archives in --cache-dir "
                         "instead of re-fetching (much faster on repeat runs).")
+    p.add_argument("--manifest", default="",
+                   help="Also write a provenance manifest JSON (regions, "
+                        "resolved NHD archive vintages, feature count) here.")
     return p.parse_args(argv)
 
 
@@ -566,11 +590,15 @@ def main(argv: list[str] | None = None) -> int:
     # regions, so peak memory is ~all_attrs + one region's geometry.
     print("\n── Pass 1: NHD attrs + trout joins (region-streaming) ──")
     region_paths: dict[str, tuple[str, str]] = {}
+    resolved: dict[str, dict] = {}  # region id -> {snap url, attr url} (provenance)
     all_attrs: dict[int, dict] = {}
     trout_comids: dict[int, str] = {}  # comid -> trout_class (first wins)
     for region in regions:
-        shp, vaa_dbf = prepare_region(region, args.cache_dir, args.skip_download)
+        shp, vaa_dbf, archives = prepare_region(
+            region, args.cache_dir, args.skip_download)
         region_paths[region["id"]] = (shp, vaa_dbf)
+        if archives:
+            resolved[region["id"]] = archives
         all_attrs.update(vaa_attrs(vaa_dbf))
         # Only the geometry is needed for joins; skip the read entirely when
         # there are no trout layers to join (e.g. enrichment-free regions).
@@ -657,6 +685,12 @@ def main(argv: list[str] | None = None) -> int:
 
     # ── Step 6: PA validation ──
     validate_pa_coverage(clickable_comids, trout_comids, name_to_comids)
+
+    # ── Step 7: provenance manifest (for the build/ship runbook) ──
+    if args.manifest:
+        write_manifest(args.manifest, [r["id"] for r in regions], resolved,
+                       n_feats, dict(by_class))
+        print(f"[manifest] wrote {args.manifest}")
     return 0
 
 

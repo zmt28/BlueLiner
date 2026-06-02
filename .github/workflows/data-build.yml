@@ -1,0 +1,137 @@
+name: Data build — clickable streams
+
+# Rebuilds the national clickable-streams artifact (geometry + trout_class) and
+# its PMTiles, optionally publishing both to R2. Manually triggered: streams are
+# static reference data, rebuilt on a data release (e.g. an NHD vintage refresh
+# or a Phase-2 state-enrichment change), not per-PR.
+#
+# Runner: a GitHub Team "larger runner". The default lower-48 build downloads +
+# extracts ~15-30 GB, which busts the 14 GB standard-runner disk — so create a
+# 4-core Linux larger runner (≈16 GB RAM, ~150 GB SSD) named `blueliner-build`
+# under Org → Settings → Actions → Runners → Larger runners, and it gets picked
+# up by `runs-on` below. RAM is comfortable; disk is the binding constraint.
+#
+# Required repo/org secrets (R2, S3-compatible):
+#   R2_BUCKET           bucket name (e.g. blueliner-data)
+#   R2_ENDPOINT         https://<acct>.r2.cloudflarestorage.com
+#   R2_ACCESS_KEY_ID    R2 access key id
+#   R2_SECRET_ACCESS_KEY  R2 secret access key
+
+on:
+  workflow_dispatch:
+    inputs:
+      regions:
+        description: "VPU ids, comma-separated (blank = all 21 lower-48)"
+        required: false
+        default: ""
+      r2_prefix:
+        description: "R2 version prefix to publish under (e.g. v1, v2)"
+        required: false
+        default: "v1"
+      upload:
+        description: "Publish artifacts to R2 (uncheck for a dry run)"
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: blueliner-build
+    timeout-minutes: 240
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install build dependencies
+        run: |
+          python -m pip install --upgrade pip
+          # geopandas pulls shapely + pyogrio with bundled GDAL wheels — no apt GDAL needed.
+          pip install dbfread py7zr httpx geopandas shapely
+
+      - name: Install tippecanoe
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential libsqlite3-dev zlib1g-dev
+          git clone --depth 1 https://github.com/felt/tippecanoe.git /tmp/tippecanoe
+          make -C /tmp/tippecanoe -j"$(nproc)"
+          sudo make -C /tmp/tippecanoe install
+
+      - name: Build clickable streams
+        env:
+          REGIONS: ${{ inputs.regions }}
+        run: |
+          args=(--manifest data/nhdplus/clickable_streams.manifest.json)
+          if [ -n "$REGIONS" ]; then args+=(--regions "$REGIONS"); fi
+          python scripts/build_clickable_streams.py "${args[@]}"
+
+      - name: Sanity gate
+        env:
+          REGIONS: ${{ inputs.regions }}
+        run: |
+          python - <<'PY'
+          import json, os, sys
+          man = json.load(open("data/nhdplus/clickable_streams.manifest.json"))
+          n, regions = man["feature_count"], man["regions"]
+          size = os.path.getsize("data/nhdplus/clickable_streams.geojson.gz") / 1e6
+          print(f"features={n:,} regions={len(regions)} size={size:.1f}MB")
+          if n < 1000:
+              sys.exit(f"only {n} features — build looks broken")
+          # A full lower-48 run should be substantial; guard against a silently
+          # truncated build (e.g. a region that returned no geometry).
+          if os.environ.get("REGIONS", "") == "" and n < 500_000:
+              sys.exit(f"national build only {n} features — looks truncated")
+          PY
+
+      - name: Build PMTiles
+        env:
+          TMPDIR: ${{ runner.temp }}
+        run: scripts/build_stream_tiles.sh
+
+      - name: Publish to R2
+        if: ${{ inputs.upload }}
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          R2_ENDPOINT: ${{ secrets.R2_ENDPOINT }}
+          R2_BUCKET: ${{ secrets.R2_BUCKET }}
+          R2_PREFIX: ${{ inputs.r2_prefix }}
+          PMTILES: ${{ runner.temp }}/streams.pmtiles
+        run: |
+          base="s3://$R2_BUCKET/$R2_PREFIX"
+          put() { aws s3 cp "$1" "$base/$2" --endpoint-url "$R2_ENDPOINT" "${@:3}"; }
+          put data/nhdplus/clickable_streams.geojson.gz clickable_streams.geojson.gz
+          put data/nhdplus/clickable_streams.manifest.json clickable_streams.manifest.json
+          put "$PMTILES" streams.pmtiles --content-type application/octet-stream
+          echo "Published to $base"
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: clickable-streams
+          path: |
+            data/nhdplus/clickable_streams.geojson.gz
+            data/nhdplus/clickable_streams.manifest.json
+          if-no-files-found: error
+
+      - name: Job summary
+        env:
+          UPLOADED: ${{ inputs.upload }}
+          R2_PREFIX: ${{ inputs.r2_prefix }}
+        run: |
+          {
+            echo "### Clickable-streams build"
+            echo '```json'
+            cat data/nhdplus/clickable_streams.manifest.json
+            echo '```'
+            if [ "$UPLOADED" = "true" ]; then
+              echo "Published to R2 prefix \`$R2_PREFIX\`. To cut over:"
+              echo "set \`VITE_STREAM_TILES_URL=<DATA_BASE_URL>/streams.pmtiles\` (and \`DATA_BASE_URL\` for the GeoJSON path) and redeploy."
+            else
+              echo "_Dry run — nothing published. Re-run with **upload** checked to publish._"
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
