@@ -169,6 +169,21 @@ NE_TROUT_LAYERS = [
              "query?where=1%3D1")},
 ]
 
+# --- NY DEC inland trout stream reaches (multi-bucket) ---
+# Layer 0 of dil_water_activities carries the Trout Stream Management Plan
+# categorization in field MGMTCAT; we fold its 5 reach categories into our two
+# buckets. "Other" = wild reaches with catch-and-release regs that aren't ranked
+# Quality/Premier, so they ride with wild rather than being dropped.
+NY_TROUT_URL = ("https://gisservices.dec.ny.gov/arcgis/rest/services/dil/"
+                "dil_water_activities/MapServer/0/query?where=1%3D1")
+NY_MGMTCAT_CLASS = {
+    "Stocked": "stocked",
+    "Stocked-Extended": "stocked",
+    "Wild-Quality": "wild_reproduction",
+    "Wild-Premier": "wild_reproduction",
+    "Other": "wild_reproduction",
+}
+
 USER_AGENT = "Blueliner/1.0 (+https://blueliner.app)"
 REQUEST_TIMEOUT = 20.0
 TOTAL_BUDGET = 120.0
@@ -483,6 +498,26 @@ def fetch_trout_ne(spec: dict) -> gpd.GeoDataFrame | None:
     return gdf
 
 
+def fetch_trout_ny() -> dict[str, gpd.GeoDataFrame]:
+    """NY DEC inland trout stream reaches, split by MGMTCAT into wild/stocked."""
+    print("[trout] NY Inland Trout Stream Fishing ...")
+    feats = fetch_arcgis_features(NY_TROUT_URL)
+    if not feats:
+        print("  WARNING: no features returned")
+        return {}
+    gdf = gpd.GeoDataFrame.from_features(feats, crs="EPSG:4326")
+    if "MGMTCAT" not in gdf.columns:
+        print("  WARNING: MGMTCAT field absent; skipping NY")
+        return {}
+    gdf["_cls"] = gdf["MGMTCAT"].map(NY_MGMTCAT_CLASS)
+    # Rows with an unmapped MGMTCAT drop out of the groupby (NaN key).
+    results: dict[str, gpd.GeoDataFrame] = {}
+    for cls, sub in gdf.groupby("_cls"):
+        results[cls] = sub.drop(columns="_cls")
+        print(f"  {cls}: {len(sub)} features")
+    return results
+
+
 # ──────────────────────── Join trout to NHD COMIDs ────────────────────────
 
 def spatial_join_trout(trout_gdf: gpd.GeoDataFrame,
@@ -686,6 +721,10 @@ def main(argv: list[str] | None = None) -> int:
         g = fetch_source(spec["state"], lambda s=spec: fetch_trout_ne(s))
         if g is not None and len(g):
             trout_sources.append((spec["class"], g, tuple(g.total_bounds)))
+    # NY is multi-bucket (MGMTCAT -> wild/stocked), like the PA layers.
+    ny_gdfs = fetch_source("NY", fetch_trout_ny) or {}
+    for cls, g in ny_gdfs.items():
+        trout_sources.append((cls, g, tuple(g.total_bounds)))
 
     seeded = sorted(k for k, v in trout_status.items() if v == "bundled-seed")
     if seeded:
