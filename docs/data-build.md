@@ -36,13 +36,12 @@ echoed to the job summary.
 
 ### Runner
 
-The default lower-48 build downloads + extracts ~15–30 GB, which exceeds the
-14 GB standard-runner disk. The workflow targets a **GitHub Team larger
-runner**: create a **4-core Linux** runner (~16 GB RAM, ~150 GB SSD) named
-`blueliner-build` under **Org → Settings → Actions → Runners → Larger
-runners**. RAM is comfortable (~1–1.5 GB working set); **disk is the binding
-constraint**. Cost is ~$1–3 per full national run at current larger-runner
-rates.
+Runs on the **free standard `ubuntu-latest`** — no Team plan or larger runner
+needed. The builder is VPU-streaming and **deletes each region's extract after
+emitting it**, so peak disk stays at ~one region (a couple GB) regardless of
+how many regions are built, comfortably inside the standard runner's ~14 GB
+disk. (Use `--keep-extracts` locally if you want to retain them for repeat
+runs.)
 
 ### Secrets
 

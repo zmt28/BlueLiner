@@ -4,11 +4,14 @@ Build data/nhdplus/clickable_streams.geojson.gz -- the geometry layer of
 fishing-relevant streams that become clickable on the map (the
 "bluelining" network).
 
-A reach is clickable if ANY of:
-  - StreamOrder >= 3 (the geometry base from NHDPlusV2)
-  - state-designated trout water (VA / MD / PA, any order)
-  - StreamOrder >= 3 tributary of a trout-water COMID (via NHDPlus topo)
-  - named river StreamOrder >= 5
+A reach is clickable if EITHER:
+  - StreamOrder >= 3 (the geometry base from NHDPlusV2), or
+  - it's a state-designated trout water (VA / MD / PA, any order).
+
+(An earlier "order >= 3 tributary of a trout water" rule was a no-op: such
+tributaries are order >= 3, so they're already in the base set. Dropping that
+topology pass is output-identical and is what lets the build stream one VPU at
+a time -- see main().)
 
 Each feature carries:
     comid, levelpathid, gnis_name, streamorder, lengthkm, trout_class
@@ -26,12 +29,14 @@ Run from repo root:
 
 The build covers the lower-48 NHDPlusV2 Vector Processing Units (the `VPUS`
 table); archive URLs are discovered from the S3 listing at build time so the
-per-release vintage suffixes never need hardcoding. It is region-streaming:
-each region's geometry is read, joined, then discarded, so peak memory is
-~(global COMID attr table + one region's geometry) rather than every region
-at once. Archives download+extract into --cache-dir (default
-$TMPDIR/blueliner_nhd_cache) and persist across runs, so --skip-download can
-reuse them. Features stream straight to the gzip output.
+per-release vintage suffixes never need hardcoding. It is fully VPU-streaming:
+one region at a time is downloaded, joined to trout layers, emitted to the gzip
+output, and then its extract is deleted before the next -- so BOTH peak memory
+(~one region's attrs + geometry) and peak disk (~one region's archives) stay
+bounded regardless of how many regions there are. That keeps a full lower-48
+build inside a free standard CI runner's ~14 GB disk. Archives extract into
+--cache-dir (default $TMPDIR/blueliner_nhd_cache); --skip-download reuses a
+prior extract and --keep-extracts disables the delete-after-each-region.
 """
 
 import argparse
@@ -40,6 +45,7 @@ import gzip
 import json
 import os
 import re
+import shutil
 import sys
 import tempfile
 import time
@@ -412,48 +418,6 @@ def _bbox_overlap(a, b) -> bool:
     return not (a[2] < b[0] or b[2] < a[0] or a[3] < b[1] or b[3] < a[1])
 
 
-# ──────────────────────── NHDPlus topology ────────────────────────
-
-def build_upstream_graph(all_attrs: dict[int, dict]) -> dict[int, list[int]]:
-    """Hydroseq -> list of upstream COMIDs (those whose DnHydroseq == this Hydroseq)."""
-    hs_to_comid: dict[int, int] = {}
-    for comid, a in all_attrs.items():
-        hs = a.get("hydroseq")
-        if hs:
-            hs_to_comid[hs] = comid
-
-    upstream: dict[int, list[int]] = defaultdict(list)
-    for comid, a in all_attrs.items():
-        dnhs = a.get("dnhydroseq")
-        if dnhs and dnhs in hs_to_comid:
-            downstream_comid = hs_to_comid[dnhs]
-            upstream[downstream_comid].append(comid)
-    return upstream
-
-
-def collect_upstream_tributaries(trout_comids: set[int],
-                                 upstream_graph: dict[int, list[int]],
-                                 all_attrs: dict[int, dict]) -> set[int]:
-    """Walk upstream from trout COMIDs, collect order >= 3 tributaries."""
-    result: set[int] = set()
-    visited: set[int] = set()
-    stack = list(trout_comids)
-    while stack:
-        comid = stack.pop()
-        if comid in visited:
-            continue
-        visited.add(comid)
-        for up_comid in upstream_graph.get(comid, []):
-            a = all_attrs.get(up_comid)
-            if not a:
-                continue
-            order = a.get("streamorder")
-            if order is not None and order >= MIN_ORDER:
-                result.add(up_comid)
-                stack.append(up_comid)
-    return result
-
-
 # ──────────────────────── Feature assembly ────────────────────────
 
 def build_feature(comid: int, row, gnis_col: str | None,
@@ -541,7 +505,12 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
                         "Persists across runs so --skip-download can reuse them.")
     p.add_argument("--skip-download", action="store_true",
                    help="Reuse already-extracted archives in --cache-dir "
-                        "instead of re-fetching (much faster on repeat runs).")
+                        "instead of re-fetching (much faster on repeat runs). "
+                        "Implies --keep-extracts.")
+    p.add_argument("--keep-extracts", action="store_true",
+                   help="Don't delete each region's extract after emitting it. "
+                        "Default is to delete (bounds peak disk to ~one region) "
+                        "so a full lower-48 build fits a small CI runner.")
     p.add_argument("--manifest", default="",
                    help="Also write a provenance manifest JSON (regions, "
                         "resolved NHD archive vintages, feature count) here.")
@@ -584,90 +553,73 @@ def main(argv: list[str] | None = None) -> int:
     for cls, g in pa_gdfs.items():
         trout_sources.append((cls, g, tuple(g.total_bounds)))
 
-    # ── Step 2: Pass 1 — region-streaming attrs + trout joins ──
-    # Each region's geometry is read, joined, then DISCARDED; only the
-    # lightweight COMID attr table and the trout-COMID map survive between
-    # regions, so peak memory is ~all_attrs + one region's geometry.
-    print("\n── Pass 1: NHD attrs + trout joins (region-streaming) ──")
-    region_paths: dict[str, tuple[str, str]] = {}
-    resolved: dict[str, dict] = {}  # region id -> {snap url, attr url} (provenance)
-    all_attrs: dict[int, dict] = {}
-    trout_comids: dict[int, str] = {}  # comid -> trout_class (first wins)
-    for region in regions:
-        shp, vaa_dbf, archives = prepare_region(
-            region, args.cache_dir, args.skip_download)
-        region_paths[region["id"]] = (shp, vaa_dbf)
-        if archives:
-            resolved[region["id"]] = archives
-        all_attrs.update(vaa_attrs(vaa_dbf))
-        # Only the geometry is needed for joins; skip the read entirely when
-        # there are no trout layers to join (e.g. enrichment-free regions).
-        if trout_sources:
-            gdf = read_region_gdf(shp)
-            rbounds = tuple(gdf.total_bounds)
-            for cls, tgdf, tbounds in trout_sources:
-                if not _bbox_overlap(rbounds, tbounds):
-                    continue
-                matched = spatial_join_trout(tgdf, gdf, cls, all_attrs)
-                if matched:
-                    print(f"  [{region['id']}] {cls}: {len(matched):,} COMIDs")
-                for c, k in matched.items():
-                    trout_comids.setdefault(c, k)
-            del gdf  # free this region's geometry before the next
-
-    print(f"\nNHDPlus: {len(all_attrs):,} COMIDs across {len(regions)} region(s)")
-    print(f"Total trout COMIDs: {len(trout_comids):,}")
-    by_class = defaultdict(int)
-    for cls in trout_comids.values():
-        by_class[cls] += 1
-    for cls, n in sorted(by_class.items()):
-        print(f"  {cls}: {n:,}")
-
-    # ── Step 3: Upstream tributaries (topology only — no geometry) ──
-    print("\n── Computing upstream tributaries (order >= 3) ──")
-    upstream_graph = build_upstream_graph(all_attrs)
-    trib_comids = collect_upstream_tributaries(
-        set(trout_comids.keys()), upstream_graph, all_attrs)
-    print(f"  {len(trib_comids):,} upstream tributary COMIDs (order >= {MIN_ORDER})")
-
-    # ── Step 4: Clickable set = order>=3 ∪ trout ∪ trout tributaries ──
-    clickable_comids: set[int] = {
-        comid for comid, a in all_attrs.items()
-        if a.get("streamorder") is not None and a["streamorder"] >= MIN_ORDER
-    }
-    clickable_comids.update(trout_comids.keys())
-    clickable_comids.update(trib_comids)
-
-    # ── Step 5: Pass 2 — re-read geometry per region, STREAM features out ──
-    # Features are written one at a time to the gzip stream rather than held in
-    # a list, so output size doesn't bound memory either.
-    print(f"\n── Pass 2: emitting features "
-          f"({len(clickable_comids):,} clickable COMIDs) ──")
+    # ── Step 2: VPU-streaming build ──
+    # One region at a time: download → join trout → emit clickable features →
+    # delete its extract. Nothing region-scoped survives to the next iteration
+    # except the running output stream + small global counters, so peak memory
+    # AND peak disk stay at ~one region regardless of region count.
+    #
+    # Clickable = (StreamOrder >= 3) ∪ (trout COMIDs, any order). Both are
+    # decidable from a single region's own attrs + geometry: order is per-COMID,
+    # and a trout join only ever yields COMIDs from the region it ran against
+    # (COMIDs partition by VPU). The old global upstream-tributary pass added
+    # nothing (its results were order >= 3, already in the base), so there's no
+    # cross-region dependency to force a second pass.
+    keep = args.keep_extracts or args.skip_download
+    print("\n── Building (VPU-streaming) ──")
+    resolved: dict[str, dict] = {}   # region id -> {snap, attr} (provenance)
+    by_class: dict[str, int] = defaultdict(int)
     val_names = set(PA_WILD_TROUT_VALIDATION)
     name_to_comids: dict[str, set[int]] = defaultdict(set)
-    emitted: set[int] = set()
+    val_clickable: set[int] = set()  # val-name COMIDs that were emitted
+    val_trout: set[int] = set()      # val-name COMIDs that are trout
     n_feats = 0
     raw_bytes = len('{"type":"FeatureCollection","features":[]}')
+
     with gzip.open(OUT_PATH, "wt", encoding="utf-8") as out:
         out.write('{"type":"FeatureCollection","features":[')
         for region in regions:
-            shp, _ = region_paths[region["id"]]
+            shp, vaa_dbf, archives = prepare_region(
+                region, args.cache_dir, args.skip_download)
+            if archives:
+                resolved[region["id"]] = archives
+            attrs = vaa_attrs(vaa_dbf)
             gdf = read_region_gdf(shp)
             id_col = next(c for c in gdf.columns if c.lower() == "comid")
             gnis_col = next((c for c in gdf.columns
                              if c.lower() == "gnis_name"), None)
+
+            # Trout joins for this region only (bbox-gated for speed).
+            rbounds = tuple(gdf.total_bounds)
+            region_trout: dict[int, str] = {}
+            for cls, tgdf, tbounds in trout_sources:
+                if not _bbox_overlap(rbounds, tbounds):
+                    continue
+                for c, k in spatial_join_trout(tgdf, gdf, cls, attrs).items():
+                    region_trout.setdefault(c, k)
+            for cls in region_trout.values():
+                by_class[cls] += 1
+
+            seen: set[int] = set()  # dedup within region (COMIDs unique per VPU)
+            emitted_here = 0
             for _, row in gdf.iterrows():
                 comid = int(row[id_col])
-                # Validation-name tracking spans ALL rows (incl. non-clickable)
-                # so a MISS can report how many NHD COMIDs the name had.
-                if gnis_col:
-                    nm = row[gnis_col]
-                    if nm and str(nm).strip() in val_names:
-                        name_to_comids[str(nm).strip()].add(comid)
-                if comid in emitted or comid not in clickable_comids:
+                if comid in seen:
                     continue
-                feat = build_feature(comid, row, gnis_col, all_attrs,
-                                     trout_comids.get(comid))
+                seen.add(comid)
+                nm = (str(row[gnis_col]).strip()
+                      if gnis_col and row[gnis_col] else None)
+                is_val = nm in val_names
+                if is_val:
+                    name_to_comids[nm].add(comid)
+                a = attrs.get(comid)
+                order = a.get("streamorder") if a else None
+                trout = region_trout.get(comid)
+                clickable = (order is not None and order >= MIN_ORDER) \
+                    or trout is not None
+                if not clickable:
+                    continue
+                feat = build_feature(comid, row, gnis_col, attrs, trout)
                 if not feat:
                     continue
                 seg = ("," if n_feats else "") + json.dumps(
@@ -675,18 +627,30 @@ def main(argv: list[str] | None = None) -> int:
                 out.write(seg)
                 raw_bytes += len(seg)
                 n_feats += 1
-                emitted.add(comid)
-            del gdf  # free before the next region
+                emitted_here += 1
+                if is_val:
+                    val_clickable.add(comid)
+                    if trout is not None:
+                        val_trout.add(comid)
+            print(f"  [{region['id']}] {emitted_here:,} features"
+                  f" ({len(region_trout):,} trout)")
+
+            del gdf, attrs
+            if not keep:
+                shutil.rmtree(os.path.join(args.cache_dir, region["id"]),
+                              ignore_errors=True)
         out.write("]}")
 
     size = os.path.getsize(OUT_PATH)
     print(f"\n[done] {n_feats:,} flowlines -> {OUT_PATH} "
           f"({size / 1e6:.1f} MB gz, ~{raw_bytes / 1e6:.1f} MB raw)")
+    for cls, n in sorted(by_class.items()):
+        print(f"  {cls}: {n:,}")
 
-    # ── Step 6: PA validation ──
-    validate_pa_coverage(clickable_comids, trout_comids, name_to_comids)
+    # ── Step 3: PA validation (data collected during the emit loop) ──
+    validate_pa_coverage(val_clickable, val_trout, name_to_comids)
 
-    # ── Step 7: provenance manifest (for the build/ship runbook) ──
+    # ── Step 4: provenance manifest (for the build/ship runbook) ──
     if args.manifest:
         write_manifest(args.manifest, [r["id"] for r in regions], resolved,
                        n_feats, dict(by_class))
