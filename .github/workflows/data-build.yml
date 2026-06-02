@@ -11,7 +11,7 @@ name: Data build — clickable streams
 # runner's ~14 GB disk, no larger/Team runner required.
 #
 # Required repo/org secrets (R2, S3-compatible):
-#   R2_BUCKET           bucket name (e.g. blueliner-data)
+#   R2_BUCKET           bucket name (this project's bucket is `bluelines-data`)
 #   R2_ENDPOINT         https://<acct>.r2.cloudflarestorage.com
 #   R2_ACCESS_KEY_ID    R2 access key id
 #   R2_SECRET_ACCESS_KEY  R2 secret access key

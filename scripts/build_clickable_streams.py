@@ -130,6 +130,13 @@ MD_TROUT_URL = (
     "https://dnr.geodata.md.gov/dnrdata/rest/services/Fisheries/"
     "DesignatedUse_Trout/MapServer/0/query?where=1%3D1"
 )
+# Committed COMID seed used only when MD_TROUT_URL is unreachable (its ArcGIS
+# server flaps). NHDPlusV2 COMIDs are stable, so tagging from a prior live
+# capture is equivalent until MD changes its designations; regenerate from a
+# fresh live build when the endpoint recovers. (Lives in data/nhdplus/, not
+# data/trout/ -- the latter holds runtime GeoJSON bundles for trout.py; this is
+# a builder-only COMID list.)
+MD_SEED_PATH = os.path.join(ROOT, "data", "nhdplus", "MD_designated_comids.json")
 
 USER_AGENT = "Blueliner/1.0 (+https://blueliner.app)"
 REQUEST_TIMEOUT = 20.0
@@ -402,6 +409,21 @@ def fetch_trout_md() -> gpd.GeoDataFrame | None:
     return gdf
 
 
+def load_md_seed() -> tuple[str, set[int]] | None:
+    """Fallback for when the live MD endpoint is down: load the committed
+    (trout_class, {COMIDs}) capture. Returns None if the seed file is absent."""
+    if not os.path.exists(MD_SEED_PATH):
+        return None
+    with open(MD_SEED_PATH, encoding="utf-8") as f:
+        seed = json.load(f)
+    comids = {int(c) for c in seed.get("comids", [])}
+    if not comids:
+        return None
+    print(f"  [trout] MD seed: {len(comids):,} '{seed['trout_class']}' COMIDs "
+          f"from {seed.get('captured_from', '?')}")
+    return seed["trout_class"], comids
+
+
 def fetch_trout_pa() -> dict[str, gpd.GeoDataFrame]:
     """PA PASDA trout layers — keyed by trout_class."""
     results = {}
@@ -595,6 +617,15 @@ def main(argv: list[str] | None = None) -> int:
     va_gdf = fetch_source("VA", fetch_trout_va)
     pa_gdfs = fetch_source("PA", fetch_trout_pa) or {}
 
+    # When MD's live endpoint is down, fall back to the committed COMID seed so
+    # MD streams stay tagged (status "bundled-seed" -- a complete source, not a
+    # gap, so it satisfies --require-trout). Applied per region below.
+    md_seed: tuple[str, set[int]] | None = None
+    if md_gdf is None and trout_status.get("MD") == "unreachable":
+        md_seed = load_md_seed()
+        if md_seed:
+            trout_status["MD"] = "bundled-seed"
+
     # Ordered trout sources -- precedence is MD designated, then VA wild, then
     # the PA layers (first writer wins per COMID, matching the old MD→VA→PA
     # order). Each carries its lon/lat bounds for the per-region bbox prefilter.
@@ -607,7 +638,11 @@ def main(argv: list[str] | None = None) -> int:
     for cls, g in pa_gdfs.items():
         trout_sources.append((cls, g, tuple(g.total_bounds)))
 
-    unreachable = sorted(k for k, v in trout_status.items() if v != "ok")
+    seeded = sorted(k for k, v in trout_status.items() if v == "bundled-seed")
+    if seeded:
+        print(f"\nℹ using bundled seed for: {', '.join(seeded)} "
+              f"(live endpoint down; tagging from a prior capture).")
+    unreachable = sorted(k for k, v in trout_status.items() if v == "unreachable")
     if unreachable:
         print(f"\n⚠ trout sources unreachable: {', '.join(unreachable)} — "
               f"clickable geometry still builds, but those states are untagged.")
@@ -655,6 +690,14 @@ def main(argv: list[str] | None = None) -> int:
             # Trout joins for this region only (bbox-gated for speed).
             rbounds = tuple(gdf.total_bounds)
             region_trout: dict[int, str] = {}
+            # Bundled MD seed first (highest precedence, == live MD order): tag
+            # the seed COMIDs that fall in this region. Membership in `attrs`
+            # confines them to their own VPU, mirroring the live spatial join.
+            if md_seed:
+                seed_cls, seed_comids = md_seed
+                for c in seed_comids:
+                    if c in attrs:
+                        region_trout.setdefault(c, seed_cls)
             for cls, tgdf, tbounds in trout_sources:
                 if not _bbox_overlap(rbounds, tbounds):
                     continue

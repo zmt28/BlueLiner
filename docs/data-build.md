@@ -45,8 +45,8 @@ runs.)
 
 ### Secrets
 
-Set on the repo/org: `R2_BUCKET`, `R2_ENDPOINT`,
-`R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`.
+Set on the repo/org: `R2_BUCKET` (this project's bucket is `bluelines-data`),
+`R2_ENDPOINT`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`.
 
 ## Option 2 — local build
 
@@ -71,6 +71,42 @@ scripts/build_stream_tiles.sh                                  # -> $TMPDIR/stre
 R2_BUCKET=… R2_PREFIX=v1 R2_ENDPOINT=… \
 AWS_ACCESS_KEY_ID=… AWS_SECRET_ACCESS_KEY=… \
     scripts/build_stream_tiles.sh --upload
+```
+
+## Trout sources & the MD seed fallback
+
+Trout tagging pulls from three live state ArcGIS servers (VA DWR, MD DNR, PA
+PASDA). Each fetch retries with backoff; if a source stays unreachable it's
+recorded in the manifest's `trout_sources` map and, unless `--require-trout` is
+set, the build proceeds with that state untagged.
+
+MD's DNR server (`dnr.geodata.md.gov`) flaps, so MD has a committed fallback:
+`data/nhdplus/MD_designated_comids.json` — the set of NHDPlusV2 COMIDs tagged
+`designated` by a prior **live** build. When the live MD endpoint is down the
+builder tags MD from this seed instead (manifest shows `MD: bundled-seed`), so
+a release stays MD-complete and `--require-trout` still passes. COMIDs are
+stable NHDPlusV2 identifiers, so the seed is equivalent to a live fetch until MD
+changes its designations.
+
+Regenerate the seed from a fresh live build (run when MD's endpoint is healthy):
+
+```bash
+python - <<'PY'
+import gzip, json, subprocess
+src = "data/nhdplus/clickable_streams.geojson.gz"
+sha = subprocess.run(["git","log","-1","--format=%h","--",src],
+                     capture_output=True, text=True).stdout.strip()
+fc = json.load(gzip.open(src, "rt"))
+comids = sorted({int(f["properties"]["comid"]) for f in fc["features"]
+                 if f["properties"]["trout_class"] == "designated"})
+json.dump({"state":"MD","trout_class":"designated",
+           "source":"Maryland DNR Designated Use Trout",
+           "captured_from":f"{src} @ {sha}","comid_count":len(comids),
+           "comids":comids},
+          open("data/nhdplus/MD_designated_comids.json","w"),
+          separators=(",",":"))
+print(f"{len(comids):,} COMIDs")
+PY
 ```
 
 ## Cutover & rollback
