@@ -5,11 +5,10 @@ name: Data build — clickable streams
 # static reference data, rebuilt on a data release (e.g. an NHD vintage refresh
 # or a Phase-2 state-enrichment change), not per-PR.
 #
-# Runner: a GitHub Team "larger runner". The default lower-48 build downloads +
-# extracts ~15-30 GB, which busts the 14 GB standard-runner disk — so create a
-# 4-core Linux larger runner (≈16 GB RAM, ~150 GB SSD) named `blueliner-build`
-# under Org → Settings → Actions → Runners → Larger runners, and it gets picked
-# up by `runs-on` below. RAM is comfortable; disk is the binding constraint.
+# Runner: the free standard `ubuntu-latest`. The builder is VPU-streaming and
+# deletes each region's extract after emitting it, so peak disk stays at ~one
+# region (a couple GB) even for a full lower-48 build — it fits the standard
+# runner's ~14 GB disk, no larger/Team runner required.
 #
 # Required repo/org secrets (R2, S3-compatible):
 #   R2_BUCKET           bucket name (e.g. blueliner-data)
@@ -38,7 +37,7 @@ permissions:
 
 jobs:
   build:
-    runs-on: blueliner-build
+    runs-on: ubuntu-latest
     timeout-minutes: 240
     steps:
       - uses: actions/checkout@v4
