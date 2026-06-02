@@ -45,8 +45,8 @@ runs.)
 
 ### Secrets
 
-Set on the repo/org: `R2_BUCKET`, `R2_ENDPOINT`,
-`R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`.
+Set on the repo/org: `R2_BUCKET` (this project's bucket is `bluelines-data`),
+`R2_ENDPOINT`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`.
 
 ## Option 2 — local build
 
