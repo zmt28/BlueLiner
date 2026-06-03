@@ -138,17 +138,17 @@ MD_TROUT_URL = (
 # a builder-only COMID list.)
 MD_SEED_PATH = os.path.join(ROOT, "data", "nhdplus", "MD_designated_comids.json")
 
-# --- Northeast single-bucket trout layers ---
+# --- Single-bucket trout layers (Northeast + Appalachian) ---
 # Each layer maps wholesale to one trout_class (the agency publishes a single
 # wild- or stocked-trout layer, with no per-feature category to split on), so
 # they reuse the existing wild_reproduction/stocked classes -> the frontend
 # (streams.ts) needs no change; only the tile data widens. Source CRS varies
-# (NJ 3424, VT/ME State Plane/UTM, MA 26986) but fetch_arcgis_features always
-# requests outSR=4326, so the server reprojects for us.
+# (NJ 3424, VT/ME State Plane/UTM, MA 26986, WV 3857) but fetch_arcgis_features
+# always requests outSR=4326, so the server reprojects for us.
 # NOTE: VT "Brook Trout Waters" is EBTJV catchment polygons (subwatersheds with
 # brook trout), not stream centerlines -- the spatial join tags every NHD
 # flowline inside each polygon, so VT renders coarser than the line-based states.
-NE_TROUT_LAYERS = [
+SINGLE_BUCKET_TROUT_LAYERS = [
     {"state": "NJ", "class": "stocked",
      "label": "NJ Trout Stocked Streams",
      "url": ("https://mapsdep.nj.gov/arcgis/rest/services/Features/"
@@ -166,6 +166,10 @@ NE_TROUT_LAYERS = [
     # gis.maine.gov /ifw REST services behind MaineIT GIS Enterprise Portal auth,
     # so they're no longer anonymously queryable. Keeping it out of the list so a
     # --require-trout release isn't blocked by an endpoint we can't reach.
+    {"state": "WV", "class": "stocked",
+     "label": "WV Stocked Trout Streams",
+     "url": ("https://services.wvgis.wvu.edu/arcgis/rest/services/Applications/"
+             "dnrRec_fishing/MapServer/4/query?where=1%3D1")},
 ]
 
 # --- NY DEC inland trout stream reaches (multi-bucket) ---
@@ -746,9 +750,9 @@ def main(argv: list[str] | None = None) -> int:
                               tuple(va_gdf.total_bounds)))
     for cls, g in pa_gdfs.items():
         trout_sources.append((cls, g, tuple(g.total_bounds)))
-    # Northeast single-bucket layers (NJ/VT/MA/ME). States don't overlap, so
-    # their position in the precedence order vs MD/VA/PA is immaterial.
-    for spec in NE_TROUT_LAYERS:
+    # Single-bucket layers (NJ/VT/MA + WV). States don't overlap, so their
+    # position in the precedence order vs MD/VA/PA is immaterial.
+    for spec in SINGLE_BUCKET_TROUT_LAYERS:
         g = fetch_source(spec["state"], lambda s=spec: fetch_trout_ne(s))
         if g is not None and len(g):
             trout_sources.append((spec["class"], g, tuple(g.total_bounds)))
