@@ -213,6 +213,19 @@ def _nc_bucket(value: str | None) -> str | None:
         return "wild_reproduction"
     return None
 
+
+# --- GA DNR WRD trout streams (multi-bucket) ---
+# Layer 1 (Trout_Stream) is the master layer; per-feature "Yes"/"No"/blank flag
+# fields mark management type. Heavily-stocked and delayed-harvest reaches are
+# put-and-take -> stocked; everything else (incl. special-regulation wild
+# sections, Spec_Reg) -> wild_reproduction. The sibling Heavily_Stocked /
+# Special_Regulations layers are just filtered views of these flags, so layer 1
+# alone covers the split.
+GA_TROUT_URL = ("https://services6.arcgis.com/9QlSLDqa0P1cHLhu/arcgis/rest/"
+                "services/Georgia_Trout_Streams_Public_Download_All_Layers/"
+                "FeatureServer/1/query?where=1%3D1")
+GA_STOCKED_FLAGS = ("Hvy_stock", "Delay_har")
+
 USER_AGENT = "Blueliner/1.0 (+https://blueliner.app)"
 REQUEST_TIMEOUT = 20.0
 TOTAL_BUDGET = 120.0
@@ -595,6 +608,30 @@ def fetch_trout_nc() -> dict[str, gpd.GeoDataFrame]:
     return results
 
 
+def fetch_trout_ga() -> dict[str, gpd.GeoDataFrame]:
+    """GA DNR trout streams, split by management flags into wild/stocked."""
+    print("[trout] GA Trout Streams ...")
+    feats = fetch_arcgis_features(GA_TROUT_URL)
+    if not feats:
+        print("  WARNING: no features returned")
+        return {}
+    gdf = gpd.GeoDataFrame.from_features(feats, crs="EPSG:4326")
+    stocked = gdf.geometry.notna() & False  # all-False seed aligned to index
+    for col in GA_STOCKED_FLAGS:
+        if col in gdf.columns:
+            stocked |= (gdf[col].fillna("").astype(str)
+                        .str.strip().str.lower().eq("yes"))
+    if not stocked.any():
+        print("  WARNING: no stocked flags matched; tagging all GA as wild")
+    gdf["_cls"] = "wild_reproduction"
+    gdf.loc[stocked, "_cls"] = "stocked"
+    results: dict[str, gpd.GeoDataFrame] = {}
+    for cls_name, sub in gdf.groupby("_cls"):
+        results[cls_name] = sub.drop(columns="_cls")
+        print(f"  {cls_name}: {len(sub)} features")
+    return results
+
+
 # ──────────────────────── Join trout to NHD COMIDs ────────────────────────
 
 def spatial_join_trout(trout_gdf: gpd.GeoDataFrame,
@@ -814,6 +851,10 @@ def main(argv: list[str] | None = None) -> int:
     # NC is multi-bucket (PMTW regulation class -> wild/stocked).
     nc_gdfs = fetch_source("NC", fetch_trout_nc) or {}
     for cls, g in nc_gdfs.items():
+        trout_sources.append((cls, g, tuple(g.total_bounds)))
+    # GA is multi-bucket (Hvy_stock/Delay_har flags -> wild/stocked).
+    ga_gdfs = fetch_source("GA", fetch_trout_ga) or {}
+    for cls, g in ga_gdfs.items():
         trout_sources.append((cls, g, tuple(g.total_bounds)))
 
     seeded = sorted(k for k, v in trout_status.items() if v == "bundled-seed")
