@@ -286,8 +286,18 @@ interface SelStreamKey {
 
 let _selStreamKey: SelStreamKey | null = null;
 
+function _cleanName(s: string | null | undefined): string | null {
+  // The tiles can carry the literal string "nan" -- a pandas NaN that got
+  // stringified during the build (unnamed NHD reaches). Treat it, and other
+  // null-ish placeholders, as no name so unnamed reaches don't all collapse
+  // into one "nan" river (which would highlight the whole region at once).
+  const n = (s || "").trim();
+  if (!n || n.toLowerCase() === "nan" || n.toLowerCase() === "none") return null;
+  return n;
+}
+
 function _normName(s: string | null | undefined): string {
-  return (s || "").trim().toLowerCase();
+  return (_cleanName(s) || "").toLowerCase();
 }
 
 function _featMatchesKey(p: ClickableStreamProps, key: SelStreamKey): boolean {
@@ -396,7 +406,7 @@ export function onStreamClick(
   const loading = '<div class="bl-reach-msg">Loading&hellip;</div>';
   body.innerHTML =
     `<div class="bl-card"><div class="bl-card-head">` +
-    `<div style="font-size:18px;font-weight:700;color:#1a1a2e">${esc(p.gnis_name || "Unnamed stream")}</div>` +
+    `<div style="font-size:18px;font-weight:700;color:#1a1a2e">${esc(_cleanName(p.gnis_name) || "Unnamed stream")}</div>` +
     `<span class="stream-badge" style="background:${esc(streamColor(p))}">${esc(label)}</span>` +
     `<span class="stream-badge" style="background:#64748b">Order ${esc(p.streamorder)}</span>` +
     `<div class="bl-summary">Ungauged reach &mdash; no live USGS flow here. Showing what we know.</div>` +
@@ -417,13 +427,13 @@ export function onStreamClick(
   commitRiverPanelOpen(panel, body, "open");
   if (window.wireCatch) {
     window.wireCatch(body, {
-      name: p.gnis_name,
+      name: _cleanName(p.gnis_name),
       site_no: null,
       lat: lngLat ? lngLat.lat : null,
       lon: lngLat ? lngLat.lng : null,
     });
   }
-  loadReachDetail(body, lngLat, p.gnis_name || null);
+  loadReachDetail(body, lngLat, _cleanName(p.gnis_name));
 }
 
 // -- Ungauged-card data (hatch / stocked / access) -------------------
