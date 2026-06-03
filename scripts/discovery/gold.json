@@ -3,17 +3,17 @@
   "states": {
     "MD": {
       "agency": "MD DNR", "host": "dnr.geodata.md.gov", "geometry": "line",
-      "mode": "whole_layer",
+      "service": "DesignatedUse_Trout", "mode": "whole_layer",
       "labels": [{"value": "Maryland Designated Use Trout", "bucket": "stocked"}]
     },
     "VA": {
       "agency": "VA DWR", "host": "services.dwr.virginia.gov", "geometry": "line",
-      "mode": "whole_layer",
+      "service": "WildTroutStreams", "mode": "whole_layer",
       "labels": [{"value": "Virginia Wild Trout Streams", "bucket": "wild_reproduction"}]
     },
     "PA": {
       "agency": "PFBC (PASDA)", "host": "mapservices.pasda.psu.edu", "geometry": "line",
-      "mode": "multi_layer",
+      "service": "PAFishBoat", "mode": "multi_layer",
       "labels": [
         {"value": "Trout Natural Reproduction with Tributaries", "bucket": "wild_reproduction"},
         {"value": "Class A Wild Trout Streams", "bucket": "wild_reproduction"},
@@ -23,22 +23,22 @@
     },
     "NJ": {
       "agency": "NJ DEP", "host": "mapsdep.nj.gov", "geometry": "line",
-      "mode": "whole_layer",
+      "service": "Environmental_admin", "mode": "whole_layer",
       "labels": [{"value": "NJ Trout Stocked Streams", "bucket": "stocked"}]
     },
     "VT": {
       "agency": "VT ANR (EBTJV)", "host": "anrmaps.vermont.gov", "geometry": "polygon",
-      "mode": "whole_layer",
+      "service": "ANRATLASFISHWILDLIFE", "mode": "whole_layer",
       "labels": [{"value": "VT Brook Trout Waters", "bucket": "wild_reproduction"}]
     },
     "MA": {
       "agency": "MA DFW", "host": "arcgisserver.digital.mass.gov", "geometry": "polygon",
-      "mode": "whole_layer",
+      "service": "DFW_CFR", "mode": "whole_layer",
       "labels": [{"value": "MA Coldwater Fisheries Resources", "bucket": "wild_reproduction"}]
     },
     "NY": {
       "agency": "NY DEC", "host": "gisservices.dec.ny.gov", "geometry": "line",
-      "mode": "field", "field": "MGMTCAT",
+      "service": "dil_water_activities", "mode": "field", "field": "MGMTCAT",
       "labels": [
         {"value": "Stocked", "bucket": "stocked"},
         {"value": "Stocked-Extended", "bucket": "stocked"},
@@ -49,12 +49,12 @@
     },
     "WV": {
       "agency": "WVDNR", "host": "services.wvgis.wvu.edu", "geometry": "line",
-      "mode": "whole_layer",
+      "service": "dnrRec_fishing", "mode": "whole_layer",
       "labels": [{"value": "WV Stocked Trout Streams", "bucket": "stocked"}]
     },
     "NC": {
       "agency": "NCWRC", "host": "services1.arcgis.com", "geometry": "line",
-      "mode": "field", "field": "FIRST_WRC_",
+      "service": "PMTW_streams", "mode": "field", "field": "FIRST_WRC_",
       "labels": [
         {"value": "Wild Trout Waters", "bucket": "wild_reproduction"},
         {"value": "Catch and Release/Artificial Flies and Lures Only Trout Waters", "bucket": "wild_reproduction"},
@@ -65,7 +65,7 @@
     },
     "GA": {
       "agency": "GA DNR WRD", "host": "services6.arcgis.com", "geometry": "line",
-      "mode": "flags",
+      "service": "Georgia_Trout_Streams", "mode": "flags",
       "labels": [
         {"value": "Heavily Stocked", "bucket": "stocked"},
         {"value": "Delayed Harvest", "bucket": "stocked"},

@@ -1,34 +1,36 @@
 """Candidate-endpoint generation [NETWORK -- runs in the Actions discovery job].
 
-Turns a state code into a ranked list of candidate ArcGIS layer URLs by querying
-public catalogs, so discovery stops depending on a human typing search terms:
+Turns a state code into a ranked list of candidate ArcGIS layer URLs from three
+adapters, so discovery stops depending on a human typing search terms:
 
-  * ArcGIS Online / Hub search  (services.arcgis.com items, org-agnostic)
-  * data.gov CKAN               (federal aggregator; many state DNR datasets)
-  * ArcGIS server directory walk (seeded state GIS hosts -> recurse ?f=json)
+  * directory walk   -- recurse seeded state-GIS ArcGIS-Server roots (?f=json),
+                        keep services whose name says trout/fish. This is the
+                        ONLY adapter that finds the many state-hosted layers
+                        (VA/MD/NY/WV/PA/...) that AGOL search never indexes.
+  * ArcGIS Online/Hub -- services.arcgis.com items (covers AGOL-published states
+                        like NC/GA and agency Hubs).
+  * data.gov CKAN     -- federal aggregator; catches some state DNR datasets.
 
-Candidates are deduped by normalized service URL and returned best-first; the
-prober (`probe.py`) does the real vetting (geometry, anonymous query, fields).
-This sandbox's egress blocks these hosts, so nothing here runs locally -- it's
-exercised by .github/workflows/trout-discovery-spike.yml.
+Walk results lead (state-authoritative, high precision); search/CKAN backfill.
+Deduped by service URL. The geo gate in probe.py drops any out-of-state match a
+fuzzy text search slips through.
 """
 from __future__ import annotations
 
 import time
-from urllib.parse import quote
+from urllib.parse import urlsplit
 
 import httpx
 
 UA = {"User-Agent": "Blueliner-discovery/0.1 (+https://blueliner.app)"}
 TIMEOUT = 30.0
 
-# Search phrases, most-specific first; {st} is the full state name.
 QUERY_TEMPLATES = (
     "{st} wild trout streams",
     "{st} stocked trout streams",
     "{st} trout streams regulations",
     "{st} designated trout waters",
-    "{st} trout fishing",
+    "{st} DNR trout fishing",
 )
 
 STATE_NAMES = {
@@ -48,11 +50,25 @@ STATE_NAMES = {
     "WY": "Wyoming",
 }
 
-# Optional seed hosts for the directory-walk adapter (extend as discovered).
+# Seeded state-GIS ArcGIS-Server `rest/services` roots for the directory walk.
+# These are the public fisheries/DNR map servers; a production crawl would
+# maintain one or two per state. Unreachable roots are skipped silently.
 SEED_ARCGIS_HOSTS = {
+    "VA": ["https://services.dwr.virginia.gov/arcgis/rest/services"],
+    "MD": ["https://dnr.geodata.md.gov/dnrdata/rest/services"],
+    "NJ": ["https://mapsdep.nj.gov/arcgis/rest/services"],
+    "VT": ["https://anrmaps.vermont.gov/arcgis/rest/services"],
+    "NY": ["https://gisservices.dec.ny.gov/arcgis/rest/services"],
+    "WV": ["https://services.wvgis.wvu.edu/arcgis/rest/services"],
+    "PA": ["https://mapservices.pasda.psu.edu/server/rest/services"],
+    "MA": ["https://arcgisserver.digital.mass.gov/arcgisserver/rest/services"],
     "WI": ["https://dnrmaps.wi.gov/arcgis/rest/services"],
     "MI": ["https://gisp.mcgi.state.mi.us/arcgis/rest/services"],
+    "CO": ["https://gis.cpw.state.co.us/arcgis/rest/services"],
+    "TN": ["https://tnmap.tn.gov/arcgis/rest/services"],
 }
+
+_NAME_HINTS = ("trout", "fish")
 
 
 def _get(client: httpx.Client, url: str, params: dict) -> dict | None:
@@ -68,8 +84,6 @@ def _get(client: httpx.Client, url: str, params: dict) -> dict | None:
 
 
 def _norm_service(url: str) -> str:
-    """Collapse a layer URL to its service root for dedupe (drop /<layer> and
-    /query)."""
     u = url.split("?")[0].rstrip("/")
     for marker in ("/FeatureServer", "/MapServer"):
         if marker in u:
@@ -77,23 +91,45 @@ def _norm_service(url: str) -> str:
     return u
 
 
+def _walk(client: httpx.Client, root: str, depth: int = 2) -> list[dict]:
+    """Recurse an ArcGIS-Server directory, keeping services named trout/fish."""
+    data = _get(client, root, {"f": "json"})
+    if not data:
+        return []
+    out = []
+    for svc in data.get("services", []):
+        name, typ = svc.get("name", ""), svc.get("type", "")
+        if typ in ("MapServer", "FeatureServer") and \
+                any(h in name.lower() for h in _NAME_HINTS):
+            out.append({"url": f"{root.rsplit('/services', 1)[0]}/services/{name}/{typ}",
+                        "title": name.split("/")[-1], "source": "dir-walk"})
+    if depth > 0:
+        for folder in data.get("folders", []):
+            out += _walk(client, f"{root}/{folder}", depth - 1)
+    return out
+
+
+def _from_directory_walk(client: httpx.Client, state: str) -> list[dict]:
+    out = []
+    for root in SEED_ARCGIS_HOSTS.get(state.upper(), []):
+        out += _walk(client, root)
+    return out
+
+
 def _from_arcgis_search(client: httpx.Client, terms: str) -> list[dict]:
-    """AGOL search -> Feature/Map service items carrying a `url`."""
     data = _get(client, "https://www.arcgis.com/sharing/rest/search", {
         "q": terms, "f": "json", "num": 20,
         "filter": '(type:"Feature Service" OR type:"Map Service")',
     })
     out = []
     for item in (data or {}).get("results", []):
-        url = item.get("url")
-        if url:
-            out.append({"url": url, "title": item.get("title", ""),
+        if item.get("url"):
+            out.append({"url": item["url"], "title": item.get("title", ""),
                         "source": "arcgis-search"})
     return out
 
 
 def _from_ckan(client: httpx.Client, terms: str) -> list[dict]:
-    """data.gov CKAN -> resources that look like ArcGIS/Esri services."""
     data = _get(client, "https://catalog.data.gov/api/3/action/package_search",
                 {"q": terms, "rows": 10})
     out = []
@@ -110,19 +146,28 @@ def _from_ckan(client: httpx.Client, terms: str) -> list[dict]:
 
 
 def find_candidates(state: str, top_k: int = 8) -> list[dict]:
-    """Best-first, deduped candidate layer/service URLs for one state."""
+    """Best-first, deduped candidate layer/service URLs for one state.
+
+    Directory-walk hits lead (state-authoritative); AGOL search + CKAN backfill.
+    """
     name = STATE_NAMES.get(state.upper(), state)
     seen: set[str] = set()
     ranked: list[dict] = []
+
+    def _add(cands):
+        for cand in cands:
+            key = _norm_service(cand["url"])
+            if key in seen:
+                continue
+            seen.add(key)
+            ranked.append(cand)
+
     with httpx.Client(timeout=TIMEOUT, headers=UA, follow_redirects=True) as client:
+        _add(_from_directory_walk(client, state))
         for tmpl in QUERY_TEMPLATES:
             terms = tmpl.format(st=name)
-            for cand in _from_arcgis_search(client, terms) + _from_ckan(client, terms):
-                key = _norm_service(cand["url"])
-                if key in seen:
-                    continue
-                seen.add(key)
-                ranked.append(cand)
-                if len(ranked) >= top_k:
-                    return ranked
-    return ranked
+            _add(_from_arcgis_search(client, terms))
+            _add(_from_ckan(client, terms))
+            if len(ranked) >= top_k * 2:
+                break
+    return ranked[:top_k]
