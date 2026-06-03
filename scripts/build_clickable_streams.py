@@ -187,6 +187,32 @@ NY_MGMTCAT_CLASS = {
     "Other": "wild_reproduction",
 }
 
+# --- NC NCWRC Public Mountain Trout Waters (multi-bucket) ---
+# The PMTW layer carries a regulation class in FIRST_WRC_ (the renderer's
+# typeIdField); a newer WRC_Class field mirrors it but adds Hurricane-Helene
+# "... - CLOSED UNTIL FURTHER NOTICE" suffixes on some hatchery/delayed-harvest
+# reaches. We classify by regulation *prefix* so those suffixed variants still
+# bucket, and coalesce both fields per row so a null in one is covered by the
+# other. Wild Trout, Catch & Release, and the special-regulation wild sections
+# ride with wild_reproduction; Hatchery Supported and Delayed Harvest are
+# put-and-take -> stocked.
+NC_TROUT_URL = ("https://services1.arcgis.com/YfqBAUM5nWR3yhGP/arcgis/rest/"
+                "services/PMTW_streams_2025/FeatureServer/0/query?where=1%3D1")
+NC_WRC_FIELDS = ("FIRST_WRC_", "WRC_Class")
+
+
+def _nc_bucket(value: str | None) -> str | None:
+    """Fold an NC PMTW regulation-class string into our wild/stocked buckets."""
+    if not value:
+        return None
+    v = value.lower()
+    if "hatchery supported" in v or "delayed harvest" in v:
+        return "stocked"
+    if ("wild trout" in v or "catch and release" in v
+            or "special regulation" in v):
+        return "wild_reproduction"
+    return None
+
 USER_AGENT = "Blueliner/1.0 (+https://blueliner.app)"
 REQUEST_TIMEOUT = 20.0
 TOTAL_BUDGET = 120.0
@@ -544,6 +570,31 @@ def fetch_trout_ny() -> dict[str, gpd.GeoDataFrame]:
     return results
 
 
+def fetch_trout_nc() -> dict[str, gpd.GeoDataFrame]:
+    """NC NCWRC Public Mountain Trout Waters, split by regulation class."""
+    print("[trout] NC Public Mountain Trout Waters ...")
+    feats = fetch_arcgis_features(NC_TROUT_URL)
+    if not feats:
+        print("  WARNING: no features returned")
+        return {}
+    gdf = gpd.GeoDataFrame.from_features(feats, crs="EPSG:4326")
+    fields = [f for f in NC_WRC_FIELDS if f in gdf.columns]
+    if not fields:
+        print("  WARNING: no WRC class field; skipping NC")
+        return {}
+    # Coalesce across the class fields: take the first field's bucket, fill any
+    # gaps from the next, so a row tagged in only one of them still classifies.
+    cls = gdf[fields[0]].map(_nc_bucket)
+    for f in fields[1:]:
+        cls = cls.fillna(gdf[f].map(_nc_bucket))
+    gdf["_cls"] = cls
+    results: dict[str, gpd.GeoDataFrame] = {}
+    for cls_name, sub in gdf.groupby("_cls"):
+        results[cls_name] = sub.drop(columns="_cls")
+        print(f"  {cls_name}: {len(sub)} features")
+    return results
+
+
 # ──────────────────────── Join trout to NHD COMIDs ────────────────────────
 
 def spatial_join_trout(trout_gdf: gpd.GeoDataFrame,
@@ -759,6 +810,10 @@ def main(argv: list[str] | None = None) -> int:
     # NY is multi-bucket (MGMTCAT -> wild/stocked), like the PA layers.
     ny_gdfs = fetch_source("NY", fetch_trout_ny) or {}
     for cls, g in ny_gdfs.items():
+        trout_sources.append((cls, g, tuple(g.total_bounds)))
+    # NC is multi-bucket (PMTW regulation class -> wild/stocked).
+    nc_gdfs = fetch_source("NC", fetch_trout_nc) or {}
+    for cls, g in nc_gdfs.items():
         trout_sources.append((cls, g, tuple(g.total_bounds)))
 
     seeded = sorted(k for k, v in trout_status.items() if v == "bundled-seed")
