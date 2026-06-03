@@ -1,0 +1,55 @@
+name: Trout discovery spike (Phase 0)
+
+# Phase-0 feasibility probe for automating state trout-source discovery.
+# Runs in GitHub Actions because the crawl/probe needs OPEN EGRESS to reach
+# arbitrary state ArcGIS hosts -- something an allowlisted sandbox can't do, and
+# something we can't enumerate in advance (the whole point is finding unknown
+# endpoints). Manually triggered; emits per-state dossiers + a memo as an
+# artifact for human review. See docs/trout-discovery-spike.md.
+
+on:
+  workflow_dispatch:
+    inputs:
+      states:
+        description: "States to discover (comma-separated). Fresh set + TN control."
+        required: false
+        default: "CO,MI,WI,TN"
+      top_k:
+        description: "Candidate endpoints probed per state"
+        required: false
+        default: "8"
+
+permissions:
+  contents: read
+
+jobs:
+  spike:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install deps
+        run: pip install httpx
+
+      - name: Classifier eval vs 10 shipped states (offline gate)
+        run: python scripts/discover_trout_sources.py eval
+
+      - name: Discover fresh states
+        run: |
+          python scripts/discover_trout_sources.py discover \
+            --states "${{ inputs.states }}" \
+            --top-k "${{ inputs.top_k }}" \
+            --out discovery_out
+
+      - name: Upload dossiers + memo
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: trout-discovery-dossiers
+          path: discovery_out/
+          if-no-files-found: warn
