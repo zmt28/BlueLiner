@@ -129,6 +129,11 @@ def validate_trout() -> int:
     for fn in sorted(os.listdir(d)):
         if not fn.endswith(".json"):
             continue
+        # sources.json is the declarative trout-source registry (build-time
+        # endpoints/classification, validated by trout_registry), not a
+        # per-state GeoJSON bundle -- skip it here.
+        if fn == "sources.json":
+            continue
         path = os.path.join(d, fn)
         try:
             data = json.load(open(path))
