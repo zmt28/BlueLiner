@@ -1,0 +1,73 @@
+{
+  "_comment": "Declarative trout-source registry consumed by scripts/build_clickable_streams.py via scripts/trout_registry.py. Order = precedence (first writer wins per COMID; states don't geographically overlap, so order among them is immaterial -- kept as the historical MD->VA->PA->NE->NY->NC->GA order for byte-identical output). Adding a state = adding an entry here (the discovery dossiers emit draft entries in this shape), not new Python. Modes: single (whole layer -> one class) | multi_layer (one class per sublayer) | field_map (exact value->class; unmapped rows dropped) | field_prefix (ordered substring rules over coalesced fields; unmatched dropped) | flags (any 'Yes' flag field -> stocked, else default). A `seed` is a committed COMID fallback used only if the live endpoint is unreachable.",
+  "sources": [
+    {
+      "state": "MD", "label": "Maryland Designated Use Trout",
+      "mode": "single", "class": "designated",
+      "url": "https://dnr.geodata.md.gov/dnrdata/rest/services/Fisheries/DesignatedUse_Trout/MapServer/0/query?where=1%3D1",
+      "seed": "data/nhdplus/MD_designated_comids.json"
+    },
+    {
+      "state": "VA", "label": "Virginia Wild Trout Streams",
+      "mode": "single", "class": "wild_reproduction",
+      "url": "https://services.dwr.virginia.gov/arcgis/rest/services/Public/WildTroutStreams/MapServer/0/query?where=1%3D1"
+    },
+    {
+      "state": "PA", "label": "PA PASDA trout", "mode": "multi_layer",
+      "base": "https://mapservices.pasda.psu.edu/server/rest/services/pasda/PAFishBoat/MapServer",
+      "layers": [
+        {"id": 36, "class": "wild_reproduction", "label": "Trout Natural Reproduction with Tributaries"},
+        {"id": 9,  "class": "class_a",           "label": "Class A Streams"},
+        {"id": 31, "class": "wilderness",        "label": "Wilderness Trout Streams"},
+        {"id": 3,  "class": "stocked",           "label": "Stocked Trout Waters"}
+      ]
+    },
+    {
+      "state": "NJ", "label": "NJ Trout Stocked Streams",
+      "mode": "single", "class": "stocked",
+      "url": "https://mapsdep.nj.gov/arcgis/rest/services/Features/Environmental_admin/MapServer/35/query?where=1%3D1"
+    },
+    {
+      "state": "VT", "label": "VT Brook Trout Waters",
+      "mode": "single", "class": "wild_reproduction",
+      "note": "EBTJV catchment polygons, not centerlines -- tags every NHD flowline inside each polygon (renders coarser).",
+      "url": "https://anrmaps.vermont.gov/arcgis/rest/services/map_services/MAP_ANR_ANRATLASFISHWILDLIFE_WM_NOCACHE/MapServer/49/query?where=1%3D1"
+    },
+    {
+      "state": "MA", "label": "MA Coldwater Fisheries Resources",
+      "mode": "single", "class": "wild_reproduction",
+      "url": "https://arcgisserver.digital.mass.gov/arcgisserver/rest/services/AGOL/DFW_CFR/FeatureServer/0/query?where=1%3D1"
+    },
+    {
+      "state": "WV", "label": "WV Stocked Trout Streams",
+      "mode": "single", "class": "stocked",
+      "url": "https://services.wvgis.wvu.edu/arcgis/rest/services/Applications/dnrRec_fishing/MapServer/4/query?where=1%3D1"
+    },
+    {
+      "state": "NY", "label": "NY Inland Trout Stream Fishing",
+      "mode": "field_map", "field": "MGMTCAT",
+      "url": "https://gisservices.dec.ny.gov/arcgis/rest/services/dil/dil_water_activities/MapServer/0/query?where=1%3D1",
+      "map": {
+        "Stocked": "stocked",
+        "Stocked-Extended": "stocked",
+        "Wild-Quality": "wild_reproduction",
+        "Wild-Premier": "wild_reproduction",
+        "Other": "wild_reproduction"
+      }
+    },
+    {
+      "state": "NC", "label": "NC Public Mountain Trout Waters",
+      "mode": "field_prefix", "fields": ["FIRST_WRC_", "WRC_Class"],
+      "url": "https://services1.arcgis.com/YfqBAUM5nWR3yhGP/arcgis/rest/services/PMTW_streams_2025/FeatureServer/0/query?where=1%3D1",
+      "rules": [
+        {"contains": ["hatchery supported", "delayed harvest"], "bucket": "stocked"},
+        {"contains": ["wild trout", "catch and release", "special regulation"], "bucket": "wild_reproduction"}
+      ]
+    },
+    {
+      "state": "GA", "label": "GA Trout Streams",
+      "mode": "flags", "stocked_flags": ["Hvy_stock", "Delay_har"], "default": "wild_reproduction",
+      "url": "https://services6.arcgis.com/9QlSLDqa0P1cHLhu/arcgis/rest/services/Georgia_Trout_Streams_Public_Download_All_Layers/FeatureServer/1/query?where=1%3D1"
+    }
+  ]
+}
