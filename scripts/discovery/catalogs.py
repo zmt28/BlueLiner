@@ -68,7 +68,15 @@ SEED_ARCGIS_HOSTS = {
     "TN": ["https://tnmap.tn.gov/arcgis/rest/services"],
 }
 
-_NAME_HINTS = ("trout", "fish")
+_NAME_HINTS = ("trout", "fish", "coldwater", "angler")
+
+
+def _relevance(cand: dict) -> int:
+    """Rank key: trout-named first, then fish/other -- so the specific trout
+    service isn't out-ranked off the top-K by generic fisheries layers (the
+    Phase-2 MD/VA recall misses)."""
+    blob = f"{cand['url']} {cand.get('title', '')}".lower()
+    return 0 if "trout" in blob else (1 if "fish" in blob else 2)
 
 
 def _get(client: httpx.Client, url: str, params: dict) -> dict | None:
@@ -168,6 +176,8 @@ def find_candidates(state: str, top_k: int = 8) -> list[dict]:
             terms = tmpl.format(st=name)
             _add(_from_arcgis_search(client, terms))
             _add(_from_ckan(client, terms))
-            if len(ranked) >= top_k * 2:
+            if len(ranked) >= top_k * 3:
                 break
+    # Stable sort by trout-relevance so the right layer leads the top-K.
+    ranked.sort(key=_relevance)
     return ranked[:top_k]

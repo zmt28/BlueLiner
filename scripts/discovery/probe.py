@@ -87,7 +87,9 @@ def probe(candidate: dict, state: str) -> dict | None:
 
         geom = meta.get("geometryType", "")
         caps = (meta.get("capabilities") or "").lower()
-        fields = [f["name"] for f in meta.get("fields", [])
+        # `.get("fields", [])` isn't enough: some layers carry "fields": null
+        # (key present but None), so default-coalesce to [].
+        fields = [f["name"] for f in (meta.get("fields") or [])
                   if f.get("type") == "esriFieldTypeString"]
 
         category_field, distinct = None, []

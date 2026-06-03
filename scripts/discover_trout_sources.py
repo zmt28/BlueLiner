@@ -41,8 +41,15 @@ def cmd_discover(args) -> int:
     for state in states:
         print(f"[{state}] discovering ...")
         candidates = catalogs.find_candidates(state, top_k=args.top_k)
-        scored = [probe.probe(c, state) for c in candidates]
-        scored = [s for s in scored if s is not None]
+        scored = []
+        for c in candidates:
+            try:
+                r = probe.probe(c, state)
+            except Exception as e:  # one odd layer mustn't abort the batch
+                print(f"  skip {c.get('url', '?')}: {type(e).__name__}: {e}")
+                r = None
+            if r is not None:
+                scored.append(r)
         dossier = report.build_dossier(state, scored, classify)
         report.write_dossier(dossier, args.out)
         dossiers.append(dossier)
