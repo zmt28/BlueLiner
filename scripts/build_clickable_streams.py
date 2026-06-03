@@ -587,14 +587,23 @@ def build_feature(comid: int, row, gnis_col: str | None,
     geom = shapely.set_precision(geom, COORD_GRID)
     if geom.is_empty:
         return None
-    name = row[gnis_col] if gnis_col and gnis_col in (row.index if hasattr(row, "index") else []) else None
+    raw = row[gnis_col] if gnis_col and gnis_col in (row.index if hasattr(row, "index") else []) else None
+    # raw is a pandas cell: a real string, or NaN for an unnamed reach. NaN is
+    # truthy and str()s to the literal "nan", so guard with `raw == raw` (only
+    # False for NaN) before stringifying -- otherwise unnamed reaches ship a
+    # "nan" gnis_name that the client groups into one giant pseudo-river.
+    name = None
+    if raw is not None and raw == raw:
+        s = str(raw).strip()
+        if s and s.lower() != "nan":
+            name = s
     return {
         "type": "Feature",
         "geometry": shapely.geometry.mapping(geom),
         "properties": {
             "comid": comid,
             "levelpathid": a["levelpathid"],
-            "gnis_name": (str(name).strip() or None) if name else None,
+            "gnis_name": name,
             "streamorder": int(a["streamorder"]) if a["streamorder"] else None,
             "lengthkm": a["lengthkm"],
             "trout_class": trout_class,
