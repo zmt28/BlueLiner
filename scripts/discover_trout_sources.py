@@ -41,7 +41,7 @@ def cmd_discover(args) -> int:
     for state in states:
         print(f"[{state}] discovering ...")
         candidates = catalogs.find_candidates(state, top_k=args.top_k)
-        scored = [probe.probe(c) for c in candidates]
+        scored = [probe.probe(c, state) for c in candidates]
         scored = [s for s in scored if s is not None]
         dossier = report.build_dossier(state, scored, classify)
         report.write_dossier(dossier, args.out)
@@ -51,6 +51,30 @@ def cmd_discover(args) -> int:
     report.write_memo(dossiers, args.out)
     print(f"\nWrote {len(dossiers)} dossiers + memo to {args.out}/")
     return 0
+
+
+def cmd_recall(args) -> int:
+    """Discovery-recall gate: for each shipped state, does find_candidates
+    surface its known authoritative service in the top-K? Needs open egress."""
+    import json
+    from discovery import catalogs
+    from discovery.eval import GOLD_PATH
+
+    with open(GOLD_PATH, encoding="utf-8") as f:
+        gold = json.load(f)["states"]
+    hits = 0
+    print(f"{'STATE':<6} {'HIT':<5} TOP CANDIDATE")
+    for state, spec in gold.items():
+        token = spec.get("service", "").lower()
+        cands = catalogs.find_candidates(state, top_k=args.top_k)
+        hit = bool(token) and any(token in c["url"].lower() for c in cands)
+        hits += hit
+        top = cands[0]["url"] if cands else "-"
+        print(f"{state:<6} {'HIT' if hit else 'miss':<5} {top[:80]}")
+    recall = hits / len(gold) if gold else 0.0
+    print(f"\ndiscovery recall: {hits}/{len(gold)} = {recall:.0%}  "
+          f"(gate: >= 70%)")
+    return 0 if recall >= 0.70 else 1
 
 
 def main(argv=None) -> int:
@@ -66,6 +90,10 @@ def main(argv=None) -> int:
     d.add_argument("--top-k", type=int, default=8, help="candidates probed per state")
     d.add_argument("--out", default="discovery_out", help="output dir for dossiers")
     d.set_defaults(func=cmd_discover)
+
+    r = sub.add_parser("recall", help="discovery recall vs the 10 gold states")
+    r.add_argument("--top-k", type=int, default=8, help="candidates per state")
+    r.set_defaults(func=cmd_recall)
 
     args = p.parse_args(argv)
     return args.func(args)

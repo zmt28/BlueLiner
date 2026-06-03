@@ -9,7 +9,7 @@ import sys
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "scripts"))
 
-from discovery import classify, eval as gold_eval  # noqa: E402
+from discovery import classify, eval as gold_eval, geo  # noqa: E402
 
 
 def test_strong_wild_signals_auto_bucket():
@@ -48,3 +48,31 @@ def test_gold_eval_gates_pass():
     assert gold_eval.gates_pass(m)
     # Sanity: the gold set is the full 10-state vocabulary we captured.
     assert m.total >= 20 and m.auto >= 15
+
+
+# --- geographic relevance gate (the Phase-0 CO/TN miss fix) ---
+
+# Great Smoky Mountains extent (the layer that wrongly matched a CO search).
+GRSM_EXTENT = {"xmin": -84.0, "ymin": 35.4, "xmax": -83.0, "ymax": 35.8,
+               "spatialReference": {"wkid": 4326}}
+
+
+def test_grsm_intersects_tn_and_nc_not_co():
+    box = geo.to_wgs84(GRSM_EXTENT)
+    assert geo.extent_intersects(box, "TN")
+    assert geo.extent_intersects(box, "NC")
+    assert not geo.extent_intersects(box, "CO")   # the bug this gate fixes
+
+
+def test_unknown_extent_is_kept_not_dropped():
+    # Can't verify geography -> don't drop the candidate.
+    assert geo.extent_intersects(None, "CO")
+
+
+def test_web_mercator_extent_reprojects():
+    # A Colorado-ish box in EPSG:3857 should land inside CO after conversion.
+    merc = {"xmin": -11700000, "ymin": 4500000, "xmax": -11500000,
+            "ymax": 4700000, "spatialReference": {"latestWkid": 3857}}
+    box = geo.to_wgs84(merc)
+    assert box is not None and geo.extent_intersects(box, "CO")
+

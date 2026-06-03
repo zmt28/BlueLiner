@@ -39,12 +39,24 @@ jobs:
       - name: Classifier eval vs 10 shipped states (offline gate)
         run: python scripts/discover_trout_sources.py eval
 
+      - name: Discovery recall vs 10 shipped states (network)
+        continue-on-error: true   # measurement, not a hard fail
+        run: python scripts/discover_trout_sources.py recall --top-k "${{ inputs.top_k }}"
+
       - name: Discover fresh states
         run: |
           python scripts/discover_trout_sources.py discover \
             --states "${{ inputs.states }}" \
             --top-k "${{ inputs.top_k }}" \
             --out discovery_out
+
+      - name: Print dossiers + memo to log
+        if: always()
+        run: |
+          echo "===== MEMO ====="; cat discovery_out/MEMO.md || true
+          for f in discovery_out/*.json; do
+            echo "===== $f ====="; cat "$f"; echo
+          done
 
       - name: Upload dossiers + memo
         if: always()
