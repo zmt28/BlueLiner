@@ -162,11 +162,10 @@ NE_TROUT_LAYERS = [
      "label": "MA Coldwater Fisheries Resources",
      "url": ("https://arcgisserver.digital.mass.gov/arcgisserver/rest/services/"
              "AGOL/DFW_CFR/FeatureServer/0/query?where=1%3D1")},
-    {"state": "ME", "class": "wild_reproduction",
-     "label": "ME Wild Brook Trout Priority Conservation Areas",
-     "url": ("https://gis.maine.gov/arcgis/rest/services/ifw/"
-             "IFW_Wild_BKT_Priority_Conservation_Areas/MapServer/0/"
-             "query?where=1%3D1")},
+    # ME (Wild Brook Trout Priority Conservation Areas) deferred: Maine moved its
+    # gis.maine.gov /ifw REST services behind MaineIT GIS Enterprise Portal auth,
+    # so they're no longer anonymously queryable. Keeping it out of the list so a
+    # --require-trout release isn't blocked by an endpoint we can't reach.
 ]
 
 # --- NY DEC inland trout stream reaches (multi-bucket) ---
