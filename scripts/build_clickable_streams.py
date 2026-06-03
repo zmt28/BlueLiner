@@ -138,6 +138,51 @@ MD_TROUT_URL = (
 # a builder-only COMID list.)
 MD_SEED_PATH = os.path.join(ROOT, "data", "nhdplus", "MD_designated_comids.json")
 
+# --- Northeast single-bucket trout layers ---
+# Each layer maps wholesale to one trout_class (the agency publishes a single
+# wild- or stocked-trout layer, with no per-feature category to split on), so
+# they reuse the existing wild_reproduction/stocked classes -> the frontend
+# (streams.ts) needs no change; only the tile data widens. Source CRS varies
+# (NJ 3424, VT/ME State Plane/UTM, MA 26986) but fetch_arcgis_features always
+# requests outSR=4326, so the server reprojects for us.
+# NOTE: VT "Brook Trout Waters" is EBTJV catchment polygons (subwatersheds with
+# brook trout), not stream centerlines -- the spatial join tags every NHD
+# flowline inside each polygon, so VT renders coarser than the line-based states.
+NE_TROUT_LAYERS = [
+    {"state": "NJ", "class": "stocked",
+     "label": "NJ Trout Stocked Streams",
+     "url": ("https://mapsdep.nj.gov/arcgis/rest/services/Features/"
+             "Environmental_admin/MapServer/35/query?where=1%3D1")},
+    {"state": "VT", "class": "wild_reproduction",
+     "label": "VT Brook Trout Waters",
+     "url": ("https://anrmaps.vermont.gov/arcgis/rest/services/map_services/"
+             "MAP_ANR_ANRATLASFISHWILDLIFE_WM_NOCACHE/MapServer/49/"
+             "query?where=1%3D1")},
+    {"state": "MA", "class": "wild_reproduction",
+     "label": "MA Coldwater Fisheries Resources",
+     "url": ("https://arcgisserver.digital.mass.gov/arcgisserver/rest/services/"
+             "AGOL/DFW_CFR/FeatureServer/0/query?where=1%3D1")},
+    # ME (Wild Brook Trout Priority Conservation Areas) deferred: Maine moved its
+    # gis.maine.gov /ifw REST services behind MaineIT GIS Enterprise Portal auth,
+    # so they're no longer anonymously queryable. Keeping it out of the list so a
+    # --require-trout release isn't blocked by an endpoint we can't reach.
+]
+
+# --- NY DEC inland trout stream reaches (multi-bucket) ---
+# Layer 0 of dil_water_activities carries the Trout Stream Management Plan
+# categorization in field MGMTCAT; we fold its 5 reach categories into our two
+# buckets. "Other" = wild reaches with catch-and-release regs that aren't ranked
+# Quality/Premier, so they ride with wild rather than being dropped.
+NY_TROUT_URL = ("https://gisservices.dec.ny.gov/arcgis/rest/services/dil/"
+                "dil_water_activities/MapServer/0/query?where=1%3D1")
+NY_MGMTCAT_CLASS = {
+    "Stocked": "stocked",
+    "Stocked-Extended": "stocked",
+    "Wild-Quality": "wild_reproduction",
+    "Wild-Premier": "wild_reproduction",
+    "Other": "wild_reproduction",
+}
+
 USER_AGENT = "Blueliner/1.0 (+https://blueliner.app)"
 REQUEST_TIMEOUT = 20.0
 TOTAL_BUDGET = 120.0
@@ -324,6 +369,19 @@ def _discover_oid_field(client: httpx.Client, layer_url: str,
         return None
 
 
+def _strip_z(coords):
+    """Recursively drop any 3rd+ ordinate (Z/M) from a GeoJSON coordinate array.
+    ArcGIS MapServers that ignore returnZ (e.g. NY's 10.91 server) emit
+    [x, y, null] positions; the null Z makes shapely raise float(None) during
+    GeoDataFrame.from_features. Keeping only x,y fixes it and is a no-op for
+    coordinates that are already 2D."""
+    if not isinstance(coords, (list, tuple)) or not coords:
+        return coords
+    if isinstance(coords[0], (list, tuple)):
+        return [_strip_z(c) for c in coords]
+    return list(coords[:2])  # leaf position -> [x, y]
+
+
 def fetch_arcgis_features(query_url: str, page_size: int = 1000) -> list[dict]:
     """Paginate an ArcGIS query endpoint via OBJECTID keyset."""
     from urllib.parse import urlsplit, parse_qs
@@ -334,6 +392,10 @@ def fetch_arcgis_features(query_url: str, page_size: int = 1000) -> list[dict]:
     user_where = src.get("where", "1=1")
     common = {
         "f": "geojson", "outSR": "4326", "returnGeometry": "true",
+        # Drop Z/M ordinates: layers flagged hasZ/hasM (e.g. NY's PolylineZM
+        # reaches) otherwise emit null Z values in the GeoJSON, which shapely
+        # parses as float(None). No-op for plain 2D layers.
+        "returnZ": "false", "returnM": "false",
         "outFields": src.get("outFields", "*"),
         "resultRecordCount": str(page_size),
     }
@@ -379,6 +441,12 @@ def fetch_arcgis_features(query_url: str, page_size: int = 1000) -> list[dict]:
             last = mx
             if len(batch) < page_size:
                 break
+    # Force 2D: some servers ignore returnZ and emit null Z ordinates that
+    # break shapely. Safe no-op for already-2D geometry.
+    for f in features:
+        g = f.get("geometry")
+        if g and g.get("coordinates") is not None:
+            g["coordinates"] = _strip_z(g["coordinates"])
     return features
 
 
@@ -437,6 +505,38 @@ def fetch_trout_pa() -> dict[str, gpd.GeoDataFrame]:
         gdf = gpd.GeoDataFrame.from_features(feats, crs="EPSG:4326")
         print(f"  {len(gdf)} features")
         results[layer["class"]] = gdf
+    return results
+
+
+def fetch_trout_ne(spec: dict) -> gpd.GeoDataFrame | None:
+    """A single-bucket Northeast trout layer (whole layer -> spec['class'])."""
+    print(f"[trout] {spec['label']} ...")
+    feats = fetch_arcgis_features(spec["url"])
+    if not feats:
+        print("  WARNING: no features returned")
+        return None
+    gdf = gpd.GeoDataFrame.from_features(feats, crs="EPSG:4326")
+    print(f"  {len(gdf)} features")
+    return gdf
+
+
+def fetch_trout_ny() -> dict[str, gpd.GeoDataFrame]:
+    """NY DEC inland trout stream reaches, split by MGMTCAT into wild/stocked."""
+    print("[trout] NY Inland Trout Stream Fishing ...")
+    feats = fetch_arcgis_features(NY_TROUT_URL)
+    if not feats:
+        print("  WARNING: no features returned")
+        return {}
+    gdf = gpd.GeoDataFrame.from_features(feats, crs="EPSG:4326")
+    if "MGMTCAT" not in gdf.columns:
+        print("  WARNING: MGMTCAT field absent; skipping NY")
+        return {}
+    gdf["_cls"] = gdf["MGMTCAT"].map(NY_MGMTCAT_CLASS)
+    # Rows with an unmapped MGMTCAT drop out of the groupby (NaN key).
+    results: dict[str, gpd.GeoDataFrame] = {}
+    for cls, sub in gdf.groupby("_cls"):
+        results[cls] = sub.drop(columns="_cls")
+        print(f"  {cls}: {len(sub)} features")
     return results
 
 
@@ -636,6 +736,16 @@ def main(argv: list[str] | None = None) -> int:
         trout_sources.append(("wild_reproduction", va_gdf,
                               tuple(va_gdf.total_bounds)))
     for cls, g in pa_gdfs.items():
+        trout_sources.append((cls, g, tuple(g.total_bounds)))
+    # Northeast single-bucket layers (NJ/VT/MA/ME). States don't overlap, so
+    # their position in the precedence order vs MD/VA/PA is immaterial.
+    for spec in NE_TROUT_LAYERS:
+        g = fetch_source(spec["state"], lambda s=spec: fetch_trout_ne(s))
+        if g is not None and len(g):
+            trout_sources.append((spec["class"], g, tuple(g.total_bounds)))
+    # NY is multi-bucket (MGMTCAT -> wild/stocked), like the PA layers.
+    ny_gdfs = fetch_source("NY", fetch_trout_ny) or {}
+    for cls, g in ny_gdfs.items():
         trout_sources.append((cls, g, tuple(g.total_bounds)))
 
     seeded = sorted(k for k, v in trout_status.items() if v == "bundled-seed")
