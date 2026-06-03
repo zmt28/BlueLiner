@@ -369,6 +369,19 @@ def _discover_oid_field(client: httpx.Client, layer_url: str,
         return None
 
 
+def _strip_z(coords):
+    """Recursively drop any 3rd+ ordinate (Z/M) from a GeoJSON coordinate array.
+    ArcGIS MapServers that ignore returnZ (e.g. NY's 10.91 server) emit
+    [x, y, null] positions; the null Z makes shapely raise float(None) during
+    GeoDataFrame.from_features. Keeping only x,y fixes it and is a no-op for
+    coordinates that are already 2D."""
+    if not isinstance(coords, (list, tuple)) or not coords:
+        return coords
+    if isinstance(coords[0], (list, tuple)):
+        return [_strip_z(c) for c in coords]
+    return list(coords[:2])  # leaf position -> [x, y]
+
+
 def fetch_arcgis_features(query_url: str, page_size: int = 1000) -> list[dict]:
     """Paginate an ArcGIS query endpoint via OBJECTID keyset."""
     from urllib.parse import urlsplit, parse_qs
@@ -428,6 +441,12 @@ def fetch_arcgis_features(query_url: str, page_size: int = 1000) -> list[dict]:
             last = mx
             if len(batch) < page_size:
                 break
+    # Force 2D: some servers ignore returnZ and emit null Z ordinates that
+    # break shapely. Safe no-op for already-2D geometry.
+    for f in features:
+        g = f.get("geometry")
+        if g and g.get("coordinates") is not None:
+            g["coordinates"] = _strip_z(g["coordinates"])
     return features
 
 
