@@ -9,7 +9,7 @@ import sys
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "scripts"))
 
-from discovery import classify, eval as gold_eval, geo  # noqa: E402
+from discovery import classify, eval as gold_eval, geo, catalogs  # noqa: E402
 
 
 def test_strong_wild_signals_auto_bucket():
@@ -75,4 +75,18 @@ def test_web_mercator_extent_reprojects():
             "ymax": 4700000, "spatialReference": {"latestWkid": 3857}}
     box = geo.to_wgs84(merc)
     assert box is not None and geo.extent_intersects(box, "CO")
+
+
+# --- candidate ranking (the MD/VA recall fix) ---
+
+def test_trout_named_candidates_rank_first():
+    cands = [
+        {"url": ".../FisheriesManagementAreas/MapServer", "title": "Fisheries"},
+        {"url": ".../WildTroutStreams/MapServer", "title": "Wild Trout"},
+        {"url": ".../CountyBoundaries/MapServer", "title": "Counties"},
+    ]
+    cands.sort(key=catalogs._relevance)
+    assert "Trout" in cands[0]["url"]          # trout-named leads
+    assert "Fisheries" in cands[1]["url"]       # then fish-named
+    assert "County" in cands[2]["url"]          # other last
 
