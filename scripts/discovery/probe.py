@@ -66,9 +66,37 @@ def _extent_wgs84(client: httpx.Client, layer: str, meta: dict) -> dict | None:
     return geo.to_wgs84(meta.get("extent"))
 
 
-def _looks_like_category(values) -> bool:
-    blob = " ".join(str(v).lower() for v in values)
-    return any(t in blob for t in _LEX)
+def _value_hits_lexicon(value) -> bool:
+    v = str(value).lower()
+    return any(t in v for t in _LEX)
+
+
+def pick_category_field(field_values: dict[str, list]) -> tuple[str | None, list]:
+    """Choose the most *categorical* classification field from {field: distinct
+    values}.
+
+    The Phase-2 WI miss: the prober took the first field whose values contained
+    any lexicon token, which was a free-text SEASON_TXT field where one season
+    string happened to say "catch and release" -- not the trout-class field. So
+    score each field by how category-like it is: a high fraction of SHORT values
+    that hit the regulation lexicon (e.g. Class I/II/III, Type 1-4, Wild/Hatchery
+    labels) beats a long free-text field with one incidental keyword.
+    """
+    best, best_score, best_vals = None, 0.0, []
+    for field, raw in field_values.items():
+        values = [v for v in raw if v not in (None, "")]
+        n = len(values)
+        if not n or n > 40:
+            continue
+        hits = sum(_value_hits_lexicon(v) for v in values)
+        if hits == 0:
+            continue
+        avg_len = sum(len(str(v)) for v in values) / n
+        # hit fraction dominates; short coded values and several hits break ties.
+        score = (hits / n) + (0.5 if avg_len <= 25 else 0.0) + 0.05 * min(hits, 6)
+        if score > best_score:
+            best, best_score, best_vals = field, score, sorted(set(values))
+    return best, best_vals
 
 
 def probe(candidate: dict, state: str) -> dict | None:
@@ -92,16 +120,19 @@ def probe(candidate: dict, state: str) -> dict | None:
         fields = [f["name"] for f in (meta.get("fields") or [])
                   if f.get("type") == "esriFieldTypeString"]
 
-        category_field, distinct = None, []
+        # Gather distinct values for every string field, then pick the most
+        # category-like one (don't stop at the first lexicon hit -- see
+        # pick_category_field).
+        field_values: dict[str, list] = {}
         for fname in fields[:12]:
             d = _get(client, layer + "/query", {
                 "where": "1=1", "outFields": fname, "returnGeometry": "false",
                 "returnDistinctValues": "true", "f": "json"})
             vals = [a["attributes"].get(fname) for a in (d or {}).get("features", [])]
             vals = [v for v in vals if v]
-            if vals and len(vals) <= 40 and _looks_like_category(vals):
-                category_field, distinct = fname, sorted(set(vals))
-                break
+            if vals and len(vals) <= 40:
+                field_values[fname] = vals
+        category_field, distinct = pick_category_field(field_values)
 
         count = _get(client, layer + "/query",
                      {"where": "1=1", "returnCountOnly": "true", "f": "json"})

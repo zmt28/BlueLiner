@@ -9,7 +9,7 @@ import sys
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "scripts"))
 
-from discovery import classify, eval as gold_eval, geo, catalogs  # noqa: E402
+from discovery import classify, eval as gold_eval, geo, catalogs, probe  # noqa: E402
 
 
 def test_strong_wild_signals_auto_bucket():
@@ -89,4 +89,27 @@ def test_trout_named_candidates_rank_first():
     assert "Trout" in cands[0]["url"]          # trout-named leads
     assert "Fisheries" in cands[1]["url"]       # then fish-named
     assert "County" in cands[2]["url"]          # other last
+
+
+# --- category-field selection (the WI free-text miss fix) ---
+
+def test_picks_coded_class_field_over_freetext_season():
+    field_values = {
+        # WI's free-text season field: one value incidentally says "catch and release".
+        "SEASON_TXT": [
+            "Open all year", "First Saturday in May to Oct. 15.",
+            "Last Saturday in March to Nov. 15.",
+            "First Saturday in May to Oct. 15; Extended catch and release Oct. 16 to Nov. 15.",
+        ],
+        # the real trout-class field: short coded values, all lexicon hits.
+        "TROUT_CLASS": ["Class I", "Class II", "Class III"],
+    }
+    field, distinct = probe.pick_category_field(field_values)
+    assert field == "TROUT_CLASS"
+    assert distinct == ["Class I", "Class II", "Class III"]
+
+
+def test_category_field_none_when_no_lexicon_signal():
+    assert probe.pick_category_field(
+        {"COUNTY": ["Dane", "Vilas"], "ID": ["a", "b"]}) == (None, [])
 

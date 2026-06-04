@@ -11,9 +11,9 @@ on:
   workflow_dispatch:
     inputs:
       states:
-        description: "States to discover (comma-separated). Fresh set + TN control."
+        description: "States to discover (comma-separated)."
         required: false
-        default: "CO,MI,WI,TN"
+        default: "WI,CO,MT,ID,WY,UT,NH,CT,KY,SC"
       top_k:
         description: "Candidate endpoints probed per state"
         required: false
