@@ -643,17 +643,20 @@ def main(argv: list[str] | None = None) -> int:
     trout_sources: list[tuple[str, gpd.GeoDataFrame, tuple]] = []
     md_seed: tuple[str, set[int]] | None = None
     for source in trout_registry.load_sources():
-        state = source["state"]
-        result = fetch_source(state, lambda s=source: fetch_trout_source(s))
+        # `label` lets one state contribute multiple sources (e.g. CT's WTMA
+        # wild layer + its general stocked-streams layer), each tracked
+        # independently in trout_status; defaults to the state code.
+        label = source.get("label", source["state"])
+        result = fetch_source(label, lambda s=source: fetch_trout_source(s))
         if result:
             for cls, g in result.items():
                 if len(g):
                     trout_sources.append((cls, g, tuple(g.total_bounds)))
-        elif source.get("seed") and trout_status.get(state) == "unreachable":
+        elif source.get("seed") and trout_status.get(label) == "unreachable":
             seed = load_seed(source["seed"])
             if seed:
                 md_seed = seed
-                trout_status[state] = "bundled-seed"
+                trout_status[label] = "bundled-seed"
 
     seeded = sorted(k for k, v in trout_status.items() if v == "bundled-seed")
     if seeded:
