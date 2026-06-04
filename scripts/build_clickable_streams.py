@@ -58,6 +58,8 @@ import py7zr
 import shapely
 from dbfread import DBF
 
+import trout_registry  # declarative trout-source registry (data/trout/sources.json)
+
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 OUT_PATH = os.path.join(ROOT, "data", "nhdplus", "clickable_streams.geojson.gz")
 S3_BUCKET = "https://dmap-data-commons-ow.s3.amazonaws.com"
@@ -107,124 +109,10 @@ REGIONS = [
     for vpu, da, label in VPUS
 ]
 
-# --- PA PASDA trout layers ---
-PASDA_BASE = ("https://mapservices.pasda.psu.edu/server/rest/services"
-              "/pasda/PAFishBoat/MapServer")
-PA_TROUT_LAYERS = [
-    {"id": 36, "class": "wild_reproduction",
-     "label": "Trout Natural Reproduction with Tributaries"},
-    {"id": 9,  "class": "class_a",
-     "label": "Class A Streams"},
-    {"id": 31, "class": "wilderness",
-     "label": "Wilderness Trout Streams"},
-    {"id": 3,  "class": "stocked",
-     "label": "Stocked Trout Waters"},
-]
-
-# --- VA / MD ArcGIS trout endpoints ---
-VA_TROUT_URL = (
-    "https://services.dwr.virginia.gov/arcgis/rest/services/Public/"
-    "WildTroutStreams/MapServer/0/query?where=1%3D1"
-)
-MD_TROUT_URL = (
-    "https://dnr.geodata.md.gov/dnrdata/rest/services/Fisheries/"
-    "DesignatedUse_Trout/MapServer/0/query?where=1%3D1"
-)
-# Committed COMID seed used only when MD_TROUT_URL is unreachable (its ArcGIS
-# server flaps). NHDPlusV2 COMIDs are stable, so tagging from a prior live
-# capture is equivalent until MD changes its designations; regenerate from a
-# fresh live build when the endpoint recovers. (Lives in data/nhdplus/, not
-# data/trout/ -- the latter holds runtime GeoJSON bundles for trout.py; this is
-# a builder-only COMID list.)
-MD_SEED_PATH = os.path.join(ROOT, "data", "nhdplus", "MD_designated_comids.json")
-
-# --- Single-bucket trout layers (Northeast + Appalachian) ---
-# Each layer maps wholesale to one trout_class (the agency publishes a single
-# wild- or stocked-trout layer, with no per-feature category to split on), so
-# they reuse the existing wild_reproduction/stocked classes -> the frontend
-# (streams.ts) needs no change; only the tile data widens. Source CRS varies
-# (NJ 3424, VT/ME State Plane/UTM, MA 26986, WV 3857) but fetch_arcgis_features
-# always requests outSR=4326, so the server reprojects for us.
-# NOTE: VT "Brook Trout Waters" is EBTJV catchment polygons (subwatersheds with
-# brook trout), not stream centerlines -- the spatial join tags every NHD
-# flowline inside each polygon, so VT renders coarser than the line-based states.
-SINGLE_BUCKET_TROUT_LAYERS = [
-    {"state": "NJ", "class": "stocked",
-     "label": "NJ Trout Stocked Streams",
-     "url": ("https://mapsdep.nj.gov/arcgis/rest/services/Features/"
-             "Environmental_admin/MapServer/35/query?where=1%3D1")},
-    {"state": "VT", "class": "wild_reproduction",
-     "label": "VT Brook Trout Waters",
-     "url": ("https://anrmaps.vermont.gov/arcgis/rest/services/map_services/"
-             "MAP_ANR_ANRATLASFISHWILDLIFE_WM_NOCACHE/MapServer/49/"
-             "query?where=1%3D1")},
-    {"state": "MA", "class": "wild_reproduction",
-     "label": "MA Coldwater Fisheries Resources",
-     "url": ("https://arcgisserver.digital.mass.gov/arcgisserver/rest/services/"
-             "AGOL/DFW_CFR/FeatureServer/0/query?where=1%3D1")},
-    # ME (Wild Brook Trout Priority Conservation Areas) deferred: Maine moved its
-    # gis.maine.gov /ifw REST services behind MaineIT GIS Enterprise Portal auth,
-    # so they're no longer anonymously queryable. Keeping it out of the list so a
-    # --require-trout release isn't blocked by an endpoint we can't reach.
-    {"state": "WV", "class": "stocked",
-     "label": "WV Stocked Trout Streams",
-     "url": ("https://services.wvgis.wvu.edu/arcgis/rest/services/Applications/"
-             "dnrRec_fishing/MapServer/4/query?where=1%3D1")},
-]
-
-# --- NY DEC inland trout stream reaches (multi-bucket) ---
-# Layer 0 of dil_water_activities carries the Trout Stream Management Plan
-# categorization in field MGMTCAT; we fold its 5 reach categories into our two
-# buckets. "Other" = wild reaches with catch-and-release regs that aren't ranked
-# Quality/Premier, so they ride with wild rather than being dropped.
-NY_TROUT_URL = ("https://gisservices.dec.ny.gov/arcgis/rest/services/dil/"
-                "dil_water_activities/MapServer/0/query?where=1%3D1")
-NY_MGMTCAT_CLASS = {
-    "Stocked": "stocked",
-    "Stocked-Extended": "stocked",
-    "Wild-Quality": "wild_reproduction",
-    "Wild-Premier": "wild_reproduction",
-    "Other": "wild_reproduction",
-}
-
-# --- NC NCWRC Public Mountain Trout Waters (multi-bucket) ---
-# The PMTW layer carries a regulation class in FIRST_WRC_ (the renderer's
-# typeIdField); a newer WRC_Class field mirrors it but adds Hurricane-Helene
-# "... - CLOSED UNTIL FURTHER NOTICE" suffixes on some hatchery/delayed-harvest
-# reaches. We classify by regulation *prefix* so those suffixed variants still
-# bucket, and coalesce both fields per row so a null in one is covered by the
-# other. Wild Trout, Catch & Release, and the special-regulation wild sections
-# ride with wild_reproduction; Hatchery Supported and Delayed Harvest are
-# put-and-take -> stocked.
-NC_TROUT_URL = ("https://services1.arcgis.com/YfqBAUM5nWR3yhGP/arcgis/rest/"
-                "services/PMTW_streams_2025/FeatureServer/0/query?where=1%3D1")
-NC_WRC_FIELDS = ("FIRST_WRC_", "WRC_Class")
-
-
-def _nc_bucket(value: str | None) -> str | None:
-    """Fold an NC PMTW regulation-class string into our wild/stocked buckets."""
-    if not value:
-        return None
-    v = value.lower()
-    if "hatchery supported" in v or "delayed harvest" in v:
-        return "stocked"
-    if ("wild trout" in v or "catch and release" in v
-            or "special regulation" in v):
-        return "wild_reproduction"
-    return None
-
-
-# --- GA DNR WRD trout streams (multi-bucket) ---
-# Layer 1 (Trout_Stream) is the master layer; per-feature "Yes"/"No"/blank flag
-# fields mark management type. Heavily-stocked and delayed-harvest reaches are
-# put-and-take -> stocked; everything else (incl. special-regulation wild
-# sections, Spec_Reg) -> wild_reproduction. The sibling Heavily_Stocked /
-# Special_Regulations layers are just filtered views of these flags, so layer 1
-# alone covers the split.
-GA_TROUT_URL = ("https://services6.arcgis.com/9QlSLDqa0P1cHLhu/arcgis/rest/"
-                "services/Georgia_Trout_Streams_Public_Download_All_Layers/"
-                "FeatureServer/1/query?where=1%3D1")
-GA_STOCKED_FLAGS = ("Hvy_stock", "Delay_har")
+# --- Trout sources ---
+# Declarative registry in data/trout/sources.json, loaded + classified by
+# trout_registry.py (modes: single / multi_layer / field_map / field_prefix /
+# flags). Adding a state is an entry there, not new Python here.
 
 USER_AGENT = "Blueliner/1.0 (+https://blueliner.app)"
 REQUEST_TIMEOUT = 20.0
@@ -495,141 +383,73 @@ def fetch_arcgis_features(query_url: str, page_size: int = 1000) -> list[dict]:
 
 # ──────────────────────── Trout GIS ingestion ────────────────────────
 
-def fetch_trout_va() -> gpd.GeoDataFrame | None:
-    """VA wild trout streams — uses spatial join (VA REACHCODE is
-    state-specific, not NHD 14-digit)."""
-    print("[trout] Virginia Wild Trout Streams ...")
-    feats = fetch_arcgis_features(VA_TROUT_URL)
-    if not feats:
-        print("  WARNING: no features returned")
+def load_seed(rel_path: str) -> tuple[str, set[int]] | None:
+    """Fallback when a live endpoint is down: load a committed
+    (trout_class, {COMIDs}) capture. Returns None if absent/empty."""
+    path = os.path.join(ROOT, rel_path)
+    if not os.path.exists(path):
         return None
-    gdf = gpd.GeoDataFrame.from_features(feats, crs="EPSG:4326")
-    print(f"  {len(gdf)} features")
-    return gdf
-
-
-def fetch_trout_md() -> gpd.GeoDataFrame | None:
-    """MD designated trout — has ComID for direct key join."""
-    print("[trout] Maryland Designated Use Trout ...")
-    feats = fetch_arcgis_features(MD_TROUT_URL)
-    if not feats:
-        print("  WARNING: no features returned")
-        return None
-    gdf = gpd.GeoDataFrame.from_features(feats, crs="EPSG:4326")
-    print(f"  {len(gdf)} features")
-    return gdf
-
-
-def load_md_seed() -> tuple[str, set[int]] | None:
-    """Fallback for when the live MD endpoint is down: load the committed
-    (trout_class, {COMIDs}) capture. Returns None if the seed file is absent."""
-    if not os.path.exists(MD_SEED_PATH):
-        return None
-    with open(MD_SEED_PATH, encoding="utf-8") as f:
+    with open(path, encoding="utf-8") as f:
         seed = json.load(f)
     comids = {int(c) for c in seed.get("comids", [])}
     if not comids:
         return None
-    print(f"  [trout] MD seed: {len(comids):,} '{seed['trout_class']}' COMIDs "
+    print(f"  [trout] seed: {len(comids):,} '{seed['trout_class']}' COMIDs "
           f"from {seed.get('captured_from', '?')}")
     return seed["trout_class"], comids
 
 
-def fetch_trout_pa() -> dict[str, gpd.GeoDataFrame]:
-    """PA PASDA trout layers — keyed by trout_class."""
-    results = {}
-    for layer in PA_TROUT_LAYERS:
-        url = f"{PASDA_BASE}/{layer['id']}/query?where=1%3D1"
-        print(f"[trout] PA {layer['label']} (layer {layer['id']}) ...")
-        feats = fetch_arcgis_features(url)
-        if not feats:
-            print(f"  WARNING: no features for layer {layer['id']}")
-            continue
-        gdf = gpd.GeoDataFrame.from_features(feats, crs="EPSG:4326")
-        print(f"  {len(gdf)} features")
-        results[layer["class"]] = gdf
-    return results
+def _split_by_bucket(gdf: gpd.GeoDataFrame,
+                     source: dict) -> dict[str, gpd.GeoDataFrame]:
+    """Tag each feature with its trout_class via trout_registry.row_bucket, then
+    group into {class: gdf}. Rows the registry maps to None are dropped on the
+    groupby -- matching the old per-state map/groupby behaviour."""
+    gdf = gdf.copy()
+    gdf["_cls"] = [trout_registry.row_bucket(source, dict(row))
+                   for _, row in gdf.iterrows()]
+    out: dict[str, gpd.GeoDataFrame] = {}
+    for cls_name, sub in gdf.groupby("_cls"):
+        out[cls_name] = sub.drop(columns="_cls")
+        print(f"  {cls_name}: {len(sub)} features")
+    return out
 
 
-def fetch_trout_ne(spec: dict) -> gpd.GeoDataFrame | None:
-    """A single-bucket Northeast trout layer (whole layer -> spec['class'])."""
-    print(f"[trout] {spec['label']} ...")
-    feats = fetch_arcgis_features(spec["url"])
+def fetch_trout_source(source: dict) -> dict[str, gpd.GeoDataFrame]:
+    """Fetch one registry source -> {trout_class: GeoDataFrame}, handling every
+    mode. Raises on transport error so the caller's fetch_source marks the state
+    unreachable (and may then fall back to a committed seed)."""
+    if source["mode"] == "multi_layer":
+        out: dict[str, gpd.GeoDataFrame] = {}
+        for layer in source["layers"]:
+            url = f"{source['base']}/{layer['id']}/query?where=1%3D1"
+            print(f"[trout] {source['state']} {layer['label']} "
+                  f"(layer {layer['id']}) ...")
+            feats = fetch_arcgis_features(url)
+            if not feats:
+                print(f"  WARNING: no features for layer {layer['id']}")
+                continue
+            gdf = gpd.GeoDataFrame.from_features(feats, crs="EPSG:4326")
+            print(f"  {len(gdf)} features")
+            out[layer["class"]] = gdf
+        return out
+
+    print(f"[trout] {source['label']} ...")
+    feats = fetch_arcgis_features(source["url"])
     if not feats:
         print("  WARNING: no features returned")
-        return None
+        return {}
     gdf = gpd.GeoDataFrame.from_features(feats, crs="EPSG:4326")
     print(f"  {len(gdf)} features")
-    return gdf
 
+    if source["mode"] == "single":
+        return {source["class"]: gdf}
 
-def fetch_trout_ny() -> dict[str, gpd.GeoDataFrame]:
-    """NY DEC inland trout stream reaches, split by MGMTCAT into wild/stocked."""
-    print("[trout] NY Inland Trout Stream Fishing ...")
-    feats = fetch_arcgis_features(NY_TROUT_URL)
-    if not feats:
-        print("  WARNING: no features returned")
+    needed = trout_registry.classify_fields(source)
+    if needed and not any(f in gdf.columns for f in needed):
+        print(f"  WARNING: classify field(s) {needed} absent; "
+              f"skipping {source['state']}")
         return {}
-    gdf = gpd.GeoDataFrame.from_features(feats, crs="EPSG:4326")
-    if "MGMTCAT" not in gdf.columns:
-        print("  WARNING: MGMTCAT field absent; skipping NY")
-        return {}
-    gdf["_cls"] = gdf["MGMTCAT"].map(NY_MGMTCAT_CLASS)
-    # Rows with an unmapped MGMTCAT drop out of the groupby (NaN key).
-    results: dict[str, gpd.GeoDataFrame] = {}
-    for cls, sub in gdf.groupby("_cls"):
-        results[cls] = sub.drop(columns="_cls")
-        print(f"  {cls}: {len(sub)} features")
-    return results
-
-
-def fetch_trout_nc() -> dict[str, gpd.GeoDataFrame]:
-    """NC NCWRC Public Mountain Trout Waters, split by regulation class."""
-    print("[trout] NC Public Mountain Trout Waters ...")
-    feats = fetch_arcgis_features(NC_TROUT_URL)
-    if not feats:
-        print("  WARNING: no features returned")
-        return {}
-    gdf = gpd.GeoDataFrame.from_features(feats, crs="EPSG:4326")
-    fields = [f for f in NC_WRC_FIELDS if f in gdf.columns]
-    if not fields:
-        print("  WARNING: no WRC class field; skipping NC")
-        return {}
-    # Coalesce across the class fields: take the first field's bucket, fill any
-    # gaps from the next, so a row tagged in only one of them still classifies.
-    cls = gdf[fields[0]].map(_nc_bucket)
-    for f in fields[1:]:
-        cls = cls.fillna(gdf[f].map(_nc_bucket))
-    gdf["_cls"] = cls
-    results: dict[str, gpd.GeoDataFrame] = {}
-    for cls_name, sub in gdf.groupby("_cls"):
-        results[cls_name] = sub.drop(columns="_cls")
-        print(f"  {cls_name}: {len(sub)} features")
-    return results
-
-
-def fetch_trout_ga() -> dict[str, gpd.GeoDataFrame]:
-    """GA DNR trout streams, split by management flags into wild/stocked."""
-    print("[trout] GA Trout Streams ...")
-    feats = fetch_arcgis_features(GA_TROUT_URL)
-    if not feats:
-        print("  WARNING: no features returned")
-        return {}
-    gdf = gpd.GeoDataFrame.from_features(feats, crs="EPSG:4326")
-    stocked = gdf.geometry.notna() & False  # all-False seed aligned to index
-    for col in GA_STOCKED_FLAGS:
-        if col in gdf.columns:
-            stocked |= (gdf[col].fillna("").astype(str)
-                        .str.strip().str.lower().eq("yes"))
-    if not stocked.any():
-        print("  WARNING: no stocked flags matched; tagging all GA as wild")
-    gdf["_cls"] = "wild_reproduction"
-    gdf.loc[stocked, "_cls"] = "stocked"
-    results: dict[str, gpd.GeoDataFrame] = {}
-    for cls_name, sub in gdf.groupby("_cls"):
-        results[cls_name] = sub.drop(columns="_cls")
-        print(f"  {cls_name}: {len(sub)} features")
-    return results
+    return _split_by_bucket(gdf, source)
 
 
 # ──────────────────────── Join trout to NHD COMIDs ────────────────────────
@@ -814,48 +634,26 @@ def main(argv: list[str] | None = None) -> int:
             trout_status[label] = "unreachable"
             return None
 
-    md_gdf = fetch_source("MD", fetch_trout_md)
-    va_gdf = fetch_source("VA", fetch_trout_va)
-    pa_gdfs = fetch_source("PA", fetch_trout_pa) or {}
-
-    # When MD's live endpoint is down, fall back to the committed COMID seed so
-    # MD streams stay tagged (status "bundled-seed" -- a complete source, not a
-    # gap, so it satisfies --require-trout). Applied per region below.
-    md_seed: tuple[str, set[int]] | None = None
-    if md_gdf is None and trout_status.get("MD") == "unreachable":
-        md_seed = load_md_seed()
-        if md_seed:
-            trout_status["MD"] = "bundled-seed"
-
-    # Ordered trout sources -- precedence is MD designated, then VA wild, then
-    # the PA layers (first writer wins per COMID, matching the old MD→VA→PA
-    # order). Each carries its lon/lat bounds for the per-region bbox prefilter.
+    # ── Trout sources from the declarative registry (data/trout/sources.json) ──
+    # Order = precedence (first writer wins per COMID); states don't overlap, so
+    # order among them is immaterial. Each entry's mode is handled by
+    # fetch_trout_source. A source with a `seed` falls back to its committed
+    # COMID capture when the live endpoint is unreachable (MD), so the build
+    # stays complete enough for --require-trout.
     trout_sources: list[tuple[str, gpd.GeoDataFrame, tuple]] = []
-    if md_gdf is not None:
-        trout_sources.append(("designated", md_gdf, tuple(md_gdf.total_bounds)))
-    if va_gdf is not None:
-        trout_sources.append(("wild_reproduction", va_gdf,
-                              tuple(va_gdf.total_bounds)))
-    for cls, g in pa_gdfs.items():
-        trout_sources.append((cls, g, tuple(g.total_bounds)))
-    # Single-bucket layers (NJ/VT/MA + WV). States don't overlap, so their
-    # position in the precedence order vs MD/VA/PA is immaterial.
-    for spec in SINGLE_BUCKET_TROUT_LAYERS:
-        g = fetch_source(spec["state"], lambda s=spec: fetch_trout_ne(s))
-        if g is not None and len(g):
-            trout_sources.append((spec["class"], g, tuple(g.total_bounds)))
-    # NY is multi-bucket (MGMTCAT -> wild/stocked), like the PA layers.
-    ny_gdfs = fetch_source("NY", fetch_trout_ny) or {}
-    for cls, g in ny_gdfs.items():
-        trout_sources.append((cls, g, tuple(g.total_bounds)))
-    # NC is multi-bucket (PMTW regulation class -> wild/stocked).
-    nc_gdfs = fetch_source("NC", fetch_trout_nc) or {}
-    for cls, g in nc_gdfs.items():
-        trout_sources.append((cls, g, tuple(g.total_bounds)))
-    # GA is multi-bucket (Hvy_stock/Delay_har flags -> wild/stocked).
-    ga_gdfs = fetch_source("GA", fetch_trout_ga) or {}
-    for cls, g in ga_gdfs.items():
-        trout_sources.append((cls, g, tuple(g.total_bounds)))
+    md_seed: tuple[str, set[int]] | None = None
+    for source in trout_registry.load_sources():
+        state = source["state"]
+        result = fetch_source(state, lambda s=source: fetch_trout_source(s))
+        if result:
+            for cls, g in result.items():
+                if len(g):
+                    trout_sources.append((cls, g, tuple(g.total_bounds)))
+        elif source.get("seed") and trout_status.get(state) == "unreachable":
+            seed = load_seed(source["seed"])
+            if seed:
+                md_seed = seed
+                trout_status[state] = "bundled-seed"
 
     seeded = sorted(k for k, v in trout_status.items() if v == "bundled-seed")
     if seeded:
