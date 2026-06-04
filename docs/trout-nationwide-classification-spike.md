@@ -159,3 +159,56 @@ Don't touch the schema, the UI, or the registry until licensing + the
 consistency audit are settled. If TU's data is usable, this is a big
 consistency-and-coverage win in one move; if not, 4B reaches the same destination
 on data we own — and the registry we've built is the head start either way.
+
+## 8. Phase 0 findings — completed (web research only, no outreach)
+
+**Verdict: the TroutRoutes license path is BLOCKED; the build-our-own path (4B)
+is green-lit and legally grounded.**
+
+### Gate 0 result: cannot license the gold/class product
+- onX/TroutRoutes Terms of Use grant a *"limited, non-exclusive, non-transferable,
+  non-sublicensable, revocable license … for personal, non-commercial use only,"*
+  and *"onXmaps and its licensors own all rights, title and interest in the
+  Service and all Content."* The 50k-stream gold/class1/2/3 layer is onX's paid
+  product (TroutRoutes was acquired by onX). **We cannot ingest or redistribute
+  it.** Gate 0 fails for the "use their data" path. No ambiguity; this is why we
+  didn't need to contact them.
+
+### But the method is public and reproducible — and it's what we're already doing
+- Per TroutRoutes' own FAQ, their classification *"takes all the different
+  regional and state-based stream classification systems and rolls them into a
+  single format … applied consistently across the entire country,"* weighing
+  public access, length, and "quality (DNR class)." That is exactly the 4B recipe
+  — a **normalization of the same per-state classification sources our registry
+  already ingests** (22 states in). The shortcut is gone; the destination isn't.
+
+### TU publishes usable public data for the wild/native axes
+- `mapping-trout.opendata.arcgis.com` is downloadable (GeoJSON / WFS / GeoServices).
+  The **Eastern Brook Trout Conservation Portfolio** (TU + NFWF + EBTJV) is
+  **CC-BY 3.0** — usable with attribution. EBTJV is the same source ME's layer
+  derived from, so this extends native/wild-reproduction coverage across the
+  whole eastern brook-trout range in one CC-licensed dataset (and TU's
+  Western Native Trout / Steelhead atlases are analogous candidates).
+
+### What this means for the proposed three-part model
+| Layer | Source under 4B | Status |
+|---|---|---|
+| **Tier color** (gold / class 1–3) | Our own normalization of state class systems + access + length (the TroutRoutes recipe on public inputs) | Buildable; the substantive new work |
+| **Wild filter** | The existing 22-state wild/stocked registry | Already built |
+| **Native filter** | TU public CC-BY conservation portfolios (EBTJV etc.) + our CO/CA/NV native layers | Nationally supported, legal |
+
+### Honest caveat
+The hard part of 4B is the **tier normalization**: collapsing heterogeneous state
+schemes (WI wild Class I vs. MT biomass blue-ribbon vs. PA Class A vs. a stocked
+put-and-take) into one consistent gold/class1/2/3 rubric necessarily involves
+judgment — the same consistency-vs-coverage tension, now at 4-tier granularity.
+That rubric *is* the design deliverable, and where the "exceptions only when
+unavoidable" rule gets applied per state.
+
+### Recommended next step (Phase 1 of 4B)
+1. Characterize TU's public portal: which national layers, licenses, geometry,
+   and NHD/COMID linkage (feeds the native filter + possibly wild).
+2. Draft the **4-tier normalization rubric** — an explicit, documented mapping
+   from each state's native class vocabulary to {gold, class1, class2, class3},
+   consistent nationwide, exceptions noted. This is the keystone artifact; the
+   registry's per-state `_comment` mappings are the starting material.
