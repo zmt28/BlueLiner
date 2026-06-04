@@ -66,7 +66,11 @@ SEED_ARCGIS_HOSTS = {
     "MI": ["https://gisp.mcgi.state.mi.us/arcgis/rest/services"],
     "CO": ["https://gis.cpw.state.co.us/arcgis/rest/services"],
     "TN": ["https://tnmap.tn.gov/arcgis/rest/services"],
-    "MN": ["http://arcgis.dnr.state.mn.us/mndnr/rest/services"],
+    # MN Geospatial Commons DNR folder. The mndnr/rest root 500s, and AGOL
+    # search only surfaced the single undifferentiated trout-designation layer
+    # (no wild/stocked split); walking the DNR folder enumerates every MN DNR
+    # fisheries layer so a management/survey-class layer can surface instead.
+    "MN": ["https://enterprise.gisdata.mn.gov/aghost/rest/services/us_mn_state_dnr"],
     "MT": ["https://fwp-gis.mt.gov/arcgis/rest/services"],
     "ID": ["https://gis.idfg.idaho.gov/server/rest/services"],
     "UT": ["https://maps.dnr.utah.gov/arcgis/rest/services"],

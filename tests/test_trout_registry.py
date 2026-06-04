@@ -123,6 +123,27 @@ def test_wi_class_i_wild_ii_and_iii_stocked():
     assert reg.row_bucket(wi, {}) is None
 
 
+def test_mi_type1_wild_type234_stocked_nondesignated_dropped():
+    # MI Type 1 = self-sustaining wild; Type 2 (stocked-supplemented), Type 3
+    # and Type 4 -> stocked. GR/BTRA qualifiers follow the underlying type;
+    # every "Non Designated" variant and the bare "GR Designated" drop.
+    mi = SOURCES["MI"]
+    f = mi["field"]
+    assert reg.row_bucket(mi, {f: "Type 1 Designated"}) == "wild_reproduction"
+    assert reg.row_bucket(mi, {f: "Type 1 BTRA Designated"}) == "wild_reproduction"
+    assert reg.row_bucket(mi, {f: "GR Type 1 Designated"}) == "wild_reproduction"
+    assert reg.row_bucket(mi, {f: "Type 2 Designated"}) == "stocked"
+    assert reg.row_bucket(mi, {f: "GR Type 2 Designated"}) == "stocked"
+    assert reg.row_bucket(mi, {f: "Type 3 Designated"}) == "stocked"
+    assert reg.row_bucket(mi, {f: "Type 4 Designated"}) == "stocked"
+    # field_map is exact -> unmapped / non-designated rows drop (no default).
+    assert reg.row_bucket(mi, {f: "Non Designated"}) is None
+    assert reg.row_bucket(mi, {f: "Type 3 Non Designated"}) is None
+    assert reg.row_bucket(mi, {f: "GR Designated"}) is None
+    assert reg.row_bucket(mi, {f: ""}) is None
+    assert reg.row_bucket(mi, {}) is None
+
+
 def test_ct_is_two_ordered_sources_wild_first():
     ct = [s for s in ALL_SOURCES if s["state"] == "CT"]
     assert [s["label"] for s in ct] == ["CT (WTMA)", "CT (stocked)"]  # wild claims first

@@ -13,11 +13,13 @@ on:
       states:
         description: "States to discover (comma-separated)."
         required: false
-        # Next batch: un-onboarded trout states. Upper Midwest (MN, MI) + Rockies
-        # (CO, MT, ID, UT, WY) + New England (NH). MN/MT/ID/UT have walkable
-        # self-hosted roots seeded in catalogs.py; WY/NH come via AGOL search.
-        # (WI + CT already onboarded into data/trout/sources.json.)
-        default: "MN,MI,CO,MT,ID,UT,WY,NH"
+        # MN re-search (deeper: walk the gisdata.mn.gov DNR folder for a
+        # management/survey-class layer -- the first pass only found the
+        # undifferentiated designation layer) + the Rockies/NH states whose real
+        # trout layers the first pass missed (AGOL search returned junk; these
+        # still need hand-picked seed roots in catalogs.py before they'll land).
+        # WI, CT, MI already onboarded into data/trout/sources.json.
+        default: "MN,CO,ID,MT,UT,NH,WY"
       top_k:
         description: "Candidate endpoints probed per state"
         required: false

@@ -92,6 +92,24 @@
         {"contains": ["class iii", "class ii", "class 3", "class 2"], "bucket": "stocked"},
         {"contains": ["class i", "class 1"], "bucket": "wild_reproduction"}
       ]
+    },
+    {
+      "_comment": "MI DNR Designated Trout Streams -- RegulationDesc on DNRFisheriesTroutRegsOPENDATA (Michigan's Type 1-4 inland-trout regulation system, ~60k polylines). Type 1 = small spring-fed self-sustaining wild, no stocking -> wild_reproduction. Type 3/4 = larger Great-Lakes-run reaches where resident trout are a minor component and the fishery is maintained by stocking -> stocked. Type 2 has natural reproduction but is stocked-supplemented -> stocked, matching the WI Class II / CT precedent and the 'never paint a stocked stream green' rule. The GR (Gear Restricted) and BTRA (Brook Trout Restoration Area) qualifiers ride on top of a type, so they follow the type number; BTRA on Type 3/4 is mapped stocked conservatively (a restoration reach may still be stocked) pending the build-time live check. All 'Non Designated' variants and the bare 'GR Designated' (no type) are omitted -> dropped. field_map is an EXACT match, so casing/spacing mirror the live distinct values from the discovery dossier.",
+      "state": "MI", "label": "MI Designated Trout Streams",
+      "mode": "field_map", "field": "RegulationDesc",
+      "url": "https://services3.arcgis.com/Jdnp1TjADvSDxMAX/arcgis/rest/services/DNRFisheriesTroutRegsOPENDATA/FeatureServer/0/query?where=1%3D1",
+      "map": {
+        "Type 1 Designated": "wild_reproduction",
+        "Type 1 BTRA Designated": "wild_reproduction",
+        "GR Type 1 Designated": "wild_reproduction",
+        "Type 2 Designated": "stocked",
+        "GR Type 2 Designated": "stocked",
+        "Type 3 Designated": "stocked",
+        "Type 3 BTRA Designated": "stocked",
+        "Type 4 Designated": "stocked",
+        "Type 4 BTRA Designated": "stocked",
+        "GR Type 4 Designated": "stocked"
+      }
     }
   ]
 }
