@@ -158,6 +158,37 @@ def test_me_priority_high_and_very_high_wild_not_dropped():
     assert reg.row_bucket(me, {}) is None
 
 
+def test_mo_blue_ribbon_wild_rest_stocked():
+    # MO ribbons encode management: Blue Ribbon = wild; Red/White/Trout Park/
+    # Lake Taneycomo = stocked. Exact AreaType values verified via probe-layer.
+    mo = SOURCES["MO"]
+    f = mo["field"]
+    assert reg.row_bucket(mo, {f: "Blue Ribbon"}) == "wild_reproduction"
+    assert reg.row_bucket(mo, {f: "Red Ribbon"}) == "stocked"
+    assert reg.row_bucket(mo, {f: "White Ribbon"}) == "stocked"
+    assert reg.row_bucket(mo, {f: "Trout Park"}) == "stocked"
+    assert reg.row_bucket(mo, {f: "Lake Taneycomo"}) == "stocked"
+    # field_map has no default -> unmapped drops.
+    assert reg.row_bucket(mo, {f: "Something Else"}) is None
+    assert reg.row_bucket(mo, {}) is None
+
+
+def test_ia_wild_species_wild_blank_stocked():
+    # IA wild_trt: any naturally-reproducing species (incl. combos) -> wild;
+    # blank / no species -> stocked (default). Values verified via probe-layer.
+    ia = SOURCES["IA"]
+    f = ia["fields"][0]
+    assert reg.row_bucket(ia, {f: "Brook"}) == "wild_reproduction"
+    assert reg.row_bucket(ia, {f: "Brown"}) == "wild_reproduction"
+    assert reg.row_bucket(ia, {f: "Rainbow"}) == "wild_reproduction"
+    assert reg.row_bucket(ia, {f: "Brook, Brown"}) == "wild_reproduction"
+    assert reg.row_bucket(ia, {f: "Brown, Rainb"}) == "wild_reproduction"
+    # blank / absent -> stocked via default (put-and-take, no natural repro).
+    assert reg.row_bucket(ia, {f: " "}) == "stocked"
+    assert reg.row_bucket(ia, {f: ""}) == "stocked"
+    assert reg.row_bucket(ia, {}) == "stocked"
+
+
 def test_ct_is_two_ordered_sources_wild_first():
     ct = [s for s in ALL_SOURCES if s["state"] == "CT"]
     assert [s["label"] for s in ct] == ["CT (WTMA)", "CT (stocked)"]  # wild claims first
