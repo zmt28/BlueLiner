@@ -166,6 +166,25 @@
         {"id": 1, "class": "wild_reproduction", "label": "Aquatic Gold Medal Waters"},
         {"id": 3, "class": "stocked",           "label": "Aquatic Sportsfish Management Waters"}
       ]
+    },
+    {
+      "_comment": "CA CDFW Designated Heritage and Wild Trout Waters (biosds1356_fpu / ds1356). The entire dataset is state-designated Heritage Trout Waters (native wild) + Wild Trout Waters (self-sustaining), so the whole layer -> wild_reproduction. Polygon features (Water_Type = Stream / Stream-tributaries / Lake / Watershed); the build's buffer+intersect join tags the interior flowlines, like the shipped VT/CO polygon sources. A few Lake/Watershed features render coarser -- acceptable since every designated water here is wild.",
+      "state": "CA", "label": "CA Heritage & Wild Trout Waters",
+      "mode": "single", "class": "wild_reproduction",
+      "url": "https://services2.arcgis.com/Uq9r85Potqm3MfRV/arcgis/rest/services/biosds1356_fpu/FeatureServer/0/query?where=1%3D1"
+    },
+    {
+      "_comment": "SC DNR Trout Streams (Trout_Streams FeatureServer layer 4 = SC_Trout_Streams polylines; trout_category field, values verified via probe-layer). w (wild) and cr (catch-and-release -- SC's self-sustaining mountain wild reaches) -> wild_reproduction; dh (delayed harvest), pt (put-take) and pg (put-grow-take) -> stocked. Consistent with the NC entry (catch-and-release -> wild, delayed harvest -> stocked).",
+      "state": "SC", "label": "SC Trout Streams",
+      "mode": "field_map", "field": "trout_category",
+      "url": "https://services.arcgis.com/acgZYxoN5Oj8pDLa/arcgis/rest/services/Trout_Streams/FeatureServer/4/query?where=1%3D1",
+      "map": {
+        "w": "wild_reproduction",
+        "cr": "wild_reproduction",
+        "dh": "stocked",
+        "pt": "stocked",
+        "pg": "stocked"
+      }
     }
   ]
 }

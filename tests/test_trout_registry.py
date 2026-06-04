@@ -207,6 +207,27 @@ def test_co_multi_layer_native_wild_sportfish_stocked():
     assert co["layers"][-1]["class"] == "stocked"  # stocked listed last
 
 
+def test_ca_heritage_wild_single_wild():
+    ca = SOURCES["CA"]
+    assert ca["mode"] == "single"
+    assert reg.row_bucket(ca, {}) == "wild_reproduction"
+
+
+def test_sc_trout_category_wild_cr_vs_stocked():
+    # SC trout_category: w (wild) + cr (catch-and-release wild) -> wild;
+    # dh (delayed harvest) / pt (put-take) / pg (put-grow) -> stocked.
+    # Mirrors the NC precedent.
+    sc = SOURCES["SC"]
+    f = sc["field"]
+    assert reg.row_bucket(sc, {f: "w"}) == "wild_reproduction"
+    assert reg.row_bucket(sc, {f: "cr"}) == "wild_reproduction"
+    assert reg.row_bucket(sc, {f: "dh"}) == "stocked"
+    assert reg.row_bucket(sc, {f: "pt"}) == "stocked"
+    assert reg.row_bucket(sc, {f: "pg"}) == "stocked"
+    assert reg.row_bucket(sc, {f: ""}) is None
+    assert reg.row_bucket(sc, {}) is None
+
+
 def test_wy_and_ut_blue_ribbon_single_wild():
     # Western carve-out: Blue Ribbon premier-water tiers -> wild (whole layer).
     for st in ("WY", "UT"):
