@@ -185,6 +185,12 @@
         "pt": "stocked",
         "pg": "stocked"
       }
+    },
+    {
+      "_comment": "NV Dept of Wildlife Lahontan Cutthroat Trout Occupied Streams (LCT_Occupied_Streams_NV). Stream reaches occupied by Nevada's native, self-sustaining Lahontan cutthroat (~480 mi of habitat) -- a naturally-reproducing native-trout distribution layer -> wild_reproduction, following the CO/CA native pattern (self-sustaining = wild). Whole layer -> wild. (NV's Bonneville cutthroat / redband occupied-stream layers could be added the same way later.)",
+      "state": "NV", "label": "NV Lahontan Cutthroat Streams",
+      "mode": "single", "class": "wild_reproduction",
+      "url": "https://services.arcgis.com/RyxlXSfFi87rAosq/arcgis/rest/services/LCT_Occupied_Streams_NV/FeatureServer/0/query?where=1%3D1"
     }
   ]
 }

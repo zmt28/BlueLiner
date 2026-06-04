@@ -207,6 +207,12 @@ def test_co_multi_layer_native_wild_sportfish_stocked():
     assert co["layers"][-1]["class"] == "stocked"  # stocked listed last
 
 
+def test_nv_lahontan_single_wild():
+    nv = SOURCES["NV"]
+    assert nv["mode"] == "single"
+    assert reg.row_bucket(nv, {}) == "wild_reproduction"
+
+
 def test_ca_heritage_wild_single_wild():
     ca = SOURCES["CA"]
     assert ca["mode"] == "single"
