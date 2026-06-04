@@ -42,7 +42,9 @@ def _norm(label: str) -> str:
 
 
 def _hits(text: str, tokens) -> tuple[str, ...]:
-    return tuple(tok for tok in tokens if f" {tok} " in text or tok in text)
+    # Word-boundary aware (stems excepted) -- see lexicon.hits. Stops "wild"
+    # from matching "wildlife" and "class i" from matching "class ii".
+    return tuple(lexicon.hits(text, tokens))
 
 
 def classify(label: str) -> Result:

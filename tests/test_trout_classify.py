@@ -9,7 +9,7 @@ import sys
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "scripts"))
 
-from discovery import classify, eval as gold_eval, geo, catalogs, probe  # noqa: E402
+from discovery import classify, eval as gold_eval, geo, catalogs, probe, report  # noqa: E402
 
 
 def test_strong_wild_signals_auto_bucket():
@@ -112,4 +112,51 @@ def test_picks_coded_class_field_over_freetext_season():
 def test_category_field_none_when_no_lexicon_signal():
     assert probe.pick_category_field(
         {"COUNTY": ["Dane", "Vilas"], "ID": ["a", "b"]}) == (None, [])
+
+
+# --- word-boundary matching (wild != wildlife, class i != class ii) ---
+
+def test_wild_does_not_match_wildlife():
+    # KY's false hit: "US Fish and Wildlife" must not classify as wild.
+    assert classify.classify("US Fish and Wildlife").bucket is None
+
+
+def test_whole_word_signals_still_fire():
+    assert classify.classify("Wilderness Trout Streams").bucket == classify.WILD
+    assert classify.classify("Stocked").bucket == classify.STOCKED      # stem
+    assert classify.classify("Wild Trout Waters").bucket == classify.WILD
+
+
+# --- tier-A relevance gate (the ID/KY/UT false positives) ---
+
+def _cand(**kw):
+    base = dict(url="https://x/FeatureServer/0", title="", source="arcgis-search",
+                geometry="esriGeometryPolyline", feature_count=100,
+                anonymous_query=True, in_state=True, category_field=None,
+                distinct_values=[], trout_named=False, score=1.0)
+    base.update(kw)
+    return base
+
+
+def test_dossier_demotes_irrelevant_layer_from_A():
+    # A geothermal/water-quality polygon: queryable, in-state, but no trout signal.
+    d = report.build_dossier("UT", [_cand(geometry="esriGeometryPolygon",
+                                           feature_count=3)], classify)
+    assert d["tier"] == "C" and "wrong match" in d["caveats"][0]
+
+
+def test_dossier_keeps_trout_category_layer_A():
+    d = report.build_dossier("CT", [_cand(
+        category_field="STOCKING_TABLE_MGT",
+        distinct_values=["Wild Trout Management Area", "No Special Management"])],
+        classify)
+    assert d["tier"] == "A" and d["classify"]["field"] == "STOCKING_TABLE_MGT"
+
+
+def test_dossier_prefers_relevant_over_higher_scored_junk():
+    junk = _cand(url="https://x/Geothermal/FeatureServer/0", score=10.0)
+    trout = _cand(url="https://x/WildTrout/FeatureServer/0", score=1.0,
+                  trout_named=True)
+    d = report.build_dossier("ZZ", [junk, trout], classify)
+    assert d["tier"] == "A" and "WildTrout" in d["endpoint"]
 

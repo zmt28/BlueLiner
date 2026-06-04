@@ -18,6 +18,9 @@ These tables are the spike's single most important tunable. The eval
 (`eval.py`) measures them against the 10 states we've already shipped by hand,
 so any edit here is graded against ground truth before we trust it at scale.
 """
+from __future__ import annotations
+
+import re
 
 # A strong wild signal -- naturally reproducing / wild-managed water.
 WILD_TOKENS = (
@@ -73,3 +76,21 @@ AMBIGUOUS_TOKENS = (
     "other",
     "seasonal",
 )
+
+# Tokens matched as a substring/prefix (so "stock" catches Stocked/Stocking and
+# the abbreviated "Hvy_stock"/"Delay_har" flag names). Everything else is matched
+# as a whole word, so "wild" does NOT fire on "wildlife"/"wilderness" and
+# "class i" does NOT fire on "class ii" -- the precision bugs the batch exposed.
+_STEM_TOKENS = frozenset({"stock", "delay"})
+
+
+def _matches(text: str, token: str) -> bool:
+    if token in _STEM_TOKENS:
+        return token in text
+    return re.search(rf"\b{re.escape(token)}\b", text) is not None
+
+
+def hits(text: str, tokens) -> list[str]:
+    """The tokens that fire on `text` (case-insensitive, word-boundary aware)."""
+    t = (text or "").lower()
+    return [tok for tok in tokens if _matches(t, tok)]
