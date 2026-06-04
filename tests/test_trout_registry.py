@@ -193,6 +193,20 @@ def test_ia_wild_species_wild_blank_stocked():
     assert reg.row_bucket(ia, {}) == "stocked"
 
 
+def test_co_multi_layer_native_wild_sportfish_stocked():
+    # CO SB181 aquatic units: native conservation / cutthroat crucial habitat /
+    # gold medal -> wild; sportfish management -> stocked. Wild sublayers first
+    # so wild wins on overlap.
+    co = SOURCES["CO"]
+    assert co["mode"] == "multi_layer"
+    by_id = {l["id"]: l["class"] for l in co["layers"]}
+    assert by_id[2] == "wild_reproduction"   # Native Species Conservation
+    assert by_id[0] == "wild_reproduction"   # Cutthroat Crucial Habitat
+    assert by_id[1] == "wild_reproduction"   # Gold Medal (premier tier)
+    assert by_id[3] == "stocked"             # Sportfish Management
+    assert co["layers"][-1]["class"] == "stocked"  # stocked listed last
+
+
 def test_wy_and_ut_blue_ribbon_single_wild():
     # Western carve-out: Blue Ribbon premier-water tiers -> wild (whole layer).
     for st in ("WY", "UT"):

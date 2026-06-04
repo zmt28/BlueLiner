@@ -155,6 +155,17 @@
       "state": "UT", "label": "UT Blue Ribbon Trout Rivers",
       "mode": "single", "class": "wild_reproduction",
       "url": "https://services.arcgis.com/ZzrwjTRez6FJiOq4/arcgis/rest/services/Blue_Ribbon_Fisheries_VIEW/FeatureServer/0/query?where=1%3D1"
+    },
+    {
+      "_comment": "CO Parks & Wildlife SB181 Aquatic Management Units (CPWSB181AquaticData). Native Species Conservation, Cutthroat Crucial Habitat, and Gold Medal (CO's premier quality tier) -> wild; Sportfish Management -> stocked. The features are polygons that are ~500-ft buffers around the actual reaches (BufferDist field; 1,779 native-conservation polygons), so the build's buffer+intersect join tags the corridor flowlines precisely -- tighter than the already-shipped VT catchment polygons. Gold Medal -> wild per the western-coverage carve-out (top quality tier = wild, as with WY/UT Blue Ribbon). Wild sublayers are listed before the stocked one so wild wins on any overlap.",
+      "state": "CO", "label": "CO Aquatic Management Waters", "mode": "multi_layer",
+      "base": "https://services5.arcgis.com/ttNGmDvKQA7oeDQ3/arcgis/rest/services/CPWSB181AquaticData/FeatureServer",
+      "layers": [
+        {"id": 2, "class": "wild_reproduction", "label": "Aquatic Native Species Conservation Waters"},
+        {"id": 0, "class": "wild_reproduction", "label": "Aquatic Cutthroat Trout Designated Crucial Habitat"},
+        {"id": 1, "class": "wild_reproduction", "label": "Aquatic Gold Medal Waters"},
+        {"id": 3, "class": "stocked",           "label": "Aquatic Sportsfish Management Waters"}
+      ]
     }
   ]
 }
