@@ -103,6 +103,26 @@ def test_field_prefix_without_default_still_drops():
     assert reg.row_bucket(SOURCES["NC"], {"FIRST_WRC_": "Trout Pond"}) is None
 
 
+def test_wi_class_i_wild_ii_and_iii_stocked():
+    # WI Class I = self-sustaining wild; Class II (stocked-supplemented) and
+    # Class III (no reproduction) both -> stocked. The ordered substring rules
+    # must not let "class i" leak into the Class II/III rows.
+    wi = SOURCES["WI"]
+    f = wi["fields"][0]
+    assert reg.row_bucket(wi, {f: "Class I"}) == "wild_reproduction"
+    assert reg.row_bucket(wi, {f: "Class II"}) == "stocked"
+    assert reg.row_bucket(wi, {f: "Class III"}) == "stocked"
+    # Case-insensitive + tolerant of the rendered-label vs stored-code casing.
+    assert reg.row_bucket(wi, {f: "CLASS I"}) == "wild_reproduction"
+    assert reg.row_bucket(wi, {f: "CLASS III"}) == "stocked"
+    # Arabic fallback, in case the code isn't roman.
+    assert reg.row_bucket(wi, {f: "Class 1"}) == "wild_reproduction"
+    assert reg.row_bucket(wi, {f: "Class 2"}) == "stocked"
+    # Unclassified / missing -> dropped (no default).
+    assert reg.row_bucket(wi, {f: ""}) is None
+    assert reg.row_bucket(wi, {}) is None
+
+
 def test_ct_is_two_ordered_sources_wild_first():
     ct = [s for s in ALL_SOURCES if s["state"] == "CT"]
     assert [s["label"] for s in ct] == ["CT (WTMA)", "CT (stocked)"]  # wild claims first

@@ -82,6 +82,16 @@
       "state": "CT", "label": "CT (stocked)",
       "mode": "single", "class": "stocked",
       "url": "https://services1.arcgis.com/FjPcSmEFuDYlIdKC/arcgis/rest/services/Connecticut_Stocked_Streams/FeatureServer/0/query?where=1%3D1"
+    },
+    {
+      "_comment": "WI DNR classified trout streams -- TROUT_CLASS_CODE on the WY_FISHERIES_WATERS 'Trout Stream Lines' layer (Class I/II/III unique-value renderer). Class I = self-sustaining wild, no stocking -> wild. Class III = no natural reproduction, annual stocking -> stocked. Class II has some natural reproduction but is stocked to maintain the fishery (46% of WI trout mileage) -> stocked, consistent with the CT precedent (stocked-supplemented -> stocked) and the 'never paint a stocked stream green' rule. Substring rules are lowercased and ordered III/II before I so 'class i' can't match 'class ii'/'class iii'; both roman and arabic forms are covered in case the stored code differs from the rendered label.",
+      "state": "WI", "label": "WI Classified Trout Streams",
+      "mode": "field_prefix", "fields": ["TROUT_CLASS_CODE"],
+      "url": "https://dnrmaps.wi.gov/arcgis/rest/services/WT_SWDV/WY_FISHERIES_WATERS/MapServer/9/query?where=1%3D1",
+      "rules": [
+        {"contains": ["class iii", "class ii", "class 3", "class 2"], "bucket": "stocked"},
+        {"contains": ["class i", "class 1"], "bucket": "wild_reproduction"}
+      ]
     }
   ]
 }
