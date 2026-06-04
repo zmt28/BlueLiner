@@ -66,6 +66,10 @@ SEED_ARCGIS_HOSTS = {
     "MI": ["https://gisp.mcgi.state.mi.us/arcgis/rest/services"],
     "CO": ["https://gis.cpw.state.co.us/arcgis/rest/services"],
     "TN": ["https://tnmap.tn.gov/arcgis/rest/services"],
+    "MN": ["http://arcgis.dnr.state.mn.us/mndnr/rest/services"],
+    "MT": ["https://fwp-gis.mt.gov/arcgis/rest/services"],
+    "ID": ["https://gis.idfg.idaho.gov/server/rest/services"],
+    "UT": ["https://maps.dnr.utah.gov/arcgis/rest/services"],
 }
 
 _NAME_HINTS = ("trout", "fish", "coldwater", "angler")
