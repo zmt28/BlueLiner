@@ -242,6 +242,61 @@ def test_wy_and_ut_blue_ribbon_single_wild():
         assert reg.row_bucket(s, {}) == "wild_reproduction"
 
 
+def test_row_tier_gold_and_ladders():
+    # explicit gold + the class1/2/3 ladders
+    assert reg.row_tier(SOURCES["WY"], {}) == "gold"
+    assert reg.row_tier(SOURCES["UT"], {}) == "gold"
+    assert reg.row_tier(SOURCES["MO"], {"AreaType": "Blue Ribbon"}) == "gold"
+    assert reg.row_tier(SOURCES["MO"], {"AreaType": "Red Ribbon"}) == "class2"
+    assert reg.row_tier(SOURCES["MO"], {"AreaType": "White Ribbon"}) == "class3"
+    wi, wf = SOURCES["WI"], SOURCES["WI"]["fields"][0]
+    assert [reg.row_tier(wi, {wf: c}) for c in ("Class I", "Class II", "Class III")] \
+        == ["class1", "class2", "class3"]
+    mi, mf = SOURCES["MI"], SOURCES["MI"]["field"]
+    assert reg.row_tier(mi, {mf: "Type 1 Designated"}) == "class1"
+    assert reg.row_tier(mi, {mf: "Type 2 Designated"}) == "class2"
+    assert reg.row_tier(mi, {mf: "Type 4 Designated"}) == "class3"
+
+
+def test_row_tier_regulation_states():
+    assert reg.row_tier(SOURCES["NC"], {"WRC_Class": "Wild Trout Waters"}) == "class1"
+    assert reg.row_tier(SOURCES["NC"], {"WRC_Class": "Hatchery Supported Trout Waters"}) == "class2"
+    assert reg.row_tier(SOURCES["NY"], {"MGMTCAT": "Wild-Premier"}) == "class1"
+    assert reg.row_tier(SOURCES["NY"], {"MGMTCAT": "Stocked"}) == "class3"
+    assert reg.row_tier(SOURCES["SC"], {"trout_category": "w"}) == "class1"
+    assert reg.row_tier(SOURCES["SC"], {"trout_category": "pt"}) == "class3"
+    # CT WTMA (BY_LABEL: SOURCES['CT'] is the stocked entry, last-wins)
+    wtma = BY_LABEL["CT (WTMA)"]
+    assert reg.row_tier(wtma, {"MGMT_AREA": "X Wild Trout Management Area (Class 1)"}) == "class1"
+    assert reg.row_tier(wtma, {"MGMT_AREA": "Trophy Trout Area"}) == "class3"  # tier_default
+
+
+def test_row_tier_falls_back_from_class():
+    # sources with no explicit tier spec derive tier from the trout_class
+    assert reg.row_tier(SOURCES["VA"], {}) == "class2"   # wild_reproduction
+    assert reg.row_tier(SOURCES["NJ"], {}) == "class3"   # stocked
+    assert reg.row_tier(SOURCES["MD"], {}) == "class3"   # designated
+    assert reg.layer_tier({"class": "class_a"}) == "class1"  # PA-style sublayer
+
+
+def test_wild_and_native_flags():
+    assert reg.class_is_wild("wild_reproduction") and reg.class_is_wild("class_a")
+    assert not reg.class_is_wild("stocked")
+    assert reg.is_native(SOURCES["NV"]) is True
+    assert reg.is_native(SOURCES["VA"]) is False
+
+
+def test_co_multilayer_tiers_and_native():
+    co = SOURCES["CO"]
+    by_id = {l["id"]: l for l in co["layers"]}
+    assert reg.layer_tier(by_id[1]) == "gold"     # Gold Medal
+    assert reg.layer_tier(by_id[2]) == "class2"   # Native Species Conservation
+    assert reg.layer_tier(by_id[3]) == "class3"   # Sportfish (stocked)
+    assert reg.is_native(co, by_id[0]) is True    # Cutthroat Crucial Habitat
+    assert reg.is_native(co, by_id[1]) is False   # Gold Medal not native-flagged
+    assert reg.is_native(co, by_id[3]) is False   # Sportfish
+
+
 def test_ct_is_two_ordered_sources_wild_first():
     ct = [s for s in ALL_SOURCES if s["state"] == "CT"]
     assert [s["label"] for s in ct] == ["CT (WTMA)", "CT (stocked)"]  # wild claims first

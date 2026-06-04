@@ -32,6 +32,13 @@ Source modes:
   field_prefix  ordered substring rules over coalesced fields {fields, rules:[{contains,bucket}]}
                 (unmatched dropped)
   flags         any "Yes" flag field -> stocked, else default {stocked_flags, default}
+
+Tier + filters (Phase 2): alongside `trout_class`, sources may carry an optional
+quality TIER spec (`tier` / `tier_map` / `tier_rules` / `tier_default`, or per
+multi_layer-sublayer `tier`) and a `native` flag. `row_tier()` / `layer_tier()`
+derive gold/class1/class2/class3 (falling back from the class where unspecified);
+`class_is_wild()` and `is_native()` derive the wild/native filters. See
+docs/trout-tier-normalization-rubric.md.
 """
 from __future__ import annotations
 
@@ -92,6 +99,81 @@ def row_bucket(source: dict, attrs) -> str | None:
             return "stocked"
         return source["default"]
     raise ValueError(f"unknown trout-source mode: {mode!r} ({source.get('state')})")
+
+
+# ───────────── Tier + wild/native (Phase 2 nationwide model) ─────────────
+# Quality TIER (gold/class1/class2/class3) is the color axis; `wild` and
+# `native` are orthogonal filters. An explicit per-source tier spec wins; else
+# tier falls back from the trout_class. The eastern-gold upgrade (premier-wild on
+# a named river of stream order >= 4) needs reach attributes and is applied in
+# build_clickable_streams.py -- see docs/trout-tier-normalization-rubric.md.
+WILD_CLASSES = {"wild_reproduction", "class_a", "wilderness"}
+FALLBACK_CLASS_TIER = {
+    "class_a": "class1", "wilderness": "class1",
+    "wild_reproduction": "class2", "stocked": "class3", "designated": "class3",
+}
+
+
+def class_is_wild(trout_class) -> bool:
+    """`is_wild` flag from a final trout_class (uniform across all modes)."""
+    return trout_class in WILD_CLASSES
+
+
+def _prefix_pick(value, rules: list[dict], key: str) -> str | None:
+    """First rule whose any-substring matches the lowercased value -> rule[key]."""
+    if not value:
+        return None
+    v = str(value).lower()
+    for rule in rules:
+        if any(tok in v for tok in rule["contains"]):
+            return rule.get(key)
+    return None
+
+
+def row_tier(source: dict, attrs) -> str | None:
+    """Quality tier for one feature, or None to drop. Explicit per-source tier
+    spec wins (`tier` / `tier_map` / `tier_rules` / `tier_default`); otherwise
+    fall back from the trout_class. multi_layer tiers are per-sublayer -- use
+    layer_tier()."""
+    mode = source["mode"]
+    if mode == "single":
+        return source.get("tier") or FALLBACK_CLASS_TIER.get(source["class"])
+    if mode == "field_map":
+        tm = source.get("tier_map")
+        if tm is not None:
+            t = tm.get(attrs.get(source["field"]))
+            if t:
+                return t
+            if source.get("tier_default"):
+                return source["tier_default"]
+        return FALLBACK_CLASS_TIER.get(row_bucket(source, attrs))
+    if mode == "field_prefix":
+        if "tier_rules" in source:
+            for field in source["fields"]:
+                t = _prefix_pick(attrs.get(field), source["tier_rules"], "tier")
+                if t:
+                    return t
+            if source.get("tier_default"):
+                return source["tier_default"]
+        return FALLBACK_CLASS_TIER.get(row_bucket(source, attrs))
+    if mode == "flags":
+        return FALLBACK_CLASS_TIER.get(row_bucket(source, attrs))
+    if mode == "multi_layer":
+        return None
+    raise ValueError(f"unknown trout-source mode: {mode!r} ({source.get('state')})")
+
+
+def layer_tier(layer: dict) -> str | None:
+    """multi_layer per-sublayer tier: explicit `tier` or fallback from `class`."""
+    return layer.get("tier") or FALLBACK_CLASS_TIER.get(layer["class"])
+
+
+def is_native(source: dict, layer: dict | None = None) -> bool:
+    """`native` filter flag -- a property of the layer/source, not the class
+    value. For multi_layer pass the sublayer; else honors source-level `native`."""
+    if layer is not None and "native" in layer:
+        return bool(layer["native"])
+    return bool(source.get("native", False))
 
 
 def classify_fields(source: dict) -> list[str]:
