@@ -26,6 +26,10 @@ on:
         description: "Candidate endpoints probed per state"
         required: false
         default: "8"
+      probe_url:
+        description: "If set, ONLY dump this layer's schema (fields + distinct values); skips discovery. For wiring whole_layer dossiers."
+        required: false
+        default: ""
 
 permissions:
   contents: read
@@ -44,14 +48,24 @@ jobs:
       - name: Install deps
         run: pip install httpx
 
+      # probe_url mode: dump one layer's schema and stop (for wiring a state
+      # whose dossier came back whole_layer because its category field doesn't
+      # speak trout vocabulary). All discovery steps below are gated off.
+      - name: Probe a single layer's schema
+        if: ${{ inputs.probe_url != '' }}
+        run: python scripts/probe_layer.py "${{ inputs.probe_url }}"
+
       - name: Classifier eval vs 10 shipped states (offline gate)
+        if: ${{ inputs.probe_url == '' }}
         run: python scripts/discover_trout_sources.py eval
 
       - name: Discovery recall vs 10 shipped states (network)
+        if: ${{ inputs.probe_url == '' }}
         continue-on-error: true   # measurement, not a hard fail
         run: python scripts/discover_trout_sources.py recall --top-k "${{ inputs.top_k }}"
 
       - name: Discover fresh states
+        if: ${{ inputs.probe_url == '' }}
         run: |
           python scripts/discover_trout_sources.py discover \
             --states "${{ inputs.states }}" \
@@ -59,7 +73,7 @@ jobs:
             --out discovery_out
 
       - name: Print dossiers + memo to log
-        if: always()
+        if: ${{ always() && inputs.probe_url == '' }}
         run: |
           echo "===== MEMO ====="; cat discovery_out/MEMO.md || true
           for f in discovery_out/*.json; do
@@ -67,7 +81,7 @@ jobs:
           done
 
       - name: Upload dossiers + memo
-        if: always()
+        if: ${{ always() && inputs.probe_url == '' }}
         uses: actions/upload-artifact@v4
         with:
           name: trout-discovery-dossiers
