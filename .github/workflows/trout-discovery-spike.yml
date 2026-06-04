@@ -13,13 +13,15 @@ on:
       states:
         description: "States to discover (comma-separated)."
         required: false
-        # MN re-search (deeper: walk the gisdata.mn.gov DNR folder for a
-        # management/survey-class layer -- the first pass only found the
-        # undifferentiated designation layer) + the Rockies/NH states whose real
-        # trout layers the first pass missed (AGOL search returned junk; these
-        # still need hand-picked seed roots in catalogs.py before they'll land).
-        # WI, CT, MI already onboarded into data/trout/sources.json.
-        default: "MN,CO,ID,MT,UT,NH,WY"
+        # Eastern/midwestern batch -- where the wild/stocked-designation model
+        # holds (vs the western quality-ribbon/biomass data, deferred to a
+        # separate data-model design). IA (self-hosted, Driftless designations)
+        # and MO (Blue=wild / Red+White=stocked ribbons) are the cleanest fits;
+        # SC has a named Trout Streams AGOL layer; KY/ME/OH are likely thinner
+        # (KY = 6 wild streams + put-grow-take, ME wild signal is lakes not
+        # streams, OH = put-and-take points only). MN carries over for its
+        # deeper DNR-folder re-search. WI/CT/MI already onboarded.
+        default: "IA,MO,SC,KY,ME,OH,MN"
       top_k:
         description: "Candidate endpoints probed per state"
         required: false

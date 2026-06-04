@@ -33,6 +33,7 @@ QUERY_TEMPLATES = (
     "{st} DNR trout fishing",
     "{st} trout stream classification",
     "{st} fish stocking locations",
+    "{st} trout management areas",
 )
 
 STATE_NAMES = {
@@ -66,6 +67,10 @@ SEED_ARCGIS_HOSTS = {
     "MA": ["https://arcgisserver.digital.mass.gov/arcgisserver/rest/services"],
     "WI": ["https://dnrmaps.wi.gov/arcgis/rest/services"],
     "MI": ["https://gisp.mcgi.state.mi.us/arcgis/rest/services"],
+    # IA DNR self-hosted server has a Fisheries folder; Iowa designates Driftless
+    # trout streams classified by management (naturally-reproducing vs catchable/
+    # fingerling stocked) -- a clean wild/stocked fit.
+    "IA": ["https://programs.iowadnr.gov/geospatial/rest/services"],
     # CO is AGOL-hosted now; walk the CPW org so the walk reaches Aquatic
     # Sportfish Management Waters / cutthroat conservation layers instead of the
     # CPWAdminData points AGOL search grabbed. Self-hosted root kept as fallback.
