@@ -193,6 +193,14 @@ def test_ia_wild_species_wild_blank_stocked():
     assert reg.row_bucket(ia, {}) == "stocked"
 
 
+def test_wy_and_ut_blue_ribbon_single_wild():
+    # Western carve-out: Blue Ribbon premier-water tiers -> wild (whole layer).
+    for st in ("WY", "UT"):
+        s = SOURCES[st]
+        assert s["mode"] == "single"
+        assert reg.row_bucket(s, {}) == "wild_reproduction"
+
+
 def test_ct_is_two_ordered_sources_wild_first():
     ct = [s for s in ALL_SOURCES if s["state"] == "CT"]
     assert [s["label"] for s in ct] == ["CT (WTMA)", "CT (stocked)"]  # wild claims first
