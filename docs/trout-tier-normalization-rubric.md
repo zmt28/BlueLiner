@@ -28,8 +28,10 @@ data).
 
 ## 2. Tier definitions
 
-- **`gold`** — premier, nationally/regionally renowned water. The top tier a
-  state recognizes.
+- **`gold`** — premier, renowned water; the exclusive top tier (cf. TroutRoutes'
+  "top few %"). Assigned two ways (see §5.1): an explicit state premier
+  designation, **or** the eastern-gold criterion for states that don't designate
+  one.
 - **`class1`** — high-quality named trout water; strong fishery, good reputation.
 - **`class2`** — solid everyday trout water.
 - **`class3`** — lighter / overlooked / marginal or pure put-and-take water.
@@ -48,7 +50,7 @@ States give us one of two input types:
 ### Type-B default ladder
 | State class character | Tier |
 |---|---|
-| State's flagship/premier wild designation on a large named river | `gold` **[CALL — see §5.1]** |
+| Explicit premier designation, or top-wild on a named river (order ≥ 4) — see §5.1 | `gold` |
 | Premier wild (Class A, Wilderness, Heritage, catch-&-release wild) | `class1` |
 | Ordinary wild reproduction | `class2` |
 | Stocked put-grow-take / delayed harvest (popular, good access) | `class2` |
@@ -66,7 +68,7 @@ Type A (direct):
 | CO | Gold Medal → `gold`; (native conservation/sportfish carry `wild`/`native`, tier via §5.2) |
 | WY | Blue Ribbon → `gold` (Red/Yellow/Green → `class1`/`2`/`3` when ingested) |
 | UT | Blue Ribbon → `gold` |
-| CA | Heritage → `gold` **[CALL]**, Wild Trout → `class1` |
+| CA | Heritage → `gold` (explicit premier); Wild Trout → `class1` |
 
 Type B (derived):
 | State | Class → tier |
@@ -81,20 +83,31 @@ Type B (derived):
 | NJ/WV/MD | stocked/designated → `class3`/`class2` |
 | CT | WTMA Class 1 → `class1`; stocked → `class3` |
 | IA | wild_trt present → `class2`; blank (stocked) → `class3` |
-| MO | Blue Ribbon → `class1` **[CALL — gold? see §5.1]**; Red/White/Park → `class2`/`class3` |
+| MO | Blue Ribbon → `gold` (MO's explicit premier designation); Red → `class2`; White/Park → `class3` |
 | SC | w/cr → `class1`; dh/pt/pg → `class2`/`class3` |
 | NV | Lahontan native streams → `class2` (conservation, `native`+`wild` flags) |
 
 ## 5. Open judgment calls **[CALL]** — need sign-off
 
-1. **Eastern "gold".** "Gold Medal/Blue Ribbon" is a *western* term; eastern
-   states don't designate it. A "use the state's gold designation" rule gives the
-   entire East **zero** gold-tier streams — inconsistent nationwide. Options:
-   (a) define a principled eastern gold criterion (e.g., the state's single
-   highest wild class on a large named river → gold: PA Class A on a major
-   limestone river, the famous spring creeks); (b) accept that `gold` is
-   western-only and the East tops out at `class1`; (c) drop `gold` entirely and
-   use 3 tiers. **Recommend (a)** for true nationwide consistency.
+1. **Eastern "gold" — RESOLVED: principled eastern-gold rule.** A reach is `gold`
+   if **either**:
+   - **(i) Explicit premier designation** — the state vouches for it: CO Gold
+     Medal, WY/UT/MT Blue Ribbon, CA Heritage Trout Waters, and any state
+     "Trophy / Heritage / Premier Trout" sub-designation. Size-independent
+     (mirrors the West: the state already named it the top tier).
+   - **(ii) Premier-wild on a substantial water** (eastern fallback, for states
+     with no premier sub-designation) — the reach carries the state's **top wild
+     class** (`class_a`, `wilderness`, top `wild_reproduction`) **and** is a
+     **named river** (NHDPlus `gnis_name` present) of **stream order ≥ 4**. The
+     size gate keeps `gold` exclusive — the prominent rivers (a PA Class A on a
+     major limestone river), not every headwater Class A trickle (those stay
+     `class1`).
+
+   Consistent nationwide ("gold = the state's premier water, by designation or by
+   top-wild-on-a-real-river") and uses only NHDPlus attributes we already carry
+   (`gnis_name`, `streamorder`). **Tunable:** the order threshold and the
+   require-a-name flag are calibration knobs — run it, check the gold fraction
+   against the "top few %" target, adjust.
 2. **Tier vs. wild independence.** Should `wild` ever force a tier floor (e.g.,
    wild ⇒ ≥ `class2`), or stay fully independent? **Recommend independent** — a
    marginal wild trickle can be `class3`; wild is the filter.
