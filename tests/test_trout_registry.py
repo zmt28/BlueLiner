@@ -103,6 +103,61 @@ def test_field_prefix_without_default_still_drops():
     assert reg.row_bucket(SOURCES["NC"], {"FIRST_WRC_": "Trout Pond"}) is None
 
 
+def test_wi_class_i_wild_ii_and_iii_stocked():
+    # WI Class I = self-sustaining wild; Class II (stocked-supplemented) and
+    # Class III (no reproduction) both -> stocked. The ordered substring rules
+    # must not let "class i" leak into the Class II/III rows.
+    wi = SOURCES["WI"]
+    f = wi["fields"][0]
+    assert reg.row_bucket(wi, {f: "Class I"}) == "wild_reproduction"
+    assert reg.row_bucket(wi, {f: "Class II"}) == "stocked"
+    assert reg.row_bucket(wi, {f: "Class III"}) == "stocked"
+    # Case-insensitive + tolerant of the rendered-label vs stored-code casing.
+    assert reg.row_bucket(wi, {f: "CLASS I"}) == "wild_reproduction"
+    assert reg.row_bucket(wi, {f: "CLASS III"}) == "stocked"
+    # Arabic fallback, in case the code isn't roman.
+    assert reg.row_bucket(wi, {f: "Class 1"}) == "wild_reproduction"
+    assert reg.row_bucket(wi, {f: "Class 2"}) == "stocked"
+    # Unclassified / missing -> dropped (no default).
+    assert reg.row_bucket(wi, {f: ""}) is None
+    assert reg.row_bucket(wi, {}) is None
+
+
+def test_mi_type1_wild_type234_stocked_nondesignated_dropped():
+    # MI Type 1 = self-sustaining wild; Type 2 (stocked-supplemented), Type 3
+    # and Type 4 -> stocked. GR/BTRA qualifiers follow the underlying type;
+    # every "Non Designated" variant and the bare "GR Designated" drop.
+    mi = SOURCES["MI"]
+    f = mi["field"]
+    assert reg.row_bucket(mi, {f: "Type 1 Designated"}) == "wild_reproduction"
+    assert reg.row_bucket(mi, {f: "Type 1 BTRA Designated"}) == "wild_reproduction"
+    assert reg.row_bucket(mi, {f: "GR Type 1 Designated"}) == "wild_reproduction"
+    assert reg.row_bucket(mi, {f: "Type 2 Designated"}) == "stocked"
+    assert reg.row_bucket(mi, {f: "GR Type 2 Designated"}) == "stocked"
+    assert reg.row_bucket(mi, {f: "Type 3 Designated"}) == "stocked"
+    assert reg.row_bucket(mi, {f: "Type 4 Designated"}) == "stocked"
+    # field_map is exact -> unmapped / non-designated rows drop (no default).
+    assert reg.row_bucket(mi, {f: "Non Designated"}) is None
+    assert reg.row_bucket(mi, {f: "Type 3 Non Designated"}) is None
+    assert reg.row_bucket(mi, {f: "GR Designated"}) is None
+    assert reg.row_bucket(mi, {f: ""}) is None
+    assert reg.row_bucket(mi, {}) is None
+
+
+def test_me_priority_high_and_very_high_wild_not_dropped():
+    # ME wild-brook-trout priority reaches: ifw_prty Very High / High -> wild;
+    # 'Not' (barrier-maintenance / not-connect) and anything else drop. Exact
+    # values verified live via the probe-layer run.
+    me = SOURCES["ME"]
+    f = me["field"]
+    assert reg.row_bucket(me, {f: "Very High"}) == "wild_reproduction"
+    assert reg.row_bucket(me, {f: "High"}) == "wild_reproduction"
+    assert reg.row_bucket(me, {f: "Not"}) is None
+    assert reg.row_bucket(me, {f: "Moderate"}) is None
+    assert reg.row_bucket(me, {f: ""}) is None
+    assert reg.row_bucket(me, {}) is None
+
+
 def test_ct_is_two_ordered_sources_wild_first():
     ct = [s for s in ALL_SOURCES if s["state"] == "CT"]
     assert [s["label"] for s in ct] == ["CT (WTMA)", "CT (stocked)"]  # wild claims first

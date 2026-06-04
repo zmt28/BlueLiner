@@ -82,6 +82,44 @@
       "state": "CT", "label": "CT (stocked)",
       "mode": "single", "class": "stocked",
       "url": "https://services1.arcgis.com/FjPcSmEFuDYlIdKC/arcgis/rest/services/Connecticut_Stocked_Streams/FeatureServer/0/query?where=1%3D1"
+    },
+    {
+      "_comment": "WI DNR classified trout streams -- TROUT_CLASS_CODE on the WY_FISHERIES_WATERS 'Trout Stream Lines' layer (Class I/II/III unique-value renderer). Class I = self-sustaining wild, no stocking -> wild. Class III = no natural reproduction, annual stocking -> stocked. Class II has some natural reproduction but is stocked to maintain the fishery (46% of WI trout mileage) -> stocked, consistent with the CT precedent (stocked-supplemented -> stocked) and the 'never paint a stocked stream green' rule. Substring rules are lowercased and ordered III/II before I so 'class i' can't match 'class ii'/'class iii'; both roman and arabic forms are covered in case the stored code differs from the rendered label.",
+      "state": "WI", "label": "WI Classified Trout Streams",
+      "mode": "field_prefix", "fields": ["TROUT_CLASS_CODE"],
+      "url": "https://dnrmaps.wi.gov/arcgis/rest/services/WT_SWDV/WY_FISHERIES_WATERS/MapServer/9/query?where=1%3D1",
+      "rules": [
+        {"contains": ["class iii", "class ii", "class 3", "class 2"], "bucket": "stocked"},
+        {"contains": ["class i", "class 1"], "bucket": "wild_reproduction"}
+      ]
+    },
+    {
+      "_comment": "MI DNR Designated Trout Streams -- RegulationDesc on DNRFisheriesTroutRegsOPENDATA (Michigan's Type 1-4 inland-trout regulation system, ~60k polylines). Type 1 = small spring-fed self-sustaining wild, no stocking -> wild_reproduction. Type 3/4 = larger Great-Lakes-run reaches where resident trout are a minor component and the fishery is maintained by stocking -> stocked. Type 2 has natural reproduction but is stocked-supplemented -> stocked, matching the WI Class II / CT precedent and the 'never paint a stocked stream green' rule. The GR (Gear Restricted) and BTRA (Brook Trout Restoration Area) qualifiers ride on top of a type, so they follow the type number; BTRA on Type 3/4 is mapped stocked conservatively (a restoration reach may still be stocked) pending the build-time live check. All 'Non Designated' variants and the bare 'GR Designated' (no type) are omitted -> dropped. field_map is an EXACT match, so casing/spacing mirror the live distinct values from the discovery dossier.",
+      "state": "MI", "label": "MI Designated Trout Streams",
+      "mode": "field_map", "field": "RegulationDesc",
+      "url": "https://services3.arcgis.com/Jdnp1TjADvSDxMAX/arcgis/rest/services/DNRFisheriesTroutRegsOPENDATA/FeatureServer/0/query?where=1%3D1",
+      "map": {
+        "Type 1 Designated": "wild_reproduction",
+        "Type 1 BTRA Designated": "wild_reproduction",
+        "GR Type 1 Designated": "wild_reproduction",
+        "Type 2 Designated": "stocked",
+        "GR Type 2 Designated": "stocked",
+        "Type 3 Designated": "stocked",
+        "Type 3 BTRA Designated": "stocked",
+        "Type 4 Designated": "stocked",
+        "Type 4 BTRA Designated": "stocked",
+        "GR Type 4 Designated": "stocked"
+      }
+    },
+    {
+      "_comment": "ME IFW Wild Brook Trout Priority Conservation Areas (gis.maine.gov ifw/IFW_Wild_BKT_Priority_Conservation_Areas) -- stream reaches rated for wild brook trout conservation from the EBTJV/USGS-catchment model. The ifw_prty field has three live values (verified via the probe-layer run): 'Very High' and 'High' are strong wild brook trout reaches -> wild_reproduction; 'Not' is the barrier-maintenance / not-connect class (maintain barriers to keep invasive fish out -- not an occupancy rating) -> dropped. Cut set at Very High + High per the 'don't overclaim wild/green' rule; Maine does not stock these wild-managed waters, so there's no stocked-green risk. field_map is exact-match.",
+      "state": "ME", "label": "ME Wild Brook Trout Priority Waters",
+      "mode": "field_map", "field": "ifw_prty",
+      "url": "https://gis.maine.gov/mapservices/rest/services/ifw/IFW_Wild_BKT_Priority_Conservation_Areas/MapServer/0/query?where=1%3D1",
+      "map": {
+        "Very High": "wild_reproduction",
+        "High": "wild_reproduction"
+      }
     }
   ]
 }
