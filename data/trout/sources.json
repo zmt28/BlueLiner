@@ -53,6 +53,10 @@
         "Wild-Quality": "wild_reproduction",
         "Wild-Premier": "wild_reproduction",
         "Other": "wild_reproduction"
+      },
+      "tier_map": {
+        "Stocked": "class3", "Stocked-Extended": "class3",
+        "Wild-Quality": "class2", "Wild-Premier": "class1", "Other": "class2"
       }
     },
     {
@@ -62,6 +66,10 @@
       "rules": [
         {"contains": ["hatchery supported", "delayed harvest"], "bucket": "stocked"},
         {"contains": ["wild trout", "catch and release", "special regulation"], "bucket": "wild_reproduction"}
+      ],
+      "tier_rules": [
+        {"contains": ["hatchery supported", "delayed harvest"], "tier": "class2"},
+        {"contains": ["wild trout", "catch and release", "special regulation"], "tier": "class1"}
       ]
     },
     {
@@ -75,7 +83,9 @@
       "mode": "field_prefix", "fields": ["MGMT_AREA"],
       "url": "https://services1.arcgis.com/FjPcSmEFuDYlIdKC/arcgis/rest/services/Fisheries_management_Areas/FeatureServer/0/query?where=FISH_TYPE%3D%27Trout%27",
       "rules": [{"contains": ["(class 1)"], "bucket": "wild_reproduction"}],
-      "default": "stocked"
+      "default": "stocked",
+      "tier_rules": [{"contains": ["(class 1)"], "tier": "class1"}],
+      "tier_default": "class3"
     },
     {
       "_comment": "CT general stocked-streams universe (the 'No Special Management' reaches the WTMA layer doesn't carry). Whole layer -> stocked; Class-1 WTMA COMIDs are already claimed wild by the CT (WTMA) source above.",
@@ -91,6 +101,11 @@
       "rules": [
         {"contains": ["class iii", "class 3"], "bucket": "stocked"},
         {"contains": ["class ii", "class i", "class 2", "class 1"], "bucket": "wild_reproduction"}
+      ],
+      "tier_rules": [
+        {"contains": ["class iii", "class 3"], "tier": "class3"},
+        {"contains": ["class ii", "class 2"], "tier": "class2"},
+        {"contains": ["class i", "class 1"], "tier": "class1"}
       ]
     },
     {
@@ -109,6 +124,18 @@
         "Type 4 Designated": "stocked",
         "Type 4 BTRA Designated": "stocked",
         "GR Type 4 Designated": "stocked"
+      },
+      "tier_map": {
+        "Type 1 Designated": "class1",
+        "Type 1 BTRA Designated": "class1",
+        "GR Type 1 Designated": "class1",
+        "Type 2 Designated": "class2",
+        "GR Type 2 Designated": "class2",
+        "Type 3 Designated": "class3",
+        "Type 3 BTRA Designated": "class3",
+        "Type 4 Designated": "class3",
+        "Type 4 BTRA Designated": "class3",
+        "GR Type 4 Designated": "class3"
       }
     },
     {
@@ -132,6 +159,13 @@
         "White Ribbon": "stocked",
         "Trout Park": "stocked",
         "Lake Taneycomo": "stocked"
+      },
+      "tier_map": {
+        "Blue Ribbon": "gold",
+        "Red Ribbon": "class2",
+        "White Ribbon": "class3",
+        "Trout Park": "class3",
+        "Lake Taneycomo": "class3"
       }
     },
     {
@@ -147,13 +181,13 @@
     {
       "_comment": "WY Game & Fish Blue Ribbon Streams (services6.arcgis.com/cWzdqIyxbijuhPLw Blue_Ribbon_Streams). WGFD's top trout-stream tier -- >600 lb trout/mile, 'national importance', the top 3-5% of WY streams; these are de-facto self-sustaining wild trout fisheries. Per the nationwide principle's western-coverage carve-out: a quality/biomass tier with no reproduction field -> treat the top Blue Ribbon tier as wild. This layer is the Blue-Ribbon subset only (lower Red/Yellow/Green tiers aren't in it, so there's nothing to drop). Whole layer -> wild_reproduction.",
       "state": "WY", "label": "WY Blue Ribbon Trout Streams",
-      "mode": "single", "class": "wild_reproduction",
+      "mode": "single", "class": "wild_reproduction", "tier": "gold",
       "url": "https://services6.arcgis.com/cWzdqIyxbijuhPLw/arcgis/rest/services/Blue_Ribbon_Streams/FeatureServer/0/query?where=1%3D1"
     },
     {
       "_comment": "UT DWR Blue Ribbon Fisheries, rivers only (Blue_Ribbon_Fisheries_VIEW/FeatureServer/0 = Blue_Ribbon_Rivers; the /1 lakes layer is intentionally excluded to avoid greening stocked reservoirs). UT's single Blue Ribbon quality tier -- ~17 premier river segments (Green, Provo, Weber, Logan, ...), de-facto wild trout rivers. Per the western-coverage carve-out (top tier = wild). Whole layer -> wild_reproduction.",
       "state": "UT", "label": "UT Blue Ribbon Trout Rivers",
-      "mode": "single", "class": "wild_reproduction",
+      "mode": "single", "class": "wild_reproduction", "tier": "gold",
       "url": "https://services.arcgis.com/ZzrwjTRez6FJiOq4/arcgis/rest/services/Blue_Ribbon_Fisheries_VIEW/FeatureServer/0/query?where=1%3D1"
     },
     {
@@ -161,16 +195,16 @@
       "state": "CO", "label": "CO Aquatic Management Waters", "mode": "multi_layer",
       "base": "https://services5.arcgis.com/ttNGmDvKQA7oeDQ3/arcgis/rest/services/CPWSB181AquaticData/FeatureServer",
       "layers": [
-        {"id": 2, "class": "wild_reproduction", "label": "Aquatic Native Species Conservation Waters"},
-        {"id": 0, "class": "wild_reproduction", "label": "Aquatic Cutthroat Trout Designated Crucial Habitat"},
-        {"id": 1, "class": "wild_reproduction", "label": "Aquatic Gold Medal Waters"},
-        {"id": 3, "class": "stocked",           "label": "Aquatic Sportsfish Management Waters"}
+        {"id": 2, "class": "wild_reproduction", "tier": "class2", "native": true, "label": "Aquatic Native Species Conservation Waters"},
+        {"id": 0, "class": "wild_reproduction", "tier": "class2", "native": true, "label": "Aquatic Cutthroat Trout Designated Crucial Habitat"},
+        {"id": 1, "class": "wild_reproduction", "tier": "gold",                   "label": "Aquatic Gold Medal Waters"},
+        {"id": 3, "class": "stocked",           "tier": "class3",                 "label": "Aquatic Sportsfish Management Waters"}
       ]
     },
     {
       "_comment": "CA CDFW Designated Heritage and Wild Trout Waters (biosds1356_fpu / ds1356). The entire dataset is state-designated Heritage Trout Waters (native wild) + Wild Trout Waters (self-sustaining), so the whole layer -> wild_reproduction. Polygon features (Water_Type = Stream / Stream-tributaries / Lake / Watershed); the build's buffer+intersect join tags the interior flowlines, like the shipped VT/CO polygon sources. A few Lake/Watershed features render coarser -- acceptable since every designated water here is wild.",
       "state": "CA", "label": "CA Heritage & Wild Trout Waters",
-      "mode": "single", "class": "wild_reproduction",
+      "mode": "single", "class": "wild_reproduction", "tier": "class1",
       "url": "https://services2.arcgis.com/Uq9r85Potqm3MfRV/arcgis/rest/services/biosds1356_fpu/FeatureServer/0/query?where=1%3D1"
     },
     {
@@ -184,12 +218,16 @@
         "dh": "stocked",
         "pt": "stocked",
         "pg": "stocked"
+      },
+      "tier_map": {
+        "w": "class1", "cr": "class1",
+        "dh": "class2", "pt": "class3", "pg": "class3"
       }
     },
     {
       "_comment": "NV Dept of Wildlife Lahontan Cutthroat Trout Occupied Streams (LCT_Occupied_Streams_NV). Stream reaches occupied by Nevada's native, self-sustaining Lahontan cutthroat (~480 mi of habitat) -- a naturally-reproducing native-trout distribution layer -> wild_reproduction, following the CO/CA native pattern (self-sustaining = wild). Whole layer -> wild. (NV's Bonneville cutthroat / redband occupied-stream layers could be added the same way later.)",
       "state": "NV", "label": "NV Lahontan Cutthroat Streams",
-      "mode": "single", "class": "wild_reproduction",
+      "mode": "single", "class": "wild_reproduction", "native": true,
       "url": "https://services.arcgis.com/RyxlXSfFi87rAosq/arcgis/rest/services/LCT_Occupied_Streams_NV/FeatureServer/0/query?where=1%3D1"
     }
   ]
