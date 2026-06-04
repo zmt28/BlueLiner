@@ -1,0 +1,30 @@
+name: Probe ArcGIS layer schema
+
+# On-demand schema dump for a single ArcGIS feature layer. Runs in Actions for
+# the OPEN EGRESS to reach state ArcGIS hosts the allowlisted sandbox can't.
+# Use to wire a state whose discovery dossier came back `whole_layer` because
+# its category field doesn't speak trout-regulation vocabulary (e.g. Maine's
+# habitat-value rating). Prints fields + per-string-field distinct values.
+
+on:
+  workflow_dispatch:
+    inputs:
+      url:
+        description: "ArcGIS FeatureServer/MapServer (or sublayer) URL to probe"
+        required: true
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install httpx
+      - name: Probe layer schema
+        run: python scripts/probe_layer.py "${{ inputs.url }}"
