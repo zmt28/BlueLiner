@@ -123,9 +123,26 @@ because the states publish the ranking directly.
   portfolios (Eastern + Great Lakes brook trout; Western Native Trout / Steelhead
   atlases) + our CO cutthroat / CA heritage / NV Lahontan layers.
 
-## 8. Next (Phase 1 remainder)
-- Finish characterizing TU's public portal (org enumeration in progress): which
-  national layers, license each, geometry, NHD/COMID linkage → locks the
-  `wild`/`native` backbone.
-- Resolve the §5 **[CALL]s** with sign-off, then promote this draft to a spec and
-  extend `trout_registry` with a `tier` output alongside `trout_class`.
+## 8. TU public-portal characterization (Phase 1)
+
+- **Org:** `trout.maps.arcgis.com` (ArcGIS Online), public hub at
+  `mapping-trout.opendata.arcgis.com`. Datasets downloadable as GeoJSON / KML /
+  Shapefile / CSV with GeoServices / WMS / WFS APIs.
+- **License:** at least the **Eastern Brook Trout Conservation Portfolio**
+  (TU + NFWF + EBTJV) is **CC-BY 3.0** — legal to use with attribution. Confirm
+  per-layer licensing as each is ingested.
+- **Coverage:** brook-trout conservation portfolios for the **Eastern** and
+  **Great Lakes** ranges (native brook trout); TU also publishes Western Native
+  Trout / Steelhead atlases — together a near-national native backbone.
+- **Caveat:** the discoverable items are **web apps / web maps**, not direct
+  feature services. When we build the `native` filter we'll pull each app's
+  underlying FeatureServer (via the probe tooling) and verify per-layer license +
+  NHD/COMID linkage. Sufficient for Phase 1: the backbone **exists, is public,
+  and is CC-licensed.**
+
+## 9. Next
+- Resolve the §5 **[CALL]s** with sign-off (esp. §5.1 eastern-gold — the keystone
+  consistency decision).
+- Then promote this draft to a spec and extend `trout_registry` with a `tier`
+  output alongside `trout_class`, and wire the TU native layers as the `native`
+  feeder.
