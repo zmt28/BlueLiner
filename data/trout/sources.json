@@ -68,6 +68,20 @@
       "state": "GA", "label": "GA Trout Streams",
       "mode": "flags", "stocked_flags": ["Hvy_stock", "Delay_har"], "default": "wild_reproduction",
       "url": "https://services6.arcgis.com/9QlSLDqa0P1cHLhu/arcgis/rest/services/Georgia_Trout_Streams_Public_Download_All_Layers/FeatureServer/1/query?where=1%3D1"
+    },
+    {
+      "_comment": "CT is two sources. WTMA layer first (wild claims Class-1 reaches before the stocked layer colors the rest). CT DEEP Fisheries Management Areas carries the WTMA class in MGMT_AREA -- '... Wild Trout Management Area (Class 1)' is self-sustaining/unstocked -> wild; Class 2/3 are stocked-supplemented, and Trophy/Trout Management Area/Trout Park are stocked -> the `default`. FISH_TYPE='Trout' drops the Bass/lake rows.",
+      "state": "CT", "label": "CT (WTMA)",
+      "mode": "field_prefix", "fields": ["MGMT_AREA"],
+      "url": "https://services1.arcgis.com/FjPcSmEFuDYlIdKC/arcgis/rest/services/Fisheries_management_Areas/FeatureServer/0/query?where=FISH_TYPE%3D%27Trout%27",
+      "rules": [{"contains": ["(class 1)"], "bucket": "wild_reproduction"}],
+      "default": "stocked"
+    },
+    {
+      "_comment": "CT general stocked-streams universe (the 'No Special Management' reaches the WTMA layer doesn't carry). Whole layer -> stocked; Class-1 WTMA COMIDs are already claimed wild by the CT (WTMA) source above.",
+      "state": "CT", "label": "CT (stocked)",
+      "mode": "single", "class": "stocked",
+      "url": "https://services1.arcgis.com/FjPcSmEFuDYlIdKC/arcgis/rest/services/Connecticut_Stocked_Streams/FeatureServer/0/query?where=1%3D1"
     }
   ]
 }

@@ -13,12 +13,15 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "scripts"))
 
 import trout_registry as reg  # noqa: E402
 
-SOURCES = {s["state"]: s for s in reg.load_sources()}
+ALL_SOURCES = reg.load_sources()
+SOURCES = {s["state"]: s for s in ALL_SOURCES}            # last wins per state
+BY_LABEL = {s.get("label", s["state"]): s for s in ALL_SOURCES}
 
 
-def test_registry_covers_the_ten_states_with_valid_modes():
-    assert set(SOURCES) == {"MD", "VA", "PA", "NJ", "VT", "MA", "WV", "NY", "NC", "GA"}
-    for s in SOURCES.values():
+def test_registry_covers_states_with_valid_modes():
+    assert {"MD", "VA", "PA", "NJ", "VT", "MA", "WV", "NY", "NC", "GA", "CT"} \
+        <= {s["state"] for s in ALL_SOURCES}
+    for s in ALL_SOURCES:
         assert s["mode"] in {"single", "multi_layer", "field_map",
                              "field_prefix", "flags"}
         if s["mode"] == "single":
@@ -82,3 +85,26 @@ def test_pa_multi_layer_classes():
     pa = SOURCES["PA"]
     classes = {l["class"] for l in pa["layers"]}
     assert classes == {"wild_reproduction", "class_a", "wilderness", "stocked"}
+
+
+def test_field_prefix_default_bucket():
+    # CT FMA: only "(Class 1)" WTMAs are wild; everything else -> default stocked.
+    ct = BY_LABEL["CT (WTMA)"]
+    f = ct["fields"][0]
+    assert reg.row_bucket(ct, {f: "Heather Reaves Wild Trout Management Area (Class 1)"}) \
+        == "wild_reproduction"
+    assert reg.row_bucket(ct, {f: "Heather Reaves Wild Trout Management Area (Class 2)"}) \
+        == "stocked"
+    assert reg.row_bucket(ct, {f: "Trophy Trout Lake"}) == "stocked"   # default
+
+
+def test_field_prefix_without_default_still_drops():
+    # NC has no default -> unmatched rows stay None (dropped), unchanged.
+    assert reg.row_bucket(SOURCES["NC"], {"FIRST_WRC_": "Trout Pond"}) is None
+
+
+def test_ct_is_two_ordered_sources_wild_first():
+    ct = [s for s in ALL_SOURCES if s["state"] == "CT"]
+    assert [s["label"] for s in ct] == ["CT (WTMA)", "CT (stocked)"]  # wild claims first
+    assert ct[0]["mode"] == "field_prefix" and ct[0]["default"] == "stocked"
+    assert ct[1]["mode"] == "single" and ct[1]["class"] == "stocked"

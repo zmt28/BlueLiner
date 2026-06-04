@@ -62,13 +62,16 @@ def row_bucket(source: dict, attrs) -> str | None:
     if mode == "single":
         return source["class"]
     if mode == "field_map":
-        return source["map"].get(attrs.get(source["field"]))
+        # `default` (optional): bucket for values not in the map (else None=drop).
+        return source["map"].get(attrs.get(source["field"])) or source.get("default")
     if mode == "field_prefix":
         for field in source["fields"]:
             bucket = _prefix_bucket(attrs.get(field), source["rules"])
             if bucket:
                 return bucket
-        return None
+        # `default` (optional): e.g. CT's FMA layer is wild only for "(Class 1)",
+        # everything else -> stocked. Absent default -> None (drop), as for NC.
+        return source.get("default")
     if mode == "flags":
         if any(_is_yes(attrs.get(col)) for col in source["stocked_flags"]):
             return "stocked"
