@@ -31,6 +31,8 @@ QUERY_TEMPLATES = (
     "{st} trout streams regulations",
     "{st} designated trout waters",
     "{st} DNR trout fishing",
+    "{st} trout stream classification",
+    "{st} fish stocking locations",
 )
 
 STATE_NAMES = {
@@ -64,7 +66,11 @@ SEED_ARCGIS_HOSTS = {
     "MA": ["https://arcgisserver.digital.mass.gov/arcgisserver/rest/services"],
     "WI": ["https://dnrmaps.wi.gov/arcgis/rest/services"],
     "MI": ["https://gisp.mcgi.state.mi.us/arcgis/rest/services"],
-    "CO": ["https://gis.cpw.state.co.us/arcgis/rest/services"],
+    # CO is AGOL-hosted now; walk the CPW org so the walk reaches Aquatic
+    # Sportfish Management Waters / cutthroat conservation layers instead of the
+    # CPWAdminData points AGOL search grabbed. Self-hosted root kept as fallback.
+    "CO": ["https://services5.arcgis.com/ttNGmDvKQA7oeDQ3/arcgis/rest/services",
+           "https://gis.cpw.state.co.us/arcgis/rest/services"],
     "TN": ["https://tnmap.tn.gov/arcgis/rest/services"],
     # MN Geospatial Commons DNR folder. The mndnr/rest root 500s, and AGOL
     # search only surfaced the single undifferentiated trout-designation layer
@@ -72,8 +78,17 @@ SEED_ARCGIS_HOSTS = {
     # fisheries layer so a management/survey-class layer can surface instead.
     "MN": ["https://enterprise.gisdata.mn.gov/aghost/rest/services/us_mn_state_dnr"],
     "MT": ["https://fwp-gis.mt.gov/arcgis/rest/services"],
-    "ID": ["https://gis.idfg.idaho.gov/server/rest/services"],
+    # IDFG hosting portal exposes a Fisheries folder the bare server root lacks.
+    "ID": ["https://gisportal-idfg.idaho.gov/hosting/rest/services",
+           "https://gis.idfg.idaho.gov/server/rest/services"],
     "UT": ["https://maps.dnr.utah.gov/arcgis/rest/services"],
+    # WY + NH are AGOL-hosted (no self-hosted root). WGFD publishes a real
+    # "Trout Stream Classifications" line layer; NHFG publishes fish-stocking.
+    # NB: WY's classes are biomass ribbons (Blue/Red/Yellow/Green), UT's are
+    # Blue Ribbon quality designations -- neither is a wild/stocked split, so
+    # those two likely surface as flag/skip dossiers, not clean onboards.
+    "WY": ["https://services6.arcgis.com/cWzdqIyxbijuhPLw/arcgis/rest/services"],
+    "NH": ["https://services8.arcgis.com/hg1B9Egwk1I5p300/arcgis/rest/services"],
 }
 
 _NAME_HINTS = ("trout", "fish", "coldwater", "angler")
