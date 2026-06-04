@@ -110,6 +110,16 @@
         "Type 4 BTRA Designated": "stocked",
         "GR Type 4 Designated": "stocked"
       }
+    },
+    {
+      "_comment": "ME IFW Wild Brook Trout Priority Conservation Areas (gis.maine.gov ifw/IFW_Wild_BKT_Priority_Conservation_Areas) -- stream reaches rated for wild brook trout conservation from the EBTJV/USGS-catchment model. The ifw_prty field has three live values (verified via the probe-layer run): 'Very High' and 'High' are strong wild brook trout reaches -> wild_reproduction; 'Not' is the barrier-maintenance / not-connect class (maintain barriers to keep invasive fish out -- not an occupancy rating) -> dropped. Cut set at Very High + High per the 'don't overclaim wild/green' rule; Maine does not stock these wild-managed waters, so there's no stocked-green risk. field_map is exact-match.",
+      "state": "ME", "label": "ME Wild Brook Trout Priority Waters",
+      "mode": "field_map", "field": "ifw_prty",
+      "url": "https://gis.maine.gov/mapservices/rest/services/ifw/IFW_Wild_BKT_Priority_Conservation_Areas/MapServer/0/query?where=1%3D1",
+      "map": {
+        "Very High": "wild_reproduction",
+        "High": "wild_reproduction"
+      }
     }
   ]
 }

@@ -144,6 +144,20 @@ def test_mi_type1_wild_type234_stocked_nondesignated_dropped():
     assert reg.row_bucket(mi, {}) is None
 
 
+def test_me_priority_high_and_very_high_wild_not_dropped():
+    # ME wild-brook-trout priority reaches: ifw_prty Very High / High -> wild;
+    # 'Not' (barrier-maintenance / not-connect) and anything else drop. Exact
+    # values verified live via the probe-layer run.
+    me = SOURCES["ME"]
+    f = me["field"]
+    assert reg.row_bucket(me, {f: "Very High"}) == "wild_reproduction"
+    assert reg.row_bucket(me, {f: "High"}) == "wild_reproduction"
+    assert reg.row_bucket(me, {f: "Not"}) is None
+    assert reg.row_bucket(me, {f: "Moderate"}) is None
+    assert reg.row_bucket(me, {f: ""}) is None
+    assert reg.row_bucket(me, {}) is None
+
+
 def test_ct_is_two_ordered_sources_wild_first():
     ct = [s for s in ALL_SOURCES if s["state"] == "CT"]
     assert [s["label"] for s in ct] == ["CT (WTMA)", "CT (stocked)"]  # wild claims first
