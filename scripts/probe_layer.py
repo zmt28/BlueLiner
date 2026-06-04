@@ -1,20 +1,22 @@
-"""Ad-hoc ArcGIS layer schema probe [NETWORK -- runs in the Actions probe job].
+"""Ad-hoc ArcGIS recon probe [NETWORK -- runs in the Actions probe job].
 
-Dumps a feature layer's fields and the distinct values of each string field,
-*without* the trout-lexicon filter the discovery prober applies. Use it to wire
-a state whose dossier came back `whole_layer` because its category field (e.g.
-Maine's habitat-value rating) doesn't speak trout-regulation vocabulary and so
-was invisible to discovery.pick_category_field.
+Drill from an agency server down to a wirable layer + its field vocabulary,
+without the trout-lexicon filter the discovery prober applies. The state sandbox
+can't reach state ArcGIS hosts, so run this in the discovery workflow's
+`probe_url` mode (open egress).
 
-    python scripts/probe_layer.py <layer_url>
+    python scripts/probe_layer.py <url>
 
-<layer_url> may point at a FeatureServer/MapServer (->/0 appended) or a specific
-sublayer. The state sandbox can't reach state ArcGIS hosts, so this is meant to
-run in the discovery/probe GitHub Actions job, which has egress.
+Dispatches on the URL shape:
+  * folder            (.../rest/services[/Folder])      -> list services
+  * service root      (.../MapServer | .../FeatureServer) -> list layers/tables
+  * layer             (.../MapServer/3)                  -> fields + distinct values
+  * AGOL item/webmap  (...item.html?id= | .../items/ID)  -> operational layers
 """
 from __future__ import annotations
 
 import json
+import re
 import sys
 import time
 
@@ -40,56 +42,80 @@ def _get(client: httpx.Client, url: str, params: dict) -> dict | None:
     return None
 
 
-def _layer_url(url: str) -> str:
-    base = url.split("?")[0].rstrip("/")
-    if base.endswith("FeatureServer") or base.endswith("MapServer"):
-        return base + "/0"
-    return base
+def _dump_item(client: httpx.Client, item_id: str) -> int:
+    """AGOL webmap/item -> its operational layer titles + service URLs."""
+    data = _get(client, f"https://www.arcgis.com/sharing/rest/content/items/{item_id}/data",
+                {"f": "json"})
+    if not data:
+        print(f"no item data for {item_id}")
+        return 1
+    print(f"item {item_id} operational layers:")
+    for lyr in data.get("operationalLayers", []):
+        print(f"  {lyr.get('title')!r} -> {lyr.get('url')}")
+    return 0
+
+
+def _dump_service(client: httpx.Client, url: str, meta: dict) -> int:
+    """Folder -> services; service root -> layers/tables."""
+    if "services" in meta or "folders" in meta:
+        for fld in meta.get("folders", []):
+            print(f"  [folder] {fld}")
+        for svc in meta.get("services", []):
+            print(f"  [{svc.get('type')}] {svc.get('name')}")
+        return 0
+    for lyr in meta.get("layers", []) + meta.get("tables", []):
+        print(f"  {lyr.get('id')}: {lyr.get('name')!r} ({lyr.get('geometryType', 'table')})")
+    return 0
+
+
+def _dump_layer(client: httpx.Client, layer: str, meta: dict) -> int:
+    print(f"name : {meta.get('name')!r}   geometry: {meta.get('geometryType')}")
+    cnt = _get(client, layer + "/query",
+               {"where": "1=1", "returnCountOnly": "true", "f": "json"})
+    print(f"count: {(cnt or {}).get('count')}")
+    print("\nfields (name | type | alias | coded-domain):")
+    string_fields = []
+    for f in (meta.get("fields") or []):
+        name, ftype = f.get("name"), f.get("type", "")
+        coded = (f.get("domain") or {}).get("codedValues")
+        coded_str = "; ".join(f"{c.get('code')}->{c.get('name')}" for c in coded) if coded else ""
+        print(f"  {name} | {ftype.replace('esriFieldType','')} | {f.get('alias')!r} | {coded_str}")
+        if ftype == "esriFieldTypeString":
+            string_fields.append(name)
+    print("\ndistinct values per string field:")
+    for fname in string_fields:
+        d = _get(client, layer + "/query", {
+            "where": "1=1", "outFields": fname, "returnGeometry": "false",
+            "returnDistinctValues": "true", "f": "json"})
+        vals = sorted({a["attributes"].get(fname)
+                       for a in (d or {}).get("features", [])
+                       if a["attributes"].get(fname) not in (None, "")})
+        print(f"\n  {fname}  ({len(vals)} distinct"
+              f"{', truncated' if len(vals) > MAX_DISTINCT else ''}):")
+        print(json.dumps(vals[:MAX_DISTINCT], indent=2))
+    return 0
 
 
 def main(url: str) -> int:
-    layer = _layer_url(url)
+    # AGOL item / webmap?
+    m = re.search(r"(?:[?&]id=|/items/)([0-9a-fA-F]{32})", url)
     with httpx.Client(timeout=TIMEOUT, headers=UA, follow_redirects=True) as client:
-        meta = _get(client, layer, {"f": "json"})
+        if m and "/rest/services" not in url:
+            return _dump_item(client, m.group(1))
+        base = url.split("?")[0].rstrip("/")
+        print(f"target: {base}")
+        meta = _get(client, base, {"f": "json"})
         if not meta:
-            print(f"no metadata reached for {layer}")
+            print("no metadata reached")
             return 1
-        print(f"layer: {layer}")
-        print(f"name : {meta.get('name')!r}   geometry: {meta.get('geometryType')}")
-        cnt = _get(client, layer + "/query",
-                   {"where": "1=1", "returnCountOnly": "true", "f": "json"})
-        print(f"count: {(cnt or {}).get('count')}")
-        print("\nfields (name | type | alias | coded-domain):")
-        string_fields = []
-        for f in (meta.get("fields") or []):
-            name, ftype = f.get("name"), f.get("type", "")
-            domain = f.get("domain") or {}
-            coded = domain.get("codedValues")
-            coded_str = ""
-            if coded:
-                coded_str = "; ".join(f"{c.get('code')}->{c.get('name')}" for c in coded)
-            print(f"  {name} | {ftype.replace('esriFieldType','')} | "
-                  f"{f.get('alias')!r} | {coded_str}")
-            if ftype == "esriFieldTypeString":
-                string_fields.append(name)
-
-        print("\ndistinct values per string field:")
-        for fname in string_fields:
-            d = _get(client, layer + "/query", {
-                "where": "1=1", "outFields": fname, "returnGeometry": "false",
-                "returnDistinctValues": "true", "f": "json"})
-            vals = sorted({a["attributes"].get(fname)
-                           for a in (d or {}).get("features", [])
-                           if a["attributes"].get(fname) not in (None, "")})
-            shown = vals[:MAX_DISTINCT]
-            print(f"\n  {fname}  ({len(vals)} distinct"
-                  f"{', truncated' if len(vals) > MAX_DISTINCT else ''}):")
-            print(json.dumps(shown, indent=2))
-    return 0
+        # Layer if it has a geometryType/fields; else folder/service root.
+        if re.search(r"/\d+$", base) or "geometryType" in meta:
+            return _dump_layer(client, base, meta)
+        return _dump_service(client, base, meta)
 
 
 if __name__ == "__main__":
     if len(sys.argv) != 2:
-        print("usage: python scripts/probe_layer.py <layer_url>")
+        print("usage: python scripts/probe_layer.py <url>")
         raise SystemExit(2)
     raise SystemExit(main(sys.argv[1]))

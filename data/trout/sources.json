@@ -120,6 +120,29 @@
         "Very High": "wild_reproduction",
         "High": "wild_reproduction"
       }
+    },
+    {
+      "_comment": "MO Department of Conservation trout management areas (gisblue.mdc.mo.gov Aquatic/MO_Fishing_Interactive_Map layer 7 'Trout Streams'; AreaType field, values verified via probe-layer). Blue Ribbon = wild, naturally reproducing trout managed with a wild emphasis (not put-and-take) -> wild_reproduction. Red Ribbon (trophy browns, stocked 1-2x/yr), White Ribbon (put-and-take rainbow), Trout Park (the heavily-stocked spring parks) and Lake Taneycomo (stocked tailwater) -> stocked. The clean inverse of the western quality-ribbon trap: MO's ribbons encode management/stocking, not just fishing quality. field_map exact-match.",
+      "state": "MO", "label": "MO Trout Management Areas",
+      "mode": "field_map", "field": "AreaType",
+      "url": "https://gisblue.mdc.mo.gov/arcgis/rest/services/Aquatic/MO_Fishing_Interactive_Map/MapServer/7/query?where=1%3D1",
+      "map": {
+        "Blue Ribbon": "wild_reproduction",
+        "Red Ribbon": "stocked",
+        "White Ribbon": "stocked",
+        "Trout Park": "stocked",
+        "Lake Taneycomo": "stocked"
+      }
+    },
+    {
+      "_comment": "IA DNR Trout Streams (programs.iowadnr.gov Recreation/Fishing layer 4; wild_trt field = naturally reproducing wild trout species present -- values verified via probe-layer: blank / Brook / Brown / Rainbow and combos). Any wild species present -> wild_reproduction; blank (put-and-take, no natural reproduction) -> stocked, since this layer is Iowa's managed trout-stream set. field_prefix on species names so any current or future combo classifies wild; default stocked never greens a blank reach. JUDGMENT CALL: a handful of wild reaches are also supplementally stocked -- here documented natural reproduction is treated as the wild signal (a more direct indicator than the WI Class II / MI Type 2 stocked-class precedent); flip wild_trt-populated to stocked if the strict 'any stocking -> stocked' reading is preferred.",
+      "state": "IA", "label": "IA Trout Streams",
+      "mode": "field_prefix", "fields": ["wild_trt"],
+      "url": "https://programs.iowadnr.gov/geospatial/rest/services/Recreation/Fishing/MapServer/4/query?where=1%3D1",
+      "rules": [
+        {"contains": ["brook", "brown", "rainbow"], "bucket": "wild_reproduction"}
+      ],
+      "default": "stocked"
     }
   ]
 }
