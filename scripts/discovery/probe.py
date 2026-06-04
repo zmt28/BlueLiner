@@ -67,8 +67,9 @@ def _extent_wgs84(client: httpx.Client, layer: str, meta: dict) -> dict | None:
 
 
 def _value_hits_lexicon(value) -> bool:
-    v = str(value).lower()
-    return any(t in v for t in _LEX)
+    # Word-boundary aware (see lexicon.hits): "US Fish and Wildlife" no longer
+    # counts as a trout value via "wild".
+    return bool(lexicon.hits(str(value), _LEX))
 
 
 def pick_category_field(field_values: dict[str, list]) -> tuple[str | None, list]:

@@ -29,19 +29,31 @@ def _bucket_map(distinct, classify) -> tuple[dict, list]:
     return mapping, flags
 
 
+def _is_relevant(c: dict) -> bool:
+    """A candidate is trout-relevant if its name says 'trout' or it has a field
+    whose values speak trout regulation. Without either it's almost certainly a
+    wrong match (a water-quality / geothermal / generic-streams layer that
+    happens to be an in-state queryable line)."""
+    return bool(c.get("trout_named") or c.get("category_field"))
+
+
 def build_dossier(state: str, scored: list[dict], classify) -> dict:
     scored = sorted(scored, key=lambda s: s["score"], reverse=True)
     if not scored:
         return {"state": state, "tier": "D", "confidence": "low",
                 "caveats": ["no candidate endpoint reached"], "candidates": 0}
 
-    best = scored[0]
+    # Prefer the best *trout-relevant* candidate over a higher-scored junk layer.
+    relevant = [s for s in scored if _is_relevant(s)]
+    best = relevant[0] if relevant else scored[0]
     geom = best["geometry"]
     usable = best["anonymous_query"] and best["feature_count"] > 0
     if not usable:
         tier = "D"
     elif geom == "esriGeometryPoint":
         tier = "C"  # points don't suit the NHD line join -> federal fallback
+    elif not _is_relevant(best):
+        tier = "C"  # in-state queryable line/polygon but no trout signal
     else:
         tier = "A"
 
@@ -54,9 +66,14 @@ def build_dossier(state: str, scored: list[dict], classify) -> dict:
 
     if tier in ("C", "D"):
         dossier["confidence"] = "low"
-        dossier["caveats"].append(
-            "point/empty geometry -- route to a federal multi-state baseline"
-            if tier == "C" else "no usable live layer -- defer")
+        if tier == "D":
+            cav = "no usable live layer -- defer"
+        elif geom == "esriGeometryPoint":
+            cav = "point geometry -- route to a federal multi-state baseline"
+        else:
+            cav = ("no trout-relevant name or field -- probable wrong match, "
+                   "not a trout layer")
+        dossier["caveats"].append(cav)
         return dossier
 
     if best["category_field"]:
