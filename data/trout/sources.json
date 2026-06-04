@@ -84,17 +84,17 @@
       "url": "https://services1.arcgis.com/FjPcSmEFuDYlIdKC/arcgis/rest/services/Connecticut_Stocked_Streams/FeatureServer/0/query?where=1%3D1"
     },
     {
-      "_comment": "WI DNR classified trout streams -- TROUT_CLASS_CODE on the WY_FISHERIES_WATERS 'Trout Stream Lines' layer (Class I/II/III unique-value renderer). Class I = self-sustaining wild, no stocking -> wild. Class III = no natural reproduction, annual stocking -> stocked. Class II has some natural reproduction but is stocked to maintain the fishery (46% of WI trout mileage) -> stocked, consistent with the CT precedent (stocked-supplemented -> stocked) and the 'never paint a stocked stream green' rule. Substring rules are lowercased and ordered III/II before I so 'class i' can't match 'class ii'/'class iii'; both roman and arabic forms are covered in case the stored code differs from the rendered label.",
+      "_comment": "WI DNR classified trout streams -- TROUT_CLASS_CODE on the WY_FISHERIES_WATERS 'Trout Stream Lines' layer (Class I/II/III unique-value renderer). Per the nationwide principle (natural reproduction present -> wild; pure put-and-take -> stocked): Class I (self-sustaining wild) and Class II (some natural reproduction, stocking supplements it) -> wild_reproduction; Class III (no natural reproduction, annual put-and-take) -> stocked. Substring rules are lowercased and ordered III/3 before the II/I/2/1 wild rule so 'class i' can't match 'class ii'/'class iii'; both roman and arabic forms covered.",
       "state": "WI", "label": "WI Classified Trout Streams",
       "mode": "field_prefix", "fields": ["TROUT_CLASS_CODE"],
       "url": "https://dnrmaps.wi.gov/arcgis/rest/services/WT_SWDV/WY_FISHERIES_WATERS/MapServer/9/query?where=1%3D1",
       "rules": [
-        {"contains": ["class iii", "class ii", "class 3", "class 2"], "bucket": "stocked"},
-        {"contains": ["class i", "class 1"], "bucket": "wild_reproduction"}
+        {"contains": ["class iii", "class 3"], "bucket": "stocked"},
+        {"contains": ["class ii", "class i", "class 2", "class 1"], "bucket": "wild_reproduction"}
       ]
     },
     {
-      "_comment": "MI DNR Designated Trout Streams -- RegulationDesc on DNRFisheriesTroutRegsOPENDATA (Michigan's Type 1-4 inland-trout regulation system, ~60k polylines). Type 1 = small spring-fed self-sustaining wild, no stocking -> wild_reproduction. Type 3/4 = larger Great-Lakes-run reaches where resident trout are a minor component and the fishery is maintained by stocking -> stocked. Type 2 has natural reproduction but is stocked-supplemented -> stocked, matching the WI Class II / CT precedent and the 'never paint a stocked stream green' rule. The GR (Gear Restricted) and BTRA (Brook Trout Restoration Area) qualifiers ride on top of a type, so they follow the type number; BTRA on Type 3/4 is mapped stocked conservatively (a restoration reach may still be stocked) pending the build-time live check. All 'Non Designated' variants and the bare 'GR Designated' (no type) are omitted -> dropped. field_map is an EXACT match, so casing/spacing mirror the live distinct values from the discovery dossier.",
+      "_comment": "MI DNR Designated Trout Streams -- RegulationDesc on DNRFisheriesTroutRegsOPENDATA (Michigan's Type 1-4 inland-trout regulation system, ~60k polylines). Per the nationwide principle (natural reproduction present -> wild; pure put-and-take -> stocked): Type 1 (self-sustaining wild) and Type 2 (natural reproduction, stocking supplements it) -> wild_reproduction. Type 3 stays stocked as an 'stricter on edges' call -- its natural reproduction is marginal/limited and the fishery is stocking-dependent; Type 4 (no natural reproduction, put-and-take) -> stocked. GR (Gear Restricted) and BTRA (Brook Trout Restoration Area) qualifiers ride on top of a type and follow the type number. All 'Non Designated' variants and the bare 'GR Designated' (no type) are omitted -> dropped. field_map is an EXACT match, so casing/spacing mirror the live distinct values from the discovery dossier.",
       "state": "MI", "label": "MI Designated Trout Streams",
       "mode": "field_map", "field": "RegulationDesc",
       "url": "https://services3.arcgis.com/Jdnp1TjADvSDxMAX/arcgis/rest/services/DNRFisheriesTroutRegsOPENDATA/FeatureServer/0/query?where=1%3D1",
@@ -102,8 +102,8 @@
         "Type 1 Designated": "wild_reproduction",
         "Type 1 BTRA Designated": "wild_reproduction",
         "GR Type 1 Designated": "wild_reproduction",
-        "Type 2 Designated": "stocked",
-        "GR Type 2 Designated": "stocked",
+        "Type 2 Designated": "wild_reproduction",
+        "GR Type 2 Designated": "wild_reproduction",
         "Type 3 Designated": "stocked",
         "Type 3 BTRA Designated": "stocked",
         "Type 4 Designated": "stocked",
@@ -135,7 +135,7 @@
       }
     },
     {
-      "_comment": "IA DNR Trout Streams (programs.iowadnr.gov Recreation/Fishing layer 4; wild_trt field = naturally reproducing wild trout species present -- values verified via probe-layer: blank / Brook / Brown / Rainbow and combos). Any wild species present -> wild_reproduction; blank (put-and-take, no natural reproduction) -> stocked, since this layer is Iowa's managed trout-stream set. field_prefix on species names so any current or future combo classifies wild; default stocked never greens a blank reach. JUDGMENT CALL: a handful of wild reaches are also supplementally stocked -- here documented natural reproduction is treated as the wild signal (a more direct indicator than the WI Class II / MI Type 2 stocked-class precedent); flip wild_trt-populated to stocked if the strict 'any stocking -> stocked' reading is preferred.",
+      "_comment": "IA DNR Trout Streams (programs.iowadnr.gov Recreation/Fishing layer 4; wild_trt field = naturally reproducing wild trout species present -- values verified via probe-layer: blank / Brook / Brown / Rainbow and combos). Textbook case of the nationwide principle: any wild species present -> wild_reproduction (even where also supplementally stocked); blank (put-and-take, no natural reproduction) -> stocked. field_prefix on species names so any current or future combo classifies wild; default stocked never greens a blank reach.",
       "state": "IA", "label": "IA Trout Streams",
       "mode": "field_prefix", "fields": ["wild_trt"],
       "url": "https://programs.iowadnr.gov/geospatial/rest/services/Recreation/Fishing/MapServer/4/query?where=1%3D1",

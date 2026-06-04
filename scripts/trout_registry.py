@@ -10,6 +10,21 @@ edit to `data/trout/sources.json`, not new Python -- and the discovery dossiers
 already-shipped states to guarantee the registry reproduces the old per-state
 functions byte-for-byte.
 
+Wild vs stocked -- the nationwide classification principle:
+  WILD (`wild_reproduction`)  the stream has documented natural reproduction,
+                              native or not, EVEN IF also stocked. Test:
+                              "are there wild-spawned trout here?"
+  STOCKED (`stocked`)         pure put-and-take / put-grow-take, no meaningful
+                              natural reproduction.
+  Apply consistently across states. Two deliberate carve-outs:
+    * Stricter on edges: where a class has only marginal/limited reproduction
+      and the fishery is stocking-dependent (e.g. MI Type 3, MO Red Ribbon),
+      keep it `stocked` unless the wild population is clearly self-supporting.
+    * Western coverage: where a state publishes only a quality/biomass tier and
+      no reproduction or native-origin data (WY/UT), treat the top "Blue Ribbon"
+      tier as wild (de-facto wild fisheries) and drop the lower tiers rather
+      than guess. Use real native/origin data (CO, MT) when available.
+
 Source modes:
   single        whole layer -> one class                     {class}
   multi_layer   one class per sublayer                        {base, layers:[{id,class}]}

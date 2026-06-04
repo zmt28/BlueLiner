@@ -103,38 +103,42 @@ def test_field_prefix_without_default_still_drops():
     assert reg.row_bucket(SOURCES["NC"], {"FIRST_WRC_": "Trout Pond"}) is None
 
 
-def test_wi_class_i_wild_ii_and_iii_stocked():
-    # WI Class I = self-sustaining wild; Class II (stocked-supplemented) and
-    # Class III (no reproduction) both -> stocked. The ordered substring rules
-    # must not let "class i" leak into the Class II/III rows.
+def test_wi_class_i_and_ii_wild_iii_stocked():
+    # Nationwide principle: Class I (self-sustaining) and Class II (natural
+    # reproduction + supplemental stocking) -> wild; Class III (no reproduction,
+    # put-and-take) -> stocked. Rules ordered III/3 before II/I so "class i"
+    # can't leak into the Class II/III rows.
     wi = SOURCES["WI"]
     f = wi["fields"][0]
     assert reg.row_bucket(wi, {f: "Class I"}) == "wild_reproduction"
-    assert reg.row_bucket(wi, {f: "Class II"}) == "stocked"
+    assert reg.row_bucket(wi, {f: "Class II"}) == "wild_reproduction"
     assert reg.row_bucket(wi, {f: "Class III"}) == "stocked"
     # Case-insensitive + tolerant of the rendered-label vs stored-code casing.
-    assert reg.row_bucket(wi, {f: "CLASS I"}) == "wild_reproduction"
+    assert reg.row_bucket(wi, {f: "CLASS II"}) == "wild_reproduction"
     assert reg.row_bucket(wi, {f: "CLASS III"}) == "stocked"
     # Arabic fallback, in case the code isn't roman.
-    assert reg.row_bucket(wi, {f: "Class 1"}) == "wild_reproduction"
-    assert reg.row_bucket(wi, {f: "Class 2"}) == "stocked"
+    assert reg.row_bucket(wi, {f: "Class 2"}) == "wild_reproduction"
+    assert reg.row_bucket(wi, {f: "Class 3"}) == "stocked"
     # Unclassified / missing -> dropped (no default).
     assert reg.row_bucket(wi, {f: ""}) is None
     assert reg.row_bucket(wi, {}) is None
 
 
-def test_mi_type1_wild_type234_stocked_nondesignated_dropped():
-    # MI Type 1 = self-sustaining wild; Type 2 (stocked-supplemented), Type 3
-    # and Type 4 -> stocked. GR/BTRA qualifiers follow the underlying type;
+def test_mi_type12_wild_type34_stocked_nondesignated_dropped():
+    # Nationwide principle: Type 1 (self-sustaining) and Type 2 (natural
+    # reproduction + supplemental stocking) -> wild. Type 3 stays stocked
+    # ('stricter on edges' -- marginal reproduction, stocking-dependent); Type 4
+    # (no reproduction) -> stocked. GR/BTRA qualifiers follow the type number;
     # every "Non Designated" variant and the bare "GR Designated" drop.
     mi = SOURCES["MI"]
     f = mi["field"]
     assert reg.row_bucket(mi, {f: "Type 1 Designated"}) == "wild_reproduction"
     assert reg.row_bucket(mi, {f: "Type 1 BTRA Designated"}) == "wild_reproduction"
     assert reg.row_bucket(mi, {f: "GR Type 1 Designated"}) == "wild_reproduction"
-    assert reg.row_bucket(mi, {f: "Type 2 Designated"}) == "stocked"
-    assert reg.row_bucket(mi, {f: "GR Type 2 Designated"}) == "stocked"
+    assert reg.row_bucket(mi, {f: "Type 2 Designated"}) == "wild_reproduction"
+    assert reg.row_bucket(mi, {f: "GR Type 2 Designated"}) == "wild_reproduction"
     assert reg.row_bucket(mi, {f: "Type 3 Designated"}) == "stocked"
+    assert reg.row_bucket(mi, {f: "Type 3 BTRA Designated"}) == "stocked"
     assert reg.row_bucket(mi, {f: "Type 4 Designated"}) == "stocked"
     # field_map is exact -> unmapped / non-designated rows drop (no default).
     assert reg.row_bucket(mi, {f: "Non Designated"}) is None
