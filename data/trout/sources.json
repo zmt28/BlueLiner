@@ -246,6 +246,30 @@
         "Sympatric EBT, BNT, & RBT": "wild_reproduction"
       },
       "url": "https://services1.arcgis.com/754BERmVIq3RqSf8/arcgis/rest/services/Most_Recent_Brook_Trout_Portolio_Assessment_Results/FeatureServer/0/query?where=1%3D1"
+    },
+    {
+      "_comment": "WESTERN NATIVE OVERLAY -- Utah cutthroat. TU 'Cutthroat trout streams' (Utah_Cutthroat_trout): 2,292 stream polylines occupied by Utah's native cutthroat (subspecies field = Bonneville / Colorado River / Yellowstone cutthroat). An occupied-distribution layer -> whole layer is native + self-sustaining -> wild_reproduction + is_native (the cutthroat analog of the NV Lahontan source). Appended after the state sources so they keep trout_class/tier precedence; is_native OR-merges (step 3A).",
+      "state": "UTCT", "label": "UT Cutthroat Streams (TU)",
+      "mode": "single", "class": "wild_reproduction", "native": true,
+      "url": "https://services1.arcgis.com/754BERmVIq3RqSf8/arcgis/rest/services/Utah_Cutthroat_trout/FeatureServer/0/query?where=1%3D1"
+    },
+    {
+      "_comment": "WESTERN NATIVE OVERLAY -- Yellowstone cutthroat. TU 'YCT_CONS_POP_2018' (2018_YCT_Portfolio): 8,116 stream polylines = Yellowstone cutthroat conservation populations across the YCT range (MT/WY/ID). Every feature is an occupied conservation population (carries HybridRisk/PopQualifier/Connectedness attributes but all are occupied native populations), so whole layer -> native + self-sustaining -> wild_reproduction + is_native. Hybridized/at-risk populations are kept (still native cutthroat lineage, naturally reproducing) -- consistent with the whole-layer occupied treatment of the other native sources.",
+      "state": "YCT", "label": "Yellowstone Cutthroat Conservation Populations (TU)",
+      "mode": "single", "class": "wild_reproduction", "native": true,
+      "url": "https://services1.arcgis.com/754BERmVIq3RqSf8/arcgis/rest/services/2018_YCT_Portfolio/FeatureServer/0/query?where=1%3D1"
+    },
+    {
+      "_comment": "WESTERN NATIVE OVERLAY -- Rio Grande cutthroat. TU 'Rio Grande Cutthroat Trout Conservation Portfolio 2009' (RGCT_Conservation_Portfolio): 121 stream polylines = RGCT conservation populations (NM / southern CO; GMU field = Lower Rio Grande / Pecos / Rio Grande Headwaters / Upper Canadian). Occupied native populations -> whole layer -> wild_reproduction + is_native. Lights up native trout where we previously had no New Mexico data. (CRCT_Conservation_Portfolio and HUC10Publish_WesternNativeFish were rejected: the former is only 8 coarse management-unit polygons, the latter a single dissolved range polygon -- both too coarse to map onto reaches.)",
+      "state": "RGCT", "label": "Rio Grande Cutthroat Conservation Populations (TU)",
+      "mode": "single", "class": "wild_reproduction", "native": true,
+      "url": "https://services1.arcgis.com/754BERmVIq3RqSf8/arcgis/rest/services/RGCT_Conservation_Portfolio/FeatureServer/0/query?where=1%3D1"
+    },
+    {
+      "_comment": "WESTERN NATIVE OVERLAY -- Bonneville cutthroat. TU 'Bonneville cutthroat trout conservation populations 2015' (Bonneville_cutthroat_trout_portfolio_2015): 2,240 stream polylines = BCT conservation populations across ID/NV/UT/WY (State field). Occupied native populations -> whole layer -> wild_reproduction + is_native; extends Bonneville coverage beyond the UT-only cutthroat-streams layer into Idaho/Wyoming/Nevada. (TU's Lahontan_Cutthroat_trout_populations layer returned no metadata when probed -- skipped; NV Lahontan is already covered by the NV DWR occupied-streams source above.)",
+      "state": "BCT", "label": "Bonneville Cutthroat Conservation Populations (TU)",
+      "mode": "single", "class": "wild_reproduction", "native": true,
+      "url": "https://services1.arcgis.com/754BERmVIq3RqSf8/arcgis/rest/services/Bonneville_cutthroat_trout_portfolio_2015/FeatureServer/0/query?where=1%3D1"
     }
   ]
 }
