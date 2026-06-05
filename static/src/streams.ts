@@ -26,43 +26,41 @@ import { map, onMapReady } from "./map-setup";
 import { esc } from "./util";
 import { STREAM_TILES_ENABLED, STREAM_TILES_URL, STREAM_SOURCE_LAYER } from "./config";
 import { ensurePmtilesProtocol } from "./tiles";
-import { setStockedStyleActive } from "./map-layers";
 import {
   prepareRiverPanel,
   commitRiverPanelOpen,
   openRiverPanel,
 } from "./river-panel";
 
-// -- Stream classification: three universal buckets ------------------
-// The tiles carry the raw per-state agency designation in `trout_class`
-// (PA: class_a/wilderness/wild_reproduction/stocked; VA: wild_reproduction;
-// MD: designated; everywhere else: null). Those don't form a tier that means
-// the same thing across states, so we collapse them into three buckets that
-// DO carry uniform meaning, then color by bucket.
+// -- Stream tier coloring (the nationwide quality axis) --------------
+// Tiles carry `tier` (gold/class1/class2/class3 or null), normalized in the
+// build from the per-state designations via trout_registry so it means the
+// same thing nationwide. We color by tier; the raw `trout_class` is kept only
+// to name the exact agency designation on the reach card. Wild/native are
+// separate filter flags (is_wild / is_native), not part of the color.
 
-/** trout_class value -> semantic bucket. Unlisted / null -> "unclassified". */
-const STREAM_BUCKET: Record<string, StreamBucket> = {
-  class_a: "wild",
-  wilderness: "wild",
-  wild_reproduction: "wild",
-  stocked: "stocked",
-  designated: "stocked",
+const TIER_COLOR: Record<StreamTier, string> = {
+  gold: "#d4af37", // gold -- premier / blue-ribbon water
+  class1: "#1e8449", // green -- high-quality
+  class2: "#2e86c1", // blue -- solid everyday trout water
+  class3: "#7f8c9a", // slate -- lighter / put-and-take
+  unclassified: "#8a9bb0", // grey -- network reach with no trout tier
 };
 
-const BUCKET_COLOR: Record<StreamBucket, string> = {
-  wild: "#1e8449", // green -- agency-confirmed wild reproduction
-  stocked: "#2c6fbf", // blue -- stocked / managed trout water
-  unclassified: "#8a9bb0", // grey -- network reach with no trout designation
+/** Faint color for reaches with no tier. Recedes via low opacity too. */
+const FAINT = TIER_COLOR.unclassified;
+
+export const TIER_LABEL: Record<StreamTier, string> = {
+  gold: "Gold — premier water",
+  class1: "Class 1 — high quality",
+  class2: "Class 2 — solid trout water",
+  class3: "Class 3 — lighter / stocked",
+  unclassified: "Unclassified",
 };
 
-/** Faded color for reaches a Map Style de-emphasizes (de-emphasized buckets +
- *  always-unclassified). Same grey as the unclassified bucket / legend swatch;
- *  it recedes via low opacity (see bucketOpacityMatch), not a different hue. */
-const FAINT = BUCKET_COLOR.unclassified;
-
-/** Full per-state designation labels, kept for the (detail-rich) ungauged
- *  card -- the map only shows the three buckets, but the card can name the
- *  exact agency designation. */
+/** Full per-state designation labels, kept for the (detail-rich) reach card --
+ *  the map shows the nationwide tier, but the card names the exact agency
+ *  designation. */
 export const STREAM_CLASS_LABEL: Record<string, string> = {
   class_a: "Class A wild trout",
   wilderness: "Wilderness trout",
@@ -71,89 +69,96 @@ export const STREAM_CLASS_LABEL: Record<string, string> = {
   designated: "Designated trout",
 };
 
-export function streamBucket(p: ClickableStreamProps): StreamBucket {
-  const cls = p.trout_class;
-  return (cls && STREAM_BUCKET[String(cls)]) || "unclassified";
+export function streamTier(p: ClickableStreamProps): StreamTier {
+  const t = p.tier;
+  return t && t in TIER_COLOR ? (t as StreamTier) : "unclassified";
 }
 
 let _streamsVisible = true; // lyr-fishable default checked
 
-/** Bucket color, used by the ungauged-card badge. */
+/** Tier color, used by the reach-card badge. */
 export function streamColor(p: ClickableStreamProps): string {
-  return BUCKET_COLOR[streamBucket(p)];
+  return TIER_COLOR[streamTier(p)];
 }
 
-// -- Map Style (which buckets a style emphasizes) --------------------
-// A "Map Style" is a viewing lens over the one stream network: it chooses
-// which buckets render in full color vs faded. Mirrors the base-map switcher
-// (setBaseMap in map-setup.ts): persisted to localStorage, swapped at runtime
-// via setPaintProperty.
+// -- Stream filters (wild / native) ---------------------------------
+// Two orthogonal toggles layered over the tier coloring: show only reaches
+// with naturally-reproducing wild trout, and/or native species. Persisted to
+// localStorage; applied via setFilter on both stream layers (no refetch).
 
-const STREAM_STYLE_BUCKETS: Record<StreamStyle, StreamBucket[]> = {
-  wild: ["wild"],
-  stocked: ["stocked"],
-  all: ["wild", "stocked"],
-};
-
-function loadStreamStylePref(): StreamStyle {
+function loadStreamFilters(): StreamFilters {
   try {
-    const v = localStorage.getItem("bl_stream_style");
-    if (v === "wild" || v === "stocked" || v === "all") return v;
+    return {
+      wild: localStorage.getItem("bl_filter_wild") === "1",
+      native: localStorage.getItem("bl_filter_native") === "1",
+    };
   } catch (_) {
-    /* localStorage unavailable */
+    return { wild: false, native: false };
   }
-  return "all";
 }
 
-let _streamStyle: StreamStyle = loadStreamStylePref();
+let _filters: StreamFilters = loadStreamFilters();
 
-export function currentStreamStyle(): StreamStyle {
-  return _streamStyle;
+export function currentStreamFilters(): StreamFilters {
+  return { ..._filters };
+}
+
+/** MapLibre filter for the active wild/native toggles (AND), or null = all. */
+function streamFilterExpr(): unknown[] | null {
+  const clauses: unknown[] = [];
+  if (_filters.wild) clauses.push(["==", ["get", "is_wild"], true]);
+  if (_filters.native) clauses.push(["==", ["get", "is_native"], true]);
+  return clauses.length ? ["all", ...clauses] : null;
+}
+
+function applyStreamFilter(): void {
+  const expr = streamFilterExpr();
+  for (const id of ["clickable-streams", "clickable-streams-hit"]) {
+    if (map.getLayer(id)) map.setFilter(id, expr as never);
+  }
+}
+
+export function setStreamFilters(next: Partial<StreamFilters>): void {
+  _filters = { ..._filters, ...next };
+  try {
+    localStorage.setItem("bl_filter_wild", _filters.wild ? "1" : "0");
+    localStorage.setItem("bl_filter_native", _filters.native ? "1" : "0");
+  } catch (_) {
+    /* localStorage unavailable; in-memory state still reflects */
+  }
+  applyStreamFilter();
 }
 
 // -- Paint expressions ------------------------------------------------
+// Color + opacity are a static `match` on the nationwide `tier`; the wild/
+// native toggles are a layer FILTER (applyStreamFilter), not a paint swap.
 
-/** Build the trout_class -> color `match` for a style: emphasized buckets get
- *  their bucket color, the rest fade to grey. */
-function bucketColorMatch(style: StreamStyle): ExpressionSpecification {
-  const shown = new Set(STREAM_STYLE_BUCKETS[style]);
-  const colorFor = (b: StreamBucket): string =>
-    shown.has(b) ? BUCKET_COLOR[b] : FAINT;
-  return [
-    "match",
-    ["get", "trout_class"],
-    "class_a", colorFor("wild"),
-    "wilderness", colorFor("wild"),
-    "wild_reproduction", colorFor("wild"),
-    "stocked", colorFor("stocked"),
-    "designated", colorFor("stocked"),
-    FAINT, // unclassified is never "emphasized" -- always faint
-  ] as unknown as ExpressionSpecification;
-}
+const TIER_COLOR_MATCH: ExpressionSpecification = [
+  "match",
+  ["get", "tier"],
+  "gold", TIER_COLOR.gold,
+  "class1", TIER_COLOR.class1,
+  "class2", TIER_COLOR.class2,
+  "class3", TIER_COLOR.class3,
+  FAINT, // no tier -- faint grey
+] as unknown as ExpressionSpecification;
+
+const TIER_OPACITY_MATCH: ExpressionSpecification = [
+  "match",
+  ["get", "tier"],
+  "gold", 0.9,
+  "class1", 0.85,
+  "class2", 0.8,
+  "class3", 0.7,
+  0.35, // no tier -- receded
+] as unknown as ExpressionSpecification;
 
 function colorExpr(): ExpressionSpecification {
-  // Red when selected, else the active style's bucket coloring.
   return [
     "case",
     ["boolean", ["feature-state", "selected"], false],
     "#e74c3c",
-    bucketColorMatch(_streamStyle),
-  ] as unknown as ExpressionSpecification;
-}
-
-/** Emphasized buckets sit at full opacity; faded buckets recede. */
-function bucketOpacityMatch(style: StreamStyle): ExpressionSpecification {
-  const shown = new Set(STREAM_STYLE_BUCKETS[style]);
-  const opFor = (b: StreamBucket): number => (shown.has(b) ? 0.85 : 0.3);
-  return [
-    "match",
-    ["get", "trout_class"],
-    "class_a", opFor("wild"),
-    "wilderness", opFor("wild"),
-    "wild_reproduction", opFor("wild"),
-    "stocked", opFor("stocked"),
-    "designated", opFor("stocked"),
-    0.3, // unclassified -- always receded
+    TIER_COLOR_MATCH,
   ] as unknown as ExpressionSpecification;
 }
 
@@ -162,28 +167,9 @@ function opacityExpr(): ExpressionSpecification {
     "case",
     ["boolean", ["feature-state", "selected"], false],
     0.95,
-    bucketOpacityMatch(_streamStyle),
+    TIER_OPACITY_MATCH,
   ] as unknown as ExpressionSpecification;
 }
-
-export function setStreamStyle(key: StreamStyle): void {
-  _streamStyle = key;
-  try {
-    localStorage.setItem("bl_stream_style", key);
-  } catch (_) {
-    /* localStorage unavailable; in-memory state still reflects */
-  }
-  if (map.getLayer("clickable-streams")) {
-    map.setPaintProperty("clickable-streams", "line-color", colorExpr());
-    map.setPaintProperty("clickable-streams", "line-opacity", opacityExpr());
-  }
-  // The Stocked style force-shows the stocked-waters markers.
-  setStockedStyleActive(key === "stocked");
-}
-
-// Seed the stocked-marker coupling from the persisted style (setStreamStyle
-// isn't called on load -- the layer paints from _streamStyle at map-ready).
-setStockedStyleActive(_streamStyle === "stocked");
 
 const WIDTH_EXPR: ExpressionSpecification = [
   "case",
@@ -232,6 +218,8 @@ onMapReady(() => {
     layout: { visibility: visStr(_streamsVisible), "line-cap": "round" },
     paint: { "line-color": "#000", "line-opacity": 0, "line-width": 16 },
   } as LayerSpecification);
+  // Apply the persisted wild/native filter to the freshly-added layers.
+  applyStreamFilter();
   // Re-apply the selection highlight as new tiles arrive (pan/zoom).
   map.on("sourcedata", (e) => {
     if (e.sourceId === "clickable-streams" && e.isSourceLoaded) {

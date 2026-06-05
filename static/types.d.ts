@@ -190,8 +190,14 @@ interface ClickableStreamProps {
   levelpathid?: number;
   /** Raw per-state agency designation baked into the tiles, e.g. "class_a",
       "wilderness", "wild_reproduction", "stocked", "designated", or null. The
-      client collapses these into StreamBucket values for coloring. */
+      client names it on the reach card; coloring is by `tier`. */
   trout_class?: string | null;
+  /** Nationwide quality tier (the color axis): "gold" | "class1" | "class2" |
+      "class3" | null. Derived in build_clickable_streams via trout_registry. */
+  tier?: string | null;
+  /** Filter flags: naturally-reproducing wild trout present / native species. */
+  is_wild?: boolean;
+  is_native?: boolean;
   streamorder?: number;
   [key: string]: unknown;
 }
@@ -225,13 +231,16 @@ interface ReachDetail {
   stocked: ReachStockedEntry[];
 }
 
-/** Semantic stream-classification bucket (uniform meaning across states): the
-    raw per-state `trout_class` designations collapse into one of these. */
-type StreamBucket = "wild" | "stocked" | "unclassified";
+/** Nationwide quality tier -- the stream color axis. The raw per-state
+    `trout_class` designations are normalized to one of these in the build
+    (gold / class1 / class2 / class3), or "unclassified" when no tier applies. */
+type StreamTier = "gold" | "class1" | "class2" | "class3" | "unclassified";
 
-/** Map Style: the viewing lens over the stream network. "all" emphasizes both
-    wild + stocked; the single styles emphasize one bucket and fade the rest. */
-type StreamStyle = "wild" | "stocked" | "all";
+/** The two orthogonal stream filters layered over the tier coloring. */
+interface StreamFilters {
+  wild: boolean;
+  native: boolean;
+}
 
 /** /api/stocking feature properties (one per stocked water). */
 interface StockedFeatureProps {

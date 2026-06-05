@@ -37,8 +37,8 @@ import {
 import {
   loadClickableStreams,
   setStreamsVisible,
-  setStreamStyle,
-  currentStreamStyle,
+  setStreamFilters,
+  currentStreamFilters,
 } from "./streams";
 import {
   loadRivers,
@@ -458,28 +458,19 @@ if (basemapSeg) {
   }
 }
 
-// -- Map Style segmented control (stream coloring lens) ------------
-// Mirrors the base-map control: reflect the persisted style, and on click
-// restyle the stream network (setPaintProperty under the hood -- no refetch).
+// -- Stream filters (wild / native) -------------------------------
+// Two toggles layered over the tier coloring: reflect persisted state and on
+// change re-filter the network via setFilter (no refetch).
 
-const streamStyleSeg = document.getElementById("stream-style");
-if (streamStyleSeg) {
-  const initialStyle = currentStreamStyle();
-  for (const btn of streamStyleSeg.querySelectorAll<HTMLButtonElement>(
-    "button[data-style]",
-  )) {
-    btn.classList.toggle("on", btn.dataset.style === initialStyle);
-    btn.addEventListener("click", () => {
-      const key = btn.dataset.style as StreamStyle;
-      setStreamStyle(key);
-      for (const sib of streamStyleSeg.querySelectorAll<HTMLButtonElement>(
-        "button[data-style]",
-      )) {
-        sib.classList.toggle("on", sib.dataset.style === key);
-      }
-    });
-  }
+const _initialStreamFilters = currentStreamFilters();
+function wireStreamFilter(id: string, key: "wild" | "native"): void {
+  const el = document.getElementById(id) as HTMLInputElement | null;
+  if (!el) return;
+  el.checked = _initialStreamFilters[key];
+  el.addEventListener("change", () => setStreamFilters({ [key]: el.checked }));
 }
+wireStreamFilter("filter-wild", "wild");
+wireStreamFilter("filter-native", "native");
 
 // -- Viewport watcher: refetch the clickable network + public lands
 // when the user settles after panning/zooming. Debounced 500 ms so
