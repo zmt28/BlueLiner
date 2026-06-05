@@ -357,6 +357,23 @@ def test_western_cutthroat_native_overlays():
     assert reg.row_tier(SOURCES["UT"], {}) == "gold"
 
 
+def test_gila_and_redband_native_overlays():
+    # Gila trout: field_map on Status2017 keeps current/restored native
+    # populations, drops eliminated/potential reaches.
+    g = SOURCES["GILA"]
+    assert g["mode"] == "field_map" and reg.is_native(g) is True
+    assert reg.row_bucket(g, {"Status2017": "Current population"}) == "wild_reproduction"
+    assert reg.row_bucket(g, {"Status2017": "Recently restored"}) == "wild_reproduction"
+    assert reg.row_bucket(g, {"Status2017": "Eliminated"}) is None
+    assert reg.row_bucket(g, {"Status2017": "Potential Recovery Stream"}) is None
+    assert reg.classify_fields(g) == ["Status2017"]
+    # Deschutes redband: whole-layer native distribution
+    rb = SOURCES["ORRB"]
+    assert rb["mode"] == "single"
+    assert reg.row_bucket(rb, {}) == "wild_reproduction"
+    assert reg.is_native(rb) is True
+
+
 def test_ct_is_two_ordered_sources_wild_first():
     ct = [s for s in ALL_SOURCES if s["state"] == "CT"]
     assert [s["label"] for s in ct] == ["CT (WTMA)", "CT (stocked)"]  # wild claims first

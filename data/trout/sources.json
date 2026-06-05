@@ -270,6 +270,22 @@
       "state": "BCT", "label": "Bonneville Cutthroat Conservation Populations (TU)",
       "mode": "single", "class": "wild_reproduction", "native": true,
       "url": "https://services1.arcgis.com/754BERmVIq3RqSf8/arcgis/rest/services/Bonneville_cutthroat_trout_portfolio_2015/FeatureServer/0/query?where=1%3D1"
+    },
+    {
+      "_comment": "WESTERN NATIVE OVERLAY -- Gila trout (NM/AZ). TU 'Gila Trout Populations 2017' (Gila_Trout_Populations_2017): 581 NHD-aligned stream polylines for the Gila trout recovery program. field_map on Status2017: 'Current population' and 'Recently restored' (native Gila present) -> wild_reproduction + is_native; 'Eliminated' and 'Potential Recovery Stream' drop (no current fish). Gila is one of the rarest native US trout; recovery populations are managed native lineage in their historic headwaters. Appended after state sources (is_native OR-merges, step 3A).",
+      "state": "GILA", "label": "Gila Trout Populations (TU 2017)",
+      "mode": "field_map", "field": "Status2017", "native": true,
+      "map": {
+        "Current population": "wild_reproduction",
+        "Recently restored": "wild_reproduction"
+      },
+      "url": "https://services1.arcgis.com/754BERmVIq3RqSf8/arcgis/rest/services/Gila_Trout_Populations_2017/FeatureServer/0/query?where=1%3D1"
+    },
+    {
+      "_comment": "WESTERN NATIVE OVERLAY -- Columbia/Deschutes redband (OR). TU 'Redband trout streams' (DeschutesRedband_StreamNet): 720 stream polylines, Species='Redband trout' (Oncorhynchus mykiss subsp.), the Deschutes Basin redband distribution compiled by ODFW via StreamNet. Whole layer = native redband distribution -> wild_reproduction + is_native. Regional (Deschutes Basin) but the cleanest documented redband distribution on the org. (BullTroutCurrentDistribution and Steelhead_Atlas were rejected: the former is a single coarse dissolved range polygon, the latter returned no metadata.)",
+      "state": "ORRB", "label": "Deschutes Redband Trout Streams (ODFW/StreamNet)",
+      "mode": "single", "class": "wild_reproduction", "native": true,
+      "url": "https://services1.arcgis.com/754BERmVIq3RqSf8/arcgis/rest/services/DeschutesRedband_StreamNet/FeatureServer/0/query?where=1%3D1"
     }
   ]
 }
