@@ -234,7 +234,8 @@ def read_region_gdf(shp: str) -> gpd.GeoDataFrame:
 
 def write_manifest(path: str, region_ids: list[str], resolved: dict,
                    feature_count: int, trout_class_counts: dict,
-                   trout_status: dict, tier_counts: dict | None = None) -> None:
+                   trout_status: dict, tier_counts: dict | None = None,
+                   native_count: int = 0) -> None:
     """Provenance sidecar for a built artifact: which regions, which exact NHD
     archive vintages were resolved (so a release is reproducible / auditable),
     the feature count, the trout-class + tier histograms, and which state trout
@@ -250,6 +251,7 @@ def write_manifest(path: str, region_ids: list[str], resolved: dict,
         "feature_count": feature_count,
         "trout_class_counts": dict(sorted(trout_class_counts.items())),
         "trout_tier_counts": dict(sorted((tier_counts or {}).items())),
+        "trout_native_count": native_count,
         "trout_sources": dict(sorted(trout_status.items())),
         "archives": resolved,  # {region_id: {snap: url, attr: url}}
     }
@@ -714,6 +716,7 @@ def main(argv: list[str] | None = None) -> int:
     resolved: dict[str, dict] = {}   # region id -> {snap, attr} (provenance)
     by_class: dict[str, int] = defaultdict(int)
     by_tier: dict[str, int] = defaultdict(int)   # post eastern-gold (calibration)
+    native_count = 0                             # emitted reaches with is_native
     val_names = set(PA_WILD_TROUT_VALIDATION)
     name_to_comids: dict[str, set[int]] = defaultdict(set)
     val_clickable: set[int] = set()  # val-name COMIDs that were emitted
@@ -788,6 +791,8 @@ def main(argv: list[str] | None = None) -> int:
                 ftier = feat["properties"]["tier"]
                 if ftier:
                     by_tier[ftier] += 1
+                if feat["properties"].get("is_native"):
+                    native_count += 1
                 seg = ("," if n_feats else "") + json.dumps(
                     feat, separators=(",", ":"))
                 out.write(seg)
@@ -817,6 +822,7 @@ def main(argv: list[str] | None = None) -> int:
     for t in ("gold", "class1", "class2", "class3"):
         n = by_tier.get(t, 0)
         print(f"    {t}: {n:,} ({100 * n / _tier_total:.1f}% of tagged)")
+    print(f"  native reaches (is_native): {native_count:,}")
 
     # ── Step 3: PA validation (data collected during the emit loop) ──
     validate_pa_coverage(val_clickable, val_trout, name_to_comids)
@@ -824,7 +830,8 @@ def main(argv: list[str] | None = None) -> int:
     # ── Step 4: provenance manifest (for the build/ship runbook) ──
     if args.manifest:
         write_manifest(args.manifest, [r["id"] for r in regions], resolved,
-                       n_feats, dict(by_class), trout_status, dict(by_tier))
+                       n_feats, dict(by_class), trout_status, dict(by_tier),
+                       native_count)
         print(f"[manifest] wrote {args.manifest}")
     return 0
 

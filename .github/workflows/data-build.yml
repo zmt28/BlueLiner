@@ -109,6 +109,7 @@ jobs:
               n = tc.get(t, 0)
               print(f"  {t}: {n:,} ({100 * n / tot:.2f}%)")
           print("  classes:", m.get("trout_class_counts"))
+          print("  native reaches (is_native):", m.get("trout_native_count"))
           PY
 
       - name: Publish to R2
