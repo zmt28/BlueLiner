@@ -234,12 +234,12 @@ def read_region_gdf(shp: str) -> gpd.GeoDataFrame:
 
 def write_manifest(path: str, region_ids: list[str], resolved: dict,
                    feature_count: int, trout_class_counts: dict,
-                   trout_status: dict) -> None:
+                   trout_status: dict, tier_counts: dict | None = None) -> None:
     """Provenance sidecar for a built artifact: which regions, which exact NHD
     archive vintages were resolved (so a release is reproducible / auditable),
-    the feature count, the trout-class histogram, and which state trout sources
-    were reachable (so a degraded build is visible). Answers 'what is live?'
-    when shipped alongside the .geojson.gz / .pmtiles."""
+    the feature count, the trout-class + tier histograms, and which state trout
+    sources were reachable (so a degraded build is visible). Answers 'what is
+    live?' when shipped alongside the .geojson.gz / .pmtiles."""
     import datetime
     manifest = {
         "generated_at": datetime.datetime.now(datetime.timezone.utc)
@@ -249,6 +249,7 @@ def write_manifest(path: str, region_ids: list[str], resolved: dict,
         "regions": region_ids,
         "feature_count": feature_count,
         "trout_class_counts": dict(sorted(trout_class_counts.items())),
+        "trout_tier_counts": dict(sorted((tier_counts or {}).items())),
         "trout_sources": dict(sorted(trout_status.items())),
         "archives": resolved,  # {region_id: {snap: url, attr: url}}
     }
@@ -813,7 +814,7 @@ def main(argv: list[str] | None = None) -> int:
     # ── Step 4: provenance manifest (for the build/ship runbook) ──
     if args.manifest:
         write_manifest(args.manifest, [r["id"] for r in regions], resolved,
-                       n_feats, dict(by_class), trout_status)
+                       n_feats, dict(by_class), trout_status, dict(by_tier))
         print(f"[manifest] wrote {args.manifest}")
     return 0
 

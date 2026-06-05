@@ -95,6 +95,22 @@ jobs:
           TMPDIR: ${{ runner.temp }}
         run: scripts/build_stream_tiles.sh
 
+      # Printed AFTER tippecanoe so it's near the end of the log (the build's own
+      # stdout histogram gets buried behind tippecanoe's progress).
+      - name: Tier calibration
+        run: |
+          python - <<'PY'
+          import json
+          m = json.load(open("data/nhdplus/clickable_streams.manifest.json"))
+          tc = m.get("trout_tier_counts", {})
+          tot = sum(tc.values()) or 1
+          print("=== TIER CALIBRATION (tagged reaches) ===")
+          for t in ("gold", "class1", "class2", "class3"):
+              n = tc.get(t, 0)
+              print(f"  {t}: {n:,} ({100 * n / tot:.2f}%)")
+          print("  classes:", m.get("trout_class_counts"))
+          PY
+
       - name: Publish to R2
         if: ${{ inputs.upload }}
         env:
