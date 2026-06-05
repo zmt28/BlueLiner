@@ -528,8 +528,9 @@ def build_feature(comid: int, row, gnis_col: str | None,
     order = int(a["streamorder"]) if a["streamorder"] else None
     cls, tier, native = trout if trout else (None, None, False)
     is_wild = trout_registry.class_is_wild(cls) if cls else False
-    # Eastern-gold upgrade: premier-wild (class1) on a named river, order >= 4.
-    tier = trout_registry.eastern_gold_tier(tier, is_wild, name, order)
+    # Size ladder: generic wild on a named river (order>=3) -> class1; designated
+    # premier-wild on a named river (order>=4) -> gold. See trout_registry.
+    tier = trout_registry.refine_tier(tier, is_wild, name, order)
     return {
         "type": "Feature",
         "geometry": shapely.geometry.mapping(geom),

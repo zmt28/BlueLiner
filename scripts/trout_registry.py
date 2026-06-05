@@ -176,17 +176,25 @@ def is_native(source: dict, layer: dict | None = None) -> bool:
     return bool(source.get("native", False))
 
 
-def eastern_gold_tier(tier, is_wild, gnis_name, streamorder, min_order: int = 4):
-    """Rubric §5.1(ii): upgrade a premier-wild reach to `gold` -- the eastern
-    fallback so the East isn't shut out of the top tier. A reach already `class1`
-    (top wild class) that is wild, on a NAMED river (`gnis_name`) of stream order
-    >= min_order becomes `gold`; otherwise the tier is unchanged. Pure -- the
-    build calls it per reach with the NHDPlus gnis_name/streamorder it carries.
-    `min_order` is the tunable calibration knob (see the rubric)."""
-    if (tier == "class1" and is_wild and gnis_name
-            and streamorder is not None and streamorder >= min_order):
+def refine_tier(base_tier, is_wild, gnis_name, streamorder,
+                class1_min_order: int = 3, gold_min_order: int = 4):
+    """Size-based tier refinement for WILD reaches (rubric §5.1(ii) + §5.3), using
+    the NHDPlus gnis_name/streamorder the build carries. One consistent rule --
+    bigger named wild water ranks higher:
+      * generic wild (base `class2`) on a named river of order >= class1_min_order
+        -> `class1`;
+      * DESIGNATED premier-wild (base `class1`) on a named river of order >=
+        gold_min_order -> `gold` (eastern-gold).
+    Gold is gated on *base* class1, so a size-promoted class2->class1 reach does
+    NOT become gold -- only state-designated premier waters do. Non-wild,
+    unnamed, and stocked reaches are unchanged. Pure."""
+    if not (is_wild and gnis_name and streamorder is not None):
+        return base_tier
+    if base_tier == "class1" and streamorder >= gold_min_order:
         return "gold"
-    return tier
+    if base_tier == "class2" and streamorder >= class1_min_order:
+        return "class1"
+    return base_tier
 
 
 def classify_fields(source: dict) -> list[str]:
