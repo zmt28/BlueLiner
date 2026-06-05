@@ -282,10 +282,22 @@
       "url": "https://services1.arcgis.com/754BERmVIq3RqSf8/arcgis/rest/services/Gila_Trout_Populations_2017/FeatureServer/0/query?where=1%3D1"
     },
     {
-      "_comment": "WESTERN NATIVE OVERLAY -- Columbia/Deschutes redband (OR). TU 'Redband trout streams' (DeschutesRedband_StreamNet): 720 stream polylines, Species='Redband trout' (Oncorhynchus mykiss subsp.), the Deschutes Basin redband distribution compiled by ODFW via StreamNet. Whole layer = native redband distribution -> wild_reproduction + is_native. Regional (Deschutes Basin) but the cleanest documented redband distribution on the org. (BullTroutCurrentDistribution and Steelhead_Atlas were rejected: the former is a single coarse dissolved range polygon, the latter returned no metadata.)",
-      "state": "ORRB", "label": "Deschutes Redband Trout Streams (ODFW/StreamNet)",
+      "_comment": "WESTERN NATIVE OVERLAY -- Westslope cutthroat (PNW). PSMFC StreamNet 'Fish_Dist' MapServer layer 12 = Westslope Cutthroat Trout (Oncorhynchus clarkii lewisi), 8,970 stream polylines compiled regionally-consistent by IDFG/MFWP/ODFW/WDFW (ID/MT/OR/WA). StreamNet generalized distribution = current presence, so whole layer -> native + self-sustaining -> wild_reproduction + is_native. This is the authoritative western analog to EBTJV; the gis.psmfc.org ArcGIS Server is reachable from the build runner (maps.psmfc.org 404s -- gis.psmfc.org is the live host).",
+      "state": "WCT", "label": "Westslope Cutthroat Trout (PSMFC StreamNet)",
       "mode": "single", "class": "wild_reproduction", "native": true,
-      "url": "https://services1.arcgis.com/754BERmVIq3RqSf8/arcgis/rest/services/DeschutesRedband_StreamNet/FeatureServer/0/query?where=1%3D1"
+      "url": "https://gis.psmfc.org/server/rest/services/StreamNet/Fish_Dist/MapServer/12/query?where=1%3D1"
+    },
+    {
+      "_comment": "WESTERN NATIVE OVERLAY -- Bull trout (PNW, native char). PSMFC StreamNet 'Fish_Dist' MapServer layer 14 = Bull Trout (Salvelinus confluentus), regionally-consistent ID/MT/OR/WA distribution. Bull trout are a native char (like brook trout), self-sustaining -> wild_reproduction + is_native. Server-side where excludes UseType='Historical (use type unknown)' so only CURRENT-presence reaches tag native (consistent with dropping EBTJV 'No brook trout' and Gila 'Eliminated').",
+      "state": "BULL", "label": "Bull Trout (PSMFC StreamNet)",
+      "mode": "single", "class": "wild_reproduction", "native": true,
+      "url": "https://gis.psmfc.org/server/rest/services/StreamNet/Fish_Dist/MapServer/14/query?where=UseType%20%3C%3E%20%27Historical%20(use%20type%20unknown)%27"
+    },
+    {
+      "_comment": "WESTERN NATIVE OVERLAY -- Columbia redband (PNW). PSMFC StreamNet 'Fish_Dist' MapServer layer 16 = Redband Trout (Oncorhynchus mykiss gairdneri / newberrii / subsp.), 6,665 stream polylines region-wide (IDFG/MFWP/ODFW). Replaces the earlier Deschutes-only TU redband source with the regionally-consistent StreamNet distribution. Whole layer -> native redband -> wild_reproduction + is_native; server-side where excludes UseType='Historical (use type unknown)' (current presence only).",
+      "state": "RBT", "label": "Redband Trout (PSMFC StreamNet)",
+      "mode": "single", "class": "wild_reproduction", "native": true,
+      "url": "https://gis.psmfc.org/server/rest/services/StreamNet/Fish_Dist/MapServer/16/query?where=UseType%20%3C%3E%20%27Historical%20(use%20type%20unknown)%27"
     }
   ]
 }

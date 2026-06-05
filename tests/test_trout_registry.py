@@ -367,11 +367,19 @@ def test_gila_and_redband_native_overlays():
     assert reg.row_bucket(g, {"Status2017": "Eliminated"}) is None
     assert reg.row_bucket(g, {"Status2017": "Potential Recovery Stream"}) is None
     assert reg.classify_fields(g) == ["Status2017"]
-    # Deschutes redband: whole-layer native distribution
-    rb = SOURCES["ORRB"]
-    assert rb["mode"] == "single"
-    assert reg.row_bucket(rb, {}) == "wild_reproduction"
-    assert reg.is_native(rb) is True
+
+
+def test_psmfc_streamnet_native_overlays():
+    # PSMFC StreamNet per-species distribution layers -> whole-layer native +
+    # self-sustaining wild (Westslope cutthroat, bull trout char, redband).
+    for code in ("WCT", "BULL", "RBT"):
+        s = SOURCES[code]
+        assert s["mode"] == "single"
+        assert reg.row_bucket(s, {}) == "wild_reproduction"
+        assert reg.is_native(s) is True
+    # bull trout + redband exclude historical reaches server-side (current only)
+    assert "Historical" in SOURCES["BULL"]["url"]
+    assert "Historical" in SOURCES["RBT"]["url"]
 
 
 def test_ct_is_two_ordered_sources_wild_first():
