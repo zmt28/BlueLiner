@@ -430,14 +430,21 @@ def _split_by_value(gdf: gpd.GeoDataFrame,
 def fetch_trout_source(source: dict) -> list[tuple[tuple, gpd.GeoDataFrame]]:
     """Fetch one registry source -> [((trout_class, tier, native), GeoDataFrame),
     ...], handling every mode. Raises on transport error so the caller's
-    fetch_source marks the state unreachable (and may then fall back to a seed)."""
+    fetch_source marks the state unreachable (and may then fall back to a seed).
+
+    A source may set `page_size` to override the keyset page length: some servers
+    (e.g. CPW's CO native-conservation layer) serialize a 1000-feature page of
+    complex polygons too slowly and trip the per-request read timeout -- smaller
+    pages respond within the timeout and the source fetches reliably, without
+    touching the global timeout/budget."""
+    page_size = source.get("page_size", 1000)
     if source["mode"] == "multi_layer":
         out: list[tuple[tuple, gpd.GeoDataFrame]] = []
         for layer in source["layers"]:
             url = f"{source['base']}/{layer['id']}/query?where=1%3D1"
             print(f"[trout] {source['state']} {layer['label']} "
                   f"(layer {layer['id']}) ...")
-            feats = fetch_arcgis_features(url)
+            feats = fetch_arcgis_features(url, page_size=page_size)
             if not feats:
                 print(f"  WARNING: no features for layer {layer['id']}")
                 continue
@@ -449,7 +456,7 @@ def fetch_trout_source(source: dict) -> list[tuple[tuple, gpd.GeoDataFrame]]:
         return out
 
     print(f"[trout] {source['label']} ...")
-    feats = fetch_arcgis_features(source["url"])
+    feats = fetch_arcgis_features(source["url"], page_size=page_size)
     if not feats:
         print("  WARNING: no features returned")
         return []
