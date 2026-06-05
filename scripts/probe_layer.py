@@ -84,6 +84,7 @@ def _dump_service(client: httpx.Client, url: str, meta: dict) -> int:
 
 def _dump_layer(client: httpx.Client, layer: str, meta: dict) -> int:
     print(f"name : {meta.get('name')!r}   geometry: {meta.get('geometryType')}")
+    print(f"supportedQueryFormats: {meta.get('supportedQueryFormats')!r}")
     cnt = _get(client, layer + "/query",
                {"where": "1=1", "returnCountOnly": "true", "f": "json"})
     print(f"count: {(cnt or {}).get('count')}")
