@@ -471,10 +471,10 @@ def fetch_trout_source(source: dict) -> list[tuple[tuple, gpd.GeoDataFrame]]:
 
 def spatial_join_trout(trout_gdf: gpd.GeoDataFrame,
                        nhd_gdf: gpd.GeoDataFrame,
-                       value,
-                       all_attrs: dict[int, dict]) -> dict:
-    """Spatial join: buffer trout lines and find overlapping NHD COMIDs, each
-    mapped to `value` (a (trout_class, tier, native) key)."""
+                       all_attrs: dict[int, dict]) -> set:
+    """Spatial join: buffer trout lines and return the set of overlapping NHD
+    COMIDs (confined to this region via `all_attrs` membership). The caller
+    applies the source's (class, tier) and native flag."""
     import warnings
     id_col = next(c for c in nhd_gdf.columns if c.lower() == "comid")
     nhd_sub = nhd_gdf[[id_col, "geometry"]].copy()
@@ -488,7 +488,7 @@ def spatial_join_trout(trout_gdf: gpd.GeoDataFrame,
 
     joined = gpd.sjoin(nhd_sub, trout_buf, how="inner", predicate="intersects")
     comids = set(int(c) for c in joined[id_col].unique() if c is not None)
-    return {c: value for c in comids if c in all_attrs}
+    return {c for c in comids if c in all_attrs}
 
 
 def _bbox_overlap(a, b) -> bool:
@@ -502,9 +502,10 @@ def _bbox_overlap(a, b) -> bool:
 # ──────────────────────── Feature assembly ────────────────────────
 
 def build_feature(comid: int, row, gnis_col: str | None,
-                  attrs: dict, trout: tuple | None) -> dict | None:
-    """Build a single GeoJSON feature dict. `trout` is the (trout_class, tier,
-    native) key for this COMID, or None for an untagged (order-only) reach."""
+                  attrs: dict, trout: tuple | None, native: bool = False) -> dict | None:
+    """Build a single GeoJSON feature dict. `trout` is the (trout_class, tier)
+    for this COMID (or None for an order-only reach); `native` is the OR-merged
+    native-overlay flag (independent of which source won the class/tier)."""
     a = attrs.get(comid)
     if not a:
         return None
@@ -526,7 +527,7 @@ def build_feature(comid: int, row, gnis_col: str | None,
         if s and s.lower() != "nan":
             name = s
     order = int(a["streamorder"]) if a["streamorder"] else None
-    cls, tier, native = trout if trout else (None, None, False)
+    cls, tier = trout if trout else (None, None)
     is_wild = trout_registry.class_is_wild(cls) if cls else False
     # Size ladder: generic wild on a named river (order>=3) -> class1; designated
     # premier-wild on a named river (order>=4) -> gold. See trout_registry.
@@ -735,24 +736,31 @@ def main(argv: list[str] | None = None) -> int:
 
             # Trout joins for this region only (bbox-gated for speed).
             rbounds = tuple(gdf.total_bounds)
-            region_trout: dict[int, tuple] = {}
+            region_trout: dict[int, tuple] = {}   # comid -> (class, tier); first wins
+            region_native: set[int] = set()        # comid -> native; OR-merged overlay
             # Bundled MD seed first (highest precedence, == live MD order): tag
             # the seed COMIDs that fall in this region. Membership in `attrs`
             # confines them to their own VPU, mirroring the live spatial join.
             if md_seed:
                 seed_cls, seed_comids = md_seed
                 seed_val = (seed_cls,
-                            trout_registry.FALLBACK_CLASS_TIER.get(seed_cls), False)
+                            trout_registry.FALLBACK_CLASS_TIER.get(seed_cls))
                 for c in seed_comids:
                     if c in attrs:
                         region_trout.setdefault(c, seed_val)
+            # class/tier are first-writer-wins (state precedence); the native flag
+            # is OR-merged across sources so a native overlay (e.g. TU brook trout)
+            # enriches a state-claimed reach instead of being dropped on collision.
             for value, tgdf, tbounds in trout_sources:
                 if not _bbox_overlap(rbounds, tbounds):
                     continue
-                for c, k in spatial_join_trout(tgdf, gdf, value, attrs).items():
-                    region_trout.setdefault(c, k)
-            for v in region_trout.values():
-                by_class[v[0]] += 1
+                cls, tier, nat = value
+                for c in spatial_join_trout(tgdf, gdf, attrs):
+                    region_trout.setdefault(c, (cls, tier))
+                    if nat:
+                        region_native.add(c)
+            for cls, _tier in region_trout.values():
+                by_class[cls] += 1
 
             seen: set[int] = set()  # dedup within region (COMIDs unique per VPU)
             emitted_here = 0
@@ -769,11 +777,12 @@ def main(argv: list[str] | None = None) -> int:
                 a = attrs.get(comid)
                 order = a.get("streamorder") if a else None
                 trout = region_trout.get(comid)
+                native = comid in region_native
                 clickable = (order is not None and order >= MIN_ORDER) \
-                    or trout is not None
+                    or trout is not None or native
                 if not clickable:
                     continue
-                feat = build_feature(comid, row, gnis_col, attrs, trout)
+                feat = build_feature(comid, row, gnis_col, attrs, trout, native)
                 if not feat:
                     continue
                 ftier = feat["properties"]["tier"]
