@@ -670,11 +670,19 @@ def main(argv: list[str] | None = None) -> int:
     # stays complete enough for --require-trout.
     trout_sources: list[tuple[str, gpd.GeoDataFrame, tuple]] = []
     md_seed: tuple[str, set[int]] | None = None
+    # Native overlays (source-level `native: true`) and any source flagged
+    # `optional` are best-effort enrichment for the is_native filter -- a flapping
+    # native endpoint must not block a release whose baseline is the state
+    # regulatory/quality tagging. Only unreachable REQUIRED sources fail
+    # --require-trout.
+    optional_labels: set[str] = set()
     for source in trout_registry.load_sources():
         # `label` lets one state contribute multiple sources (e.g. CT's WTMA
         # wild layer + its general stocked-streams layer), each tracked
         # independently in trout_status; defaults to the state code.
         label = source.get("label", source["state"])
+        if source.get("native") or source.get("optional"):
+            optional_labels.add(label)
         result = fetch_source(label, lambda s=source: fetch_trout_source(s))
         if result:
             for key, g in result:
@@ -694,8 +702,16 @@ def main(argv: list[str] | None = None) -> int:
     if unreachable:
         print(f"\n⚠ trout sources unreachable: {', '.join(unreachable)} — "
               f"clickable geometry still builds, but those states are untagged.")
-        if args.require_trout:
-            print("--require-trout set; refusing to ship an incomplete release.",
+        # Native overlays are best-effort enrichment; only a missing REQUIRED
+        # (state regulatory/quality) source blocks a --require-trout release.
+        unreachable_required = [k for k in unreachable if k not in optional_labels]
+        unreachable_optional = [k for k in unreachable if k in optional_labels]
+        if unreachable_optional:
+            print(f"  (optional native overlays skipped this run: "
+                  f"{', '.join(unreachable_optional)})")
+        if args.require_trout and unreachable_required:
+            print(f"--require-trout set; refusing to ship -- required sources "
+                  f"unreachable: {', '.join(unreachable_required)}.",
                   file=sys.stderr)
             return 3
 
