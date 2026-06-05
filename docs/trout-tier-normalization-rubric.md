@@ -111,9 +111,15 @@ Type B (derived):
 2. **Tier vs. wild independence.** Should `wild` ever force a tier floor (e.g.,
    wild ⇒ ≥ `class2`), or stay fully independent? **Recommend independent** — a
    marginal wild trickle can be `class3`; wild is the filter.
-3. **Access/length weighting.** How much should our access-points layer + reach
-   length move the tier, vs. just using the state class? (TroutRoutes weighs
-   access heavily; we have access points but not their proprietary composite.)
+3. **Access/length weighting — RESOLVED: size ladder.** Calibration (VPU 02)
+   showed designation alone leaves `class1` starved (generic wild all fell to
+   `class2`). Fix (`trout_registry.refine_tier`, applied in the build with the
+   NHDPlus gnis_name/streamorder): a consistent "bigger named wild water ranks
+   higher" rule -- generic wild (`class2`) on a named river of order >= 3 ->
+   `class1`; designated premier-wild (`class1`) on order >= 4 -> `gold`. Gold
+   stays gated on *base* class1 so size-promoted reaches don't inflate it. The
+   two order thresholds are the tunable knobs; access-point weighting is deferred
+   (we have the layer; not needed for a sane v0.1 spread).
 4. **CO/NV-type native-only data.** CO's native-conservation and NV's Lahontan
    layers tell us `wild`/`native` but not a quality tier. Default them to
    `class2`, or leave tier null (uncolored until a quality source covers them)?

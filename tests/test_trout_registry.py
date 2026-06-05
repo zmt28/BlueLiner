@@ -297,6 +297,24 @@ def test_co_multilayer_tiers_and_native():
     assert reg.is_native(co, by_id[3]) is False   # Sportfish
 
 
+def test_refine_tier_size_ladder():
+    r = reg.refine_tier
+    # gold: DESIGNATED premier-wild (base class1) on a named river, order >= 4
+    assert r("class1", True, "Penns Creek", 5) == "gold"
+    assert r("class1", True, "Penns Creek", 4) == "gold"     # at the gold threshold
+    assert r("class1", True, "Spring Creek", 3) == "class1"  # < 4 -> stays class1
+    # size promotion: generic wild (base class2) on a named river, order >= 3
+    assert r("class2", True, "Big Wild River", 3) == "class1"
+    assert r("class2", True, "Big Wild River", 5) == "class1"  # promoted, NOT gold
+    assert r("class2", True, "Small Brook", 2) == "class2"     # < 3 -> stays class2
+    # guards: unnamed / not-wild / no-order / stocked tiers unchanged
+    assert r("class2", True, None, 6) == "class2"           # unnamed
+    assert r("class1", False, "Big River", 6) == "class1"   # not wild
+    assert r("class2", True, "Big River", None) == "class2"  # no order
+    assert r("class3", True, "Big River", 6) == "class3"    # stocked tier untouched
+    assert r("gold", True, "Big River", 6) == "gold"        # already gold
+
+
 def test_ct_is_two_ordered_sources_wild_first():
     ct = [s for s in ALL_SOURCES if s["state"] == "CT"]
     assert [s["label"] for s in ct] == ["CT (WTMA)", "CT (stocked)"]  # wild claims first
