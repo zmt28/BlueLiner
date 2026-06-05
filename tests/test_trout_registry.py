@@ -297,6 +297,18 @@ def test_co_multilayer_tiers_and_native():
     assert reg.is_native(co, by_id[3]) is False   # Sportfish
 
 
+def test_eastern_gold_upgrade():
+    g = reg.eastern_gold_tier
+    assert g("class1", True, "Penns Creek", 5) == "gold"    # premier wild, named, big
+    assert g("class1", True, "Penns Creek", 4) == "gold"    # at the threshold
+    assert g("class1", True, "Spring Creek", 3) == "class1"  # too small
+    assert g("class1", True, None, 6) == "class1"           # unnamed reach
+    assert g("class1", False, "Big River", 6) == "class1"   # not wild
+    assert g("class2", True, "Big River", 6) == "class2"    # not premier tier
+    assert g("gold", True, "Big River", 6) == "gold"        # already gold
+    assert g("class1", True, "Big River", None) == "class1"  # no stream order
+
+
 def test_ct_is_two_ordered_sources_wild_first():
     ct = [s for s in ALL_SOURCES if s["state"] == "CT"]
     assert [s["label"] for s in ct] == ["CT (WTMA)", "CT (stocked)"]  # wild claims first

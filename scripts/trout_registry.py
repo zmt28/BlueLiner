@@ -176,6 +176,19 @@ def is_native(source: dict, layer: dict | None = None) -> bool:
     return bool(source.get("native", False))
 
 
+def eastern_gold_tier(tier, is_wild, gnis_name, streamorder, min_order: int = 4):
+    """Rubric §5.1(ii): upgrade a premier-wild reach to `gold` -- the eastern
+    fallback so the East isn't shut out of the top tier. A reach already `class1`
+    (top wild class) that is wild, on a NAMED river (`gnis_name`) of stream order
+    >= min_order becomes `gold`; otherwise the tier is unchanged. Pure -- the
+    build calls it per reach with the NHDPlus gnis_name/streamorder it carries.
+    `min_order` is the tunable calibration knob (see the rubric)."""
+    if (tier == "class1" and is_wild and gnis_name
+            and streamorder is not None and streamorder >= min_order):
+        return "gold"
+    return tier
+
+
 def classify_fields(source: dict) -> list[str]:
     """The attribute fields a multi-bucket source classifies on (for the
     'field absent -> skip the state' guard in the builder)."""

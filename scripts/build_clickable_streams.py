@@ -14,10 +14,14 @@ topology pass is output-identical and is what lets the build stream one VPU at
 a time -- see main().)
 
 Each feature carries:
-    comid, levelpathid, gnis_name, streamorder, lengthkm, trout_class
+    comid, levelpathid, gnis_name, streamorder, lengthkm,
+    trout_class, tier, is_wild, is_native
 
 trout_class is one of:
     wild_reproduction, class_a, wilderness, stocked, designated, null
+tier (the nationwide quality axis) is one of: gold, class1, class2, class3, null
+is_wild / is_native are booleans (the two filters). See trout_registry +
+docs/trout-tier-normalization-rubric.md.
 
 Dev dependencies (NOT in runtime requirements.txt):
     pip install dbfread py7zr httpx geopandas shapely
@@ -399,27 +403,33 @@ def load_seed(rel_path: str) -> tuple[str, set[int]] | None:
     return seed["trout_class"], comids
 
 
-def _split_by_bucket(gdf: gpd.GeoDataFrame,
-                     source: dict) -> dict[str, gpd.GeoDataFrame]:
-    """Tag each feature with its trout_class via trout_registry.row_bucket, then
-    group into {class: gdf}. Rows the registry maps to None are dropped on the
-    groupby -- matching the old per-state map/groupby behaviour."""
-    gdf = gdf.copy()
-    gdf["_cls"] = [trout_registry.row_bucket(source, dict(row))
-                   for _, row in gdf.iterrows()]
-    out: dict[str, gpd.GeoDataFrame] = {}
-    for cls_name, sub in gdf.groupby("_cls"):
-        out[cls_name] = sub.drop(columns="_cls")
-        print(f"  {cls_name}: {len(sub)} features")
+def _split_by_value(gdf: gpd.GeoDataFrame,
+                    source: dict) -> list[tuple[tuple, gpd.GeoDataFrame]]:
+    """Tag each feature with its (trout_class, tier, native) via the registry,
+    then group into [((cls, tier, native), gdf), ...]. Rows the registry maps to
+    no class are dropped -- matching the old per-state map/groupby behaviour."""
+    native = trout_registry.is_native(source)
+    groups: dict[tuple, list] = {}
+    for idx, row in gdf.iterrows():
+        rd = dict(row)
+        cls = trout_registry.row_bucket(source, rd)
+        if not cls:
+            continue
+        key = (cls, trout_registry.row_tier(source, rd), native)
+        groups.setdefault(key, []).append(idx)
+    out = []
+    for key, idxs in groups.items():
+        out.append((key, gdf.loc[idxs]))
+        print(f"  {key}: {len(idxs)} features")
     return out
 
 
-def fetch_trout_source(source: dict) -> dict[str, gpd.GeoDataFrame]:
-    """Fetch one registry source -> {trout_class: GeoDataFrame}, handling every
-    mode. Raises on transport error so the caller's fetch_source marks the state
-    unreachable (and may then fall back to a committed seed)."""
+def fetch_trout_source(source: dict) -> list[tuple[tuple, gpd.GeoDataFrame]]:
+    """Fetch one registry source -> [((trout_class, tier, native), GeoDataFrame),
+    ...], handling every mode. Raises on transport error so the caller's
+    fetch_source marks the state unreachable (and may then fall back to a seed)."""
     if source["mode"] == "multi_layer":
-        out: dict[str, gpd.GeoDataFrame] = {}
+        out: list[tuple[tuple, gpd.GeoDataFrame]] = []
         for layer in source["layers"]:
             url = f"{source['base']}/{layer['id']}/query?where=1%3D1"
             print(f"[trout] {source['state']} {layer['label']} "
@@ -430,35 +440,40 @@ def fetch_trout_source(source: dict) -> dict[str, gpd.GeoDataFrame]:
                 continue
             gdf = gpd.GeoDataFrame.from_features(feats, crs="EPSG:4326")
             print(f"  {len(gdf)} features")
-            out[layer["class"]] = gdf
+            key = (layer["class"], trout_registry.layer_tier(layer),
+                   trout_registry.is_native(source, layer))
+            out.append((key, gdf))
         return out
 
     print(f"[trout] {source['label']} ...")
     feats = fetch_arcgis_features(source["url"])
     if not feats:
         print("  WARNING: no features returned")
-        return {}
+        return []
     gdf = gpd.GeoDataFrame.from_features(feats, crs="EPSG:4326")
     print(f"  {len(gdf)} features")
 
     if source["mode"] == "single":
-        return {source["class"]: gdf}
+        key = (source["class"], trout_registry.row_tier(source, {}),
+               trout_registry.is_native(source))
+        return [(key, gdf)]
 
     needed = trout_registry.classify_fields(source)
     if needed and not any(f in gdf.columns for f in needed):
         print(f"  WARNING: classify field(s) {needed} absent; "
               f"skipping {source['state']}")
-        return {}
-    return _split_by_bucket(gdf, source)
+        return []
+    return _split_by_value(gdf, source)
 
 
 # ──────────────────────── Join trout to NHD COMIDs ────────────────────────
 
 def spatial_join_trout(trout_gdf: gpd.GeoDataFrame,
                        nhd_gdf: gpd.GeoDataFrame,
-                       trout_class: str,
-                       all_attrs: dict[int, dict]) -> dict[int, str]:
-    """Spatial join: buffer trout lines and find overlapping NHD COMIDs."""
+                       value,
+                       all_attrs: dict[int, dict]) -> dict:
+    """Spatial join: buffer trout lines and find overlapping NHD COMIDs, each
+    mapped to `value` (a (trout_class, tier, native) key)."""
     import warnings
     id_col = next(c for c in nhd_gdf.columns if c.lower() == "comid")
     nhd_sub = nhd_gdf[[id_col, "geometry"]].copy()
@@ -472,8 +487,7 @@ def spatial_join_trout(trout_gdf: gpd.GeoDataFrame,
 
     joined = gpd.sjoin(nhd_sub, trout_buf, how="inner", predicate="intersects")
     comids = set(int(c) for c in joined[id_col].unique() if c is not None)
-    out = {c: trout_class for c in comids if c in all_attrs}
-    return out
+    return {c: value for c in comids if c in all_attrs}
 
 
 def _bbox_overlap(a, b) -> bool:
@@ -487,8 +501,9 @@ def _bbox_overlap(a, b) -> bool:
 # ──────────────────────── Feature assembly ────────────────────────
 
 def build_feature(comid: int, row, gnis_col: str | None,
-                  attrs: dict, trout_class: str | None) -> dict | None:
-    """Build a single GeoJSON feature dict."""
+                  attrs: dict, trout: tuple | None) -> dict | None:
+    """Build a single GeoJSON feature dict. `trout` is the (trout_class, tier,
+    native) key for this COMID, or None for an untagged (order-only) reach."""
     a = attrs.get(comid)
     if not a:
         return None
@@ -509,6 +524,11 @@ def build_feature(comid: int, row, gnis_col: str | None,
         s = str(raw).strip()
         if s and s.lower() != "nan":
             name = s
+    order = int(a["streamorder"]) if a["streamorder"] else None
+    cls, tier, native = trout if trout else (None, None, False)
+    is_wild = trout_registry.class_is_wild(cls) if cls else False
+    # Eastern-gold upgrade: premier-wild (class1) on a named river, order >= 4.
+    tier = trout_registry.eastern_gold_tier(tier, is_wild, name, order)
     return {
         "type": "Feature",
         "geometry": shapely.geometry.mapping(geom),
@@ -516,9 +536,12 @@ def build_feature(comid: int, row, gnis_col: str | None,
             "comid": comid,
             "levelpathid": a["levelpathid"],
             "gnis_name": name,
-            "streamorder": int(a["streamorder"]) if a["streamorder"] else None,
+            "streamorder": order,
             "lengthkm": a["lengthkm"],
-            "trout_class": trout_class,
+            "trout_class": cls,
+            "tier": tier,
+            "is_wild": is_wild,
+            "is_native": bool(native),
         },
     }
 
@@ -687,6 +710,7 @@ def main(argv: list[str] | None = None) -> int:
     print("\n── Building (VPU-streaming) ──")
     resolved: dict[str, dict] = {}   # region id -> {snap, attr} (provenance)
     by_class: dict[str, int] = defaultdict(int)
+    by_tier: dict[str, int] = defaultdict(int)   # post eastern-gold (calibration)
     val_names = set(PA_WILD_TROUT_VALIDATION)
     name_to_comids: dict[str, set[int]] = defaultdict(set)
     val_clickable: set[int] = set()  # val-name COMIDs that were emitted
@@ -709,22 +733,24 @@ def main(argv: list[str] | None = None) -> int:
 
             # Trout joins for this region only (bbox-gated for speed).
             rbounds = tuple(gdf.total_bounds)
-            region_trout: dict[int, str] = {}
+            region_trout: dict[int, tuple] = {}
             # Bundled MD seed first (highest precedence, == live MD order): tag
             # the seed COMIDs that fall in this region. Membership in `attrs`
             # confines them to their own VPU, mirroring the live spatial join.
             if md_seed:
                 seed_cls, seed_comids = md_seed
+                seed_val = (seed_cls,
+                            trout_registry.FALLBACK_CLASS_TIER.get(seed_cls), False)
                 for c in seed_comids:
                     if c in attrs:
-                        region_trout.setdefault(c, seed_cls)
-            for cls, tgdf, tbounds in trout_sources:
+                        region_trout.setdefault(c, seed_val)
+            for value, tgdf, tbounds in trout_sources:
                 if not _bbox_overlap(rbounds, tbounds):
                     continue
-                for c, k in spatial_join_trout(tgdf, gdf, cls, attrs).items():
+                for c, k in spatial_join_trout(tgdf, gdf, value, attrs).items():
                     region_trout.setdefault(c, k)
-            for cls in region_trout.values():
-                by_class[cls] += 1
+            for v in region_trout.values():
+                by_class[v[0]] += 1
 
             seen: set[int] = set()  # dedup within region (COMIDs unique per VPU)
             emitted_here = 0
@@ -748,6 +774,9 @@ def main(argv: list[str] | None = None) -> int:
                 feat = build_feature(comid, row, gnis_col, attrs, trout)
                 if not feat:
                     continue
+                ftier = feat["properties"]["tier"]
+                if ftier:
+                    by_tier[ftier] += 1
                 seg = ("," if n_feats else "") + json.dumps(
                     feat, separators=(",", ":"))
                 out.write(seg)
@@ -772,6 +801,11 @@ def main(argv: list[str] | None = None) -> int:
           f"({size / 1e6:.1f} MB gz, ~{raw_bytes / 1e6:.1f} MB raw)")
     for cls, n in sorted(by_class.items()):
         print(f"  {cls}: {n:,}")
+    print("  tiers (post eastern-gold):")
+    _tier_total = sum(by_tier.values()) or 1
+    for t in ("gold", "class1", "class2", "class3"):
+        n = by_tier.get(t, 0)
+        print(f"    {t}: {n:,} ({100 * n / _tier_total:.1f}% of tagged)")
 
     # ── Step 3: PA validation (data collected during the emit loop) ──
     validate_pa_coverage(val_clickable, val_trout, name_to_comids)
