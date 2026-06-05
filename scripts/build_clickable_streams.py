@@ -672,9 +672,9 @@ def main(argv: list[str] | None = None) -> int:
         label = source.get("label", source["state"])
         result = fetch_source(label, lambda s=source: fetch_trout_source(s))
         if result:
-            for cls, g in result.items():
+            for key, g in result:
                 if len(g):
-                    trout_sources.append((cls, g, tuple(g.total_bounds)))
+                    trout_sources.append((key, g, tuple(g.total_bounds)))
         elif source.get("seed") and trout_status.get(label) == "unreachable":
             seed = load_seed(source["seed"])
             if seed:
