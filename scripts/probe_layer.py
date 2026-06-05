@@ -42,9 +42,11 @@ def _get(client: httpx.Client, url: str, params: dict) -> dict | None:
     return None
 
 
-def _dump_item(client: httpx.Client, item_id: str) -> int:
+def _dump_item(client: httpx.Client, item_id: str, _depth: int = 0) -> int:
     """AGOL item -> its service URL (feature-layer items) and/or operational
-    layer titles + URLs (webmaps)."""
+    layer titles + URLs (webmaps). Web Mapping Applications reference a webmap
+    rather than carrying layers directly, so follow that one hop to reach the
+    backing feature services."""
     base = f"https://www.arcgis.com/sharing/rest/content/items/{item_id}"
     root = _get(client, base, {"f": "json"})
     if root:
@@ -57,6 +59,13 @@ def _dump_item(client: httpx.Client, item_id: str) -> int:
         print("  operational layers:")
         for lyr in oplayers:
             print(f"    {lyr.get('title')!r} -> {lyr.get('url')}")
+    # Web Mapping Application / Dashboard -> hop to the referenced web map.
+    if not oplayers and (data or {}) and _depth < 2:
+        ref = ((data.get("map") or {}).get("itemId")
+               or data.get("mapItemId") or data.get("webmap"))
+        if ref and re.fullmatch(r"[0-9a-fA-F]{32}", str(ref)):
+            print(f"  -> follows web map {ref}")
+            return _dump_item(client, ref, _depth + 1)
     return 0 if (root or data) else 1
 
 
