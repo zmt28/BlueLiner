@@ -185,8 +185,9 @@ export function setStockedVisible(on: boolean): void {
   _applyStockedVisibility();
 }
 
-/** Called by streams.ts setStreamStyle -- the Stocked style force-shows the
- *  layer regardless of the toggle. */
+/** Force-shows the stocked-waters layer regardless of the toggle. (Previously
+ *  driven by the retired "Stocked" map-style; retained for callers that want to
+ *  force the layer on.) */
 export function setStockedStyleActive(on: boolean): void {
   _stockedStyleActive = on;
   _applyStockedVisibility();
