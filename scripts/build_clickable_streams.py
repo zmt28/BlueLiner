@@ -482,7 +482,10 @@ def spatial_join_trout(trout_gdf: gpd.GeoDataFrame,
     nhd_sub = nhd_gdf[[id_col, "geometry"]].copy()
     nhd_sub = nhd_sub[~nhd_sub.geometry.isna() & ~nhd_sub.geometry.is_empty]
 
-    trout_buf = trout_gdf.copy()
+    # Keep only geometry: we return NHD-side COMIDs, so trout attributes are
+    # unused here -- and dropping them avoids gpd.sjoin suffixing a colliding
+    # column (e.g. the Gila source's own `ComID`) that would shadow id_col.
+    trout_buf = trout_gdf[["geometry"]].copy()
     with warnings.catch_warnings():
         warnings.simplefilter("ignore", UserWarning)
         trout_buf["geometry"] = trout_buf.geometry.buffer(SPATIAL_JOIN_BUFFER_DEG)
