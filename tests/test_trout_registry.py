@@ -335,8 +335,51 @@ def test_ebtjv_native_overlay_field_map():
     # missing field drops too (guards the build's classify-field check)
     assert reg.row_bucket(e, {}) is None
     assert reg.classify_fields(e) == ["Trout_community"]
-    # appended last so state sources keep trout_class/tier precedence
-    assert ALL_SOURCES[-1]["state"] == "EBTJV"
+    # EBTJV and the western cutthroat overlays trail the state sources, so every
+    # state source keeps trout_class/tier precedence (is_native OR-merges).
+    states = [s["state"] for s in ALL_SOURCES]
+    i = states.index("EBTJV")
+    assert all(s.get("native") for s in ALL_SOURCES[i:])
+
+
+def test_western_cutthroat_native_overlays():
+    # Occupied/conservation-population cutthroat layers -> whole layer is native
+    # + self-sustaining wild (the cutthroat analog of NV Lahontan). Distinct,
+    # non-colliding source codes so they don't shadow the WY/UT Blue Ribbon
+    # tier-gold sources.
+    for code in ("UTCT", "YCT", "RGCT", "BCT"):
+        s = SOURCES[code]
+        assert s["mode"] == "single"
+        assert reg.row_bucket(s, {}) == "wild_reproduction"
+        assert reg.is_native(s) is True
+        assert reg.class_is_wild(reg.row_bucket(s, {}))
+    # the pre-existing UT Blue Ribbon (tier gold) is not shadowed
+    assert reg.row_tier(SOURCES["UT"], {}) == "gold"
+
+
+def test_gila_and_redband_native_overlays():
+    # Gila trout: field_map on Status2017 keeps current/restored native
+    # populations, drops eliminated/potential reaches.
+    g = SOURCES["GILA"]
+    assert g["mode"] == "field_map" and reg.is_native(g) is True
+    assert reg.row_bucket(g, {"Status2017": "Current population"}) == "wild_reproduction"
+    assert reg.row_bucket(g, {"Status2017": "Recently restored"}) == "wild_reproduction"
+    assert reg.row_bucket(g, {"Status2017": "Eliminated"}) is None
+    assert reg.row_bucket(g, {"Status2017": "Potential Recovery Stream"}) is None
+    assert reg.classify_fields(g) == ["Status2017"]
+
+
+def test_psmfc_streamnet_native_overlays():
+    # PSMFC StreamNet per-species distribution layers -> whole-layer native +
+    # self-sustaining wild (Westslope cutthroat, bull trout char, redband).
+    for code in ("WCT", "BULL", "RBT"):
+        s = SOURCES[code]
+        assert s["mode"] == "single"
+        assert reg.row_bucket(s, {}) == "wild_reproduction"
+        assert reg.is_native(s) is True
+    # bull trout + redband exclude historical reaches server-side (current only)
+    assert "Historical" in SOURCES["BULL"]["url"]
+    assert "Historical" in SOURCES["RBT"]["url"]
 
 
 def test_ct_is_two_ordered_sources_wild_first():
