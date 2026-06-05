@@ -315,6 +315,30 @@ def test_refine_tier_size_ladder():
     assert r("gold", True, "Big River", 6) == "gold"        # already gold
 
 
+def test_ebtjv_native_overlay_field_map():
+    # Range-wide eastern brook trout native overlay (TU/EBTJV portfolio):
+    # brook-trout-present catchments -> wild_reproduction + is_native; everything
+    # else (no brook trout / non-native-only / species-unspecified) drops.
+    e = SOURCES["EBTJV"]
+    assert e["mode"] == "field_map" and e["field"] == "Trout_community"
+    assert reg.is_native(e) is True
+    for present in ("Allopatric", "Allopatric EBT", "Sympatric",
+                    "Sympatric EBT & BNT", "Sympatric EBT & RBT",
+                    "Sympatric EBT, BNT, & RBT"):
+        assert reg.row_bucket(e, {"Trout_community": present}) == "wild_reproduction"
+        # tier falls back from wild_reproduction -> class2 (generic wild)
+        assert reg.row_tier(e, {"Trout_community": present}) == "class2"
+    for absent in ("No brook trout", "No trout", "No trout documented",
+                   "Brown trout only", "Rainbow trout only",
+                   "Brown & rainbow trout only", "Wild trout"):
+        assert reg.row_bucket(e, {"Trout_community": absent}) is None
+    # missing field drops too (guards the build's classify-field check)
+    assert reg.row_bucket(e, {}) is None
+    assert reg.classify_fields(e) == ["Trout_community"]
+    # appended last so state sources keep trout_class/tier precedence
+    assert ALL_SOURCES[-1]["state"] == "EBTJV"
+
+
 def test_ct_is_two_ordered_sources_wild_first():
     ct = [s for s in ALL_SOURCES if s["state"] == "CT"]
     assert [s["label"] for s in ct] == ["CT (WTMA)", "CT (stocked)"]  # wild claims first
