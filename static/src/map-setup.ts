@@ -6,7 +6,10 @@
  *   - the singleton MapLibre map instance (`map`)
  *   - the three raster base providers (CARTO Light / Esri Satellite /
  *     USGS Topographic) + the USGS Hydro Cached raster overlay, all as
- *     raster sources/layers
+ *     raster sources/layers, plus an optional self-hosted *vector* base
+ *     (Protomaps PMTiles, see basemap.ts) that appears only when
+ *     VITE_BASEMAP_TILES_URL is configured — the same file a mobile build
+ *     bundles for offline use
  *   - active base-map state + bl_basemap localStorage persistence
  *   - a "map ready" gate (onMapReady / mapReady) — MapLibre rejects
  *     addSource/addLayer/setData before the style `load` fires, so every
@@ -15,10 +18,11 @@
  *     `_blRiver` layer property for river-line click resolution
  *   - getGeoJSON(id): typed GeoJSONSource accessor for setData callers
  *
- * Base-map switching swaps ONLY the `base` source/layer (re-inserted
- * below the `hydro` layer). We never call map.setStyle, so overlay
- * sources, their data, and feature-state survive a base change — no
- * style.load re-attach dance needed.
+ * Base-map switching swaps ONLY the `base` source and its layer(s) —
+ * one raster layer, or the vector base's theme stack — re-inserted below
+ * the `hydro` layer. We never call map.setStyle, so overlay sources,
+ * their data, and feature-state survive a base change — no style.load
+ * re-attach dance needed.
  *
  * Coordinate order: MapLibre is [lng, lat]. All coordinates flow through
  * helpers in coords.ts.
@@ -30,10 +34,23 @@ import maplibregl, {
   RasterSourceSpecification,
   StyleSpecification,
 } from "maplibre-gl";
+import { BASEMAP_TILES_ENABLED, BASEMAP_TILES_URL } from "./config";
+import { basemapLayers, BASEMAP_GLYPHS, BASEMAP_SPRITE } from "./basemap";
+import { ensurePmtilesProtocol } from "./tiles";
 
-type BaseMapKey = "street" | "satellite" | "topo";
+// The three raster bases plus an optional vector base. The vector base is a
+// self-hosted Protomaps PMTiles archive (the same file a mobile build bundles
+// for offline use); it only appears when VITE_BASEMAP_TILES_URL is configured.
+const RASTER_KEYS = ["street", "satellite", "topo"] as const;
+type RasterBaseKey = (typeof RASTER_KEYS)[number];
+type BaseMapKey = RasterBaseKey | "vector";
 
-const BASES: Record<BaseMapKey, RasterSourceSpecification> = {
+function isValidBase(k: string): k is BaseMapKey {
+  if (k === "vector") return BASEMAP_TILES_ENABLED;
+  return (RASTER_KEYS as readonly string[]).includes(k);
+}
+
+const BASES: Record<RasterBaseKey, RasterSourceSpecification> = {
   street: {
     type: "raster",
     tiles: [
@@ -79,7 +96,7 @@ const HYDRO: RasterSourceSpecification = {
 function loadBaseMapPref(): BaseMapKey {
   try {
     const v = localStorage.getItem("bl_basemap");
-    return v && v in BASES ? (v as BaseMapKey) : "street";
+    return v && isValidBase(v) ? v : "street";
   } catch (_) {
     return "street";
   }
@@ -89,11 +106,15 @@ let _currentBaseKey: BaseMapKey = loadBaseMapPref();
 
 // Empty style at construction; base/hydro (and module overlays) are added
 // on the `load` event, where addSource/addLayer are legal.
+// Glyphs + sprite point at the Protomaps basemap assets so the vector base's
+// labels have fonts. They're harmless when the base stays raster (nothing
+// renders text then); for offline these get bundled on-device.
 const EMPTY_STYLE: StyleSpecification = {
   version: 8,
   sources: {},
   layers: [],
-  glyphs: "https://demotiles.maplibre.org/font/{fontstack}/{range}.pbf",
+  glyphs: BASEMAP_GLYPHS,
+  sprite: BASEMAP_SPRITE,
 };
 
 export const map: MaplibreMap = new maplibregl.Map({
@@ -118,12 +139,38 @@ export function getGeoJSON(id: string): GeoJSONSource | null {
 
 // -- Base + hydro wiring ---------------------------------------------
 
+// The layer ids currently making up the base, in stack order. Raster bases
+// are a single "base" layer; the vector base is the Protomaps theme stack.
+// Tracked so a base swap removes exactly what it added.
+let _baseLayerIds: string[] = [];
+
 function addBaseLayer(key: BaseMapKey): void {
-  map.addSource("base", BASES[key]);
   // Insert below hydro if it exists, so the base always sits at the
-  // bottom of the stack.
+  // bottom of the stack. Each vector layer is inserted before hydro too,
+  // which preserves their relative order (earth → water → roads → labels).
   const before = map.getLayer("hydro") ? "hydro" : undefined;
+  if (key === "vector") {
+    ensurePmtilesProtocol();
+    map.addSource("base", {
+      type: "vector",
+      url: `pmtiles://${BASEMAP_TILES_URL}`,
+    });
+    const layers = basemapLayers("base");
+    for (const layer of layers) map.addLayer(layer, before);
+    _baseLayerIds = layers.map((l) => l.id);
+    return;
+  }
+  map.addSource("base", BASES[key]);
   map.addLayer({ id: "base", type: "raster", source: "base" }, before);
+  _baseLayerIds = ["base"];
+}
+
+function removeBaseLayers(): void {
+  for (const id of _baseLayerIds) {
+    if (map.getLayer(id)) map.removeLayer(id);
+  }
+  if (map.getSource("base")) map.removeSource("base");
+  _baseLayerIds = [];
 }
 
 function addHydroLayer(): void {
@@ -138,10 +185,9 @@ function addHydroLayer(): void {
 }
 
 export function setBaseMap(key: BaseMapKey): void {
-  if (!BASES[key] || key === _currentBaseKey) return;
+  if (!isValidBase(key) || key === _currentBaseKey) return;
   _currentBaseKey = key;
-  if (map.getLayer("base")) map.removeLayer("base");
-  if (map.getSource("base")) map.removeSource("base");
+  removeBaseLayers();
   addBaseLayer(key); // re-inserted below hydro, overlays untouched
   try {
     localStorage.setItem("bl_basemap", key);

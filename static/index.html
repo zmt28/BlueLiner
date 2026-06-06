@@ -253,6 +253,25 @@
                                 </span>
                                 <span class="layer-tile-radio"><span class="layer-tile-radio-dot"></span></span>
                             </button>
+                            <!-- Vector base: shown only when VITE_BASEMAP_TILES_URL is set
+                                 (controls.ts hides it otherwise). Self-hosted Protomaps
+                                 PMTiles — the same file a mobile build uses offline. -->
+                            <button type="button" class="layer-tile" data-base="vector" hidden>
+                                <span class="layer-tile-thumb">
+                                    <svg viewBox="0 0 68 68" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+                                        <rect width="68" height="68" fill="#F6F4EE" />
+                                        <path d="M -2 44 Q 16 40 30 46 T 70 42 L 70 70 L -2 70 Z" fill="#A9CCE3" />
+                                        <path d="M 8 8 Q 22 10 30 6 T 60 4" stroke="#DDD5C2" stroke-width="2" fill="none" stroke-linecap="round" />
+                                        <path d="M 4 24 Q 20 22 32 26 T 64 22" stroke="#ECE7DA" stroke-width="1.4" fill="none" stroke-linecap="round" />
+                                        <circle cx="44" cy="30" r="2.2" fill="#5A5546" />
+                                    </svg>
+                                </span>
+                                <span class="layer-tile-content">
+                                    <span class="layer-tile-title">Vector</span>
+                                    <span class="layer-tile-desc">Crisp, offline-ready vector basemap (Protomaps).</span>
+                                </span>
+                                <span class="layer-tile-radio"><span class="layer-tile-radio-dot"></span></span>
+                            </button>
                         </div>
                     </section>
                     <section class="panel-section">
