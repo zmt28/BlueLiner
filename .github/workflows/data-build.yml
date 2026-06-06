@@ -110,6 +110,7 @@ jobs:
               print(f"  {t}: {n:,} ({100 * n / tot:.2f}%)")
           print("  classes:", m.get("trout_class_counts"))
           print("  native reaches (is_native):", m.get("trout_native_count"))
+          print("  native by source:", m.get("trout_native_by_source"))
           PY
 
       - name: Publish to R2

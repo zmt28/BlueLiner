@@ -235,7 +235,7 @@ def read_region_gdf(shp: str) -> gpd.GeoDataFrame:
 def write_manifest(path: str, region_ids: list[str], resolved: dict,
                    feature_count: int, trout_class_counts: dict,
                    trout_status: dict, tier_counts: dict | None = None,
-                   native_count: int = 0) -> None:
+                   native_count: int = 0, native_by_source: dict | None = None) -> None:
     """Provenance sidecar for a built artifact: which regions, which exact NHD
     archive vintages were resolved (so a release is reproducible / auditable),
     the feature count, the trout-class + tier histograms, and which state trout
@@ -252,6 +252,7 @@ def write_manifest(path: str, region_ids: list[str], resolved: dict,
         "trout_class_counts": dict(sorted(trout_class_counts.items())),
         "trout_tier_counts": dict(sorted((tier_counts or {}).items())),
         "trout_native_count": native_count,
+        "trout_native_by_source": dict(sorted((native_by_source or {}).items())),
         "trout_sources": dict(sorted(trout_status.items())),
         "archives": resolved,  # {region_id: {snap: url, attr: url}}
     }
@@ -697,7 +698,7 @@ def main(argv: list[str] | None = None) -> int:
         if result:
             for key, g in result:
                 if len(g):
-                    trout_sources.append((key, g, tuple(g.total_bounds)))
+                    trout_sources.append((label, key, g, tuple(g.total_bounds)))
         elif source.get("seed") and trout_status.get(label) == "unreachable":
             seed = load_seed(source["seed"])
             if seed:
@@ -743,6 +744,7 @@ def main(argv: list[str] | None = None) -> int:
     by_class: dict[str, int] = defaultdict(int)
     by_tier: dict[str, int] = defaultdict(int)   # post eastern-gold (calibration)
     native_count = 0                             # emitted reaches with is_native
+    native_by_source: dict[str, int] = defaultdict(int)  # native COMIDs per source
     val_names = set(PA_WILD_TROUT_VALIDATION)
     name_to_comids: dict[str, set[int]] = defaultdict(set)
     val_clickable: set[int] = set()  # val-name COMIDs that were emitted
@@ -780,14 +782,15 @@ def main(argv: list[str] | None = None) -> int:
             # class/tier are first-writer-wins (state precedence); the native flag
             # is OR-merged across sources so a native overlay (e.g. TU brook trout)
             # enriches a state-claimed reach instead of being dropped on collision.
-            for value, tgdf, tbounds in trout_sources:
+            for label, value, tgdf, tbounds in trout_sources:
                 if not _bbox_overlap(rbounds, tbounds):
                     continue
                 cls, tier, nat = value
                 for c in spatial_join_trout(tgdf, gdf, attrs):
                     region_trout.setdefault(c, (cls, tier))
-                    if nat:
+                    if nat and c not in region_native:
                         region_native.add(c)
+                        native_by_source[label] += 1
             for cls, _tier in region_trout.values():
                 by_class[cls] += 1
 
@@ -857,7 +860,7 @@ def main(argv: list[str] | None = None) -> int:
     if args.manifest:
         write_manifest(args.manifest, [r["id"] for r in regions], resolved,
                        n_feats, dict(by_class), trout_status, dict(by_tier),
-                       native_count)
+                       native_count, dict(native_by_source))
         print(f"[manifest] wrote {args.manifest}")
     return 0
 
