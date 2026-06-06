@@ -321,8 +321,14 @@ def _strip_z(coords):
     return list(coords[:2])  # leaf position -> [x, y]
 
 
-def fetch_arcgis_features(query_url: str, page_size: int = 1000) -> list[dict]:
-    """Paginate an ArcGIS query endpoint via OBJECTID keyset."""
+def fetch_arcgis_features(query_url: str, page_size: int = 1000,
+                          geom_offset: float | None = None) -> list[dict]:
+    """Paginate an ArcGIS query endpoint via OBJECTID keyset. `geom_offset`
+    (in outSR units = degrees) sets maxAllowableOffset so the server returns
+    generalized geometry -- shrinks the payload for heavy/complex polygon layers
+    (e.g. CO's native-conservation waters) that otherwise serialize too slowly
+    and trip the per-request read timeout. Harmless here: these polygons are
+    buffered ~100 m and only used to intersect flowlines."""
     from urllib.parse import urlsplit, parse_qs
     split = urlsplit(query_url)
     base = f"{split.scheme}://{split.netloc}{split.path}"
@@ -338,6 +344,8 @@ def fetch_arcgis_features(query_url: str, page_size: int = 1000) -> list[dict]:
         "outFields": src.get("outFields", "*"),
         "resultRecordCount": str(page_size),
     }
+    if geom_offset:
+        common["maxAllowableOffset"] = str(geom_offset)
     features: list[dict] = []
     deadline = time.monotonic() + TOTAL_BUDGET
     with httpx.Client(timeout=REQUEST_TIMEOUT,
@@ -439,13 +447,15 @@ def fetch_trout_source(source: dict) -> list[tuple[tuple, gpd.GeoDataFrame]]:
     pages respond within the timeout and the source fetches reliably, without
     touching the global timeout/budget."""
     page_size = source.get("page_size", 1000)
+    geom_offset = source.get("geom_offset")
     if source["mode"] == "multi_layer":
         out: list[tuple[tuple, gpd.GeoDataFrame]] = []
         for layer in source["layers"]:
             url = f"{source['base']}/{layer['id']}/query?where=1%3D1"
             print(f"[trout] {source['state']} {layer['label']} "
                   f"(layer {layer['id']}) ...")
-            feats = fetch_arcgis_features(url, page_size=page_size)
+            feats = fetch_arcgis_features(url, page_size=page_size,
+                                          geom_offset=geom_offset)
             if not feats:
                 print(f"  WARNING: no features for layer {layer['id']}")
                 continue
@@ -457,7 +467,8 @@ def fetch_trout_source(source: dict) -> list[tuple[tuple, gpd.GeoDataFrame]]:
         return out
 
     print(f"[trout] {source['label']} ...")
-    feats = fetch_arcgis_features(source["url"], page_size=page_size)
+    feats = fetch_arcgis_features(source["url"], page_size=page_size,
+                                  geom_offset=geom_offset)
     if not feats:
         print("  WARNING: no features returned")
         return []
