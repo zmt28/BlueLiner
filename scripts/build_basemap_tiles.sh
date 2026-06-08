@@ -60,23 +60,33 @@ THEME="${THEME:-light}"      # protomaps-themes-base theme: light|dark|white|bla
 LANG="${LANG_:-en}"
 SOURCE_NAME="protomaps"      # vector source id; must match in the generated style
 PMT_THEMES_VERSION="${PMT_THEMES_VERSION:-4.5.0}"
+# Style-only: skip the (slow) tile extract + asset fetch and re-publish ONLY
+# style.json. The theme lives entirely in style.json, so a color/theme change
+# is a ~30s round-trip instead of re-extracting the multi-GB pyramid. The
+# pmtiles + fonts + sprites already on R2 are reused unchanged.
+STYLE_ONLY="${STYLE_ONLY:-0}"
 
-: "${SOURCE_URL:?set SOURCE_URL to a Protomaps planet build, e.g. https://build.protomaps.com/YYYYMMDD.pmtiles}"
 : "${PUBLIC_BASE:?set PUBLIC_BASE to the public https base incl. version segment, e.g. https://data.blueliner.app/v5}"
-command -v pmtiles >/dev/null || { echo "pmtiles CLI not found (go-pmtiles)" >&2; exit 1; }
-command -v node    >/dev/null || { echo "node not found" >&2; exit 1; }
-command -v git     >/dev/null || { echo "git not found" >&2; exit 1; }
+command -v node >/dev/null || { echo "node not found" >&2; exit 1; }
 
 mkdir -p "$WORK"
 
-echo "==> extracting CONUS pyramid from $SOURCE_URL (range requests, not a full download)"
-# Verify flag names against `pmtiles extract --help` on your CLI version.
-pmtiles extract "$SOURCE_URL" "$OUT" --bbox="$BBOX" --maxzoom="$MAXZOOM"
-ls -lh "$OUT"
+if [ "$STYLE_ONLY" != "1" ]; then
+  : "${SOURCE_URL:?set SOURCE_URL to a Protomaps planet build, e.g. https://build.protomaps.com/YYYYMMDD.pmtiles}"
+  command -v pmtiles >/dev/null || { echo "pmtiles CLI not found (go-pmtiles)" >&2; exit 1; }
+  command -v git     >/dev/null || { echo "git not found" >&2; exit 1; }
 
-echo "==> fetching Protomaps fonts + sprites (basemaps-assets)"
-rm -rf "$ASSETS"
-git clone --depth 1 https://github.com/protomaps/basemaps-assets "$ASSETS"
+  echo "==> extracting CONUS pyramid from $SOURCE_URL (range requests, not a full download)"
+  # Verify flag names against `pmtiles extract --help` on your CLI version.
+  pmtiles extract "$SOURCE_URL" "$OUT" --bbox="$BBOX" --maxzoom="$MAXZOOM"
+  ls -lh "$OUT"
+
+  echo "==> fetching Protomaps fonts + sprites (basemaps-assets)"
+  rm -rf "$ASSETS"
+  git clone --depth 1 https://github.com/protomaps/basemaps-assets "$ASSETS"
+else
+  echo "==> STYLE_ONLY: skipping tile extract + asset fetch; re-publishing style.json only"
+fi
 
 echo "==> generating style.json (protomaps-themes-base@$PMT_THEMES_VERSION, theme=$THEME)"
 # Install into the scratch dir (no repo node_modules pollution) and point the
@@ -100,22 +110,27 @@ if [ "${1:-}" = "--upload" ]; then
   base="s3://$R2_BUCKET/$PREFIX"
   ep=(--endpoint-url "$R2_ENDPOINT")
 
-  echo "==> uploading basemap.pmtiles -> $base/basemap.pmtiles"
-  aws s3 cp "$OUT" "$base/basemap.pmtiles" "${ep[@]}" --content-type application/octet-stream
-
+  # style.json is always (re)published -- it's the only artifact a theme change
+  # touches. Cache-Control: no-cache so the corrected style isn't served stale
+  # from a browser/CDN cache after a re-publish to the same key.
   echo "==> uploading style.json"
-  aws s3 cp "$STYLE" "$base/basemap/style.json" "${ep[@]}" --content-type application/json
+  aws s3 cp "$STYLE" "$base/basemap/style.json" "${ep[@]}" \
+    --content-type application/json --cache-control "no-cache"
 
-  echo "==> uploading fonts (glyph .pbf)"
-  aws s3 cp "$ASSETS/fonts" "$base/basemap/fonts" --recursive "${ep[@]}" \
-    --content-type application/x-protobuf
+  if [ "$STYLE_ONLY" != "1" ]; then
+    echo "==> uploading basemap.pmtiles -> $base/basemap.pmtiles"
+    aws s3 cp "$OUT" "$base/basemap.pmtiles" "${ep[@]}" --content-type application/octet-stream
 
-  echo "==> uploading sprites (png + json, two passes for correct content-type)"
-  aws s3 cp "$ASSETS/sprites" "$base/basemap/sprites" --recursive "${ep[@]}" \
-    --exclude "*" --include "*.png" --content-type image/png
-  aws s3 cp "$ASSETS/sprites" "$base/basemap/sprites" --recursive "${ep[@]}" \
-    --exclude "*" --include "*.json" --content-type application/json
+    echo "==> uploading fonts (glyph .pbf)"
+    aws s3 cp "$ASSETS/fonts" "$base/basemap/fonts" --recursive "${ep[@]}" \
+      --content-type application/x-protobuf
 
-  echo "==> done. Confirm $PUBLIC_BASE/basemap.pmtiles returns 'Accept-Ranges: bytes',"
-  echo "    then set VITE_BASEMAP_TILES_URL=$PUBLIC_BASE/basemap.pmtiles and redeploy (Phase 1)."
+    echo "==> uploading sprites (png + json, two passes for correct content-type)"
+    aws s3 cp "$ASSETS/sprites" "$base/basemap/sprites" --recursive "${ep[@]}" \
+      --exclude "*" --include "*.png" --content-type image/png
+    aws s3 cp "$ASSETS/sprites" "$base/basemap/sprites" --recursive "${ep[@]}" \
+      --exclude "*" --include "*.json" --content-type application/json
+  fi
+
+  echo "==> done. Published to $base/basemap/ (style_only=$STYLE_ONLY)."
 fi

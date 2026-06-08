@@ -16,8 +16,8 @@ on:
   workflow_dispatch:
     inputs:
       source_url:
-        description: "Protomaps planet build URL (https://build.protomaps.com/YYYYMMDD.pmtiles)"
-        required: true
+        description: "Protomaps planet build URL (https://build.protomaps.com/YYYYMMDD.pmtiles). Not needed when style_only."
+        required: false
       public_base:
         description: "Public https base incl. version segment (e.g. https://data.blueliner.app/v5)"
         required: true
@@ -33,6 +33,10 @@ on:
         description: "protomaps theme: light | dark | white | black | grayscale"
         required: false
         default: "light"
+      style_only:
+        description: "Re-publish ONLY style.json (theme/color change) — skips the tile extract + asset fetch. Reuses the pmtiles/fonts/sprites already on R2."
+        type: boolean
+        default: false
       upload:
         description: "Publish artifacts to R2 (uncheck for a dry run)"
         type: boolean
@@ -76,6 +80,8 @@ jobs:
           AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
         run: |
+          export STYLE_ONLY=0
+          [ "${{ inputs.style_only }}" = "true" ] && export STYLE_ONLY=1
           if [ "${{ inputs.upload }}" = "true" ]; then
             scripts/build_basemap_tiles.sh --upload
           else
