@@ -24,9 +24,9 @@ import { writeFileSync } from "node:fs";
 // Resolve protomaps-themes-base from an explicit path when given (ESM ignores
 // NODE_PATH, so the build script installs it into a scratch dir and points here
 // via PMT_THEMES_PATH). Falls back to normal bare resolution for `npm i` setups.
-let layers;
+let layers, namedTheme;
 try {
-  ({ layers } = await import(process.env.PMT_THEMES_PATH || "protomaps-themes-base"));
+  ({ layers, namedTheme } = await import(process.env.PMT_THEMES_PATH || "protomaps-themes-base"));
 } catch (e) {
   console.error(
     "gen_basemap_style: cannot load protomaps-themes-base.\n" +
@@ -58,9 +58,12 @@ for (const [k, v] of Object.entries({ tiles, glyphs, sprite })) {
   }
 }
 
-// protomaps-themes-base 4.x: layers(sourceName, themeName, { lang }) returns the
-// full ordered layer stack already bound to `source: <sourceName>`. We supply
-// the matching vector source below.
+// protomaps-themes-base 4.x: layers(sourceName, theme, { lang }) returns the
+// full ordered layer stack bound to `source: <sourceName>`. `theme` MUST be a
+// resolved Theme object (namedTheme(name)) -- passing the bare name string
+// leaves every theme-derived paint color `undefined`, which MapLibre renders as
+// black. We supply the matching vector source below.
+const theme_ = namedTheme(theme);
 const style = {
   version: 8,
   name: `BlueLiner Basemap (Protomaps ${theme})`,
@@ -76,7 +79,7 @@ const style = {
       attribution: "© OpenStreetMap contributors",
     },
   },
-  layers: layers(source, theme, { lang }),
+  layers: layers(source, theme_, { lang }),
 };
 
 writeFileSync(out, JSON.stringify(style, null, 1));
