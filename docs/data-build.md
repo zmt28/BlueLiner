@@ -13,6 +13,7 @@ cadence. The app reads the published artifacts from R2; it never builds them.
 | `streams.pmtiles` | `scripts/build_stream_tiles.sh` (from the gz above) | PMTiles on R2, via `VITE_STREAM_TILES_URL` |
 | `vaa.csv.gz` | `scripts/build_nhdplus_vaa.py` | Postgres, via `DATA_BASE_URL` |
 | `public_lands.geojson.gz` | `scripts/build_public_lands.py` | Postgres, via `DATA_BASE_URL` |
+| `basemap.pmtiles` (+ `basemap/style.json`, fonts, sprites) | `scripts/build_basemap_tiles.sh` (Protomaps planet extract) | PMTiles on R2, via `VITE_BASEMAP_TILES_URL` |
 
 This runbook covers the **clickable-streams** path (geometry + `trout_class`).
 The others follow the same shape.
@@ -118,6 +119,37 @@ until you point the app at it:
 2. Set `VITE_STREAM_TILES_URL=<base>/v2/streams.pmtiles` (and `DATA_BASE_URL`'s
    prefix for the GeoJSON/Postgres path) in the Render build env, redeploy.
 3. **Rollback** = point the env vars back at `v1/` and redeploy. No rebuild.
+
+## Vector basemap (offline-ready basemap, Phase 0)
+
+The basemap is the one dataset not derived from our own data: tiles are sourced
+from the public **Protomaps** planet build (OpenStreetMap, ODbL) so we can
+self-host a vector base instead of pulling raster tiles live from CARTO / Esri /
+USGS. `scripts/build_basemap_tiles.sh` (or the **Basemap build** Action):
+
+1. `pmtiles extract`s the **CONUS** pyramid from a remote Protomaps planet build
+   — range requests only, so no full-planet download.
+2. Generates a self-hosted MapLibre `style.json` (`scripts/gen_basemap_style.mjs`,
+   wrapping `protomaps-themes-base`) whose tiles, glyphs, and sprite all point at
+   our own R2 prefix.
+3. Publishes the archive + style + fonts + sprites under the versioned prefix:
+
+   ```
+   <prefix>/basemap.pmtiles
+   <prefix>/basemap/style.json
+   <prefix>/basemap/fonts/<stack>/<range>.pbf
+   <prefix>/basemap/sprites/v4/<theme>.{png,json}
+   ```
+
+`PUBLIC_BASE`'s version segment **must** equal `R2_PREFIX` (the style bakes
+absolute `PUBLIC_BASE` URLs). Run a **dry run** first (upload unchecked) to
+confirm the extract + style generation before publishing. Phase 1 wires
+`VITE_BASEMAP_TILES_URL=<base>/basemap.pmtiles` into `map-setup.ts` as a 4th base
+option; raster satellite/topo stay as-is.
+
+> Verify on first run (external specifics this scaffold can't pin): the
+> `pmtiles extract` flag names for your CLI version, the go-pmtiles release asset
+> name in `basemap-build.yml`, and the `basemaps-assets` fonts/sprites layout.
 
 ## The manifest
 

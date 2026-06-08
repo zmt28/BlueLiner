@@ -1,0 +1,99 @@
+name: Basemap build — vector tiles
+
+# Builds the self-hosted vector BASEMAP (Phase 0 of the offline-ready basemap)
+# and optionally publishes it to R2 alongside streams.pmtiles. Manually
+# triggered: basemap tiles are static reference data, rebuilt on a data release
+# (e.g. a fresh Protomaps planet build), not per-PR.
+#
+# Sources tiles from the public Protomaps planet build via `pmtiles extract`
+# (range requests -> CONUS only, fits the free runner). See
+# scripts/build_basemap_tiles.sh for the full pipeline.
+#
+# Reuses the same R2 secrets as data-build.yml:
+#   R2_BUCKET, R2_ENDPOINT, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY
+
+on:
+  workflow_dispatch:
+    inputs:
+      source_url:
+        description: "Protomaps planet build URL (https://build.protomaps.com/YYYYMMDD.pmtiles)"
+        required: true
+      public_base:
+        description: "Public https base incl. version segment (e.g. https://data.blueliner.app/v5)"
+        required: true
+      r2_prefix:
+        description: "R2 version prefix to publish under — MUST match public_base's segment"
+        required: false
+        default: "v1"
+      bbox:
+        description: "minLon,minLat,maxLon,maxLat (blank = CONUS lower-48)"
+        required: false
+        default: ""
+      theme:
+        description: "protomaps theme: light | dark | white | black | grayscale"
+        required: false
+        default: "light"
+      upload:
+        description: "Publish artifacts to R2 (uncheck for a dry run)"
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Install pmtiles CLI
+        run: |
+          # Pin; check https://github.com/protomaps/go-pmtiles/releases for the
+          # current version + asset name.
+          ver="1.22.1"
+          curl -fsSL \
+            "https://github.com/protomaps/go-pmtiles/releases/download/v${ver}/go-pmtiles_${ver}_Linux_x86_64.tar.gz" \
+            -o /tmp/pmtiles.tgz
+          tar -xzf /tmp/pmtiles.tgz -C /tmp pmtiles
+          sudo install /tmp/pmtiles /usr/local/bin/pmtiles
+          pmtiles version
+
+      - name: Build basemap
+        env:
+          SOURCE_URL: ${{ inputs.source_url }}
+          PUBLIC_BASE: ${{ inputs.public_base }}
+          BBOX: ${{ inputs.bbox }}
+          THEME: ${{ inputs.theme }}
+          R2_PREFIX: ${{ inputs.r2_prefix }}
+          R2_BUCKET: ${{ secrets.R2_BUCKET }}
+          R2_ENDPOINT: ${{ secrets.R2_ENDPOINT }}
+          AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+        run: |
+          if [ "${{ inputs.upload }}" = "true" ]; then
+            scripts/build_basemap_tiles.sh --upload
+          else
+            scripts/build_basemap_tiles.sh
+          fi
+
+      - name: Job summary
+        env:
+          UPLOADED: ${{ inputs.upload }}
+          R2_PREFIX: ${{ inputs.r2_prefix }}
+          PUBLIC_BASE: ${{ inputs.public_base }}
+        run: |
+          {
+            echo "### Vector basemap build"
+            if [ "$UPLOADED" = "true" ]; then
+              echo "Published to R2 prefix \`$R2_PREFIX\`. To cut over (Phase 1):"
+              echo "set \`VITE_BASEMAP_TILES_URL=$PUBLIC_BASE/basemap.pmtiles\` and redeploy with a cleared build cache."
+            else
+              echo "_Dry run — nothing published. Re-run with **upload** checked to publish._"
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
