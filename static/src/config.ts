@@ -22,3 +22,20 @@ export const STREAM_SOURCE_LAYER = "streams";
 export const PUBLIC_LANDS_TILES_URL: string = (_env.VITE_PUBLIC_LANDS_TILES_URL || "").trim();
 export const PUBLIC_LANDS_TILES_ENABLED: boolean = PUBLIC_LANDS_TILES_URL.length > 0;
 export const PUBLIC_LANDS_SOURCE_LAYER = "public_lands";
+
+// Self-hosted vector basemap (offline-ready basemap, Phase 0). Points at
+// `basemap.pmtiles` built + published by scripts/build_basemap_tiles.sh. The
+// companion style/glyphs/sprite live under the same versioned prefix, next to
+// the archive:
+//   <prefix>/basemap.pmtiles
+//   <prefix>/basemap/style.json
+//   <prefix>/basemap/fonts/{fontstack}/{range}.pbf
+//   <prefix>/basemap/sprites/v4/<theme>.{png,json}
+// Unset (today) => no vector base is offered; the raster bases are unaffected.
+// Phase 1 wires this into map-setup.ts as a 4th base option.
+export const BASEMAP_TILES_URL: string = (_env.VITE_BASEMAP_TILES_URL || "").trim();
+export const BASEMAP_TILES_ENABLED: boolean = BASEMAP_TILES_URL.length > 0;
+/** Style.json sibling of the basemap archive (same versioned prefix). */
+export const BASEMAP_STYLE_URL: string = BASEMAP_TILES_ENABLED
+  ? BASEMAP_TILES_URL.replace(/basemap\.pmtiles$/, "basemap/style.json")
+  : "";
