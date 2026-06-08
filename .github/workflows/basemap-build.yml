@@ -13,6 +13,15 @@ name: Basemap build — vector tiles
 #   R2_BUCKET, R2_ENDPOINT, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY
 
 on:
+  # TEMP (remove after dry-run validation): workflow_dispatch only works once a
+  # workflow is on the default branch, so trigger on push to this feature branch
+  # to shake out the externals (go-pmtiles install, extract flags, asset layout).
+  push:
+    branches: [claude/trusting-newton-z2PM3]
+    paths:
+      - .github/workflows/basemap-build.yml
+      - scripts/build_basemap_tiles.sh
+      - scripts/gen_basemap_style.mjs
   workflow_dispatch:
     inputs:
       source_url:
@@ -66,11 +75,13 @@ jobs:
 
       - name: Build basemap
         env:
-          SOURCE_URL: ${{ inputs.source_url }}
-          PUBLIC_BASE: ${{ inputs.public_base }}
-          BBOX: ${{ inputs.bbox }}
-          THEME: ${{ inputs.theme }}
-          R2_PREFIX: ${{ inputs.r2_prefix }}
+          # `inputs.* || 'literal'` fallbacks let the TEMP push trigger run a
+          # small Colorado dry-run with no inputs; dispatch always supplies them.
+          SOURCE_URL: ${{ inputs.source_url || 'https://build.protomaps.com/20260601.pmtiles' }}
+          PUBLIC_BASE: ${{ inputs.public_base || 'https://data.blueliner.app/v5' }}
+          BBOX: ${{ inputs.bbox || '-106.0,39.0,-105.0,40.0' }}
+          THEME: ${{ inputs.theme || 'light' }}
+          R2_PREFIX: ${{ inputs.r2_prefix || 'v5' }}
           R2_BUCKET: ${{ secrets.R2_BUCKET }}
           R2_ENDPOINT: ${{ secrets.R2_ENDPOINT }}
           AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
