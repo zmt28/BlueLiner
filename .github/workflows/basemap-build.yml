@@ -74,13 +74,14 @@ jobs:
           PUBLIC_BASE: ${{ inputs.public_base }}
           BBOX: ${{ inputs.bbox }}
           THEME: ${{ inputs.theme }}
-          STYLE_ONLY: ${{ inputs.style_only && '1' || '0' }}
           R2_PREFIX: ${{ inputs.r2_prefix }}
           R2_BUCKET: ${{ secrets.R2_BUCKET }}
           R2_ENDPOINT: ${{ secrets.R2_ENDPOINT }}
           AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
         run: |
+          export STYLE_ONLY=0
+          [ "${{ inputs.style_only }}" = "true" ] && export STYLE_ONLY=1
           if [ "${{ inputs.upload }}" = "true" ]; then
             scripts/build_basemap_tiles.sh --upload
           else
