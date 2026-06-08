@@ -26,6 +26,7 @@
  */
 
 import { map, currentBaseKey, setBaseMap, setHydroVisible } from "./map-setup";
+import { BASEMAP_TILES_ENABLED } from "./config";
 import {
   ensureAccess,
   resetAccessLoadedState,
@@ -440,6 +441,11 @@ wireLayerToggle("lyr-pins", setPinsVisible);
 
 const basemapSeg = document.getElementById("basemap-mode");
 if (basemapSeg) {
+  // The vector base only exists when a basemap archive is configured at build
+  // time (VITE_BASEMAP_TILES_URL). Drop its tile otherwise so it isn't offered.
+  if (!BASEMAP_TILES_ENABLED) {
+    basemapSeg.querySelector('button[data-base="vector"]')?.remove();
+  }
   // Reflect the loaded preference on the segment buttons.
   const initialKey = currentBaseKey();
   for (const btn of basemapSeg.querySelectorAll<HTMLButtonElement>(
@@ -447,7 +453,7 @@ if (basemapSeg) {
   )) {
     btn.classList.toggle("on", btn.dataset.base === initialKey);
     btn.addEventListener("click", () => {
-      const key = btn.dataset.base as "street" | "satellite" | "topo";
+      const key = btn.dataset.base as "street" | "satellite" | "topo" | "vector";
       setBaseMap(key);
       for (const sib of basemapSeg.querySelectorAll<HTMLButtonElement>(
         "button[data-base]",
