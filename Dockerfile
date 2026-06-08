@@ -35,6 +35,8 @@ ARG VITE_STREAM_TILES_URL=""
 ENV VITE_STREAM_TILES_URL=$VITE_STREAM_TILES_URL
 ARG VITE_PUBLIC_LANDS_TILES_URL=""
 ENV VITE_PUBLIC_LANDS_TILES_URL=$VITE_PUBLIC_LANDS_TILES_URL
+ARG VITE_BASEMAP_TILES_URL=""
+ENV VITE_BASEMAP_TILES_URL=$VITE_BASEMAP_TILES_URL
 
 # Build -> static/dist/index.html + static/dist/assets/*. The dist
 # folder is what stage 2 copies in below; everything else in this
