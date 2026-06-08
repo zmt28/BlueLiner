@@ -56,7 +56,7 @@ jobs:
         run: |
           # Pin; check https://github.com/protomaps/go-pmtiles/releases for the
           # current version + asset name.
-          ver="1.22.1"
+          ver="1.30.3"
           curl -fsSL \
             "https://github.com/protomaps/go-pmtiles/releases/download/v${ver}/go-pmtiles_${ver}_Linux_x86_64.tar.gz" \
             -o /tmp/pmtiles.tgz
