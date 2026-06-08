@@ -52,7 +52,10 @@ ASSETS="$WORK/basemaps-assets"
 # CONUS (lower-48), matching the app's NHDPlus coverage. AK/HI are excluded
 # exactly like the rest of BlueLiner's data. minLon,minLat,maxLon,maxLat.
 BBOX="${BBOX:--125.0,24.4,-66.9,49.4}"
-MAXZOOM="${MAXZOOM:-15}"     # Protomaps planet maxzoom; the style overzooms past it
+MAXZOOM="${MAXZOOM:-14}"    # Protomaps planet goes to z15; we stop at z14 since
+                            # the streams overlay carries the close-zoom detail
+                            # and the style overzooms the base past 14. Leaner
+                            # archive. Override with MAXZOOM=15 for max base detail.
 THEME="${THEME:-light}"      # protomaps-themes-base theme: light|dark|white|black|grayscale
 LANG="${LANG_:-en}"
 SOURCE_NAME="protomaps"      # vector source id; must match in the generated style
