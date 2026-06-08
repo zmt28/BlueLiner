@@ -31,9 +31,13 @@ import maplibregl, {
   StyleSpecification,
 } from "maplibre-gl";
 
-type BaseMapKey = "street" | "satellite" | "topo";
+import { BASEMAP_TILES_ENABLED, BASEMAP_STYLE_URL } from "./config";
+import { ensurePmtilesProtocol } from "./tiles";
 
-const BASES: Record<BaseMapKey, RasterSourceSpecification> = {
+type BaseMapKey = "street" | "satellite" | "topo" | "vector";
+type RasterBaseKey = "street" | "satellite" | "topo";
+
+const BASES: Record<RasterBaseKey, RasterSourceSpecification> = {
   street: {
     type: "raster",
     tiles: [
@@ -76,13 +80,20 @@ const HYDRO: RasterSourceSpecification = {
   maxzoom: 19,
 };
 
+/** A persisted base key is valid if it's a raster base, or the vector base
+ *  when a basemap archive is configured at build time (VITE_BASEMAP_TILES_URL). */
+function isBaseKey(k: string): k is BaseMapKey {
+  return k in BASES || (k === "vector" && BASEMAP_TILES_ENABLED);
+}
+
 function loadBaseMapPref(): BaseMapKey {
   try {
     const v = localStorage.getItem("bl_basemap");
-    return v && v in BASES ? (v as BaseMapKey) : "street";
+    if (v && isBaseKey(v)) return v;
   } catch (_) {
-    return "street";
+    /* localStorage unavailable */
   }
+  return "street";
 }
 
 let _currentBaseKey: BaseMapKey = loadBaseMapPref();
@@ -117,13 +128,86 @@ export function getGeoJSON(id: string): GeoJSONSource | null {
 }
 
 // -- Base + hydro wiring ---------------------------------------------
+// A base is "whatever sources+layers sit below the hydro overlay." Raster
+// bases are one source + one raster layer; the vector base is the self-hosted
+// Protomaps archive's source + its full style-layer stack. We record exactly
+// what the current base added so a switch tears down only the base, leaving
+// hydro, the overlay sources, and their feature-state intact (we never call
+// map.setStyle — see the module header).
 
-function addBaseLayer(key: BaseMapKey): void {
+let _baseLayerIds: string[] = [];
+let _baseSourceIds: string[] = [];
+// Bumped on every base change; the async vector add re-checks it after its
+// style fetch so a rapid switch-away doesn't paint a now-stale base.
+let _baseGen = 0;
+
+/** The base always sits below the hydro overlay (and thus below every module
+ *  overlay, which mount on top of hydro). */
+function baseAnchor(): string | undefined {
+  return map.getLayer("hydro") ? "hydro" : undefined;
+}
+
+function addRasterBase(key: RasterBaseKey): void {
   map.addSource("base", BASES[key]);
-  // Insert below hydro if it exists, so the base always sits at the
-  // bottom of the stack.
-  const before = map.getLayer("hydro") ? "hydro" : undefined;
-  map.addLayer({ id: "base", type: "raster", source: "base" }, before);
+  map.addLayer({ id: "base", type: "raster", source: "base" }, baseAnchor());
+  _baseLayerIds = ["base"];
+  _baseSourceIds = ["base"];
+}
+
+/** Vector base: fetch the self-hosted Protomaps style.json, point glyphs +
+ *  sprite at its R2-hosted assets, then inject its vector source + full layer
+ *  stack below the hydro anchor. Async (style fetch), so it guards on _baseGen
+ *  to stay correct if the user switches base again before it resolves. */
+async function addVectorBase(gen: number): Promise<void> {
+  ensurePmtilesProtocol();
+  let style: StyleSpecification;
+  try {
+    style = (await (await fetch(BASEMAP_STYLE_URL)).json()) as StyleSpecification;
+  } catch (err) {
+    console.warn("vector basemap style failed to load:", err);
+    return;
+  }
+  if (gen !== _baseGen) return; // superseded by a later base switch
+
+  // glyphs/sprite are style-document-level; set them without setStyle so the
+  // Protomaps label fonts + icon atlas resolve (the map's default glyphs is a
+  // placeholder that lacks the Noto fontstacks the style references).
+  if (style.glyphs) map.setGlyphs(style.glyphs);
+  // gen_basemap_style emits a single-string sprite; the array form (style-spec
+  // SpriteSpecification) isn't used here and setSprite takes a string url.
+  if (typeof style.sprite === "string") map.setSprite(style.sprite);
+
+  const before = baseAnchor();
+  const layerIds: string[] = [];
+  const sourceIds: string[] = [];
+  for (const [id, src] of Object.entries(style.sources)) {
+    if (!map.getSource(id)) {
+      map.addSource(id, src);
+      sourceIds.push(id);
+    }
+  }
+  // Insert each layer before the same anchor: sequential inserts preserve the
+  // style's own order, ending just below hydro.
+  for (const layer of style.layers) {
+    if (map.getLayer(layer.id)) continue;
+    map.addLayer(layer, before);
+    layerIds.push(layer.id);
+  }
+  _baseLayerIds = layerIds;
+  _baseSourceIds = sourceIds;
+}
+
+function addBase(key: BaseMapKey): void {
+  const gen = ++_baseGen;
+  if (key === "vector") void addVectorBase(gen);
+  else addRasterBase(key);
+}
+
+function removeBase(): void {
+  for (const id of _baseLayerIds) if (map.getLayer(id)) map.removeLayer(id);
+  for (const id of _baseSourceIds) if (map.getSource(id)) map.removeSource(id);
+  _baseLayerIds = [];
+  _baseSourceIds = [];
 }
 
 function addHydroLayer(): void {
@@ -138,11 +222,10 @@ function addHydroLayer(): void {
 }
 
 export function setBaseMap(key: BaseMapKey): void {
-  if (!BASES[key] || key === _currentBaseKey) return;
+  if (!isBaseKey(key) || key === _currentBaseKey) return;
   _currentBaseKey = key;
-  if (map.getLayer("base")) map.removeLayer("base");
-  if (map.getSource("base")) map.removeSource("base");
-  addBaseLayer(key); // re-inserted below hydro, overlays untouched
+  removeBase();
+  addBase(key); // re-inserted below hydro, overlays untouched
   try {
     localStorage.setItem("bl_basemap", key);
   } catch (_) {
@@ -183,7 +266,7 @@ export function mapReady(): Promise<void> {
 }
 
 map.on("load", () => {
-  addBaseLayer(_currentBaseKey);
+  addBase(_currentBaseKey);
   addHydroLayer();
   _ready = true;
   for (const cb of _readyCbs) cb();
