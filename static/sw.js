@@ -18,7 +18,7 @@ const swSelf = /** @type {any} */ (self);
 // name doesn't match the current CACHE constant, which forces every
 // returning browser to refetch the shell on next visit -- the only
 // reliable way to roll out a buggy client-side change.
-const CACHE = "blueliner-v23";
+const CACHE = "blueliner-v24";
 // Vite production builds emit fingerprinted asset filenames (e.g.
 // `/static/dist/assets/index-DkF7p.js`) so the SHELL list can no
 // longer enumerate them at SW build time. Strategy:
@@ -102,6 +102,14 @@ swSelf.addEventListener("fetch", (/** @type {FetchEvent} */ e) => {
   const req = e.request;
   if (req.method !== "GET") return;
   const url = new URL(req.url);
+  // Self-hosted vector-basemap assets (style.json, sprite, glyph .pbf) live
+  // cross-origin on R2. Cache them (stale-while-revalidate) so the vector base
+  // can render offline. The big basemap.pmtiles archive is excluded on purpose
+  // -- its range/206 reads are persisted at the byte level by offline-tiles.ts.
+  if (url.pathname.includes("/basemap/") && !url.pathname.endsWith(".pmtiles")) {
+    e.respondWith(staleWhileRevalidate(req));
+    return;
+  }
   if (url.origin !== location.origin) return;     // tiles / CDNs: passthrough
   if (url.pathname === "/api/rivers" || url.pathname === "/api/river_lines") {
     e.respondWith(staleWhileRevalidate(req));      // precomputed -> SWR

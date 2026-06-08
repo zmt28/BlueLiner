@@ -26,7 +26,14 @@
  */
 
 import { map, currentBaseKey, setBaseMap, setHydroVisible } from "./map-setup";
-import { BASEMAP_TILES_ENABLED } from "./config";
+import { BASEMAP_TILES_ENABLED, BASEMAP_TILES_URL } from "./config";
+import {
+  prefetch as offlinePrefetch,
+  offlineStats,
+  requestPersist,
+  tileCount,
+  type BBox,
+} from "./offline-tiles";
 import {
   ensureAccess,
   resetAccessLoadedState,
@@ -462,6 +469,51 @@ if (basemapSeg) {
       }
     });
   }
+}
+
+// -- Offline base cache (M0 smoke test) ----------------------------
+// Prefetch the basemap tiles for the current viewport into IndexedDB so the
+// vector base renders with the network cut. Behind the basemap flag + IndexedDB
+// support; the small assets (style/sprite/glyphs) are cached by the SW.
+
+const offlineTest = document.getElementById("offline-test");
+if (offlineTest && BASEMAP_TILES_ENABLED && "indexedDB" in window) {
+  offlineTest.hidden = false;
+  const btn = document.getElementById("offline-cache-view") as HTMLButtonElement;
+  const status = document.getElementById("offline-status") as HTMLElement;
+  const mb = (b: number): string => `${(b / 1048576).toFixed(1)} MB`;
+
+  offlineStats().then((s) => {
+    if (s.entries) status.textContent = `Offline base: ${mb(s.bytes)} cached (${s.entries} ranges).`;
+  });
+
+  btn.addEventListener("click", async () => {
+    const b = map.getBounds();
+    const bbox: BBox = { w: b.getWest(), s: b.getSouth(), e: b.getEast(), n: b.getNorth() };
+    const z = Math.floor(map.getZoom());
+    const minZ = Math.max(0, z);
+    const maxZ = Math.min(14, z + 1);
+    const total = tileCount(bbox, minZ, maxZ);
+    if (total > 4000) {
+      status.textContent = `Area too large (${total} tiles). Zoom in and try again.`;
+      return;
+    }
+    btn.disabled = true;
+    await requestPersist();
+    status.textContent = `Caching 0/${total}…`;
+    try {
+      const r = await offlinePrefetch(BASEMAP_TILES_URL, bbox, minZ, maxZ, (done, tot) => {
+        status.textContent = `Caching ${done}/${tot}…`;
+      });
+      status.textContent =
+        `Cached ${r.present} tiles (z${minZ}–${maxZ}), ${mb(r.bytes)}. ` +
+        `Now enable airplane mode + reload, pick Vector, and pan this area.`;
+    } catch (e) {
+      status.textContent = `Cache failed: ${(e as Error).message}`;
+    } finally {
+      btn.disabled = false;
+    }
+  });
 }
 
 // -- Stream filters (wild / native) -------------------------------

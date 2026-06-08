@@ -1804,3 +1804,29 @@ html, body {
     border-color: var(--bl-cond-none-500);
 }
 
+
+/* Offline base cache (M0 smoke test) -- temporary beta control in the
+   Base map panel section. Removable with the M0 wiring. */
+.bl-offline {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--bl-ink-200, #d7dde5);
+}
+.bl-offline-btn {
+  width: 100%;
+  padding: 8px 12px;
+  font: inherit;
+  font-weight: 600;
+  color: var(--bl-ink-700, #2c3947);
+  background: var(--bg-surface, #fff);
+  border: 1px solid var(--bl-ink-200, #d7dde5);
+  border-radius: 10px;
+  cursor: pointer;
+}
+.bl-offline-btn:disabled { opacity: 0.6; cursor: default; }
+.bl-offline-status {
+  margin-top: 6px;
+  font-size: 12px;
+  line-height: 1.35;
+  color: var(--bl-ink-500, #647489);
+}
