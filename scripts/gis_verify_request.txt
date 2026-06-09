@@ -1,45 +1,23 @@
-# Round 2: explicit verification (full field dump) + gap-fill discovery.
+# Round 3: remaining gaps (WA stocking, OR both, AZ both, NV, ID stocking, WY stocking).
 
-# --- explicit layers (full dump) ---
-MT|https://fwp-gis.mt.gov/arcgis/rest/services/fish/fishViewer/MapServer/38
-MT|https://fwp-gis.mt.gov/arcgis/rest/services/fish/fishViewer/MapServer/41
-MT|https://services3.arcgis.com/Cdxz8r11hT0MGzg1/arcgis/rest/services/FISH_PLANTS_6YR_PLAN/FeatureServer/0
-ID|https://gisportal-idfg.idaho.gov/hosting/rest/services/Access/IDFG_Fishing_and_Boating_Access_Sites_Public/FeatureServer/0
-WY|https://services6.arcgis.com/cWzdqIyxbijuhPLw/arcgis/rest/services/All_River_Access_Points/FeatureServer/0
-CO|https://ndismaps.nrel.colostate.edu/arcgis/rest/services/FishingAtlas2025/FishingInfo2025/MapServer/8
-UT|https://services.arcgis.com/ZzrwjTRez6FJiOq4/arcgis/rest/services/UDWR_Fish_Stocking_Events_1979_2024_VIEW/FeatureServer/0
-UT|https://services.arcgis.com/ZzrwjTRez6FJiOq4/arcgis/rest/services/UDWR_Fish_Stocking_Events_1979_2024_VIEW/FeatureServer/1
-NM|https://services2.arcgis.com/CjbW1bVhK4dB3WOa/arcgis/rest/services/Fishing_Access/FeatureServer/0
-NM|https://services2.arcgis.com/CjbW1bVhK4dB3WOa/arcgis/rest/services/Boat_Ramps/FeatureServer/1
-NV|https://services.arcgis.com/RyxlXSfFi87rAosq/arcgis/rest/services/NDOWFishableWaters/FeatureServer/0
-NV|https://services.arcgis.com/RyxlXSfFi87rAosq/arcgis/rest/services/NDOWFishableWaters/FeatureServer/1
-CA|https://services2.arcgis.com/Uq9r85Potqm3MfRV/arcgis/rest/services/FishingGuide/FeatureServer/2
-CA|https://services2.arcgis.com/Uq9r85Potqm3MfRV/arcgis/rest/services/FishingGuide/FeatureServer/0
-WA|https://geodataservices.wdfw.wa.gov/arcgis/rest/services/WP_RealEstate/WaterAccessSites/FeatureServer/0
 WA|https://geodataservices.wdfw.wa.gov/arcgis/rest/services/ApplicationServices/FishWA_2014_AllLakes_PROD/MapServer/24
+CO|https://ndismaps.nrel.colostate.edu/arcgis/rest/services/FishingAtlas2025/FishingInfo2025/MapServer/7
 
-# --- whole-service enumerations ---
-svc: WY|https://services6.arcgis.com/cWzdqIyxbijuhPLw/arcgis/rest/services/Lakes_FishingGuide_PublicView/FeatureServer
-svc: WY|https://services6.arcgis.com/cWzdqIyxbijuhPLw/arcgis/rest/services/Streams_FishingGuide_PublicView/FeatureServer
-svc: WY|https://services6.arcgis.com/cWzdqIyxbijuhPLw/arcgis/rest/services/PublicAccessAreaBoundaries/FeatureServer
-svc: UT|https://services.arcgis.com/ZzrwjTRez6FJiOq4/arcgis/rest/services/Community_fisheries/FeatureServer
-svc: UT|https://services.arcgis.com/ZzrwjTRez6FJiOq4/arcgis/rest/services/Fishing__Loco/FeatureServer
-svc: CO|https://ndismaps.nrel.colostate.edu/arcgis/rest/services/FishingAtlas2025/FishingInfo2025/MapServer
-svc: CO|https://ndismaps.nrel.colostate.edu/arcgis/rest/services/FishingAtlas/FishingAtlas_Data/MapServer
-svc: WA|https://geodataservices.wdfw.wa.gov/arcgis/rest/services/ApplicationServices/FishWA_2014_AllLakes_PROD/FeatureServer
+svc: CA|https://services2.arcgis.com/Uq9r85Potqm3MfRV/arcgis/rest/services/FishingGuide/FeatureServer
+svc: WA|https://geodataservices.wdfw.wa.gov/arcgis/rest/services/WP_RealEstate/WaterAccessSites/MapServer
 
-# --- org catalog walks ---
-org: NM|https://services2.arcgis.com/CjbW1bVhK4dB3WOa/arcgis/rest/services
-org: AZ|https://services2.arcgis.com/os1CphwIyxBDDUGn/arcgis/rest/services
+org: OR|https://services.arcgis.com/uUvqNMGPm7axC2dD/arcgis/rest/services
 
-# --- AGOL owner searches ---
-search: OR|owner:ODFW_AGO stocking
-search: OR|owner:ODFW_AGO trout stocking schedule
-search: OR|owner:ODFW_AGO boating access
-search: AZ|owner:AZ_Game_Fish_Dept stocking
-search: AZ|owner:AZ_Game_Fish_Dept fishing
-search: NV|owner:TheNDOW boat
-search: NV|Nevada NDOW fishing access boat launch
-search: ID|owner:idahofishandgame stocking
-search: WY|owner:WyomingGameAndFish stock
-search: WA|WDFW trout plants stocked lakes
+search: WA|WDFW Fish Washington stocked lakes
+search: WA|owner:WDFW water access sites
+search: OR|ODFW trout stocking schedule
+search: OR|Oregon trout stocking
+search: OR|owner:ODFW_AGO fishing
+search: AZ|Arizona Game and Fish stocking
+search: AZ|AZGFD boating access lake
+search: AZ|Arizona community fishing waters
+search: ID|Idaho fish stocking locations IDFG
+search: NV|NDOW stocking waters
+search: NV|Nevada boat ramps wildlife NDOW
+search: WY|Wyoming Game and Fish stocked waters
+search: NM|New Mexico trout stocking NMDGF

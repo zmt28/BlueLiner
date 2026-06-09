@@ -199,6 +199,19 @@ def verify_layer(c: httpx.Client, st: str, url: str, full: bool = False) -> bool
         "resultRecordCount": "3", "outSR": "4326"})
     ok = bool(isinstance(gj, dict) and gj.get("type") == "FeatureCollection"
               and gj.get("features"))
+    if not ok and fields:
+        # joined views sometimes choke on outFields=* under f=geojson;
+        # retry with explicit string fields
+        sub = ",".join(f["name"] for f in fields
+                       if f.get("type") == "esriFieldTypeString")[:900]
+        gj = get(c, url + "/query", {
+            "where": "1=1", "outFields": sub or "", "f": "geojson",
+            "resultRecordCount": "3", "outSR": "4326"})
+        ok = bool(isinstance(gj, dict) and gj.get("type") == "FeatureCollection"
+                  and gj.get("features"))
+        if ok:
+            print("    [note: f=geojson required explicit outFields, "
+                  "outFields=* fails on this layer]")
     instate = None
     samples = []
     if ok:
