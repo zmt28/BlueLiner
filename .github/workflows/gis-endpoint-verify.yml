@@ -16,7 +16,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   verify:
@@ -30,4 +30,16 @@ jobs:
       - name: Install deps
         run: pip install httpx
       - name: Discover + verify
-        run: python scripts/gis_endpoint_verify.py --request scripts/gis_verify_request.txt
+        run: |
+          mkdir -p gis_verify_out
+          python scripts/gis_endpoint_verify.py \
+            --request scripts/gis_verify_request.txt | tee gis_verify_out/REPORT.txt
+      - name: Commit report back to branch
+        if: always()
+        run: |
+          git config user.name "gis-verify-bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add -f gis_verify_out/REPORT.txt
+          git commit -m "gis-verify: results report [no ci]" || exit 0
+          git pull --rebase origin "${GITHUB_REF_NAME}" || true
+          git push origin "HEAD:${GITHUB_REF_NAME}"

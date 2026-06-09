@@ -93,8 +93,38 @@ FISH_KW = ("fish", "trout")
 NOISE_KW = ("huc", "county", "boundar", "parcel", "geolog", "fire", "elk",
             "deer", "hunt", "bird", "sheep", "moose", "bear", "lion", "wolf",
             "antelope", "turkey", "grouse", "raptor", "bat_", "frog", "toad")
+SOFT_NOISE = ("passage", "barrier", "wac", "shellfish", "crab", "clam",
+              "urchin", "cucumber", "aquaculture", "landmark", "pheasant",
+              "mussel", "kayak", "survey", "ais_risk", "infrastructure",
+              "screen", "culvert", "habitat project", "smelt", "label")
 
-MAX_VERIFY_PER_STATE = 14
+AGENCY_HINTS = (
+    "fwp-gis.mt.gov", "gisservicemt.gov", "idfg.idaho.gov",
+    "ndismaps.nrel.colostate.edu", "maps.dnr.utah.gov",
+    "geodataservices.wdfw.wa.gov", "map.dfg.ca.gov", "data.wsdot.wa.gov",
+    "cWzdqIyxbijuhPLw", "ZzrwjTRez6FJiOq4", "ttNGmDvKQA7oeDQ3",
+    "Uq9r85Potqm3MfRV", "RyxlXSfFi87rAosq",
+)
+
+MAX_VERIFY_PER_STATE = 16
+
+
+def rank(blob: str, url: str) -> int:
+    b = blob.lower()
+    s = 0
+    if any(k in b for k in STOCK_KW):
+        s += 4
+    if any(k in b for k in ACCESS_KW):
+        s += 4
+    if "trout" in b:
+        s += 2
+    if "fish" in b:
+        s += 1
+    if any(h in url for h in AGENCY_HINTS):
+        s += 3
+    if any(k in b for k in SOFT_NOISE):
+        s -= 5
+    return s
 
 
 def get(c: httpx.Client, url: str, params: dict | None = None):
@@ -275,18 +305,21 @@ def discover_state(c: httpx.Client, st: str) -> None:
             else:
                 add_service(url, blob, "agol")
 
-    # 3) verify
+    # 3) rank, dedupe (prefer FeatureServer twin over MapServer), verify top-K
     seen_lyr: set[str] = set()
-    n = 0
+    ranked = []
     for lurl, blob, src in layer_cands:
-        if lurl in seen_lyr:
+        key = lurl.replace("/MapServer/", "/FeatureServer/")
+        if key in seen_lyr:
             continue
-        seen_lyr.add(lurl)
-        if n >= MAX_VERIFY_PER_STATE:
-            print(f"  [cap reached; skipped {lurl} ({blob[:70]})]")
+        seen_lyr.add(key)
+        ranked.append((rank(blob, lurl), lurl, blob, src))
+    ranked.sort(key=lambda t: -t[0])
+    for i, (sc, lurl, blob, src) in enumerate(ranked):
+        if i >= MAX_VERIFY_PER_STATE or sc <= 0:
+            print(f"  [skipped rank={sc} {lurl} ({blob[:70]})]")
             continue
-        n += 1
-        print(f"  -- verify [{src}] guess={classify(blob)} ({blob[:90]})")
+        print(f"  -- verify rank={sc} [{src}] guess={classify(blob)} ({blob[:90]})")
         try:
             verify_layer(c, st, lurl)
         except Exception as e:  # keep the batch alive
