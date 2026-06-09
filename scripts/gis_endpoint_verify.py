@@ -326,22 +326,90 @@ def discover_state(c: httpx.Client, st: str) -> None:
             print(f"    EXC {type(e).__name__}: {e}")
 
 
-def parse_request(path: str) -> tuple[str, str]:
-    """-> (states_csv, urls_semicolon). Lines: 'states: ..' or 'ST|layerUrl'."""
-    states, urls = "", []
+def parse_request(path: str) -> tuple[str, str, list, list, list]:
+    """Lines:
+        states: MT,ID,...
+        ST|layerUrl            -- explicit layer, full dump
+        svc: ST|serviceUrl     -- enumerate + quick-verify EVERY layer
+        org: ST|restServicesRoot -- walk catalog, verify keyword layers
+        search: ST|term        -- AGOL search, list items, verify their layers
+    """
+    states, urls, svcs, orgs, searches = "", [], [], [], []
     try:
         with open(path) as fh:
             for line in fh:
                 line = line.strip()
                 if not line or line.startswith("#") or line == "urls:":
                     continue
-                if line.lower().startswith("states:"):
+                low = line.lower()
+                if low.startswith("states:"):
                     states = line.split(":", 1)[1].strip()
+                elif low.startswith("svc:"):
+                    svcs.append(line.split(":", 1)[1].strip())
+                elif low.startswith("org:"):
+                    orgs.append(line.split(":", 1)[1].strip())
+                elif low.startswith("search:"):
+                    searches.append(line.split(":", 1)[1].strip())
                 elif "|" in line:
                     urls.append(line)
     except OSError:
         pass
-    return states, ";".join(urls)
+    return states, ";".join(urls), svcs, orgs, searches
+
+
+def run_svc(c: httpx.Client, st: str, svc_url: str) -> None:
+    print(f"\n==== SVC {st} {svc_url} ====")
+    for lurl, lname, lgeom in service_layers(c, svc_url):
+        print(f"  layer {lurl}  {lname!r} ({lgeom})")
+        try:
+            verify_layer(c, st, lurl)
+        except Exception as e:
+            print(f"    EXC {type(e).__name__}: {e}")
+
+
+def run_org(c: httpx.Client, st: str, root: str, cap: int = 12) -> None:
+    print(f"\n==== ORG {st} {root} ====")
+    n = 0
+    for url, name in walk_root(c, root):
+        if not interesting(name):
+            continue
+        print(f"  CAND {classify(name)} {url}  ({name[:90]})")
+        for lurl, lname, lgeom in service_layers(c, url):
+            if not (interesting(lname) or interesting(name)):
+                continue
+            if any(k in lname.lower() for k in NOISE_KW):
+                continue
+            if rank(f"{name} :: {lname}", lurl) <= 0:
+                continue
+            if n >= cap:
+                continue
+            n += 1
+            print(f"  -- {lname!r}")
+            try:
+                verify_layer(c, st, lurl)
+            except Exception as e:
+                print(f"    EXC {type(e).__name__}: {e}")
+
+
+def run_search(c: httpx.Client, st: str, term: str, cap: int = 10) -> None:
+    print(f"\n==== SEARCH {st} {term!r} ====")
+    n = 0
+    for item in agol_search(c, term):
+        url = (item.get("url") or "").rstrip("/")
+        print(f"  ITEM {item.get('title', '')!r} owner={item.get('owner', '')} -> {url}")
+        if not url or "/rest/services" not in url:
+            continue
+        layers = ([(url, "", "")] if url.rsplit("/", 1)[-1].isdigit()
+                  else service_layers(c, url))
+        for lurl, lname, lgeom in layers:
+            if n >= cap:
+                break
+            n += 1
+            print(f"  -- {lname!r}")
+            try:
+                verify_layer(c, st, lurl)
+            except Exception as e:
+                print(f"    EXC {type(e).__name__}: {e}")
 
 
 def main() -> int:
@@ -350,24 +418,45 @@ def main() -> int:
     ap.add_argument("--urls", default="")
     ap.add_argument("--request", default="")
     args = ap.parse_args()
+    svcs, orgs, searches = [], [], []
     if args.request and not (args.states or args.urls):
-        args.states, args.urls = parse_request(args.request)
-    if not args.states and not args.urls:
+        args.states, args.urls, svcs, orgs, searches = parse_request(args.request)
+    if not any([args.states, args.urls, svcs, orgs, searches]):
         args.states = ",".join(STATE_NAMES)
 
+    def split_pair(pair):
+        st, _, rest = pair.partition("|")
+        return st.strip().upper(), rest.strip()
+
     with httpx.Client(timeout=TIMEOUT, headers=UA, follow_redirects=True) as c:
-        if args.urls.strip():
-            for pair in args.urls.split(";"):
-                pair = pair.strip()
-                if not pair:
-                    continue
-                st, _, url = pair.partition("|")
-                st = st.strip().upper()
-                print(f"\n======== {st} explicit ========")
-                try:
-                    verify_layer(c, st, url.strip(), full=True)
-                except Exception as e:
-                    print(f"    EXC {type(e).__name__}: {e}")
+        for pair in args.urls.split(";"):
+            if not pair.strip():
+                continue
+            st, url = split_pair(pair)
+            print(f"\n======== {st} explicit ========")
+            try:
+                verify_layer(c, st, url, full=True)
+            except Exception as e:
+                print(f"    EXC {type(e).__name__}: {e}")
+        for pair in svcs:
+            st, url = split_pair(pair)
+            try:
+                run_svc(c, st, url)
+            except Exception as e:
+                print(f"    EXC {type(e).__name__}: {e}")
+        for pair in orgs:
+            st, url = split_pair(pair)
+            try:
+                run_org(c, st, url)
+            except Exception as e:
+                print(f"    EXC {type(e).__name__}: {e}")
+        for pair in searches:
+            st, term = split_pair(pair)
+            try:
+                run_search(c, st, term)
+            except Exception as e:
+                print(f"    EXC {type(e).__name__}: {e}")
+        if any([args.urls.strip(), svcs, orgs, searches]):
             return 0
         for st in [s.strip().upper() for s in args.states.split(",") if s.strip()]:
             try:

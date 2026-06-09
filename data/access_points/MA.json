@@ -1,0 +1,42 @@
+[
+  {
+    "name": "Swift River - Route 9 / Y Pool (Belchertown)",
+    "lat": 42.2770, "lon": -72.3320,
+    "type": "walk_in",
+    "access": "public",
+    "agency_url": "https://www.mass.gov/info-details/catch-and-release-fishing-areas",
+    "notes": "Famous C&R fly water just below Winsor Dam."
+  },
+  {
+    "name": "Swift River - Cady Lane (Belchertown)",
+    "lat": 42.2630, "lon": -72.3340,
+    "type": "parking",
+    "access": "public",
+    "agency_url": "https://www.mass.gov/info-details/catch-and-release-fishing-areas",
+    "notes": "Lower Swift access downstream of the Rt 9 pool (approx. location)."
+  },
+  {
+    "name": "Deerfield River - Zoar Gap (Rowe/Florida)",
+    "lat": 42.6530, "lon": -72.9620,
+    "type": "walk_in",
+    "access": "public",
+    "agency_url": "https://www.mass.gov/info-details/catch-and-release-fishing-areas",
+    "notes": "Lower end of the Fife Brook catch-and-release reach."
+  },
+  {
+    "name": "Chesterfield Gorge / East Branch Westfield River (River Rd)",
+    "lat": 42.3938, "lon": -72.8807,
+    "type": "walk_in",
+    "access": "public",
+    "agency_url": "https://www.mass.gov/info-details/catch-and-release-fishing-areas",
+    "notes": "Walk-in along the East Branch C&R section."
+  },
+  {
+    "name": "Millers River - Wendell Depot",
+    "lat": 42.5950, "lon": -72.3870,
+    "type": "parking",
+    "access": "public",
+    "agency_url": "https://www.mass.gov/info-details/catch-and-release-fishing-areas",
+    "notes": "Access to the Millers River catch-and-release water."
+  }
+]

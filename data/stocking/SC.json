@@ -1,0 +1,42 @@
+[
+  {
+    "water": "Chattooga River (Burrells Ford)",
+    "lat": 34.9716, "lon": -83.1147,
+    "species": ["Rainbow", "Brown"],
+    "category": "Put-and-take",
+    "season_months": [3, 11],
+    "agency_url": "https://www.dnr.sc.gov/fish/pdf/TroutBook.pdf"
+  },
+  {
+    "water": "Chattooga River (backcountry below Burrells Ford)",
+    "lat": 34.9500, "lon": -83.1500,
+    "species": ["Brown", "Rainbow"],
+    "category": "Stocked trout stream - helicopter stocked",
+    "season_months": [11, 11],
+    "agency_url": "https://www.dnr.sc.gov/fish/pdf/TroutBook.pdf"
+  },
+  {
+    "water": "Lower Saluda River (Columbia)",
+    "lat": 34.0450, "lon": -81.1830,
+    "species": ["Rainbow", "Brown"],
+    "category": "Tailwater - seasonal put-and-take",
+    "season_months": [12, 3],
+    "agency_url": "https://www.dnr.sc.gov/news/2021/dec/dec23-troutstock.php"
+  },
+  {
+    "water": "Chauga River (Oconee Co.)",
+    "lat": 34.7810, "lon": -83.1380,
+    "species": ["Rainbow", "Brown"],
+    "category": "Stocked trout stream - helicopter stocked",
+    "season_months": [9, 11],
+    "agency_url": "https://www.dnr.sc.gov/fish/pdf/TroutBook.pdf"
+  },
+  {
+    "water": "Middle Saluda River (Cleveland hatchery section)",
+    "lat": 35.1255, "lon": -82.5740,
+    "species": ["Rainbow", "Brown"],
+    "category": "Stocked trout stream",
+    "season_months": [1, 12],
+    "agency_url": "https://www.dnr.sc.gov/water/river/scenic/midsaluda.html"
+  }
+]

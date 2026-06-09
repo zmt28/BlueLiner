@@ -1,0 +1,42 @@
+[
+  {
+    "name": "Center Hill Dam tailwater access (Caney Fork)",
+    "lat": 36.0990, "lon": -85.8300,
+    "type": "walk_in",
+    "access": "public",
+    "agency_url": "https://www.tn.gov/twra/fishing/where-to-fish/cumberland-plateau-r3/center-hill-reservoir.html",
+    "notes": "Primary access below the dam; check generation schedule before wading."
+  },
+  {
+    "name": "Happy Hollow Access (Caney Fork)",
+    "lat": 36.1130, "lon": -85.8020,
+    "type": "boat_ramp",
+    "access": "public",
+    "agency_url": "https://www.tn.gov/twra/fishing/where-to-fish/cumberland-plateau-r3/center-hill-reservoir.html",
+    "notes": "Ramp + bank access a short float below Center Hill Dam (approx. location)."
+  },
+  {
+    "name": "Norris Dam tailwater / Songbird Trail (Clinch River)",
+    "lat": 36.2210, "lon": -84.0990,
+    "type": "walk_in",
+    "access": "public",
+    "agency_url": "https://tnstateparks.com/parks/activity-detail/norris-dam-fishing",
+    "notes": "Wading productive during non-generation; rainbow, brown, brook."
+  },
+  {
+    "name": "Hiwassee River below Appalachia Powerhouse",
+    "lat": 35.1800, "lon": -84.4610,
+    "type": "walk_in",
+    "access": "public",
+    "agency_url": "https://www.tn.gov/twra/fishing-regs/trout-regulations.html",
+    "notes": "Quality trout water from powerhouse down to the L&N railroad bridge."
+  },
+  {
+    "name": "Wilbur Dam tailwater (Watauga River)",
+    "lat": 36.3410, "lon": -82.1110,
+    "type": "walk_in",
+    "access": "public",
+    "agency_url": "https://www.tn.gov/twra/gis-maps/boating-and-fishing-site-access-map.html",
+    "notes": "Bank and put-in access below Wilbur Dam; see TWRA access map."
+  }
+]

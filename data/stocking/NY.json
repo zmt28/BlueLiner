@@ -1,0 +1,82 @@
+[
+  {
+    "water": "West Branch Ausable River (Wilmington)",
+    "lat": 44.3862, "lon": -73.8195,
+    "species": ["Brown", "Rainbow", "Brook"],
+    "category": "Stocked trout stream",
+    "season_months": [3, 6],
+    "agency_url": "https://dec.ny.gov/things-to-do/freshwater-fishing/stocking/spring-trout-stocking/essex-county"
+  },
+  {
+    "water": "Beaverkill (Roscoe / Junction Pool)",
+    "lat": 41.9310, "lon": -74.9220,
+    "species": ["Brown"],
+    "category": "Stocked trout stream - wild + stocked",
+    "season_months": [3, 6],
+    "agency_url": "https://dec.ny.gov/places/beaverkill-campground-and-day-use-area"
+  },
+  {
+    "water": "Willowemoc Creek (Livingston Manor)",
+    "lat": 41.9010, "lon": -74.8280,
+    "species": ["Brown"],
+    "category": "Stocked trout stream",
+    "season_months": [3, 6],
+    "agency_url": "https://dec.ny.gov/things-to-do/freshwater-fishing/stocking/spring-trout-stocking/sullivan-county"
+  },
+  {
+    "water": "West Canada Creek (Hinckley Dam to Herkimer)",
+    "lat": 43.1370, "lon": -74.9720,
+    "species": ["Brown", "Brook"],
+    "category": "Tailwater - stocked",
+    "season_months": [3, 6],
+    "agency_url": "https://dec.ny.gov/places/fishing-the-west-canada-creek"
+  },
+  {
+    "water": "Ninemile Creek (Marcellus / Camillus)",
+    "lat": 43.0120, "lon": -76.3180,
+    "species": ["Brown", "Brook"],
+    "category": "Stocked trout stream - wild + stocked",
+    "season_months": [3, 6],
+    "agency_url": "https://dec.ny.gov/places/ninemile-creek"
+  },
+  {
+    "water": "East Koy Creek (Lamont)",
+    "lat": 42.6620, "lon": -78.0890,
+    "species": ["Brown"],
+    "category": "Stocked trout stream",
+    "season_months": [3, 6],
+    "agency_url": "https://dec.ny.gov/things-to-do/freshwater-fishing/places-to-fish/western-ny/stocked-trout-streams"
+  },
+  {
+    "water": "Genesee River (upper, Wellsville)",
+    "lat": 42.1220, "lon": -77.9480,
+    "species": ["Brown"],
+    "category": "Stocked trout stream",
+    "season_months": [3, 6],
+    "agency_url": "https://dec.ny.gov/things-to-do/freshwater-fishing/places-to-fish/western-ny/stocked-trout-streams"
+  },
+  {
+    "water": "Cattaraugus Creek (upper, Arcade)",
+    "lat": 42.5450, "lon": -78.3900,
+    "species": ["Brown"],
+    "category": "Stocked trout stream",
+    "season_months": [3, 6],
+    "agency_url": "https://dec.ny.gov/things-to-do/freshwater-fishing/places-to-fish/western-ny/stocked-trout-streams"
+  },
+  {
+    "water": "Saranac River (Cadyville)",
+    "lat": 44.6900, "lon": -73.5630,
+    "species": ["Brown"],
+    "category": "Stocked trout stream",
+    "season_months": [3, 6],
+    "agency_url": "https://dec.ny.gov/things-to-do/freshwater-fishing/stocking/spring-trout-stocking"
+  },
+  {
+    "water": "Ashokan Reservoir",
+    "lat": 41.9320, "lon": -74.2130,
+    "species": ["Brown"],
+    "category": "Stocked reservoir - wild + stocked",
+    "season_months": [3, 6],
+    "agency_url": "https://dec.ny.gov/places/ashokan-reservoir"
+  }
+]

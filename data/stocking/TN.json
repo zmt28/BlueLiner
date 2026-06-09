@@ -1,0 +1,50 @@
+[
+  {
+    "water": "Caney Fork River (Center Hill tailwater)",
+    "lat": 36.0990, "lon": -85.8310,
+    "species": ["Rainbow", "Brown", "Brook"],
+    "category": "Tailwater - stocked",
+    "season_months": [3, 12],
+    "agency_url": "https://www.tn.gov/twra/fishing/trout-information-stockings.html"
+  },
+  {
+    "water": "Clinch River (Norris tailwater)",
+    "lat": 36.2210, "lon": -84.0970,
+    "species": ["Rainbow", "Brown", "Brook"],
+    "category": "Tailwater - wild + stocked",
+    "season_months": [1, 12],
+    "agency_url": "https://www.tn.gov/twra/fishing/trout-information-stockings.html"
+  },
+  {
+    "water": "Hiwassee River (Appalachia tailwater)",
+    "lat": 35.1800, "lon": -84.4610,
+    "species": ["Rainbow", "Brown", "Brook", "Cutthroat"],
+    "category": "Tailwater - stocked",
+    "season_months": [10, 7],
+    "agency_url": "https://www.tn.gov/twra/fishing/trout-information-stockings.html"
+  },
+  {
+    "water": "Watauga River (Wilbur Dam tailwater)",
+    "lat": 36.3400, "lon": -82.1110,
+    "species": ["Rainbow", "Brown"],
+    "category": "Tailwater - wild + stocked",
+    "season_months": [3, 7],
+    "agency_url": "https://www.tn.gov/twra/fishing/trout-information-stockings.html"
+  },
+  {
+    "water": "Elk River (Tims Ford tailwater)",
+    "lat": 35.2050, "lon": -86.2400,
+    "species": ["Rainbow", "Brown"],
+    "category": "Tailwater - stocked",
+    "season_months": [1, 12],
+    "agency_url": "https://www.tn.gov/content/dam/tn/twra/documents/fishing/Tims-Ford-Tailwater-Management-Plan_2017-2022.pdf"
+  },
+  {
+    "water": "Tellico River (above Tellico Plains)",
+    "lat": 35.3320, "lon": -84.2350,
+    "species": ["Rainbow"],
+    "category": "Put-and-take",
+    "season_months": [3, 9],
+    "agency_url": "https://www.tn.gov/twra/fishing/trout-information-stockings.html"
+  }
+]

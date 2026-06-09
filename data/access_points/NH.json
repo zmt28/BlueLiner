@@ -1,0 +1,42 @@
+[
+  {
+    "name": "Errol Dam (Androscoggin River fly-fishing-only reach)",
+    "lat": 44.7810, "lon": -71.1410,
+    "type": "walk_in",
+    "access": "public",
+    "agency_url": "https://www.wildlife.nh.gov/fishing-new-hampshire/trout-fishing-new-hampshire/fly-fishing-only-waters-nh",
+    "notes": "Fly-only from Errol dam to the Bragg Bay deadwater markers."
+  },
+  {
+    "name": "Trophy Stretch pull-offs, Rt 3 (Connecticut River, Pittsburg)",
+    "lat": 45.1120, "lon": -71.1960,
+    "type": "parking",
+    "access": "public",
+    "agency_url": "https://www.wildlife.nh.gov/fishing-new-hampshire/trout-fishing-new-hampshire/fly-fishing-only-waters-nh",
+    "notes": "Roadside parking between Second and First Connecticut Lakes."
+  },
+  {
+    "name": "Magalloway Rd bridge (Connecticut River, Pittsburg)",
+    "lat": 45.0950, "lon": -71.2100,
+    "type": "parking",
+    "access": "public",
+    "agency_url": "https://www.wildlife.nh.gov/fishing-new-hampshire/trout-fishing-new-hampshire/fly-fishing-only-waters-nh",
+    "notes": "Lower boundary of the fly-fishing-only Trophy Stretch."
+  },
+  {
+    "name": "Sewalls Falls (Merrimack River, Concord)",
+    "lat": 43.2620, "lon": -71.5660,
+    "type": "parking",
+    "access": "public",
+    "agency_url": "https://www.wildlife.nh.gov/fishing-new-hampshire/trout-fishing-new-hampshire/nh-rivers-and-streams-stocked-trout-and-open-year",
+    "notes": "Year-round stocked-trout reach of the Merrimack."
+  },
+  {
+    "name": "Saco River off River Rd (North Conway, First Bridge)",
+    "lat": 44.0660, "lon": -71.1110,
+    "type": "walk_in",
+    "access": "public",
+    "agency_url": "https://www.wildlife.nh.gov/fishing-new-hampshire/stocking-report",
+    "notes": "Popular stocked reach near North Conway (approx. location)."
+  }
+]

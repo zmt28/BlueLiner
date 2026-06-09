@@ -1,0 +1,42 @@
+[
+  {
+    "name": "Stone Mountain State Park (East Prong Roaring River)",
+    "lat": 36.3865, "lon": -81.0284,
+    "type": "walk_in",
+    "access": "public",
+    "agency_url": "https://www.ncparks.gov/state-parks/stone-mountain-state-park",
+    "notes": "17+ miles of designated trout waters; DH on the East Prong."
+  },
+  {
+    "name": "Sycamore Flats Picnic Area (Davidson River, Pisgah NF)",
+    "lat": 35.2725, "lon": -82.7166,
+    "type": "walk_in",
+    "access": "public",
+    "agency_url": "https://www.fs.usda.gov/activity/nfsnc/recreation/fishing/?recid=48112&actid=43",
+    "notes": "Lower hatchery-supported reach near the forest entrance."
+  },
+  {
+    "name": "Pisgah Center / Bobby N. Setzer State Fish Hatchery (Davidson River)",
+    "lat": 35.2840, "lon": -82.7890,
+    "type": "walk_in",
+    "access": "public",
+    "agency_url": "https://www.ncwildlife.gov/fishing/hatcheries-and-stocking/ncwrc-hatcheries/bobby-n-setzer-state-fish-hatchery",
+    "notes": "Catch-and-release fly/lure water near the hatchery."
+  },
+  {
+    "name": "Tuckasegee River - N. River Road pull-offs (Webster)",
+    "lat": 35.3550, "lon": -83.2300,
+    "type": "parking",
+    "access": "public",
+    "agency_url": "https://www.ncwildlife.gov/media/581/download?attachment=",
+    "notes": "Gravel pull-offs along the Webster Mountain Heritage DH reach."
+  },
+  {
+    "name": "Wilson Creek DH roadside access (Brown Mountain Beach Rd)",
+    "lat": 35.9550, "lon": -81.7650,
+    "type": "parking",
+    "access": "public",
+    "agency_url": "https://www.ncpaws.org/ncwrcmaps/FishingAreas",
+    "notes": "Pull-offs along the delayed-harvest gorge section."
+  }
+]
