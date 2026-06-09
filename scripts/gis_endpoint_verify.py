@@ -293,11 +293,34 @@ def discover_state(c: httpx.Client, st: str) -> None:
             print(f"    EXC {type(e).__name__}: {e}")
 
 
+def parse_request(path: str) -> tuple[str, str]:
+    """-> (states_csv, urls_semicolon). Lines: 'states: ..' or 'ST|layerUrl'."""
+    states, urls = "", []
+    try:
+        with open(path) as fh:
+            for line in fh:
+                line = line.strip()
+                if not line or line.startswith("#") or line == "urls:":
+                    continue
+                if line.lower().startswith("states:"):
+                    states = line.split(":", 1)[1].strip()
+                elif "|" in line:
+                    urls.append(line)
+    except OSError:
+        pass
+    return states, ";".join(urls)
+
+
 def main() -> int:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--states", default=",".join(STATE_NAMES))
+    ap.add_argument("--states", default="")
     ap.add_argument("--urls", default="")
+    ap.add_argument("--request", default="")
     args = ap.parse_args()
+    if args.request and not (args.states or args.urls):
+        args.states, args.urls = parse_request(args.request)
+    if not args.states and not args.urls:
+        args.states = ",".join(STATE_NAMES)
 
     with httpx.Client(timeout=TIMEOUT, headers=UA, follow_redirects=True) as c:
         if args.urls.strip():

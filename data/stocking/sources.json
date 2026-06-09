@@ -1,0 +1,26 @@
+{
+  "_comment": "Declarative live trout-stocking feed registry consumed by stocking.py. One entry per agency layer; a state may declare several (lakes + reaches). Every `url` was verified against the live endpoint when added (layer metadata + returnCountOnly + a real f=geojson sample). Field options per source: `name_field` (water name column), `species_field` (free-text species column) or `species_flags` (map of 0/1 flag columns -> species label, VA style), `category` (fixed label shown in the popup), `category_from_props` (prefer the feed's own category column when present), `season_months` ([start, end] fixed stocking season when the feed carries none), `dedupe` (collapse multi-segment polyline reach layers to one pin per named water per ~0.1 deg cell). The loader centroids non-point geometry and degrades to the bundled baseline when an endpoint is unreachable.",
+  "sources": [
+    {
+      "state": "VA",
+      "label": "VA DWR Stocked Trout Lakes",
+      "url": "https://services.dwr.virginia.gov/arcgis/rest/services/Public/StockedTroutWaters/MapServer/0/query?where=1%3D1",
+      "agency_url": "https://dwr.virginia.gov/fishing/trout-stocking-schedule/",
+      "category": "Stocked trout lake (VA DWR)",
+      "name_field": "Waterbody",
+      "species_flags": {"RainbowTrout": "Rainbow", "BrownTrout": "Brown", "BrookTrout": "Brook"},
+      "season_months": [10, 5]
+    },
+    {
+      "state": "VA",
+      "label": "VA DWR Stocked Trout Reaches",
+      "url": "https://services.dwr.virginia.gov/arcgis/rest/services/Public/StockedTroutWaters/MapServer/1/query?where=1%3D1",
+      "agency_url": "https://dwr.virginia.gov/fishing/trout-stocking-schedule/",
+      "category": "Stocked trout water (VA DWR)",
+      "name_field": "Waterbody",
+      "species_flags": {"RainbowTrout": "Rainbow", "BrownTrout": "Brown", "BrookTrout": "Brook"},
+      "season_months": [10, 5],
+      "dedupe": true
+    }
+  ]
+}

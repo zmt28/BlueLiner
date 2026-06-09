@@ -1,0 +1,23 @@
+{
+  "_comment": "Declarative live access-point feed registry consumed by access_points.py. One entry per agency layer; a state may declare several (boat ramps + fishing piers). Every `url` was verified against the live endpoint when added (layer metadata + returnCountOnly + a real f=geojson sample). Field options per source: `name_field`, `type_field` (run through the type normalizer) or `fixed_type` (whole layer is one canonical type), `notes_field`, `access` (default 'public'). The loader centroids non-point geometry and degrades to the bundled baseline when an endpoint is unreachable.",
+  "sources": [
+    {
+      "state": "VA",
+      "label": "VA DWR Boating Access Sites",
+      "url": "https://services.dwr.virginia.gov/arcgis/rest/services/Public/BoatingAccessSites/MapServer/0/query?where=1%3D1",
+      "agency_url": "https://dwr.virginia.gov/boating/access/",
+      "name_field": "SITENAME",
+      "fixed_type": "boat_ramp",
+      "notes_field": "LOCATION"
+    },
+    {
+      "state": "VA",
+      "label": "VA DWR Fishing Piers",
+      "url": "https://services.dwr.virginia.gov/arcgis/rest/services/HUB_Layers/DWR_Fishing_Piers/MapServer/0/query?where=1%3D1",
+      "agency_url": "https://dwr.virginia.gov/fishing/",
+      "name_field": "Facility_N",
+      "fixed_type": "pier",
+      "notes_field": "Body_of_Wa"
+    }
+  ]
+}

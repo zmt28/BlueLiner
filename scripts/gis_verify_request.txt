@@ -1,0 +1,5 @@
+# Request file for the gis-endpoint-verify Actions job.
+# Either:  states: MT,ID,...        (discovery + auto-verify)
+# Or:      urls:                    (explicit layer verification, full dump)
+#          MT|https://host/.../FeatureServer/0
+states: MT,ID,WY,CO,UT,NM,AZ,NV,CA,OR,WA

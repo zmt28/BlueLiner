@@ -2,19 +2,18 @@ name: GIS endpoint verify (western states)
 
 # Ad-hoc discovery + verification of state-agency stocking / fishing-access
 # ArcGIS endpoints. Runs in Actions because the crawl needs open egress to
-# arbitrary state GIS hosts. Manually triggered; results go to the job log.
+# arbitrary state GIS hosts. Triggered by pushing changes to the request file
+# (scripts/gis_verify_request.txt) on a working branch; results go to the log.
 
 on:
+  push:
+    branches:
+      - "claude/hopeful-wozniak-4q57av"
+    paths:
+      - "scripts/gis_verify_request.txt"
+      - "scripts/gis_endpoint_verify.py"
+      - ".github/workflows/gis-endpoint-verify.yml"
   workflow_dispatch:
-    inputs:
-      states:
-        description: "States to discover (comma-separated)."
-        required: false
-        default: "MT,ID,WY,CO,UT,NM,AZ,NV,CA,OR,WA"
-      urls:
-        description: "Explicit 'ST|layerUrl' pairs, semicolon-separated. Skips discovery; full field dump."
-        required: false
-        default: ""
 
 permissions:
   contents: read
@@ -31,7 +30,4 @@ jobs:
       - name: Install deps
         run: pip install httpx
       - name: Discover + verify
-        run: |
-          python scripts/gis_endpoint_verify.py \
-            --states "${{ inputs.states }}" \
-            --urls "${{ inputs.urls }}"
+        run: python scripts/gis_endpoint_verify.py --request scripts/gis_verify_request.txt
