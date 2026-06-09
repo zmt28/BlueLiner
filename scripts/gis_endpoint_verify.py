@@ -202,8 +202,9 @@ def verify_layer(c: httpx.Client, st: str, url: str, full: bool = False) -> bool
     if not ok and fields:
         # joined views sometimes choke on outFields=* under f=geojson;
         # retry with explicit string fields
-        sub = ",".join(f["name"] for f in fields
-                       if f.get("type") == "esriFieldTypeString")[:900]
+        strs = [f["name"] for f in fields
+                if f.get("type") == "esriFieldTypeString"]
+        sub = strs[0] if strs else ""
         gj = get(c, url + "/query", {
             "where": "1=1", "outFields": sub or "", "f": "geojson",
             "resultRecordCount": "3", "outSR": "4326"})

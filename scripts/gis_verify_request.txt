@@ -1,23 +1,13 @@
-# Round 3: remaining gaps (WA stocking, OR both, AZ both, NV, ID stocking, WY stocking).
+# Round 4: last gap checks.
 
 WA|https://geodataservices.wdfw.wa.gov/arcgis/rest/services/ApplicationServices/FishWA_2014_AllLakes_PROD/MapServer/24
-CO|https://ndismaps.nrel.colostate.edu/arcgis/rest/services/FishingAtlas2025/FishingInfo2025/MapServer/7
+WA|https://geodataservices.wdfw.wa.gov/arcgis/rest/services/WP_RealEstate/WaterAccessSites/MapServer/1
 
-svc: CA|https://services2.arcgis.com/Uq9r85Potqm3MfRV/arcgis/rest/services/FishingGuide/FeatureServer
-svc: WA|https://geodataservices.wdfw.wa.gov/arcgis/rest/services/WP_RealEstate/WaterAccessSites/MapServer
-
-org: OR|https://services.arcgis.com/uUvqNMGPm7axC2dD/arcgis/rest/services
-
-search: WA|WDFW Fish Washington stocked lakes
-search: WA|owner:WDFW water access sites
-search: OR|ODFW trout stocking schedule
-search: OR|Oregon trout stocking
-search: OR|owner:ODFW_AGO fishing
-search: AZ|Arizona Game and Fish stocking
-search: AZ|AZGFD boating access lake
-search: AZ|Arizona community fishing waters
-search: ID|Idaho fish stocking locations IDFG
-search: NV|NDOW stocking waters
-search: NV|Nevada boat ramps wildlife NDOW
-search: WY|Wyoming Game and Fish stocked waters
-search: NM|New Mexico trout stocking NMDGF
+search: OR|Oregon State Marine Board boat ramp
+search: OR|Oregon boating facilities marine board
+search: CA|Recent Stocked Waters California ds778
+search: CA|CDFW stocked waters BIOS
+search: WA|Washington stocked trout lakes
+search: ID|IDFG hatchery trout map Idaho stocking
+search: AZ|AZGFD sport fish FIN waters
+search: AZ|Arizona boating where to fish
