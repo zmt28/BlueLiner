@@ -1,19 +1,115 @@
 
 ======== NJ explicit ========
-    EXC KeyError: 'NJ'
+  LAYER https://mapsdep.nj.gov/arcgis/rest/services/Features/Environmental_admin/MapServer/35
+    PASS name='Trout Stocked Streams' geom=esriGeometryPolyline count=95 geojson_ok=True in_state=True
+    fields:
+      OBJECTID | OID | 'OBJECTID'
+      NAME | String | 'Name'
+      GNIS_NAME | String | 'GNIS Name'
+      CLOSURES | String | 'Closures'
+      STREAM_ID | Integer | 'Stream ID'
+      SHAPE | Geometry | 'SHAPE'
+      GLOBALID | GlobalID | 'GLOBALID'
+      SHAPE_Length | Double | 'SHAPE_Length'
+    sample={"OBJECTID": 571, "NAME": "Alexauken Creek", "GNIS_NAME": "Alexauken Creek", "CLOSURES": "NA", "STREAM_ID": 1, "GLOBALID": "{E9B222DA-7CFE-4C30-B066-AA5AF5961203}", "SHAPE_Length": 41656.43938912703}
+    sample={"OBJECTID": 572, "NAME": "Andover Junction Brook", "GNIS_NAME": "Andover Junction Brook", "CLOSURES": "NA", "STREAM_ID": 2, "GLOBALID": "{274187D6-3A6E-4E32-B5AA-FF89969D64D4}", "SHAPE_Length": 25010.410386336083}
+    sample={"OBJECTID": 573, "NAME": "Beaver Brook (Morris)", "GNIS_NAME": "Beaver Brook", "CLOSURES": "NA", "STREAM_ID": 4, "GLOBALID": "{1C2BF80B-6A0B-48BB-B9C9-B75990839B5F}", "SHAPE_Length": 37335.70264784333}
 
 ======== WV explicit ========
-    EXC KeyError: 'WV'
+  LAYER https://services.wvgis.wvu.edu/arcgis/rest/services/Applications/dnrRec_fishing/MapServer/4
+    PASS name='Stocked Trout Streams' geom=esriGeometryPolyline count=160 geojson_ok=True in_state=True
+    fields:
+      OBJECTID | OID | 'OBJECTID'
+      SHAPE | Geometry | 'SHAPE'
+      Name | String | 'Stream Name'
+      RegType | String | 'Regulation Type'
+      LenSeason | String | 'Season Length'
+      Hatchery | String | 'Hatchery'
+      NearCity | String | 'Nearest City'
+      County_1 | String | 'County (1)'
+      County_2 | String | 'County (2)'
+      County_3 | String | 'County (3)'
+      DNRDistrict | SmallInteger | 'DNR District'
+      RRorRG | String | 'Railroad or Rail Grade' coded[No->This stream is not stocked by railroad or rail grade.; RR->This stream is stocked by railroad.; RG->This stream is stocked by rail grade.]
+      StockCode | String | 'Stock Code' coded[BA->Once in January and once in March.; BW->Twice each month February through April and once in May.; BW-F->Twice each month February through April, once in May, and twice in October.; BW-Q->Twice each month February through April, once in May, and once in March as Children and Class Q.; CR->Varies; M->Once each month February through May.; M-F->Once each month February through May, and twice in October.; MJ->Once each month January through April.; NS->This waterbody is not stocked with trout.; Q->Once in March as Children and Class Q.; RR->Twice each spring by Railroad.; W->Once in January, twice in February, and once each week March through May.]
+      SpecialRegCodes | String | 'Special Regulation Codes'
+      StockExtent | String | 'Stock Extent'
+      StockExtent_Historic | String | 'Stock Extent (Historic)'
+      Active | SmallInteger | 'Active' coded[1->Yes; 0->No; -999->Unknown]
+      YearAdded | SmallInteger | 'Year Added'
+      Mileage | Single | 'Mileage'
+      SHAPE_Length | Double | 'SHAPE_Length'
+    sample={"OBJECTID": 1, "Name": "Anthony Creek", "RegType": "General", "LenSeason": "All Year", "Hatchery": "Edray", "NearCity": "Shryock", "County_1": "Greenbrier", "County_2": null, "County_3": null, "DNRDistrict": 4, "RRorRG": "No", "StockCode": "W-F", "SpecialRegCodes": null, "StockExtent": "Stocked from 1 mile below Big Draft Run upstream 13 miles to Neola.", "StockExtent_Historic": null, "Active": 1, "YearAdded": null, "Mileage": 12.849988, "SHAPE_Length": 26236.347573063085}
+    sample={"OBJECTID": 2, "Name": "Back Fork of Elk River", "RegType": "General", "LenSeason": "All Year", "Hatchery": "Bowden", "NearCity": "Skelt", "County_1": "Webster", "County_2": null, "County_3": null, "DNRDistrict": 3, "RRorRG": "No", "StockCode": "M", "SpecialRegCodes": null, "StockExtent": "Stocked from outside Webster Springs upstream one mile to the lower boundary of the Catch-and- Release Area and in a one mile section below the mouth of Sugar Creek.", "StockExtent_Historic": null, "Active": 1, "YearAdded": null, "Mileage": 2.04488134, "SHAPE_Length": 4212.00714972788}
+    sample={"OBJECTID": 3, "Name": "Back Fork of Elk River (C&R)", "RegType": "Catch-and-Release", "LenSeason": "All Year", "Hatchery": "Edray", "NearCity": "Ralph", "County_1": "Webster", "County_2": null, "County_3": null, "DNRDistrict": 3, "RRorRG": "No", "StockCode": "CR", "SpecialRegCodes": "25", "StockExtent": "Stocked in a 4-mile section, beginning 2 miles upstream of Webster Springs.", "StockExtent_Historic": "A four (4) mile section in Webster County beginning two (2) miles upstream from Webster Springs near County Route 24/3 and extending upstream along County Route 24 to a point near Breece.", "Active": 1, "YearAdded": null, "Mileage": 4.58029509, "SHAPE_Length": 9434.950743435933}
 
 ======== NY explicit ========
     [using where="MGMTCAT IN ('Stocked','Stocked-Extended')"]
-    EXC KeyError: 'NY'
+  LAYER https://gisservices.dec.ny.gov/arcgis/rest/services/dil/dil_water_activities/MapServer/0
+    PASS name='Inland Trout Stream Fishing' geom=esriGeometryPolyline count=391 geojson_ok=True in_state=True
+    fields:
+      OBJECTID | OID | 'OBJECTID'
+      REACHID | SmallInteger | 'ReachID'
+      MGMTCAT | String | 'MGMTCAT'
+      DESCRIPTION | String | 'DESCRIPTION'
+      WATER | String | 'WATER'
+      SPEREGAREA | String | 'SPEREGAREA'
+      HARVESTREG | String | 'HARVESTREG'
+      CRREG | String | 'CRREG'
+      LENGTH_MILES | Double | 'LENGTH_MILES'
+      RESTRICTIONS | String | 'RESTRICTIONS'
+      COMMENTS | String | 'COMMENTS'
+      SCHEDULE | String | 'SCHEDULE'
+      TOTALTROUT | SmallInteger | 'TOTALTROUT'
+      STOCKEDSPECIES | String | 'STOCKEDSPECIES'
+      SHAPE | Geometry | 'SHAPE'
+      SHAPE.LEN | Double | 'SHAPE.LEN'
+    sample={"OBJECTID": 1266, "REACHID": 752, "MGMTCAT": "Stocked-Extended", "DESCRIPTION": "From the confluence with the Beaver Kill upstream to the second Route 17 Quickway Bridge east of Roscoe", "WATER": "Willowemoc Creek", "SPEREGAREA": "N", "HARVESTREG": "Trout, April 1 - October 15, Daily Limit - 3 with no more than 1 longer than 12\u2033", "CRREG": "Trout, October 16 - March 31, Catch and Release only, Artificial Lures only", "LENGTH_MILES": 2.44171585, "RESTRICTIONS": null, "COMMENTS": "Anglers can fish along stream banks displayed as pink polygons in the stream access layer when activated. Access may also be available at additional locations not shown on this map where fishing permitted signs have been posted.", "SCHEDULE": "1st week in May", "TOTALTROUT": 2400, "STOCKEDSPECIES": "Brown Trout,", "SHAPE.LEN": 3927.99993794122}
+    sample={"OBJECTID": 1267, "REACHID": 438, "MGMTCAT": "Stocked", "DESCRIPTION": "From confluence with Saranac River upstream to 0.5 miles upstream of confluence with Cold Brook", "WATER": "North Branch Saranac River", "SPEREGAREA": "N", "HARVESTREG": "Trout, April 1 - October 15, Daily Limit - 5 with no more than 2 longer than 12\"", "CRREG": "Trout, October 16 - March 31, Catch and Release only, Artificial Lures only", "LENGTH_MILES": 4.51030601, "RESTRICTIONS": null, "COMMENTS": "Anglers can fish along stream banks displayed as pink polygons in the stream access layer when activated. Access may also be available at additional locations not shown on this map where fishing permitted signs have been posted.", "SCHEDULE": "3rd week in April", "TOTALTROUT": 3990, "STOCKEDSPECIES": "Brown Trout,", "SHAPE.LEN": 7256.453991625751}
+    sample={"OBJECTID": 1268, "REACHID": 745, "MGMTCAT": "Stocked-Extended", "DESCRIPTION": "From 1.6 miles downstream of Iron Bridge at Horton upstream to 1 mile upstream of Iron Bridge at Horton", "WATER": "Beaver Kill", "SPEREGAREA": "Y", "HARVESTREG": "Trout, All Year, Catch and Release only, Artificial Lures only", "CRREG": null, "LENGTH_MILES": 2.60103274, "RESTRICTIONS": "Beaver Kill from Iron Bridge at Horton downstream to first Route 17 overpass: Angling prohibited from July 1 through August 31 to protect thermally stressed trout.", "COMMENTS": "Anglers can fish along stream banks displayed as pink polygons in the stream access layer when activated. Access may also be available at additional locations not shown on this map where fishing permitted signs have been posted.", "SCHEDULE": "3rd week in April", "TOTALTROUT": 2720, "STOCKEDSPECIES": "Brown Trout,", "SHAPE.LEN": 4184.290654580061}
 
 ======== WV explicit ========
-    EXC KeyError: 'WV'
+  LAYER https://services.wvgis.wvu.edu/arcgis/rest/services/Applications/dnrRec_fishing/MapServer/2
+    PASS name='Fishing and Boating Access Sites' geom=esriGeometryPoint count=508 geojson_ok=True in_state=True
+    fields:
+      OBJECTID | OID | 'OBJECTID'
+      SHAPE | Geometry | 'SHAPE'
+      SiteType | String | 'SiteType'
+      County | String | 'County'
+      Waterbody | String | 'Waterbody'
+      ParkingType | String | 'ParkingType'
+      NumParking | SmallInteger | 'NumParking'
+      AccessType | String | 'AccessType'
+      NumLaunch | SmallInteger | 'NumLaunch'
+      ToiletType | String | 'ToiletType'
+      Comments | String | 'Comments'
+      Ownership | String | 'Ownership'
+      SiteName | String | 'Site Name'
+      DNRDistrict | SmallInteger | 'DNR District'
+      ParkingLot | SmallInteger | 'Parking Lot' coded[1->Yes; 0->No; -999->Unknown]
+      LaunchType | String | 'Launch Type'
+      Dock | SmallInteger | 'Dock' coded[1->Yes; 0->No; -999->Unknown]
+      Pier | SmallInteger | 'Pier' coded[1->Yes; 0->No; -999->Unknown]
+      Toilet | SmallInteger | 'Toilet' coded[1->Yes; 0->No; -999->Unknown]
+      PotableWater | SmallInteger | 'Potable Water' coded[1->Yes; 0->No; -999->Unknown]
+      LightType | String | 'Light Type'
+      NumLight | SmallInteger | 'Number Light'
+      FishCleaning | SmallInteger | 'Fish Cleaning Facility' coded[1->Yes; 0->No; -999->Unknown]
+      TrashRecep | SmallInteger | 'Trash Receptacle' coded[1->Yes; 0->No; -999->Unknown]
+      PicnicTable | SmallInteger | 'Picnic Table' coded[1->Yes; 0->No; -999->Unknown]
+      Grills | SmallInteger | 'Grills' coded[1->Yes; 0->No; -999->Unknown]
+      ADA_Acc | SmallInteger | 'ADA Accessible' coded[1->Yes; 0->No; -999->Unknown]
+      Active | SmallInteger | 'Active' coded[1->Yes; 0->No; -999->Unknown]
+      xLong | Single | 'xLong'
+      yLat | Single | 'yLat'
+    sample={"OBJECTID": 1, "SiteType": "Stream", "County": "Braxton", "Waterbody": "Elk River", "ParkingType": "Lot", "NumParking": 2, "AccessType": "Ramp", "NumLaunch": 1, "ToiletType": "No", "Comments": "Road is in very poor condition", "Ownership": "WVDOH", "SiteName": "Frametown", "DNRDistrict": 3, "ParkingLot": 1, "LaunchType": "Dirt", "Dock": 0, "Pier": 0, "Toilet": 0, "PotableWater": 0, "LightType": "No", "NumLight": 0, "FishCleaning": 0, "TrashRecep": 0, "PicnicTable": 0, "Grills": 0, "ADA_Acc": -999, "Active": 1, "xLong": -80.8641663, "yLat": 38.6352959}
+    sample={"OBJECTID": 2, "SiteType": "Stream", "County": "Randolph", "Waterbody": "Tygart River", "ParkingType": "Pull-Off", "NumParking": 6, "AccessType": "Carry Down", "NumLaunch": 0, "ToiletType": "No", "Comments": null, "Ownership": "WVDOH", "SiteName": "CR 39 Bridge", "DNRDistrict": 3, "ParkingLot": 0, "LaunchType": "Dirt", "Dock": 0, "Pier": 0, "Toilet": 0, "PotableWater": 0, "LightType": "No", "NumLight": 0, "FishCleaning": 0, "TrashRecep": 0, "PicnicTable": 0, "Grills": 0, "ADA_Acc": -999, "Active": 1, "xLong": -79.9593201, "yLat": 38.7317162}
+    sample={"OBJECTID": 3, "SiteType": "Stream", "County": "Randolph", "Waterbody": "Tygart River", "ParkingType": "Pull-Off", "NumParking": 10, "AccessType": "Carry Down", "NumLaunch": 0, "ToiletType": "No", "Comments": null, "Ownership": "WVDOH", "SiteName": "Burnt Bridge", "DNRDistrict": 3, "ParkingLot": 0, "LaunchType": "Dirt", "Dock": 0, "Pier": 0, "Toilet": 0, "PotableWater": 0, "LightType": "No", "NumLight": 0, "FishCleaning": 0, "TrashRecep": 0, "PicnicTable": 0, "Grills": 0, "ADA_Acc": -999, "Active": 1, "xLong": -79.881485, "yLat": 38.808918}
 
 ======== TX explicit ========
-    EXC KeyError: 'TX'
+  LAYER https://tpwd.texas.gov/server/rest/services/inland/River_Access_and_Conservation_Areas/FeatureServer/0
+    FAIL meta: None
 
 ======== DE explicit ========
-    EXC KeyError: 'DE'
+  LAYER https://enterprise.firstmap.delaware.gov/arcgis/rest/services/Hydrology/DE_Public_Ponds/MapServer/0
+    FAIL meta: None
