@@ -1,0 +1,50 @@
+[
+  {
+    "water": "Truckee River (through Reno)",
+    "lat": 39.5250, "lon": -119.8000,
+    "species": ["Rainbow", "Brown", "Cutthroat"],
+    "category": "Urban river - wild + stocked",
+    "season_months": [1, 12],
+    "agency_url": "https://www.ndow.org/waters/truckee-river/"
+  },
+  {
+    "water": "Sparks Marina Pond",
+    "lat": 39.5400, "lon": -119.7350,
+    "species": ["Rainbow"],
+    "category": "Community fishery - stocked",
+    "season_months": [1, 12],
+    "agency_url": "https://www.ndow.org/waters/sparks-marina/"
+  },
+  {
+    "water": "Cave Lake (Ely)",
+    "lat": 39.1855, "lon": -114.7050,
+    "species": ["Rainbow", "Brown"],
+    "category": "Stocked trout lake",
+    "season_months": [4, 10],
+    "agency_url": "https://www.ndow.org/waters/cave-lake/"
+  },
+  {
+    "water": "South Fork Reservoir",
+    "lat": 40.6870, "lon": -115.7270,
+    "species": ["Rainbow", "Brown", "Cutthroat"],
+    "category": "Stocked trout lake",
+    "season_months": [1, 12],
+    "agency_url": "https://www.ndow.org/waters/south-fork-reservoir/"
+  },
+  {
+    "water": "Wildhorse Reservoir",
+    "lat": 41.6230, "lon": -115.8030,
+    "species": ["Rainbow", "Brown", "Tiger"],
+    "category": "Stocked trout lake",
+    "season_months": [1, 12],
+    "agency_url": "https://www.ndow.org/waters/wildhorse-reservoir/"
+  },
+  {
+    "water": "Comins Lake",
+    "lat": 39.1640, "lon": -114.8270,
+    "species": ["Rainbow", "Brown"],
+    "category": "Stocked trout lake",
+    "season_months": [1, 12],
+    "agency_url": "https://www.ndow.org/waters/comins-lake/"
+  }
+]

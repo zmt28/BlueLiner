@@ -1,0 +1,42 @@
+[
+  {
+    "water": "North Platte River (Grey Reef section)",
+    "lat": 42.7610, "lon": -106.4280,
+    "species": ["Rainbow", "Brown", "Cutthroat"],
+    "category": "Tailwater - wild + stocked",
+    "season_months": [1, 12],
+    "agency_url": "https://wgfd.wyo.gov/news-events/casper-region-fishing-forecast-strong-populations-meet-challenging-water-levels-0"
+  },
+  {
+    "water": "Lake Hattie",
+    "lat": 41.2235, "lon": -105.7460,
+    "species": ["Rainbow", "Brown"],
+    "category": "Stocked trout lake",
+    "season_months": [1, 12],
+    "agency_url": "https://wgfd.wyo.gov/wyoming-wildlife/wyoming-wildlife-magazine/fantastic-fishing-2025-fishing-forecast"
+  },
+  {
+    "water": "Meeboer Lake",
+    "lat": 41.1730, "lon": -105.6710,
+    "species": ["Rainbow", "Cutthroat"],
+    "category": "Stocked trout lake",
+    "season_months": [4, 10],
+    "agency_url": "https://wgfd.wyo.gov/news-events/spring-fishing-se-wyoming-fishing-forecast-meeboer-die-and-facilities-updates"
+  },
+  {
+    "water": "Pete's Pond (Dubois)",
+    "lat": 43.5250, "lon": -109.5950,
+    "species": ["Rainbow", "Cutthroat"],
+    "category": "Community fishery - stocked",
+    "season_months": [1, 12],
+    "agency_url": "https://wgfd.wyo.gov/news-events/central-wyoming-fishing-and-habitat-outlook-2026"
+  },
+  {
+    "water": "Glendo Reservoir",
+    "lat": 42.4770, "lon": -104.9520,
+    "species": ["Rainbow", "Brown", "Tiger"],
+    "category": "Stocked trout lake",
+    "season_months": [1, 12],
+    "agency_url": "https://wgfd.wyo.gov/Public-Access/Public-Access-Areas/north-platte-river-glendo"
+  }
+]

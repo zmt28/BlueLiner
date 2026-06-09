@@ -1,0 +1,58 @@
+[
+  {
+    "water": "Oak Creek (Sedona / Oak Creek Canyon)",
+    "lat": 34.8800, "lon": -111.7310,
+    "species": ["Rainbow"],
+    "category": "Put-and-take",
+    "season_months": [1, 12],
+    "agency_url": "https://www.azgfd.com/fishing-2/where-to-fish/fish-stocking-schedule/"
+  },
+  {
+    "water": "Lower Salt River (Blue Point / Phon D. Sutton)",
+    "lat": 33.5500, "lon": -111.5770,
+    "species": ["Rainbow"],
+    "category": "Put-and-take - winter season",
+    "season_months": [10, 4],
+    "agency_url": "https://www.azgfd.com/fishing-2/where-to-fish/fish-stocking-schedule/"
+  },
+  {
+    "water": "Silver Creek (Show Low)",
+    "lat": 34.2950, "lon": -109.9450,
+    "species": ["Apache", "Rainbow"],
+    "category": "Special regs - stocked Apache trout",
+    "season_months": [10, 3],
+    "agency_url": "https://www.azgfd.com/fishing-2/hatcheries-fisheries-management/fish-hatcheries/silver-creek-hatchery/"
+  },
+  {
+    "water": "Big Lake (White Mountains)",
+    "lat": 33.8770, "lon": -109.4220,
+    "species": ["Rainbow", "Brook", "Cutthroat"],
+    "category": "Stocked trout lake",
+    "season_months": [4, 10],
+    "agency_url": "https://www.azgfd.com/fishing-2/where-to-fish/fish-stocking-schedule/"
+  },
+  {
+    "water": "Tonto Creek (Kohls Ranch / hatchery reach)",
+    "lat": 34.3180, "lon": -111.0950,
+    "species": ["Rainbow"],
+    "category": "Put-and-take",
+    "season_months": [4, 9],
+    "agency_url": "https://www.azgfd.com/fishing-2/where-to-fish/fish-stocking-schedule/"
+  },
+  {
+    "water": "Show Low Lake",
+    "lat": 34.1920, "lon": -110.0050,
+    "species": ["Rainbow"],
+    "category": "Stocked trout lake",
+    "season_months": [4, 10],
+    "agency_url": "https://www.azgfd.com/fishing-2/where-to-fish/fish-stocking-schedule/"
+  },
+  {
+    "water": "Fool Hollow Lake",
+    "lat": 34.2660, "lon": -110.0640,
+    "species": ["Rainbow"],
+    "category": "Stocked trout lake",
+    "season_months": [4, 10],
+    "agency_url": "https://www.azgfd.com/fishing-2/where-to-fish/fish-stocking-schedule/"
+  }
+]

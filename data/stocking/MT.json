@@ -1,0 +1,42 @@
+[
+  {
+    "water": "Georgetown Lake",
+    "lat": 46.1870, "lon": -113.2900,
+    "species": ["Rainbow", "Brook"],
+    "category": "Stocked trout lake",
+    "season_months": [1, 12],
+    "agency_url": "https://myfwp.mt.gov/fishMT/waterbody/40827"
+  },
+  {
+    "water": "Clark Canyon Reservoir",
+    "lat": 44.9950, "lon": -112.8600,
+    "species": ["Rainbow", "Brown"],
+    "category": "Stocked trout lake",
+    "season_months": [1, 12],
+    "agency_url": "https://myfwp.mt.gov/fishMT/waterbody/43034"
+  },
+  {
+    "water": "Canyon Ferry Reservoir",
+    "lat": 46.6170, "lon": -111.7280,
+    "species": ["Rainbow", "Brown"],
+    "category": "Stocked trout lake",
+    "season_months": [1, 12],
+    "agency_url": "https://myfwp.mt.gov/fishMT/waterbody/42585"
+  },
+  {
+    "water": "Spring Meadow Lake (Helena)",
+    "lat": 46.6060, "lon": -112.0720,
+    "species": ["Rainbow"],
+    "category": "Community fishery - stocked",
+    "season_months": [1, 12],
+    "agency_url": "https://fwp.mt.gov/stateparks/spring-meadow-lake"
+  },
+  {
+    "water": "Lake Elmo (Billings)",
+    "lat": 45.8395, "lon": -108.4760,
+    "species": ["Rainbow"],
+    "category": "Put-and-take",
+    "season_months": [3, 5],
+    "agency_url": "https://fwp.mt.gov/lake-elmo"
+  }
+]

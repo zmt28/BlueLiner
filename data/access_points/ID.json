@@ -1,0 +1,42 @@
+[
+  {
+    "name": "Conant Boat Access (South Fork Snake River)",
+    "lat": 43.3930, "lon": -111.4230,
+    "type": "boat_ramp",
+    "access": "fee",
+    "agency_url": "https://www.blm.gov/visit/south-fork-snake-river-conant-boat-access",
+    "notes": "BLM concrete ramp + raft launch in Swan Valley; self-issue permit, $3 parking fee."
+  },
+  {
+    "name": "Byington Boat Access (South Fork Snake River)",
+    "lat": 43.5560, "lon": -111.7600,
+    "type": "boat_ramp",
+    "access": "fee",
+    "agency_url": "https://www.blm.gov/visit/south-fork-snake-river-byington-boat-access",
+    "notes": "BLM ramp below the canyon reach; self-issue permit, $3 parking fee."
+  },
+  {
+    "name": "Lorenzo Boat Access (South Fork Snake River)",
+    "lat": 43.7380, "lon": -111.8780,
+    "type": "boat_ramp",
+    "access": "public",
+    "agency_url": "https://www.blm.gov/visit/south-fork-snake-river-lorenzo-boat-access",
+    "notes": "Lower-river BLM launch near the US-20 crossing."
+  },
+  {
+    "name": "Menan Boat Access (South Fork Snake River)",
+    "lat": 43.7560, "lon": -111.9750,
+    "type": "boat_ramp",
+    "access": "public",
+    "agency_url": "https://www.blm.gov/visit/south-fork-snake-river-menan-boat-access",
+    "notes": "BLM take-out near the Henrys Fork confluence."
+  },
+  {
+    "name": "Red Road Bridge Boat Access (Henrys Fork)",
+    "lat": 43.8500, "lon": -111.8700,
+    "type": "boat_ramp",
+    "access": "public",
+    "agency_url": "https://www.blm.gov/visit/red-road-bridge-boat-access-henrys-fork",
+    "notes": "BLM access on the lower Henrys Fork west of Rexburg; coordinates approximate."
+  }
+]

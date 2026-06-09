@@ -1,0 +1,42 @@
+[
+  {
+    "water": "Eleven Mile Reservoir",
+    "lat": 38.9150, "lon": -105.4700,
+    "species": ["Rainbow", "Brown", "Cutthroat"],
+    "category": "Stocked trout lake",
+    "season_months": [1, 12],
+    "agency_url": "https://cpw.state.co.us/state-parks/eleven-mile-state-park"
+  },
+  {
+    "water": "Spinney Mountain Reservoir",
+    "lat": 38.9700, "lon": -105.6030,
+    "species": ["Rainbow", "Cutthroat", "Brown"],
+    "category": "Gold Medal stillwater - stocked",
+    "season_months": [4, 11],
+    "agency_url": "https://cpw.state.co.us/state-parks/spinney-mountain-state-park"
+  },
+  {
+    "water": "South Platte River (Dream Stream / Charlie Meyers SWA)",
+    "lat": 38.9450, "lon": -105.5450,
+    "species": ["Rainbow", "Brown", "Cutthroat"],
+    "category": "Gold Medal tailwater - wild + stocked",
+    "season_months": [1, 12],
+    "agency_url": "https://cpw.state.co.us/state-wildlife-areas/charlie-meyers-swa"
+  },
+  {
+    "water": "South Platte River (Deckers)",
+    "lat": 39.2536, "lon": -105.2280,
+    "species": ["Rainbow", "Brown"],
+    "category": "Tailwater - wild + stocked",
+    "season_months": [1, 12],
+    "agency_url": "https://cpw.state.co.us/body-of-water/south-platte-river"
+  },
+  {
+    "water": "Delaney Butte Lakes",
+    "lat": 40.7680, "lon": -106.4780,
+    "species": ["Brown", "Rainbow", "Cutthroat"],
+    "category": "Gold Medal stillwater - special regs",
+    "season_months": [1, 12],
+    "agency_url": "https://cpw.state.co.us/state-wildlife-areas/delaney-butte-lakes-swa"
+  }
+]

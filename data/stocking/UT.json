@@ -1,0 +1,42 @@
+[
+  {
+    "water": "Strawberry Reservoir",
+    "lat": 40.1700, "lon": -111.1200,
+    "species": ["Cutthroat", "Rainbow"],
+    "category": "Stocked trout lake",
+    "season_months": [1, 12],
+    "agency_url": "https://dwrapps.utah.gov/fishing/?NA=Strawberry+Reservoir+%28Blue+Ribbon%29"
+  },
+  {
+    "water": "Scofield Reservoir",
+    "lat": 39.7880, "lon": -111.1280,
+    "species": ["Rainbow", "Cutthroat", "Tiger"],
+    "category": "Stocked trout lake",
+    "season_months": [1, 12],
+    "agency_url": "https://wildlife.utah.gov/pdf/fish/scofield_plan_2017.pdf"
+  },
+  {
+    "water": "Panguitch Lake",
+    "lat": 37.7020, "lon": -112.6530,
+    "species": ["Rainbow", "Cutthroat", "Tiger"],
+    "category": "Stocked trout lake",
+    "season_months": [1, 12],
+    "agency_url": "https://wildlife.utah.gov/pdf/fish/technical-reports/panguitch_lake_2022_trend_net_survey.pdf"
+  },
+  {
+    "water": "Logan River (Logan Canyon)",
+    "lat": 41.7420, "lon": -111.7560,
+    "species": ["Rainbow", "Brown", "Cutthroat"],
+    "category": "Put-and-take",
+    "season_months": [5, 9],
+    "agency_url": "https://wildlife.utah.gov/news/utah-wildlife-news/1909-great-places-to-go-fishing-on-memorial-day-weekend-and-free-fishing-day.html"
+  },
+  {
+    "water": "Mirror Lake (Uinta Mountains)",
+    "lat": 40.7040, "lon": -110.8880,
+    "species": ["Rainbow", "Tiger"],
+    "category": "Stocked trout lake",
+    "season_months": [6, 9],
+    "agency_url": "https://wildlife.utah.gov/news/utah-wildlife-news/961-fishing-july-fourth.html"
+  }
+]
