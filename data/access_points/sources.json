@@ -98,6 +98,15 @@
       "name_field": "WaterAccessSiteName",
       "type_flags": {"BoatRamps": "boat_ramp", "HandLaunches": "boat_ramp"},
       "notes_field": "BoatRampSurfaceTypes"
+    },
+    {
+      "state": "WV",
+      "label": "WV DNR Fishing and Boating Access Sites",
+      "url": "https://services.wvgis.wvu.edu/arcgis/rest/services/Applications/dnrRec_fishing/MapServer/2/query?where=Active%20%3D%201",
+      "agency_url": "https://wvdnr.gov/fishing/",
+      "name_field": "SiteName",
+      "type_field": "AccessType",
+      "notes_field": "Waterbody"
     }
   ]
 }

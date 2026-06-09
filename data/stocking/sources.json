@@ -103,6 +103,34 @@
       "name_field": "WaterName",
       "species_field": "FishType",
       "dedupe": true
+    },
+    {
+      "state": "NJ",
+      "label": "NJ DEP Trout Stocked Streams",
+      "url": "https://mapsdep.nj.gov/arcgis/rest/services/Features/Environmental_admin/MapServer/35/query?where=1%3D1",
+      "agency_url": "https://dep.nj.gov/njfw/fishing/freshwater/trout-fishing-program/",
+      "category": "Stocked trout water (NJ DEP)",
+      "name_field": "NAME",
+      "dedupe": true
+    },
+    {
+      "state": "WV",
+      "label": "WV DNR Stocked Trout Streams",
+      "url": "https://services.wvgis.wvu.edu/arcgis/rest/services/Applications/dnrRec_fishing/MapServer/4/query?where=Active%20%3D%201%20AND%20StockCode%20%3C%3E%20%27NS%27",
+      "agency_url": "https://wvdnr.gov/fishing/trout-stocking/",
+      "category": "Stocked trout water (WV DNR)",
+      "name_field": "Name",
+      "dedupe": true
+    },
+    {
+      "state": "NY",
+      "label": "NY DEC Stocked Trout Streams",
+      "url": "https://gisservices.dec.ny.gov/arcgis/rest/services/dil/dil_water_activities/MapServer/0/query?where=MGMTCAT%20IN%20(%27Stocked%27%2C%27Stocked-Extended%27)",
+      "agency_url": "https://dec.ny.gov/things-to-do/freshwater-fishing/stocking-lists",
+      "category": "Stocked trout water (NY DEC)",
+      "name_field": "WATER",
+      "species_field": "STOCKEDSPECIES",
+      "dedupe": true
     }
   ]
 }
