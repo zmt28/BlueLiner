@@ -21,9 +21,19 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
+import sys
 import time
 
 import httpx
+
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+try:
+    # (lat_min, lat_max, lon_min, lon_max) for all 50 states + DC --
+    # covers explicit-mode requests outside the western BBOX table.
+    from states import STATE_BBOX as _APP_BBOX
+except Exception:                                  # pragma: no cover
+    _APP_BBOX = {}
 
 UA = {"User-Agent": "Blueliner-discovery/0.1 (+https://blueliner.app)"}
 TIMEOUT = 15.0
@@ -172,8 +182,13 @@ def first_coord(geom):
 
 
 def in_bbox(st: str, lon: float, lat: float) -> bool:
-    w, s, e, n = BBOX[st]
-    return w <= lon <= e and s <= lat <= n
+    if st in BBOX:
+        w, s, e, n = BBOX[st]
+        return w <= lon <= e and s <= lat <= n
+    if st in _APP_BBOX:
+        la0, la1, lo0, lo1 = _APP_BBOX[st]
+        return lo0 <= lon <= lo1 and la0 <= lat <= la1
+    return True  # unknown code: skip the in-state check
 
 
 def trim_props(props: dict, limit_keys: int = 18, limit_val: int = 48) -> dict:
