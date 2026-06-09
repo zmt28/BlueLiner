@@ -54,7 +54,8 @@ def validate_stocking() -> int:
     required = {"water", "lat", "lon", "species", "category",
                 "season_months", "agency_url"}
     for fn in sorted(os.listdir(d)):
-        if not fn.endswith(".json") or fn == "sources.json":
+        if (not fn.endswith(".json")
+                or fn in ("sources.json", "candidates.json")):
             continue
         state = fn[:-5].upper()
         path = os.path.join(d, fn)
@@ -98,7 +99,8 @@ def validate_access_points() -> int:
         return 0
     required = {"name", "lat", "lon", "type", "access"}
     for fn in sorted(os.listdir(d)):
-        if not fn.endswith(".json") or fn == "sources.json":
+        if (not fn.endswith(".json")
+                or fn in ("sources.json", "candidates.json")):
             continue
         state = fn[:-5].upper()
         path = os.path.join(d, fn)
