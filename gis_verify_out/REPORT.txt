@@ -1,231 +1,240 @@
 
-======== WA explicit ========
-  LAYER https://geodataservices.wdfw.wa.gov/arcgis/rest/services/ApplicationServices/FishWA_2014_AllLakes_PROD/MapServer/24
-    FAIL name='Stocked Lakes' geom=esriGeometryPoint count=874 geojson_ok=False in_state=None
+======== MT explicit ========
+    [using where="PLANTDATE >= DATE '2023-01-01'"]
+  LAYER https://fwp-gis.mt.gov/arcgis/rest/services/fish/fishViewer/MapServer/38
+    PASS name='Fish Stocking Records' geom=esriGeometryPoint count=1870 geojson_ok=True in_state=True
     fields:
-      GeoWeb.DBO.HighLakes.OBJECTID | OID | 'OBJECTID'
-      GeoWeb.DBO.HighLakes.Shape | Geometry | 'Shape'
-      GeoWeb.dbo.Fish_MapsHighLakesAll_V.LakeMapName | String | 'Lake Name'
-      GeoWeb.dbo.Fish_MapsHighLakesAll_V.HighLakeType | String | 'Lake Type'
-      GeoWeb.dbo.Fish_MapsHighLakesAll_V.CountyName | String | 'County'
-      GeoWeb.dbo.Fish_MapsHighLakesAll_V.TRS | String | 'TRS'
-      GeoWeb.dbo.Fish_MapsHighLakesAll_V.ElevationFeet | Integer | 'Elevation (ft)'
-      GeoWeb.dbo.Fish_MapsHighLakesAll_V.Acres | Double | 'Acres'
-      GeoWeb.dbo.Fish_MapsHighLakesAll_V.SpeciesList | String | 'Species'
-      GeoWeb.dbo.Fish_MapsHighLakesAll_V.GeoAreaName | String | 'Area'
-      GeoWeb.dbo.Fish_MapsHighLakesAll_V.GeoAreaURL | String | 'Area Website'
-      GeoWeb.dbo.Fish_MapsHighLakesAll_V.WebsiteURL | String | 'Lake Website'
+      SPECIES | String | 'Species'
+      STRAIN | String | 'Strain'
+      PLANTDATE | Date | 'Stocking Date'
+      NUMFISH | Integer | 'Number Fish'
+      FISHSIZE | Double | 'Fish Size'
+      WATERBODY | String | 'Waterbody'
+      LOCCOMMENT | String | 'Comment'
+      PMETHOD | String | 'Stocking Method'
+      REASON | String | 'Stocking Reason'
+      OBJECTID | OID | 'OBJECTID'
+      HATCHERY | String | 'Hatchery'
+      SHAPE | Geometry | 'Shape'
+    sample={"SPECIES": "Rainbow Trout", "STRAIN": "Arlee", "PLANTDATE": 1726531200000, "NUMFISH": 10969, "FISHSIZE": 5.42, "WATERBODY": "AMC Settling Pond #3", "LOCCOMMENT": null, "PMETHOD": "Truck or Vehicle", "REASON": "Maintain Sports Fishery", "OBJECTID": 221, "HATCHERY": "Jocko River Trout Hatchery"}
+    sample={"SPECIES": "Rainbow Trout", "STRAIN": "Arlee", "PLANTDATE": 1718064000000, "NUMFISH": 10179, "FISHSIZE": 3.29, "WATERBODY": "AMC Settling Pond #3", "LOCCOMMENT": null, "PMETHOD": "Truck or Vehicle", "REASON": "Maintain Sports Fishery", "OBJECTID": 222, "HATCHERY": "Jocko River Trout Hatchery"}
+    sample={"SPECIES": "Westslope Cutthroat Trout", "STRAIN": "Anaconda", "PLANTDATE": 1714953600000, "NUMFISH": 3360, "FISHSIZE": 3.62, "WATERBODY": "AMC Settling Pond #3", "LOCCOMMENT": "Boat ramp", "PMETHOD": "Truck or Vehicle", "REASON": "Maintain Sports Fishery", "OBJECTID": 223, "HATCHERY": "Washoe Park Trout Hatchery"}
 
-======== WA explicit ========
-  LAYER https://geodataservices.wdfw.wa.gov/arcgis/rest/services/WP_RealEstate/WaterAccessSites/MapServer/1
-    PASS name='LabelPoints' geom=esriGeometryPoint count=469 geojson_ok=True in_state=True
+======== MT explicit ========
+    [using where="SPECIES LIKE '%Trout%'"]
+  LAYER https://fwp-gis.mt.gov/arcgis/rest/services/fish/fishViewer/MapServer/38
+    PASS name='Fish Stocking Records' geom=esriGeometryPoint count=101636 geojson_ok=True in_state=True
     fields:
-      ManagedPlaceOID | OID | 'ManagedPlaceOID'
-      WaterAccessSiteName | String | 'WaterAccessSiteName'
-      County | String | 'County'
-      ManagingEntity | String | 'ManagingEntity'
-      ClosureType | String | 'ClosureType'
-      OpenDates | String | 'OpenDates'
-      ParkingLots | Integer | 'ParkingLots'
-      ADAParkingStalls | Integer | 'ADAParkingStalls'
-      BoatRamps | Integer | 'BoatRamps'
-      BoatRampSurfaceTypes | String | 'BoatRampSurfaceTypes'
-      HandLaunches | Integer | 'HandLaunches'
-      BoatRampHasADALoadingPlatform | String | 'BoatRampHasADALoadingPlatform'
-      BoatRampHasBoardingFloat | String | 'BoatRampHasBoardingFloat'
-      BoardingFloatIsADA | String | 'BoardingFloatIsADA'
-      FishingPlatforms | Integer | 'FishingPlatforms'
-      Kiosks | Integer | 'Kiosks'
-      Buildings | Integer | 'Buildings'
-      Restrooms | Integer | 'Restrooms'
-      ADARestrooms | Integer | 'ADARestrooms'
-      CampingAllowed | String | 'CampingAllowed'
-      HasOffice | String | 'HasOffice'
-      HasADAOffice | String | 'HasADAOffice'
-      Campgrounds | Integer | 'Campgrounds'
-      Trailheads | Integer | 'Trailheads'
-      Viewpoints | Integer | 'Viewpoints'
-      ADAViewpoints | Integer | 'ADAViewpoints'
-      ShootingRanges | Integer | 'ShootingRanges'
-      ADAShootingRanges | Integer | 'ADAShootingRanges'
-      HasVisitorCenter | String | 'HasVisitorCenter'
-      HasADAVisitorCenter | String | 'HasADAVisitorCenter'
-      HasRegionalHQ | String | 'HasRegionalHQ'
-      HasADARegionalHQ | String | 'HasADARegionalHQ'
-      Notes | String | 'Notes'
+      SPECIES | String | 'Species'
+      STRAIN | String | 'Strain'
+      PLANTDATE | Date | 'Stocking Date'
+      NUMFISH | Integer | 'Number Fish'
+      FISHSIZE | Double | 'Fish Size'
+      WATERBODY | String | 'Waterbody'
+      LOCCOMMENT | String | 'Comment'
+      PMETHOD | String | 'Stocking Method'
+      REASON | String | 'Stocking Reason'
+      OBJECTID | OID | 'OBJECTID'
+      HATCHERY | String | 'Hatchery'
+      SHAPE | Geometry | 'Shape'
+    sample={"SPECIES": "Yellowstone Cutthroat Trout", "STRAIN": "Goose Lake", "PLANTDATE": 1408320000000, "NUMFISH": 1000, "FISHSIZE": 2.87, "WATERBODY": "Abundance Lake", "LOCCOMMENT": null, "PMETHOD": "Truck or Vehicle", "REASON": "Maintain Sports Fishery", "OBJECTID": 1, "HATCHERY": "Yellowstone River Trout Hatchery"}
+    sample={"SPECIES": "Rainbow Trout", "STRAIN": "Arlee", "PLANTDATE": 1401926400000, "NUMFISH": 7113, "FISHSIZE": 4.25, "WATERBODY": "Ackley Lake", "LOCCOMMENT": null, "PMETHOD": "Truck or Vehicle", "REASON": "Maintain Sports Fishery", "OBJECTID": 2, "HATCHERY": "Big Springs Trout Hatchery"}
+    sample={"SPECIES": "Rainbow Trout", "STRAIN": "Arlee", "PLANTDATE": 1401926400000, "NUMFISH": 7914, "FISHSIZE": 4.24, "WATERBODY": "Ackley Lake", "LOCCOMMENT": null, "PMETHOD": "Truck or Vehicle", "REASON": "Maintain Sports Fishery", "OBJECTID": 3, "HATCHERY": "Big Springs Trout Hatchery"}
+
+======== UT explicit ========
+    [using where="Stocked_YN = 'Yes'"]
+  LAYER https://services.arcgis.com/ZzrwjTRez6FJiOq4/arcgis/rest/services/UDWR_Fish_Stocking_Events_1979_2024_VIEW/FeatureServer/1
+    PASS name='UDWR Streams' geom=esriGeometryPolyline count=12942 geojson_ok=True in_state=True
+    fields:
+      OBJECTID | OID | 'OBJECTID'
+      Permanent_Identifier | String | 'Permanent_Identifier'
+      ReachCode | String | 'ReachCode'
+      DWR_WaterID | String | 'DWR_WaterID'
+      WaterName | String | 'WaterName'
+      Long_X | Double | 'Long_X'
+      Lat_Y | Double | 'Lat_Y'
+      DUP_WTRID_JOIN_NEW | String | 'Updated_DWR_WaterID'
+      New_OR_Updated | String | 'NEW_UPDATED'
+      DWR_WATER_ID | String | 'DWR_WATER_ID'
+      WTRID | String | 'WTRID'
+      Stocked_YN | String | 'Stocked_YN'
+      Centroid_X | Double | 'Centroid_X'
+      Centroid_Y | Double | 'Centroid_Y'
+      Shape__Length | Double | 'Shape__Length'
+      GlobalID | GlobalID | 'GlobalID'
+      CreationDate | Date | 'CreationDate'
+      Creator | String | 'Creator'
+      EditDate | Date | 'EditDate'
+      Editor | String | 'Editor'
+    sample={"OBJECTID": 4, "Permanent_Identifier": "79022724", "ReachCode": "16030006000024", "DWR_WaterID": "VIAC090-01", "WaterName": "PINTO CR", "Long_X": -113.54027805, "Lat_Y": 37.67298437, "DUP_WTRID_JOIN_NEW": null, "New_OR_Updated": null, "DWR_WATER_ID": "VIAC090-01", "WTRID": "VI AC 090       01", "Stocked_YN": "Yes", "Centroid_X": -113.54044922, "Centroid_Y": 37.6729816, "Shape__Length": 1213.307673107217, "GlobalID": "137660cc-1460-475b-8cc3-98120e6f4d57", "CreationDate": 1757364082223, "Creator": "dwrtodd", "EditDate": 1757364082223, "Editor": "dwrtodd"}
+    sample={"OBJECTID": 10, "Permanent_Identifier": "78364823", "ReachCode": "16030001000843", "DWR_WaterID": "VIAA790C01-01", "WaterName": "WILLIS CR", "Long_X": -112.63943652, "Lat_Y": 37.49997243, "DUP_WTRID_JOIN_NEW": null, "New_OR_Updated": null, "DWR_WATER_ID": "VIAA790C01-01", "WTRID": "VI AA 790C 01   01", "Stocked_YN": "Yes", "Centroid_X": -112.63943819, "Centroid_Y": 37.49989373, "Shape__Length": 1710.6155560194734, "GlobalID": "1a5a18aa-793a-49e4-b0cd-c576fce8f843", "CreationDate": 1757364082223, "Creator": "dwrtodd", "EditDate": 1757364082223, "Editor": "dwrtodd"}
+    sample={"OBJECTID": 13, "Permanent_Identifier": "78358841", "ReachCode": "16030001003457", "DWR_WaterID": "VIAA660-01", "WaterName": "SANDY CR", "Long_X": -112.42608263, "Lat_Y": 37.91521908, "DUP_WTRID_JOIN_NEW": null, "New_OR_Updated": null, "DWR_WATER_ID": "VIAA660-01", "WTRID": "VI AA 660       01", "Stocked_YN": "Yes", "Centroid_X": -112.42564116, "Centroid_Y": 37.91506542, "Shape__Length": 2156.1685230455428, "GlobalID": "ff124884-6d29-47b5-bda2-be59617d63e4", "CreationDate": 1757364082223, "Creator": "dwrtodd", "EditDate": 1757364082223, "Editor": "dwrtodd"}
+
+======== UT explicit ========
+    [using where="Stocked_YN = 'Yes'"]
+  LAYER https://services.arcgis.com/ZzrwjTRez6FJiOq4/arcgis/rest/services/UDWR_Fish_Stocking_Events_1979_2024_VIEW/FeatureServer/0
+    PASS name='UDWR Lakes' geom=esriGeometryPolygon count=1094 geojson_ok=True in_state=True
+    fields:
+      OBJECTID | OID | 'OBJECTID'
+      Permanent_Identifier | String | 'Permanent_Identifier'
+      ReachCode | String | 'ReachCode'
+      DWR_WaterID | String | 'DWR_WaterID'
+      WaterName | String | 'WaterName'
+      Long_X | Double | 'Long_X'
+      Lat_Y | Double | 'Lat_Y'
+      Centroid_X | Double | 'Centroid_X'
+      Centroid_Y | Double | 'Centroid_Y'
+      New_OR_Updated | String | 'New_OR_Updated'
+      DUP_WTRID_JOIN_NEW | String | 'Updated_DWR_WaterID'
+      DWR_WATER_ID | String | 'DWR_WATER_ID'
+      WTRID | String | 'WTRID'
+      Stocked_YN | String | 'Stocked_YN'
+      CentralPoint_X | Double | 'CentralPoint_X'
+      CentralPoint_Y | Double | 'CentralPoint_Y'
+      Shape__Area | Double | 'Shape__Area'
+      Shape__Length | Double | 'Shape__Length'
+      GlobalID | GlobalID | 'GlobalID'
+      CreationDate | Date | 'CreationDate'
+      Creator | String | 'Creator'
+      EditDate | Date | 'EditDate'
+      Editor | String | 'Editor'
+    sample={"OBJECTID": 1, "Permanent_Identifier": "78366153", "ReachCode": "16030001003742", "DWR_WaterID": "VI372C", "WaterName": "QUIETER POND", "Long_X": -112.78049228, "Lat_Y": 37.67390158, "Centroid_X": -112.78050382, "Centroid_Y": 37.6739072, "New_OR_Updated": null, "DUP_WTRID_JOIN_NEW": null, "DWR_WATER_ID": "VI372C", "WTRID": "VI 372C", "Stocked_YN": "Yes", "CentralPoint_X": -112.78049228, "CentralPoint_Y": 37.67390158, "Shape__Area": 7119.0499267578125, "Shape__Length": 339.8662023105314, "GlobalID": "3b0a2d13-f252-4ec9-9e9b-0efd8711a3c1", "CreationDate": 1757364081691, "Creator": "dwrtodd", "EditDate": 1757364081691, "Editor": "dwrtodd"}
+    sample={"OBJECTID": 2, "Permanent_Identifier": "78955871", "ReachCode": "16030007001054", "DWR_WaterID": "VI013", "WaterName": "KENTS L, LOWER", "Long_X": -112.46783062, "Lat_Y": 38.23948269, "Centroid_X": -112.46784217, "Centroid_Y": 38.2394884, "New_OR_Updated": null, "DUP_WTRID_JOIN_NEW": null, "DWR_WATER_ID": "VI013", "WTRID": "VI 013", "Stocked_YN": "Yes", "CentralPoint_X": -112.46783062, "CentralPoint_Y": 38.23948269, "Shape__Area": 30556.29248046875, "Shape__Length": 829.4503310179368, "GlobalID": "88968dfe-b22e-4211-8aec-fdbdcafea96c", "CreationDate": 1757364081691, "Creator": "dwrtodd", "EditDate": 1757364081691, "Editor": "dwrtodd"}
+    sample={"OBJECTID": 3, "Permanent_Identifier": "79206881", "ReachCode": "14070003005712", "DWR_WaterID": "I492", "WaterName": "ABERDUNK L FL", "Long_X": -111.68206326, "Lat_Y": 38.63203462, "Centroid_X": -111.68207469, "Centroid_Y": 38.63204043, "New_OR_Updated": null, "DUP_WTRID_JOIN_NEW": null, "DWR_WATER_ID": "I492", "WTRID": "I  492", "Stocked_YN": "Yes", "CentralPoint_X": -111.68206326, "CentralPoint_Y": 38.63203462, "Shape__Area": 6860.9774169921875, "Shape__Length": 395.6691720457267, "GlobalID": "7d9d2583-90c0-4879-95bb-e4536f9edf17", "CreationDate": 1757364081691, "Creator": "dwrtodd", "EditDate": 1757364081691, "Editor": "dwrtodd"}
+
+======== CO explicit ========
+    [using where="STOCKED = 'Catchable trout'"]
+  LAYER https://ndismaps.nrel.colostate.edu/arcgis/rest/services/FishingAtlas2025/FishingInfo2025/MapServer/7
+    PASS name='Fishing locations' geom=esriGeometryPoint count=163 geojson_ok=True in_state=True
+    fields:
+      OBJECTID_12 | OID | 'OBJECTID_12'
       Shape | Geometry | 'Shape'
-    sample={"ManagedPlaceOID": 204, "WaterAccessSiteName": "Fourth of July Lake", "County": "Lincoln", "ManagingEntity": "WDFW", "ClosureType": "No closure", "OpenDates": "Year-round", "ParkingLots": 1, "ADAParkingStalls": null, "BoatRamps": 1, "BoatRampSurfaceTypes": "Unimproved Surface", "HandLaunches": 0, "BoatRampHasADALoadingPlatform": "No", "BoatRampHasBoardingFloat": "No", "BoardingFloatIsADA": "N/A", "FishingPlatforms": 0, "Kiosks": 1, "Buildings": 0, "Restrooms": 0, "ADARestrooms": 0, "CampingAllowed": "No", "HasOffice": "No", "HasADAOffice": "N/A", "Campgrounds": 0, "Trailheads": 0, "Viewpoints": 0, "ADAViewpoints": 0, "ShootingRanges": 0, "ADAShootingRanges": 0, "HasVisitorCenter": "No", "HasADAVisitorCenter": "N/A", "HasRegionalHQ": "No", "HasADARegionalHQ": "N/A", "Notes": null}
-    sample={"ManagedPlaceOID": 206, "WaterAccessSiteName": "Jameson Lake", "County": "Douglas", "ManagingEntity": "WDFW", "ClosureType": "Seasonal Limited Access", "OpenDates": "Year-round. Closed to vehicles November 1 - 4th Friday in April.", "ParkingLots": 3, "ADAParkingStalls": 5, "BoatRamps": 2, "BoatRampSurfaceTypes": "Concrete, Gravel", "HandLaunches": 2, "BoatRampHasADALoadingPlatform": "No", "BoatRampHasBoardingFloat": "No", "BoardingFloatIsADA": "N/A", "FishingPlatforms": 0, "Kiosks": 0, "Buildings": 7, "Restrooms": 7, "ADARestrooms": 0, "CampingAllowed": "Yes", "HasOffice": "No", "HasADAOffice": "N/A", "Campgrounds": 0, "Trailheads": 0, "Viewpoints": 0, "ADAViewpoints": 0, "ShootingRanges": 0, "ADAShootingRanges": 0, "HasVisitorCenter": "No", "HasADAVisitorCenter": "N/A", "HasRegionalHQ": "No", "HasADARegionalHQ": "N/A", "Notes": "Walk-in allowed when entrance gate is closed."}
-    sample={"ManagedPlaceOID": 220, "WaterAccessSiteName": "Weiss", "County": "Pierce", "ManagingEntity": "WDFW", "ClosureType": "Seasonal Limited Access", "OpenDates": "Year-round. Open to vehicles only during the regulated sport fishing season(s).", "ParkingLots": 1, "ADAParkingStalls": null, "BoatRamps": 1, "BoatRampSurfaceTypes": "Unimproved Surface", "HandLaunches": 0, "BoatRampHasADALoadingPlatform": "No", "BoatRampHasBoardingFloat": "No", "BoardingFloatIsADA": "N/A", "FishingPlatforms": 0, "Kiosks": 0, "Buildings": 0, "Restrooms": 0, "ADARestrooms": 0, "CampingAllowed": "No", "HasOffice": "No", "HasADAOffice": "N/A", "Campgrounds": 0, "Trailheads": 0, "Viewpoints": 0, "ADAViewpoints": 0, "ShootingRanges": 0, "ADAShootingRanges": 0, "HasVisitorCenter": "No", "HasADAVisitorCenter": "N/A", "HasRegionalHQ": "No", "HasADARegionalHQ": "N/A", "Notes": null}
+      WATERCODE | String | 'WATERCODE'
+      DOW_NAME | String | 'DOW_NAME'
+      FA_NAME | String | 'FA_NAME'
+      FA_NAME2 | String | 'FA_NAME2'
+      DISP_PRIORITY | SmallInteger | 'DISP_PRIORITY'
+      PROP_NAME | String | 'PROP_NAME'
+      ELEV_FT | Integer | 'ELEV_FT'
+      xval | Single | 'xval'
+      yval | Single | 'yval'
+      DRIVING_URL | String | 'DRIVING_URL'
+      SURVEY_URL | String | 'SURVEY_URL'
+      OPP_FAMILY | String | 'OPP_FAMILY'
+      OPP_RUSTIC | String | 'OPP_RUSTIC'
+      OPP_ICE | String | 'OPP_ICE'
+      STOCKED | String | 'STOCKED'
+      LOC_TYPE | String | 'LOC_TYPE'
+      COUNTYNAME | String | 'COUNTYNAME'
+      SHOW | SmallInteger | 'SHOW'
+      NOSHOW_REASON | String | 'NOSHOW_REASON'
+      REPORTS_URL | String | 'REPORTS_URL'
+      ELEV_FT_TXT | String | 'ELEV_FT_TXT'
+      PROP_URL | String | 'PROP_URL'
+      PROP_ID | String | 'PROP_ID'
+      BOATING | String | 'BOATING'
+      ACCESS_EASE | String | 'ACCESS_EASE'
+      FISH_PRESSURE | String | 'FISH_PRESSURE'
+      HANDI_PIER | String | 'HANDI_PIER'
+      UNI_ID | Integer | 'UNI_ID'
+      Illegal_Stocking | String | 'Illegal_Stocking'
+      Custom_DD_field | SmallInteger | 'Custom_DD_field'
+      SpotURL | String | 'SpotURL'
+      CONTACT_CODE | String | 'CONTACT_CODE'
+      Quality | SmallInteger | 'Quality'
+      GoldMedal | SmallInteger | 'GoldMedal'
+      SUP | SmallInteger | 'SUP'
+      SUP_Desc | String | 'SUP_Desc'
+    sample={"OBJECTID_12": 4, "WATERCODE": "53936", "DOW_NAME": "Bellaire Lake", "FA_NAME": "Bellaire Lake", "FA_NAME2": "Bellaire Lake", "DISP_PRIORITY": 1, "PROP_NAME": "Bellaire Lake SWA", "ELEV_FT": 8633, "xval": -105.61796569824219, "yval": 40.770694732666016, "DRIVING_URL": "https://www.google.com/maps/dir//40.7707,-105.618", "SURVEY_URL": "", "OPP_FAMILY": "Yes", "OPP_RUSTIC": "No", "OPP_ICE": "Yes", "STOCKED": "Catchable trout", "LOC_TYPE": "Water Body", "COUNTYNAME": "Larimer", "SHOW": 1, "NOSHOW_REASON": null, "REPORTS_URL": "https://www.google.com/search?q=\"fishing report\"+Bellaire Lake+\"Larimer County\"+Colorado", "ELEV_FT_TXT": "8,633", "PROP_URL": "https://cpw.state.co.us/swa/Bellaire%20Lake%20SWA", "PROP_ID": "<a href=\"https://cpw.state.co.us/swa/Bellaire%20Lake%20SWA\">Bellaire Lake SWA</a>", "BOATING": "Non-motorized", "ACCESS_EASE": "Easy", "FISH_PRESSURE": "High", "HANDI_PIER": "Yes", "UNI_ID": 537, "Illegal_Stocking": null, "Custom_DD_field": 1, "SpotURL": "https://ndismaps.nrel.colostate.edu/fishingatlas/index.aspx?keyword=fspot&value=537", "CONTACT_CODE": "184", "Quality": null, "GoldMedal": null, "SUP": null, "SUP_Desc": null}
+    sample={"OBJECTID_12": 10, "WATERCODE": "55156", "DOW_NAME": "Hohnholz Lake #1, East", "FA_NAME": "Hohnholz Lake #1, East", "FA_NAME2": "Hohnholz Lake #1, East", "DISP_PRIORITY": 1, "PROP_NAME": "US Bureau of Land Management", "ELEV_FT": 7862, "xval": -105.981689453125, "yval": 40.94108581542969, "DRIVING_URL": "https://www.google.com/maps/dir//40.9411,-105.9817", "SURVEY_URL": "", "OPP_FAMILY": "Yes", "OPP_RUSTIC": "No", "OPP_ICE": "Yes", "STOCKED": "Catchable trout", "LOC_TYPE": "Water Body", "COUNTYNAME": "Larimer", "SHOW": 1, "NOSHOW_REASON": null, "REPORTS_URL": "https://www.google.com/search?q=\"fishing report\"+Hohnholz Lake #1, East+\"Larimer County\"+Colorado", "ELEV_FT_TXT": "7,862", "PROP_URL": "https://www.blm.gov/colorado", "PROP_ID": "<a href=\"https://www.blm.gov/colorado\">US Bureau of Land Management</a>", "BOATING": "Electric", "ACCESS_EASE": "Easy", "FISH_PRESSURE": "Low", "HANDI_PIER": "No", "UNI_ID": 146, "Illegal_Stocking": null, "Custom_DD_field": null, "SpotURL": "https://ndismaps.nrel.colostate.edu/fishingatlas/index.aspx?keyword=fspot&value=146", "CONTACT_CODE": "187", "Quality": null, "GoldMedal": null, "SUP": null, "SUP_Desc": null}
+    sample={"OBJECTID_12": 42, "WATERCODE": "55598", "DOW_NAME": "Lost Lake", "FA_NAME": "Lost Lake", "FA_NAME2": "Lost Lake", "DISP_PRIORITY": 1, "PROP_NAME": "Roosevelt National Forest", "ELEV_FT": 9293, "xval": -105.84882354736328, "yval": 40.6119499206543, "DRIVING_URL": "https://www.google.com/maps/dir//40.6119,-105.8488", "SURVEY_URL": "", "OPP_FAMILY": "Yes", "OPP_RUSTIC": "No", "OPP_ICE": "Yes", "STOCKED": "Catchable trout", "LOC_TYPE": "Water Body", "COUNTYNAME": "Larimer", "SHOW": 1, "NOSHOW_REASON": null, "REPORTS_URL": "https://www.google.com/search?q=\"fishing report\"+Lost Lake+\"Larimer County\"+Colorado", "ELEV_FT_TXT": "9,293", "PROP_URL": "https://www.fs.usda.gov/activity/arp/recreation/fishing", "PROP_ID": "<a href=\"https://www.fs.usda.gov/activity/arp/recreation/fishing\">Roosevelt National Forest</a>", "BOATING": "Non-motorized", "ACCESS_EASE": "Medium", "FISH_PRESSURE": "Medium", "HANDI_PIER": "No", "UNI_ID": 533, "Illegal_Stocking": null, "Custom_DD_field": null, "SpotURL": "https://ndismaps.nrel.colostate.edu/fishingatlas/index.aspx?keyword=fspot&value=533", "CONTACT_CODE": "184", "Quality": null, "GoldMedal": null, "SUP": null, "SUP_Desc": null}
 
-==== SEARCH OR 'Oregon State Marine Board boat ramp' ====
-  ITEM 'Shoreline Access Inventory' owner=philip.woods_DLCD -> https://services.arcgis.com/uUvqNMGPm7axC2dD/arcgis/rest/services/Shoreline_Access_Inventory/FeatureServer
-  -- 'Shoreline Access Inventory'
-  LAYER https://services.arcgis.com/uUvqNMGPm7axC2dD/arcgis/rest/services/Shoreline_Access_Inventory/FeatureServer/0
-    PASS name='Shoreline Access Inventory' geom=esriGeometryPoint count=1278 geojson_ok=True in_state=True
-    fields=['OBJECTID', 'AGO_USER', 'DATE', 'ORG', 'NAME', 'PARENT', 'STYPE', 'PTYPE', 'STATUS', 'DIR', 'MGMT', 'OWNER', 'ATYPE', 'WATPATH', 'RAMP', 'FEE', 'ACC', 'ACI', 'DRINK', 'PHONE', 'PARKING', 'NUMPK', 'RR', 'RSTAT', 'DRIVE', 'VISTA', 'Z06A', 'BRIDGE', 'STAIRS', 'PATHWDTH']
-    sample={"OBJECTID": "20", "AGO_USER": "adrian.laufer_dlcd", "DATE": "1592955480000", "ORG": "OCMP", "NAME": "Marys Peak Campground", "PARENT": "Siuslaw National Forest", "STYPE": "RI", "PTYPE": "PARC", "STATUS": "ACT", "DIR": "None", "MGMT": "USFS", "OWNER": "USFS", "ATYPE": "PD", "WATPATH": "UNT", "RAMP": "None", "FEE": "Y", "ACC": "Y", "ACI": "Restrooms"}
-    sample={"OBJECTID": "37", "AGO_USER": "adrian.laufer_dlcd", "DATE": "1592931960000", "ORG": "OCMP", "NAME": "Canal Creek Campground", "PARENT": "Siuslaw National Forest", "STYPE": "RI", "PTYPE": "PARC", "STATUS": "ACT", "DIR": "None", "MGMT": "USFS", "OWNER": "USFS", "ATYPE": "PD", "WATPATH": "None", "RAMP": "None", "FEE": "Y", "ACC": "Y", "ACI": "Handicap bathrooms"}
-  -- 'OPRD_StPark'
-  LAYER https://services.arcgis.com/uUvqNMGPm7axC2dD/arcgis/rest/services/Shoreline_Access_Inventory/FeatureServer/2
-    PASS name='OPRD_StPark' geom=esriGeometryPolygon count=431 geojson_ok=True in_state=True
-    fields=['OBJECTID', 'PARK_HUB_ID', 'NAME', 'GIS_ACRES', 'EDITOR', 'EDITDATE', 'CREATOR', 'CREATEDATE', 'RETIREDATE', 'DATASOURCE', 'DESIGNATION', 'USE_TYPE', 'FULL_NAME', 'PUBLIC_DISPLAY', 'Shape__Area', 'Shape__Length', 'GlobalID', 'Shape__Area_2', 'Shape__Length_2']
-    sample={"OBJECTID": "1", "PARK_HUB_ID": "286", "NAME": "Rough and Ready", "GIS_ACRES": "30.38", "EDITOR": "gis", "EDITDATE": "1394548855000", "CREATOR": "TConley", "CREATEDATE": "1245189346000", "RETIREDATE": "None", "DATASOURCE": "Survey data", "DESIGNATION": "State Natural Site", "USE_TYPE": "Undeveloped", "FULL_NAME": "Rough and Ready State Natural Site", "PUBLIC_DISPLAY": "YES", "Shape__Area": "1323496.38790512", "Shape__Length": "5313.66057675218", "GlobalID": "d2f480cd-b9cd-4900-a6de-55bd98b584fa", "Shape__Area_2": "1323496.3879051208"}
-    sample={"OBJECTID": "2", "PARK_HUB_ID": "10002", "NAME": "Butteville Store", "GIS_ACRES": "0.31", "EDITOR": "gis", "EDITDATE": "1394548855000", "CREATOR": "TConley", "CREATEDATE": "1245189346000", "RETIREDATE": "None", "DATASOURCE": "Scanned engineering drawing or scaled map", "DESIGNATION": "", "USE_TYPE": "Day Use", "FULL_NAME": "Butteville Store", "PUBLIC_DISPLAY": "YES", "Shape__Area": "13803.9669799805", "Shape__Length": "555.591870397801", "GlobalID": "32f3ce02-ca07-40a8-8811-a959d8978c86", "Shape__Area_2": "13803.966979980469"}
-  -- 'Waterbodies'
-  LAYER https://services.arcgis.com/uUvqNMGPm7axC2dD/arcgis/rest/services/Shoreline_Access_Inventory/FeatureServer/3
-    PASS name='Waterbodies' geom=esriGeometryPolygon count=67519 geojson_ok=True in_state=True
-    fields=['OBJECTID', 'GNIS_ID', 'GNIS_Name', 'ReachCode', 'FType', 'FCode', 'GlobalID', 'Shape__Area', 'Shape__Length']
-    sample={"OBJECTID": "1", "GNIS_ID": "None", "GNIS_Name": "None", "ReachCode": "17100203051948", "FType": "493", "FCode": "49300", "GlobalID": "a3a452f7-5acf-44e6-9fd0-f274fee2a201", "Shape__Area": "18899.22198486328", "Shape__Length": "1369.859168249543"}
-    sample={"OBJECTID": "2", "GNIS_ID": "None", "GNIS_Name": "Larson Creek", "ReachCode": "17100203051792", "FType": "493", "FCode": "49300", "GlobalID": "9b0cc919-ea91-4ce3-8ca6-887b886eefcc", "Shape__Area": "1003263.8732910156", "Shape__Length": "5541.96001387415"}
-  -- 'Coastal_Zone'
-  LAYER https://services.arcgis.com/uUvqNMGPm7axC2dD/arcgis/rest/services/Shoreline_Access_Inventory/FeatureServer/4
-    PASS name='Coastal_Zone' geom=esriGeometryPolygon count=1 geojson_ok=True in_state=True
-    fields=['OBJECTID_1', 'OBJECTID', 'Shape_Leng', 'GlobalID', 'Shape__Area', 'Shape__Length']
-    sample={"OBJECTID_1": "1", "OBJECTID": "1400", "Shape_Leng": "5278083.81746", "GlobalID": "d4b854c4-9cee-4f82-a30c-28a3857c0570", "Shape__Area": "271227398295.30792", "Shape__Length": "5278083.824044905"}
-  -- 'Counties'
-  LAYER https://services.arcgis.com/uUvqNMGPm7axC2dD/arcgis/rest/services/Shoreline_Access_Inventory/FeatureServer/5
-    PASS name='Counties' geom=esriGeometryPolygon count=36 geojson_ok=True in_state=True
-    fields=['OBJECTID', 'ANSICODE', 'GEOID', 'NAME', 'FIPS', 'ALAND', 'AWATER', 'LAT', 'LONG', 'GlobalID', 'Shape__Area', 'Shape__Length']
-    sample={"OBJECTID": "1", "ANSICODE": "01135845", "GEOID": "41001", "NAME": "Baker County", "FIPS": "H1", "ALAND": "7945996928", "AWATER": "51832632", "LAT": "+44.7034268", "LONG": "-117.6919334", "GlobalID": "b9b95ed5-3366-4ad3-aaa4-babe1b5125ad", "Shape__Area": "86053649834.9237", "Shape__Length": "1822300.5526847306"}
-    sample={"OBJECTID": "2", "ANSICODE": "01155126", "GEOID": "41003", "NAME": "Benton County", "FIPS": "H1", "ALAND": "1748712527", "AWATER": "7740249", "LAT": "+44.4938816", "LONG": "-123.4246641", "GlobalID": "da966ac5-27c4-4923-91c7-2d5daeb8f98c", "Shape__Area": "18897760487.363953", "Shape__Length": "772497.1313317916"}
-  -- 'Cities'
-  LAYER https://services.arcgis.com/uUvqNMGPm7axC2dD/arcgis/rest/services/Shoreline_Access_Inventory/FeatureServer/6
-    PASS name='Cities' geom=esriGeometryPolygon count=33 geojson_ok=True in_state=True
-    fields=['OBJECTID', 'NAME', 'DES', 'CODE', 'CODEREF', 'Owner', 'STEW', 'ACRES', 'EDATE', 'SHAPE_Leng', 'GlobalID', 'Shape__Area', 'Shape__Length']
-    sample={"OBJECTID": "1", "NAME": "Astoria", "DES": "Incorporated City Limit Boundary", "CODE": "03150", "CODEREF": "FIPS", "Owner": "2409744", "STEW": "ODOT", "ACRES": "6525.34159516", "EDATE": "2018", "SHAPE_Leng": "100303.561529", "GlobalID": "412baee6-8e17-4179-bf02-ccbc30d0c747", "Shape__Area": "284243879.8855591", "Shape__Length": "100303.56152930325"}
-    sample={"OBJECTID": "2", "NAME": "Bandon", "DES": "Incorporated City Limit Boundary", "CODE": "03800", "CODEREF": "FIPS", "Owner": "2409782", "STEW": "ODOT", "ACRES": "2042.24119919", "EDATE": "2018", "SHAPE_Leng": "74160.3091524", "GlobalID": "bc6653a1-9530-4254-9234-2f1db78b0c1c", "Shape__Area": "88960026.63673401", "Shape__Length": "74160.3091523882"}
+======== CO explicit ========
+    [using where='STOCKED IS NOT NULL']
+  LAYER https://ndismaps.nrel.colostate.edu/arcgis/rest/services/FishingAtlas2025/FishingInfo2025/MapServer/7
+    PASS name='Fishing locations' geom=esriGeometryPoint count=1289 geojson_ok=True in_state=True
+    fields:
+      OBJECTID_12 | OID | 'OBJECTID_12'
+      Shape | Geometry | 'Shape'
+      WATERCODE | String | 'WATERCODE'
+      DOW_NAME | String | 'DOW_NAME'
+      FA_NAME | String | 'FA_NAME'
+      FA_NAME2 | String | 'FA_NAME2'
+      DISP_PRIORITY | SmallInteger | 'DISP_PRIORITY'
+      PROP_NAME | String | 'PROP_NAME'
+      ELEV_FT | Integer | 'ELEV_FT'
+      xval | Single | 'xval'
+      yval | Single | 'yval'
+      DRIVING_URL | String | 'DRIVING_URL'
+      SURVEY_URL | String | 'SURVEY_URL'
+      OPP_FAMILY | String | 'OPP_FAMILY'
+      OPP_RUSTIC | String | 'OPP_RUSTIC'
+      OPP_ICE | String | 'OPP_ICE'
+      STOCKED | String | 'STOCKED'
+      LOC_TYPE | String | 'LOC_TYPE'
+      COUNTYNAME | String | 'COUNTYNAME'
+      SHOW | SmallInteger | 'SHOW'
+      NOSHOW_REASON | String | 'NOSHOW_REASON'
+      REPORTS_URL | String | 'REPORTS_URL'
+      ELEV_FT_TXT | String | 'ELEV_FT_TXT'
+      PROP_URL | String | 'PROP_URL'
+      PROP_ID | String | 'PROP_ID'
+      BOATING | String | 'BOATING'
+      ACCESS_EASE | String | 'ACCESS_EASE'
+      FISH_PRESSURE | String | 'FISH_PRESSURE'
+      HANDI_PIER | String | 'HANDI_PIER'
+      UNI_ID | Integer | 'UNI_ID'
+      Illegal_Stocking | String | 'Illegal_Stocking'
+      Custom_DD_field | SmallInteger | 'Custom_DD_field'
+      SpotURL | String | 'SpotURL'
+      CONTACT_CODE | String | 'CONTACT_CODE'
+      Quality | SmallInteger | 'Quality'
+      GoldMedal | SmallInteger | 'GoldMedal'
+      SUP | SmallInteger | 'SUP'
+      SUP_Desc | String | 'SUP_Desc'
+    sample={"OBJECTID_12": 1, "WATERCODE": "57756", "DOW_NAME": "Riverbend Pond #2", "FA_NAME": "[Purposely Left Blank]", "FA_NAME2": "Riverbend Pond #2", "DISP_PRIORITY": 2, "PROP_NAME": "Riverbend Ponds Natural Area", "ELEV_FT": 4910, "xval": -105.02269744873047, "yval": 40.56769943237305, "DRIVING_URL": "https://www.google.com/maps/dir//40.5677,-105.0227", "SURVEY_URL": "", "OPP_FAMILY": "Yes", "OPP_RUSTIC": "No", "OPP_ICE": "No", "STOCKED": "Warmwater", "LOC_TYPE": "Water Body", "COUNTYNAME": "Larimer", "SHOW": 1, "NOSHOW_REASON": null, "REPORTS_URL": "https://www.google.com/search?q=\"fishing report\"+Riverbend Pond #2+\"Larimer County\"+Colorado", "ELEV_FT_TXT": "4,910", "PROP_URL": "https://www.fcgov.com/naturalareas/finder/riverbend", "PROP_ID": "<a href=\"https://www.fcgov.com/naturalareas/finder/riverbend\">Riverbend Ponds Natural Area</a>", "BOATING": "Non-motorized", "ACCESS_EASE": "Easy", "FISH_PRESSURE": "Medium", "HANDI_PIER": "Yes", "UNI_ID": 437, "Illegal_Stocking": null, "Custom_DD_field": 1, "SpotURL": "https://ndismaps.nrel.colostate.edu/fishingatlas/index.aspx?keyword=fspot&value=437", "CONTACT_CODE": "185", "Quality": null, "GoldMedal": null, "SUP": null, "SUP_Desc": null}
+    sample={"OBJECTID_12": 2, "WATERCODE": "53481", "DOW_NAME": "North Shields Pond", "FA_NAME": "[Purposely Left Blank]", "FA_NAME2": "North Shields Pond", "DISP_PRIORITY": 2, "PROP_NAME": "North Shields Pond Natural Area", "ELEV_FT": 4988, "xval": -105.09712219238281, "yval": 40.6059455871582, "DRIVING_URL": "https://www.google.com/maps/dir//40.6059,-105.0971", "SURVEY_URL": "", "OPP_FAMILY": "Yes", "OPP_RUSTIC": "No", "OPP_ICE": "No", "STOCKED": "Warmwater", "LOC_TYPE": "Water Body", "COUNTYNAME": "Larimer", "SHOW": 1, "NOSHOW_REASON": null, "REPORTS_URL": "https://www.google.com/search?q=\"fishing report\"+North Shields Pond+\"Larimer County\"+Colorado", "ELEV_FT_TXT": "4,988", "PROP_URL": "https://www.fcgov.com/naturalareas/finder/nshieldspond", "PROP_ID": "<a href=\"https://www.fcgov.com/naturalareas/finder/nshieldspond\">North Shields Pond Natural Area</a>", "BOATING": "Non-motorized", "ACCESS_EASE": "Easy", "FISH_PRESSURE": "Medium", "HANDI_PIER": "Yes", "UNI_ID": 13, "Illegal_Stocking": null, "Custom_DD_field": null, "SpotURL": "https://ndismaps.nrel.colostate.edu/fishingatlas/index.aspx?keyword=fspot&value=13", "CONTACT_CODE": "184", "Quality": null, "GoldMedal": null, "SUP": null, "SUP_Desc": null}
+    sample={"OBJECTID_12": 3, "WATERCODE": "56881", "DOW_NAME": "Watson Lake", "FA_NAME": "Watson Lake", "FA_NAME2": "Watson Lake", "DISP_PRIORITY": 1, "PROP_NAME": "Bellevue-Watson SFU", "ELEV_FT": 5113, "xval": -105.17182159423828, "yval": 40.640106201171875, "DRIVING_URL": "https://www.google.com/maps/dir//40.6401,-105.1718", "SURVEY_URL": "", "OPP_FAMILY": "Yes", "OPP_RUSTIC": "No", "OPP_ICE": "No", "STOCKED": "Warmwater", "LOC_TYPE": "Water Body", "COUNTYNAME": "Larimer", "SHOW": 1, "NOSHOW_REASON": null, "REPORTS_URL": "https://www.google.com/search?q=\"fishing report\"+Watson Lake+\"Larimer County\"+Colorado", "ELEV_FT_TXT": "5,113", "PROP_URL": "https://cpw.state.co.us/swa/Bellvue-Watson%20SFU%20(Hatchery)", "PROP_ID": "<a href=\"https://cpw.state.co.us/swa/Bellvue-Watson%20SFU%20(Hatchery)\">Bellevue-Watson SFU</a>", "BOATING": "None", "ACCESS_EASE": "Easy", "FISH_PRESSURE": "Medium", "HANDI_PIER": "Yes", "UNI_ID": 97, "Illegal_Stocking": null, "Custom_DD_field": 1, "SpotURL": "https://ndismaps.nrel.colostate.edu/fishingatlas/index.aspx?keyword=fspot&value=97", "CONTACT_CODE": "184", "Quality": null, "GoldMedal": null, "SUP": null, "SUP_Desc": null}
 
-==== SEARCH OR 'Oregon boating facilities marine board' ====
-  ITEM 'Oregon Certified Clean Marinas Public' owner=Oregon_OSMB -> https://services.arcgis.com/uUvqNMGPm7axC2dD/arcgis/rest/services/Oregon_Certified_Clean_Marinas_Public/FeatureServer
-  -- 'Clean Marina'
-  LAYER https://services.arcgis.com/uUvqNMGPm7axC2dD/arcgis/rest/services/Oregon_Certified_Clean_Marinas_Public/FeatureServer/0
-    PASS name='Clean Marina' geom=esriGeometryPoint count=65 geojson_ok=True in_state=True
-    fields=['OBJECTID', 'Status', 'CM_Name', 'Address', 'City', 'State', 'Zip', 'waterbody', 'Ownership', 'Telephone', 'County', 'Website_URL', 'GlobalID']
-    sample={"OBJECTID": "1", "Status": "Certified", "CM_Name": "Port of Cascade Locks", "Address": "355 Wa Na Pa St", "City": "Cascade Locks", "State": "OR", "Zip": "97014", "waterbody": "Columbia River (Bonneville Reservoir)", "Ownership": "Public", "Telephone": "541-374-8619", "County": "Hood River", "Website_URL": "http://www.portofcascadelocks.org/marina.htm", "GlobalID": "7f58707e-391f-44a7-a29c-60b5d2aa0969"}
-    sample={"OBJECTID": "2", "Status": "Certified", "CM_Name": "Salmon Harbor Marina", "Address": "100 Ork Rock Rd.", "City": "Winchester Bay", "State": "OR", "Zip": "97467", "waterbody": "Winchester Bay", "Ownership": "Public", "Telephone": "541-271-3407", "County": "Douglas", "Website_URL": "http://www.salmonharbormarina.com/", "GlobalID": "5127173a-1679-43b3-a144-bb69c58cc06b"}
-  ITEM 'Shoreline Access Inventory' owner=philip.woods_DLCD -> https://services.arcgis.com/uUvqNMGPm7axC2dD/arcgis/rest/services/Shoreline_Access_Inventory/FeatureServer
-  -- 'Shoreline Access Inventory'
-  LAYER https://services.arcgis.com/uUvqNMGPm7axC2dD/arcgis/rest/services/Shoreline_Access_Inventory/FeatureServer/0
-    PASS name='Shoreline Access Inventory' geom=esriGeometryPoint count=1278 geojson_ok=True in_state=True
-    fields=['OBJECTID', 'AGO_USER', 'DATE', 'ORG', 'NAME', 'PARENT', 'STYPE', 'PTYPE', 'STATUS', 'DIR', 'MGMT', 'OWNER', 'ATYPE', 'WATPATH', 'RAMP', 'FEE', 'ACC', 'ACI', 'DRINK', 'PHONE', 'PARKING', 'NUMPK', 'RR', 'RSTAT', 'DRIVE', 'VISTA', 'Z06A', 'BRIDGE', 'STAIRS', 'PATHWDTH']
-    sample={"OBJECTID": "20", "AGO_USER": "adrian.laufer_dlcd", "DATE": "1592955480000", "ORG": "OCMP", "NAME": "Marys Peak Campground", "PARENT": "Siuslaw National Forest", "STYPE": "RI", "PTYPE": "PARC", "STATUS": "ACT", "DIR": "None", "MGMT": "USFS", "OWNER": "USFS", "ATYPE": "PD", "WATPATH": "UNT", "RAMP": "None", "FEE": "Y", "ACC": "Y", "ACI": "Restrooms"}
-    sample={"OBJECTID": "37", "AGO_USER": "adrian.laufer_dlcd", "DATE": "1592931960000", "ORG": "OCMP", "NAME": "Canal Creek Campground", "PARENT": "Siuslaw National Forest", "STYPE": "RI", "PTYPE": "PARC", "STATUS": "ACT", "DIR": "None", "MGMT": "USFS", "OWNER": "USFS", "ATYPE": "PD", "WATPATH": "None", "RAMP": "None", "FEE": "Y", "ACC": "Y", "ACI": "Handicap bathrooms"}
-  -- 'OPRD_StPark'
-  LAYER https://services.arcgis.com/uUvqNMGPm7axC2dD/arcgis/rest/services/Shoreline_Access_Inventory/FeatureServer/2
-    PASS name='OPRD_StPark' geom=esriGeometryPolygon count=431 geojson_ok=True in_state=True
-    fields=['OBJECTID', 'PARK_HUB_ID', 'NAME', 'GIS_ACRES', 'EDITOR', 'EDITDATE', 'CREATOR', 'CREATEDATE', 'RETIREDATE', 'DATASOURCE', 'DESIGNATION', 'USE_TYPE', 'FULL_NAME', 'PUBLIC_DISPLAY', 'Shape__Area', 'Shape__Length', 'GlobalID', 'Shape__Area_2', 'Shape__Length_2']
-    sample={"OBJECTID": "1", "PARK_HUB_ID": "286", "NAME": "Rough and Ready", "GIS_ACRES": "30.38", "EDITOR": "gis", "EDITDATE": "1394548855000", "CREATOR": "TConley", "CREATEDATE": "1245189346000", "RETIREDATE": "None", "DATASOURCE": "Survey data", "DESIGNATION": "State Natural Site", "USE_TYPE": "Undeveloped", "FULL_NAME": "Rough and Ready State Natural Site", "PUBLIC_DISPLAY": "YES", "Shape__Area": "1323496.38790512", "Shape__Length": "5313.66057675218", "GlobalID": "d2f480cd-b9cd-4900-a6de-55bd98b584fa", "Shape__Area_2": "1323496.3879051208"}
-    sample={"OBJECTID": "2", "PARK_HUB_ID": "10002", "NAME": "Butteville Store", "GIS_ACRES": "0.31", "EDITOR": "gis", "EDITDATE": "1394548855000", "CREATOR": "TConley", "CREATEDATE": "1245189346000", "RETIREDATE": "None", "DATASOURCE": "Scanned engineering drawing or scaled map", "DESIGNATION": "", "USE_TYPE": "Day Use", "FULL_NAME": "Butteville Store", "PUBLIC_DISPLAY": "YES", "Shape__Area": "13803.9669799805", "Shape__Length": "555.591870397801", "GlobalID": "32f3ce02-ca07-40a8-8811-a959d8978c86", "Shape__Area_2": "13803.966979980469"}
-  -- 'Waterbodies'
-  LAYER https://services.arcgis.com/uUvqNMGPm7axC2dD/arcgis/rest/services/Shoreline_Access_Inventory/FeatureServer/3
-    PASS name='Waterbodies' geom=esriGeometryPolygon count=67519 geojson_ok=True in_state=True
-    fields=['OBJECTID', 'GNIS_ID', 'GNIS_Name', 'ReachCode', 'FType', 'FCode', 'GlobalID', 'Shape__Area', 'Shape__Length']
-    sample={"OBJECTID": "1", "GNIS_ID": "None", "GNIS_Name": "None", "ReachCode": "17100203051948", "FType": "493", "FCode": "49300", "GlobalID": "a3a452f7-5acf-44e6-9fd0-f274fee2a201", "Shape__Area": "18899.22198486328", "Shape__Length": "1369.859168249543"}
-    sample={"OBJECTID": "2", "GNIS_ID": "None", "GNIS_Name": "Larson Creek", "ReachCode": "17100203051792", "FType": "493", "FCode": "49300", "GlobalID": "9b0cc919-ea91-4ce3-8ca6-887b886eefcc", "Shape__Area": "1003263.8732910156", "Shape__Length": "5541.96001387415"}
-  -- 'Coastal_Zone'
-  LAYER https://services.arcgis.com/uUvqNMGPm7axC2dD/arcgis/rest/services/Shoreline_Access_Inventory/FeatureServer/4
-    PASS name='Coastal_Zone' geom=esriGeometryPolygon count=1 geojson_ok=True in_state=True
-    fields=['OBJECTID_1', 'OBJECTID', 'Shape_Leng', 'GlobalID', 'Shape__Area', 'Shape__Length']
-    sample={"OBJECTID_1": "1", "OBJECTID": "1400", "Shape_Leng": "5278083.81746", "GlobalID": "d4b854c4-9cee-4f82-a30c-28a3857c0570", "Shape__Area": "271227398295.30792", "Shape__Length": "5278083.824044905"}
-  -- 'Counties'
-  LAYER https://services.arcgis.com/uUvqNMGPm7axC2dD/arcgis/rest/services/Shoreline_Access_Inventory/FeatureServer/5
-    PASS name='Counties' geom=esriGeometryPolygon count=36 geojson_ok=True in_state=True
-    fields=['OBJECTID', 'ANSICODE', 'GEOID', 'NAME', 'FIPS', 'ALAND', 'AWATER', 'LAT', 'LONG', 'GlobalID', 'Shape__Area', 'Shape__Length']
-    sample={"OBJECTID": "1", "ANSICODE": "01135845", "GEOID": "41001", "NAME": "Baker County", "FIPS": "H1", "ALAND": "7945996928", "AWATER": "51832632", "LAT": "+44.7034268", "LONG": "-117.6919334", "GlobalID": "b9b95ed5-3366-4ad3-aaa4-babe1b5125ad", "Shape__Area": "86053649834.9237", "Shape__Length": "1822300.5526847306"}
-    sample={"OBJECTID": "2", "ANSICODE": "01155126", "GEOID": "41003", "NAME": "Benton County", "FIPS": "H1", "ALAND": "1748712527", "AWATER": "7740249", "LAT": "+44.4938816", "LONG": "-123.4246641", "GlobalID": "da966ac5-27c4-4923-91c7-2d5daeb8f98c", "Shape__Area": "18897760487.363953", "Shape__Length": "772497.1313317916"}
-  -- 'Cities'
-  LAYER https://services.arcgis.com/uUvqNMGPm7axC2dD/arcgis/rest/services/Shoreline_Access_Inventory/FeatureServer/6
-    PASS name='Cities' geom=esriGeometryPolygon count=33 geojson_ok=True in_state=True
-    fields=['OBJECTID', 'NAME', 'DES', 'CODE', 'CODEREF', 'Owner', 'STEW', 'ACRES', 'EDATE', 'SHAPE_Leng', 'GlobalID', 'Shape__Area', 'Shape__Length']
-    sample={"OBJECTID": "1", "NAME": "Astoria", "DES": "Incorporated City Limit Boundary", "CODE": "03150", "CODEREF": "FIPS", "Owner": "2409744", "STEW": "ODOT", "ACRES": "6525.34159516", "EDATE": "2018", "SHAPE_Leng": "100303.561529", "GlobalID": "412baee6-8e17-4179-bf02-ccbc30d0c747", "Shape__Area": "284243879.8855591", "Shape__Length": "100303.56152930325"}
-    sample={"OBJECTID": "2", "NAME": "Bandon", "DES": "Incorporated City Limit Boundary", "CODE": "03800", "CODEREF": "FIPS", "Owner": "2409782", "STEW": "ODOT", "ACRES": "2042.24119919", "EDATE": "2018", "SHAPE_Leng": "74160.3091524", "GlobalID": "bc6653a1-9530-4254-9234-2f1db78b0c1c", "Shape__Area": "88960026.63673401", "Shape__Length": "74160.3091523882"}
-  ITEM 'PFD_Loaner_Stations_Public' owner=Oregon_OSMB -> https://services.arcgis.com/uUvqNMGPm7axC2dD/arcgis/rest/services/PFD_Loaner_Stations_Public/FeatureServer
-  -- 'PFD_Loaner_Stations_2'
-  LAYER https://services.arcgis.com/uUvqNMGPm7axC2dD/arcgis/rest/services/PFD_Loaner_Stations_Public/FeatureServer/0
-    FAIL name='PFD_Loaner_Stations_2' geom=esriGeometryPoint count=None geojson_ok=False in_state=None
-    fields=['objectid', 'globalid', 'name', 'host', 'status', 'photoURL']
+======== CA explicit ========
+    [using where="FishType = 'Trout'"]
+  LAYER https://services2.arcgis.com/Uq9r85Potqm3MfRV/arcgis/rest/services/FishingGuide/FeatureServer/2
+    PASS name='plantTable_XYTableToPoint' geom=esriGeometryPoint count=2050 geojson_ok=True in_state=True
+    fields:
+      OBJECTID | OID | 'OBJECTID'
+      WeekOfPlantStart | DateOnly | 'WeekOfPlantStart'
+      Counties | String | 'Counties'
+      DfgWaterId | Integer | 'DfgWaterId'
+      Lat | Double | 'Lat'
+      Lon | Double | 'Lon'
+      WaterName | String | 'WaterName'
+      StockingWaterID | Integer | 'StockingWaterID'
+      FishType | String | 'FishType'
+      sym | String | 'sym'
+    sample={"OBJECTID": 1, "WeekOfPlantStart": "2025-06-15", "Counties": "Lassen", "DfgWaterId": 78554757, "Lat": 40.29856491, "Lon": -121.04993439, "WaterName": "Clear Creek", "StockingWaterID": 500285, "FishType": "Trout", "sym": "past"}
+    sample={"OBJECTID": 2, "WeekOfPlantStart": "2025-06-15", "Counties": "Madera", "DfgWaterId": 163649015, "Lat": 37.37997437, "Lon": -119.39300537, "WaterName": "Chiquito Creek West Fork", "StockingWaterID": 500276, "FishType": "Trout", "sym": "past"}
+    sample={"OBJECTID": 3, "WeekOfPlantStart": "2025-06-15", "Counties": "Tuolumne", "DfgWaterId": 162268828, "Lat": 38.17009735, "Lon": -120.06674957, "WaterName": "Stanislaus River South Fork", "StockingWaterID": 501362, "FishType": "Trout", "sym": "past"}
 
-==== SEARCH CA 'Recent Stocked Waters California ds778' ====
-  ITEM 'Recent Stocked Waters - California [ds778]' owner=BIOS_Admin -> https://services2.arcgis.com/Uq9r85Potqm3MfRV/arcgis/rest/services/biosds778_fpu/FeatureServer
-  -- 'Recent Stocked Waters _ California _ ds778'
-  LAYER https://services2.arcgis.com/Uq9r85Potqm3MfRV/arcgis/rest/services/biosds778_fpu/FeatureServer/0
-    PASS name='Recent Stocked Waters _ California _ ds778' geom=esriGeometryPolygon count=536 geojson_ok=True in_state=True
-    fields=['OBJECTID', 'StockingWaterID', 'DFGWATERID', 'Counties', 'last_yr_stkd', 'Shape__Area', 'Shape__Length']
-    sample={"OBJECTID": "1", "StockingWaterID": "175", "DFGWATERID": "175", "Counties": "Del Norte", "last_yr_stkd": "2025", "Shape__Area": "23898.8125", "Shape__Length": "660.3191195176777"}
-    sample={"OBJECTID": "2", "StockingWaterID": "162", "DFGWATERID": "162", "Counties": "Siskiyou", "last_yr_stkd": "2025", "Shape__Area": "407806.703125", "Shape__Length": "3317.811937019125"}
-
-==== SEARCH CA 'CDFW stocked waters BIOS' ====
-
-==== SEARCH WA 'Washington stocked trout lakes' ====
-
-==== SEARCH ID 'IDFG hatchery trout map Idaho stocking' ====
-
-==== SEARCH AZ 'AZGFD sport fish FIN waters' ====
-
-==== SEARCH AZ 'Arizona boating where to fish' ====
-  ITEM 'Colorado River Access' owner=Galib.Ahmad_CDFW -> https://services2.arcgis.com/Uq9r85Potqm3MfRV/arcgis/rest/services/Colorado_River_Access/FeatureServer
-  -- 'Colorado_River_Access'
-  LAYER https://services2.arcgis.com/Uq9r85Potqm3MfRV/arcgis/rest/services/Colorado_River_Access/FeatureServer/0
-    PASS name='Colorado_River_Access' geom=esriGeometryPoint count=102 geojson_ok=True in_state=True
-    fields=['FID', 'Name', 'Location_s', 'Type', 'County', 'City', 'Access', 'F__Infeste', 'CPAD_Man', 'Comment', 'Own', 'OwnSrc', 'Rank', 'Label', 'Key_', 'Infest_Mar', 'Infest_Nov', 'Infest_Jun', 'Waterbody', 'State', 'infested']
-    sample={"FID": "1", "Name": "2638 Old River Rd", "Location_s": "Hull, Outdrives, or Prop Shaft(1);Engine(s)(1)", "Type": " ", "County": "Imperial County", "City": "Palo Verde", "Access": "Unknown", "F__Infeste": "99", "CPAD_Man": " ", "Comment": " ", "Own": "Private", "OwnSrc": "LandVision", "Rank": "1", "Label": "1 to 10", "Key_": "1", "Infest_Mar": "999", "Infest_Nov": "999", "Infest_Jun": "2"}
-    sample={"FID": "2", "Name": "6th Ave Levee", "Location_s": " ", "Type": "Rural and dirt/ gravel ramps", "County": "Riverside County", "City": "Blythe", "Access": "Public", "F__Infeste": "99", "CPAD_Man": " ", "Comment": " ", "Own": "CDFW", "OwnSrc": "DN, RK, and DV 11/16/17", "Rank": "0", "Label": "Unknown/None", "Key_": "3", "Infest_Mar": "999", "Infest_Nov": "999", "Infest_Jun": "0"}
-  ITEM 'Verde River Recreation Reaches' owner=elija.flores@audubon.org_audubon -> https://services1.arcgis.com/lDFzr3JyGEn5Eymu/arcgis/rest/services/Verde_River_Recreation_Reaches/FeatureServer
-  -- 'Verde River Recreation Reaches (points)'
-  LAYER https://services1.arcgis.com/lDFzr3JyGEn5Eymu/arcgis/rest/services/Verde_River_Recreation_Reaches/FeatureServer/1
-    PASS name='Verde River Recreation Reaches (points)' geom=esriGeometryPoint count=34 geojson_ok=True in_state=True
-    fields=['FID', 'REACH_ID', 'ID', 'NAME', 'DIFFICULTY', 'AW_URL', 'FEATURETYP', 'Spanish_NAME']
-    sample={"FID": "1", "REACH_ID": "127", "ID": "109687", "NAME": "Put In: Perkinsville", "DIFFICULTY": "N/A", "AW_URL": "https://www.americanwhitewater.org/content/River...", "FEATURETYP": "put-in", "Spanish_NAME": "Punto de Embarque"}
-    sample={"FID": "2", "REACH_ID": "127", "ID": "W38WuRciTvSaXS3Neb5Ly", "NAME": "Sycamore RAP", "DIFFICULTY": "N/A", "AW_URL": "https://www.americanwhitewater.org/content/River...", "FEATURETYP": "put-in", "Spanish_NAME": "Punto de Embarque"}
-  -- 'Verde River Recreation Reaches (lines)'
-  LAYER https://services1.arcgis.com/lDFzr3JyGEn5Eymu/arcgis/rest/services/Verde_River_Recreation_Reaches/FeatureServer/2
-    PASS name='Verde River Recreation Reaches (lines)' geom=esriGeometryPolyline count=17 geojson_ok=True in_state=True
-    fields=['FID', 'ID', 'RIVER', 'SECTION', 'ALTNAME', 'LENGTH', 'CLASS', 'DESCRIPTN', 'PHOTO_URL', 'AW_URL', 'Shape_Leng', 'Shape__Length', 'Spanish_RIVER', 'Spanish_SECTION', 'Spanish_CLASS', 'Spanish_LENGTH']
-    sample={"FID": "1", "ID": "121", "RIVER": "Oak Creek", "SECTION": "03. Lower Oak Creek/ Red Rock Crossing \u2013 Sedona ...", "ALTNAME": "Sedona to Red Rock Crossing", "LENGTH": "4.34", "CLASS": "II-III+", "DESCRIPTN": "This is a scenic run and a good introduction to ...", "PHOTO_URL": "https://www.americanwhitewater.org/image/images/...", "AW_URL": "https://www.americanwhitewater.org/content/River...", "Shape_Leng": "0.0696801984371", "Shape__Length": "0.06968019798502445", "Spanish_RIVER": "Arroyo Oak", "Spanish_SECTION": "03. Cruce de Lower Oak Creek/ Red Rock \u2013 Cruce d...", "Spanish_CLASS": "None", "Spanish_LENGTH": "None"}
-    sample={"FID": "2", "ID": "5061", "RIVER": "Fossil Creek", "SECTION": "02. Classic Section", "ALTNAME": " ", "LENGTH": "2.46", "CLASS": "III+(IV)", "DESCRIPTN": "Fossil Creek is designated as a Wild and Scenic ...", "PHOTO_URL": "https://www.americanwhitewater.org/image/images/...", "AW_URL": "https://www.americanwhitewater.org/content/River...", "Shape_Leng": "0.039494707068", "Shape__Length": "0.03949470649287473", "Spanish_RIVER": "Arroyo Fossil", "Spanish_SECTION": "02. Secci\u00f3n Cl\u00e1sica", "Spanish_CLASS": "None", "Spanish_LENGTH": "None"}
-  ITEM 'Lake County Recreation Opportunities' owner=Appraiser2018 -> https://services1.arcgis.com/38PTfoP8IjlBsxZN/arcgis/rest/services/Lake_County_Recreation_Opportunities_Map_WFL1/FeatureServer
-  -- 'Trailheads'
-  LAYER https://services1.arcgis.com/38PTfoP8IjlBsxZN/arcgis/rest/services/Lake_County_Recreation_Opportunities_Map_WFL1/FeatureServer/1
-    FAIL name='Trailheads' geom=esriGeometryPoint count=63 geojson_ok=True in_state=False
-    fields=['OBJECTID_1', 'Id', 'Type', 'Name', 'ogc_fid', 'feature_id', 'place_id', 'alt_name', 'bathrooms', 'fee', 'water', 'manager', 'INPUT_DATE', 'EDIT_DATE', 'SITE_TYPE', 'USFS_UNIT', 'DISTRICT', 'SITES', 'RESERVABLE', 'LATITUDE', 'LONGITUDE', 'WEB_LINK', 'OBJECTID', 'RECAREANAM', 'RECAREAURL', 'OPEN_SEASO', 'OPEN_SEA_1', 'FORESTNAME', 'RECAREAID', 'MARKERTYPE']
-    sample={"OBJECTID_1": "1", "Id": "12", "Type": "Trailhead", "Name": "Lake County Mountain Bike Trail Network", "ogc_fid": "None", "feature_id": "None", "place_id": "None", "alt_name": "None", "bathrooms": "None", "fee": "None", "water": "None", "manager": "None", "INPUT_DATE": "None", "EDIT_DATE": "None", "SITE_TYPE": "None", "USFS_UNIT": "None", "DISTRICT": "None", "SITES": "None"}
-    sample={"OBJECTID_1": "2", "Id": "16", "Type": "Trailhead", "Name": "Mineral Belt Trail", "ogc_fid": "None", "feature_id": "None", "place_id": "None", "alt_name": "None", "bathrooms": "None", "fee": "None", "water": "None", "manager": "None", "INPUT_DATE": "None", "EDIT_DATE": "None", "SITE_TYPE": "None", "USFS_UNIT": "None", "DISTRICT": "None", "SITES": "None"}
-  -- 'LakeCountyBuildings_Master'
-  LAYER https://services1.arcgis.com/38PTfoP8IjlBsxZN/arcgis/rest/services/Lake_County_Recreation_Opportunities_Map_WFL1/FeatureServer/2
-    FAIL name='LakeCountyBuildings_Master' geom=esriGeometryPolygon count=5023 geojson_ok=True in_state=False
-    fields=['OBJECTID', 'BUILD_ID', 'OCC_CLS', 'PRIM_OCC', 'SEC_OCC', 'PROP_ADDR', 'PROP_CITY', 'PROP_ST', 'PROP_ZIP', 'OUTBLDG', 'STATE_FIPS', 'FIPS', 'HEIGHT', 'SQMETERS', 'SQFEET', 'H_ADJ_ELEV', 'L_ADJ_ELEV', 'USNG', 'UUID', 'LONGITUDE', 'LATITUDE', 'B_CODE', 'POP_MEDIAN', 'POP_CI95_LOWER', 'POP_CI95_UPPER', 'CENSUSCODE', 'PROD_DATE', 'SOURCE', 'IMAGE_NAME', 'IMAGE_DATE']
-    sample={"OBJECTID": "1", "BUILD_ID": "6435383", "OCC_CLS": "Residential", "PRIM_OCC": "Single Family Dwelling", "SEC_OCC": "None", "PROP_ADDR": "None", "PROP_CITY": "None", "PROP_ST": "Colorado", "PROP_ZIP": "None", "OUTBLDG": "None", "STATE_FIPS": "8", "FIPS": "08065", "HEIGHT": "None", "SQMETERS": "113.2114", "SQFEET": "1218.597", "H_ADJ_ELEV": "None", "L_ADJ_ELEV": "None", "USNG": "13S CD 89172 24534"}
-    sample={"OBJECTID": "2", "BUILD_ID": "6435504", "OCC_CLS": "Residential", "PRIM_OCC": "Single Family Dwelling", "SEC_OCC": "None", "PROP_ADDR": "None", "PROP_CITY": "None", "PROP_ST": "Colorado", "PROP_ZIP": "None", "OUTBLDG": "None", "STATE_FIPS": "8", "FIPS": "08065", "HEIGHT": "None", "SQMETERS": "246.8159", "SQFEET": "2656.701", "H_ADJ_ELEV": "None", "L_ADJ_ELEV": "None", "USNG": "13S CD 70270 25137"}
-  -- 'Local_Roads'
-  LAYER https://services1.arcgis.com/38PTfoP8IjlBsxZN/arcgis/rest/services/Lake_County_Recreation_Opportunities_Map_WFL1/FeatureServer/4
-    FAIL name='Local_Roads' geom=esriGeometryPolyline count=1312 geojson_ok=True in_state=False
-    fields=['OBJECTID', 'BASENAME', 'MTFCC', 'NAME', 'PREDIR', 'PREDIRABRV', 'PREQUAL', 'PREQUALABRV', 'PRETYP', 'PRETYPEABRV', 'RTTYP', 'SUFDIR', 'SUFDIRABRV', 'SUFQUAL', 'SUFQUALABRV', 'SUFTYP', 'SUFTYPEABRV', 'Shape__Length']
-    sample={"OBJECTID": "1", "BASENAME": "None", "MTFCC": "S1500", "NAME": "None", "PREDIR": "None", "PREDIRABRV": "None", "PREQUAL": "None", "PREQUALABRV": "None", "PRETYP": "None", "PRETYPEABRV": "None", "RTTYP": "None", "SUFDIR": "None", "SUFDIRABRV": "None", "SUFQUAL": "None", "SUFQUALABRV": "None", "SUFTYP": "None", "SUFTYPEABRV": "None", "Shape__Length": "910.2705590257852"}
-    sample={"OBJECTID": "2", "BASENAME": "None", "MTFCC": "S1400", "NAME": "None", "PREDIR": "None", "PREDIRABRV": "None", "PREQUAL": "None", "PREQUALABRV": "None", "PRETYP": "None", "PRETYPEABRV": "None", "RTTYP": "None", "SUFDIR": "None", "SUFDIRABRV": "None", "SUFQUAL": "None", "SUFQUALABRV": "None", "SUFTYP": "None", "SUFTYPEABRV": "None", "Shape__Length": "141.24154481453394"}
-  -- 'Major_Roads'
-  LAYER https://services1.arcgis.com/38PTfoP8IjlBsxZN/arcgis/rest/services/Lake_County_Recreation_Opportunities_Map_WFL1/FeatureServer/5
-    FAIL name='Major_Roads' geom=esriGeometryPolyline count=16 geojson_ok=True in_state=False
-    fields=['OBJECTID', 'BASENAME', 'MTFCC', 'NAME', 'PREDIR', 'PREDIRABRV', 'PREQUAL', 'PREQUALABRV', 'PRETYP', 'PRETYPEABRV', 'RTTYP', 'SUFDIR', 'SUFDIRABRV', 'SUFQUAL', 'SUFQUALABRV', 'SUFTYP', 'SUFTYPEABRV', 'Shape__Length']
-    sample={"OBJECTID": "1", "BASENAME": "Tenth Mtn Div Mem", "MTFCC": "S1200", "NAME": "Tenth Mtn Div Mem Hwy", "PREDIR": "None", "PREDIRABRV": "None", "PREQUAL": "None", "PREQUALABRV": "None", "PRETYP": "None", "PRETYPEABRV": "None", "RTTYP": "M", "SUFDIR": "None", "SUFDIRABRV": "None", "SUFQUAL": "None", "SUFQUALABRV": "None", "SUFTYP": "322", "SUFTYPEABRV": "Hwy", "Shape__Length": "0.6141825263363261"}
-    sample={"OBJECTID": "2", "BASENAME": "4", "MTFCC": "S1200", "NAME": "Co Rd 4", "PREDIR": "None", "PREDIRABRV": "None", "PREQUAL": "None", "PREQUALABRV": "None", "PRETYP": "214", "PRETYPEABRV": "Co Rd", "RTTYP": "C", "SUFDIR": "None", "SUFDIRABRV": "None", "SUFQUAL": "None", "SUFQUALABRV": "None", "SUFTYP": "None", "SUFTYPEABRV": "None", "Shape__Length": "1608.6013592558566"}
-  -- 'Railroads'
-  LAYER https://services1.arcgis.com/38PTfoP8IjlBsxZN/arcgis/rest/services/Lake_County_Recreation_Opportunities_Map_WFL1/FeatureServer/6
-    FAIL name='Railroads' geom=esriGeometryPolyline count=19 geojson_ok=True in_state=False
-    fields=['OBJECTID', 'SUFTYP', 'SUFTYPEABRV', 'BASENAME', 'NAME', 'MTFCC', 'Shape__Length']
-    sample={"OBJECTID": "1", "SUFTYP": "505", "SUFTYPEABRV": "RR", "BASENAME": "Union Pacific", "NAME": "Union Pacific RR", "MTFCC": "R1011", "Shape__Length": "0.5849549870257248"}
-    sample={"OBJECTID": "2", "SUFTYP": "505", "SUFTYPEABRV": "RR", "BASENAME": "Abandoned", "NAME": "Abandoned RR", "MTFCC": "R1011", "Shape__Length": "18925.989535503122"}
-  -- 'LakeCountyHikingTrails by Mileage'
-  LAYER https://services1.arcgis.com/38PTfoP8IjlBsxZN/arcgis/rest/services/Lake_County_Recreation_Opportunities_Map_WFL1/FeatureServer/8
-    FAIL name='LakeCountyHikingTrails by Mileage' geom=esriGeometryPolyline count=227 geojson_ok=True in_state=False
-    fields=['OBJECTID', 'ogc_fid', 'feature_id', 'place_id', 'name', 'place_id_1', 'name_1', 'place_id_2', 'name_2', 'place_id_3', 'name_3', 'trail_num', 'surface', 'oneway', 'type', 'hiking', 'horse', 'bike', 'motorcycle', 'atv', 'ohv_gt_50', 'highway_ve', 'dogs', 'access', 'min_elevat', 'max_elevat', 'length_mi_', 'manager', 'INPUT_DATE', 'EDIT_DATE']
-    sample={"OBJECTID": "1", "ogc_fid": "53198", "feature_id": "141675", "place_id": "16005", "name": "Timberline Trail", "place_id_1": "0", "name_1": " ", "place_id_2": "0", "name_2": " ", "place_id_3": "0", "name_3": " ", "trail_num": "1495", "surface": "dirt", "oneway": " ", "type": "Trail", "hiking": "yes", "horse": "yes", "bike": "no"}
-    sample={"OBJECTID": "2", "ogc_fid": "54276", "feature_id": "127910", "place_id": "13441", "name": "Colorado Trail Segment 10", "place_id_1": "6508", "name_1": "Colorado Trail", "place_id_2": "6462", "name_2": "Continental Divide Trail", "place_id_3": "13432", "name_3": "Swamp Lake Trail", "trail_num": "1776", "surface": "dirt", "oneway": " ", "type": "Trail", "hiking": "yes", "horse": "yes", "bike": "no"}
-  -- 'LakeCountyBikingTrails by Mileage'
-  LAYER https://services1.arcgis.com/38PTfoP8IjlBsxZN/arcgis/rest/services/Lake_County_Recreation_Opportunities_Map_WFL1/FeatureServer/9
-    FAIL name='LakeCountyBikingTrails by Mileage' geom=esriGeometryPolyline count=185 geojson_ok=True in_state=False
-    fields=['OBJECTID', 'ogc_fid', 'feature_id', 'place_id', 'name', 'place_id_1', 'name_1', 'place_id_2', 'name_2', 'place_id_3', 'name_3', 'trail_num', 'surface', 'oneway', 'type', 'hiking', 'horse', 'bike', 'motorcycle', 'atv', 'ohv_gt_50', 'highway_ve', 'dogs', 'access', 'min_elevat', 'max_elevat', 'length_mi_', 'manager', 'INPUT_DATE', 'EDIT_DATE']
-    sample={"OBJECTID": "1", "ogc_fid": "54937", "feature_id": "139971", "place_id": "20755", "name": "Twelvemile Lake Trail", "place_id_1": "0", "name_1": " ", "place_id_2": "0", "name_2": " ", "place_id_3": "0", "name_3": " ", "trail_num": "684", "surface": "dirt", "oneway": " ", "type": "Trail", "hiking": "yes", "horse": "yes", "bike": "yes"}
-    sample={"OBJECTID": "2", "ogc_fid": "55200", "feature_id": "140941", "place_id": "18984", "name": "Bermuda Triangle South Trail", "place_id_1": "0", "name_1": " ", "place_id_2": "0", "name_2": " ", "place_id_3": "0", "name_3": " ", "trail_num": "1471.A", "surface": "dirt", "oneway": " ", "type": "Trail", "hiking": "yes", "horse": "yes", "bike": "yes"}
-  ITEM 'Active Projects' owner=arsc_uagis -> https://services1.arcgis.com/Ezk9fcjSUkeadg6u/arcgis/rest/services/Active_Projects/FeatureServer
-  ITEM 'Infrastructure_3_WFL1' owner=zli39_TuftsGIS -> https://services3.arcgis.com/iuNbZYJOrAYBrPyC/arcgis/rest/services/Infrastructure_3_WFL1/FeatureServer
+======== ID explicit ========
+    [using where="status = 'Active'"]
+  LAYER https://gisportal-idfg.idaho.gov/hosting/rest/services/Access/IDFG_Fishing_and_Boating_Access_Sites_Public/FeatureServer/0
+    PASS name='IDFG Fishing and Boating Access Sites Public' geom=esriGeometryPoint count=357 geojson_ok=True in_state=True
+    fields:
+      region | SmallInteger | 'Region'
+      status | String | 'Status'
+      site_name | String | 'Site_Name'
+      public_info_notes | String | 'Public_Info_Notes'
+      county | String | 'County'
+      dd_x | Double | 'DD_X'
+      dd_y | Double | 'DD_Y'
+      camp | String | 'Camp'
+      rest | String | 'Rest'
+      ramp | String | 'Ramp'
+      dock | String | 'Dock'
+      ada_fish | String | 'ADA_Fish'
+      fishing_boating | String | 'Fishing_Boating'
+      objectid | OID | 'OBJECTID'
+      ID | Integer | 'ID'
+    sample={"region": 1, "status": "Active", "site_name": "Bonner Lake", "public_info_notes": "Earthen boat launch. Closet style outhouse non ADA.", "county": "Bonner", "dd_x": -116.11177003, "dd_y": 48.72786738, "camp": "no", "rest": "yes", "ramp": "yes", "dock": "no", "ada_fish": "no", "fishing_boating": "Fishing", "objectid": 3, "ID": 3}
+    sample={"region": 1, "status": "Active", "site_name": "Clark Fork Driftyard", "public_info_notes": "Camping in large parking lot or on adjacent access road.", "county": "Bonner", "dd_x": -116.23182593, "dd_y": 48.17359199, "camp": "yes", "rest": "Portable", "ramp": "yes", "dock": "yes", "ada_fish": "yes", "fishing_boating": "Boating", "objectid": 4, "ID": 4}
+    sample={"region": 1, "status": "Active", "site_name": "McArthur Lake WMA", "public_info_notes": "Shallow ramp. Fishing docks.", "county": "Bonner", "dd_x": -116.44174473, "dd_y": 48.52080883, "camp": "no", "rest": "yes", "ramp": "yes", "dock": "yes", "ada_fish": "no", "fishing_boating": "Boating", "objectid": 5, "ID": 5}
