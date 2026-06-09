@@ -75,6 +75,9 @@ def _load_sources() -> dict[str, list[dict]]:
     return by_state
 
 
+_TRUTHY = (1, "1", True, "Yes", "YES", "yes", "Y", "y", "true", "True")
+
+
 ACCESS_SOURCES: dict[str, list[dict]] = _load_sources()
 
 # Field-name candidates (different agencies use different cases). We
@@ -128,6 +131,23 @@ def _features_to_points(features: list[dict], src: dict) -> list[dict]:
     notes_field = src.get("notes_field")
     fixed_type = src.get("fixed_type")
     type_field = src.get("type_field")
+    type_flags = src.get("type_flags")  # ordered {flag column -> type}
+
+    def _type_of(props: dict) -> str:
+        if fixed_type:
+            return fixed_type
+        if type_flags:
+            # Agencies like PFBC/MD DNR publish amenities as Y/N columns
+            # (RAMP, PIER, SHORE_FISH); first truthy flag wins.
+            for field, t in type_flags.items():
+                if props.get(field) in _TRUTHY:
+                    return t
+            return "walk_in"
+        raw = (str(props.get(type_field))
+               if type_field and props.get(type_field)
+               else _pick(props, _TYPE_FIELDS))
+        return _normalize_type(raw)
+
     points: list[dict] = []
     for f in features:
         try:
@@ -142,14 +162,11 @@ def _features_to_points(features: list[dict], src: dict) -> list[dict]:
             name = ((str(props.get(name_field)) if props.get(name_field)
                      else None) if name_field
                     else _pick(props, _NAME_FIELDS)) or "Access point"
-            raw_type = (str(props.get(type_field))
-                        if type_field and props.get(type_field)
-                        else _pick(props, _TYPE_FIELDS))
             points.append({
                 "name": name,
                 "lat": float(c.y),
                 "lon": float(c.x),
-                "type": fixed_type or _normalize_type(raw_type),
+                "type": _type_of(props),
                 "access": src.get("access", "public"),
                 "agency_url": agency_url,
                 "notes": (str(props.get(notes_field))

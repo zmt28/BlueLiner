@@ -244,13 +244,45 @@ too.
 
 1. Drop in `data/stocking/<STATE>.json`, optionally
    `data/trout/<STATE>.json`, and optionally
-   `data/access_points/<STATE>.json` (see schemas below).
-2. Add the state code to the loader's state list in `stocking.py`
-   (`STOCKING_BASELINE = {...}` dict literal) and
-   `access_points.py` (`ACCESS_BASELINE = {...}`) so they're picked
-   up at import time.
-3. Add an `agency_url` constant if you want a per-state default.
-4. Run `pytest -q` -- the coverage test will flag a missing state.
+   `data/access_points/<STATE>.json` (see schemas below). Baseline
+   files are auto-discovered at import -- no Python changes needed.
+2. If the state agency publishes an ArcGIS layer for stocking or
+   access points, add an entry to `data/stocking/sources.json` /
+   `data/access_points/sources.json` (see "Live feed registries"
+   below) -- live results merge on top of the bundled baseline.
+3. Run `python scripts/validate_data.py` and `pytest -q`.
+
+### Live feed registries (`data/{stocking,access_points}/sources.json`)
+
+Declarative list of verified state-agency ArcGIS `/query` endpoints,
+mirroring `data/trout/sources.json`. Per-source keys:
+
+- common: `state`, `label`, `url` (the `/query?where=...` endpoint),
+  `agency_url` (public agency page cited in popups)
+- stocking: `category` (popup label), `name_field`, `species_field`
+  (free-text column) or `species_flags` (map of 0/1 flag columns to
+  species labels, VA style), `season_months` ([start, end] when the
+  feed carries no season), `dedupe` (collapse multi-segment polyline
+  reach layers to one pin per named water per ~0.1 deg cell)
+- access: `name_field`, `type_field` (normalized onto the canonical
+  enum), `type_flags` (ordered map of Y/N amenity columns to types,
+  first truthy flag wins -- PA/MD style), or `fixed_type`;
+  `notes_field`; `access` (default `public`)
+
+**Before adding an entry, verify the endpoint end-to-end:**
+
+```sh
+python scripts/verify_feed_sources.py               # registry only
+python scripts/verify_feed_sources.py --candidates  # also data/*/candidates.json
+```
+
+It checks layer metadata, record count, real `f=geojson` output (the
+runtime fetcher requires GeoJSON support), state-bbox geometry sanity,
+and that every declared field exists in the layer schema. Unverified
+leads live in `data/{stocking,access_points}/candidates.json` (same
+shape); promote one into `sources.json` only after the script passes
+it. Note: the Claude Code sandbox can reach only a few state GIS
+hosts -- run the script from a dev machine or CI for everything else.
 
 ### `data/access_points/<STATE>.json` schema
 
@@ -279,5 +311,6 @@ fishing piers, parking, wading spots). Schema:
   client renders a 22-pixel disc at any zoom.
 
 A state-DNR live ArcGIS endpoint can be added to
-`access_points.ACCESS_SOURCES` once verified; live results merge on
-top of the baseline. Until then, the bundled JSON is the only source.
+`data/access_points/sources.json` once verified (see "Live feed
+registries" above); live results merge on top of the baseline. Until
+then, the bundled JSON is the only source.

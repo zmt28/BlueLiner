@@ -21,6 +21,42 @@
       "species_flags": {"RainbowTrout": "Rainbow", "BrownTrout": "Brown", "BrookTrout": "Brook"},
       "season_months": [10, 5],
       "dedupe": true
+    },
+    {
+      "state": "PA",
+      "label": "PFBC Stocked Trout Waters (reaches)",
+      "url": "https://mapservices.pasda.psu.edu/server/rest/services/pasda/PAFishBoat/MapServer/3/query?where=1%3D1",
+      "agency_url": "https://www.fishandboat.com/Fish/Trout/Pages/default.aspx",
+      "category": "Stocked trout water (PFBC)",
+      "name_field": "GNIS_Name",
+      "dedupe": true
+    },
+    {
+      "state": "PA",
+      "label": "PFBC Stocked Trout Lakes",
+      "url": "https://mapservices.pasda.psu.edu/server/rest/services/pasda/PAFishBoat/MapServer/1/query?where=1%3D1",
+      "agency_url": "https://www.fishandboat.com/Fish/Trout/Pages/default.aspx",
+      "category": "Stocked trout lake (PFBC)",
+      "name_field": "GNIS_NAME"
+    },
+    {
+      "state": "MD",
+      "label": "MD DNR Trout Stocking Activities (points)",
+      "url": "https://dnr.geodata.md.gov/dnrdata/rest/services/Fisheries/TroutStockingActivities/MapServer/0/query?where=1%3D1",
+      "agency_url": "https://dnr.maryland.gov/fisheries/pages/trout/stocking.aspx",
+      "category": "Stocked this season (MD DNR)",
+      "name_field": "LOCATION",
+      "species_field": "Species"
+    },
+    {
+      "state": "MD",
+      "label": "MD DNR Trout Stocking Activities (reaches)",
+      "url": "https://dnr.geodata.md.gov/dnrdata/rest/services/Fisheries/TroutStockingActivities/MapServer/1/query?where=1%3D1",
+      "agency_url": "https://dnr.maryland.gov/fisheries/pages/trout/stocking.aspx",
+      "category": "Stocked this season (MD DNR)",
+      "name_field": "LOCATION",
+      "species_field": "Species",
+      "dedupe": true
     }
   ]
 }

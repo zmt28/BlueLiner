@@ -18,6 +18,24 @@
       "name_field": "Facility_N",
       "fixed_type": "pier",
       "notes_field": "Body_of_Wa"
+    },
+    {
+      "state": "PA",
+      "label": "PFBC Access Areas",
+      "url": "https://mapservices.pasda.psu.edu/server/rest/services/pasda/PAFishBoat/MapServer/0/query?where=1%3D1",
+      "agency_url": "https://www.fishandboat.com/Boat/Pages/default.aspx",
+      "name_field": "ACC_NAME",
+      "type_flags": {"RAMP": "boat_ramp", "PIER": "pier", "PARKING": "parking", "SHORE_FISH": "walk_in"},
+      "notes_field": "WATERBODY"
+    },
+    {
+      "state": "MD",
+      "label": "MD DNR Public Fishing Access Sites",
+      "url": "https://dnr.geodata.md.gov/dnrdata/rest/services/Fisheries/PublicFishingAccessSites/MapServer/0/query?where=1%3D1",
+      "agency_url": "https://dnr.maryland.gov/fisheries/pages/fishing-access.aspx",
+      "name_field": "Name",
+      "type_flags": {"Ramp": "boat_ramp", "Piers": "pier", "KykCanoeLn": "boat_ramp", "ShoreFishi": "walk_in"},
+      "notes_field": "Waterbody"
     }
   ]
 }

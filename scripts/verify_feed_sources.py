@@ -86,7 +86,8 @@ def verify_source(client: httpx.Client, src: dict) -> list[str]:
     field_names = {f["name"] for f in meta.get("fields", [])}
     declared = ([src.get(k) for k in ("name_field", "species_field",
                                       "type_field", "notes_field")]
-                + list((src.get("species_flags") or {}).keys()))
+                + list((src.get("species_flags") or {}).keys())
+                + list((src.get("type_flags") or {}).keys()))
     for fld in declared:
         if fld and fld not in field_names:
             fails.append(f"declared field {fld!r} not in layer schema")
