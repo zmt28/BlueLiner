@@ -36,6 +36,68 @@
       "name_field": "Name",
       "type_flags": {"Ramp": "boat_ramp", "Piers": "pier", "KykCanoeLn": "boat_ramp", "ShoreFishi": "walk_in"},
       "notes_field": "Waterbody"
+    },
+    {
+      "state": "MT",
+      "label": "MT FWP Fishing Access Sites",
+      "url": "https://fwp-gis.mt.gov/arcgis/rest/services/fish/fishViewer/MapServer/41/query?where=1%3D1",
+      "agency_url": "https://fwp.mt.gov/fish/fishing-access",
+      "name_field": "NAME",
+      "type_field": "BOAT_FAC",
+      "notes_field": "BOAT_FAC"
+    },
+    {
+      "state": "ID",
+      "label": "IDFG Fishing and Boating Access Sites",
+      "url": "https://gisportal-idfg.idaho.gov/hosting/rest/services/Access/IDFG_Fishing_and_Boating_Access_Sites_Public/FeatureServer/0/query?where=status%20%3D%20%27Active%27",
+      "agency_url": "https://idfg.idaho.gov/data/app/fishing-and-boating-access-sites-map-center",
+      "name_field": "site_name",
+      "type_flags": {"ramp": "boat_ramp"}
+    },
+    {
+      "state": "WY",
+      "label": "WGFD River Access Points",
+      "url": "https://services6.arcgis.com/cWzdqIyxbijuhPLw/arcgis/rest/services/All_River_Access_Points/FeatureServer/0/query?where=1%3D1",
+      "agency_url": "https://wgfd.wyo.gov/public-access/public-access-areas",
+      "name_field": "LaunchLocation",
+      "fixed_type": "boat_ramp",
+      "notes_field": "StreamName"
+    },
+    {
+      "state": "CO",
+      "label": "CPW Fishing Atlas - Boat Ramps",
+      "url": "https://ndismaps.nrel.colostate.edu/arcgis/rest/services/FishingAtlas2025/FishingInfo2025/MapServer/8/query?where=1%3D1",
+      "agency_url": "https://cpw.state.co.us/activities/fishing/where-fish",
+      "name_field": "Property",
+      "fixed_type": "boat_ramp",
+      "notes_field": "Manager"
+    },
+    {
+      "state": "NM",
+      "label": "NMDGF Fishing Access",
+      "url": "https://services2.arcgis.com/CjbW1bVhK4dB3WOa/arcgis/rest/services/Fishing_Access/FeatureServer/0/query?where=1%3D1",
+      "agency_url": "https://wildlife.dgf.nm.gov/fishing/maps-and-accessibility/",
+      "name_field": "Access_Name",
+      "type_field": "Access_Type",
+      "notes_field": "Name_Working"
+    },
+    {
+      "state": "NM",
+      "label": "NMDGF Boat Ramps",
+      "url": "https://services2.arcgis.com/CjbW1bVhK4dB3WOa/arcgis/rest/services/Boat_Ramps/FeatureServer/1/query?where=1%3D1",
+      "agency_url": "https://wildlife.dgf.nm.gov/fishing/maps-and-accessibility/",
+      "name_field": "Water_name",
+      "fixed_type": "boat_ramp",
+      "notes_field": "Ramp_type"
+    },
+    {
+      "state": "WA",
+      "label": "WDFW Water Access Sites",
+      "url": "https://geodataservices.wdfw.wa.gov/arcgis/rest/services/WP_RealEstate/WaterAccessSites/MapServer/1/query?where=1%3D1",
+      "agency_url": "https://wdfw.wa.gov/places-to-go/water-access-sites",
+      "name_field": "WaterAccessSiteName",
+      "type_flags": {"BoatRamps": "boat_ramp", "HandLaunches": "boat_ramp"},
+      "notes_field": "BoatRampSurfaceTypes"
     }
   ]
 }

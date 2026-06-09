@@ -57,6 +57,52 @@
       "name_field": "LOCATION",
       "species_field": "Species",
       "dedupe": true
+    },
+    {
+      "state": "MT",
+      "label": "MT FWP Fish Stocking Records (trout, 2023+)",
+      "url": "https://fwp-gis.mt.gov/arcgis/rest/services/fish/fishViewer/MapServer/38/query?where=SPECIES%20LIKE%20%27%25Trout%25%27%20AND%20PLANTDATE%20%3E%3D%20DATE%20%272023-01-01%27",
+      "agency_url": "https://fwp.mt.gov/fish/stocking.html",
+      "category": "Stocked (MT FWP, recent records)",
+      "name_field": "WATERBODY",
+      "species_field": "SPECIES",
+      "dedupe": true
+    },
+    {
+      "state": "CO",
+      "label": "CPW Fishing Atlas - Catchable Trout Waters",
+      "url": "https://ndismaps.nrel.colostate.edu/arcgis/rest/services/FishingAtlas2025/FishingInfo2025/MapServer/7/query?where=STOCKED%20%3D%20%27Catchable%20trout%27",
+      "agency_url": "https://cpw.state.co.us/activities/fishing/where-fish",
+      "category": "Catchable trout - stocked (CPW)",
+      "name_field": "DOW_NAME"
+    },
+    {
+      "state": "UT",
+      "label": "UT DWR Stocked Lakes",
+      "url": "https://services.arcgis.com/ZzrwjTRez6FJiOq4/arcgis/rest/services/UDWR_Fish_Stocking_Events_1979_2024_VIEW/FeatureServer/0/query?where=Stocked_YN%20%3D%20%27Yes%27",
+      "agency_url": "https://dwrapps.utah.gov/fishstocking/Fish",
+      "category": "Stocked water (UT DWR)",
+      "name_field": "WaterName",
+      "dedupe": true
+    },
+    {
+      "state": "UT",
+      "label": "UT DWR Stocked Streams",
+      "url": "https://services.arcgis.com/ZzrwjTRez6FJiOq4/arcgis/rest/services/UDWR_Fish_Stocking_Events_1979_2024_VIEW/FeatureServer/1/query?where=Stocked_YN%20%3D%20%27Yes%27",
+      "agency_url": "https://dwrapps.utah.gov/fishstocking/Fish",
+      "category": "Stocked water (UT DWR)",
+      "name_field": "WaterName",
+      "dedupe": true
+    },
+    {
+      "state": "CA",
+      "label": "CDFW Fish Planting Schedule (trout)",
+      "url": "https://services2.arcgis.com/Uq9r85Potqm3MfRV/arcgis/rest/services/FishingGuide/FeatureServer/2/query?where=FishType%20%3D%20%27Trout%27",
+      "agency_url": "https://wildlife.ca.gov/Fishing/Guide",
+      "category": "Trout plant - CDFW schedule",
+      "name_field": "WaterName",
+      "species_field": "FishType",
+      "dedupe": true
     }
   ]
 }

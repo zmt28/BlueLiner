@@ -1,10 +1,6 @@
-# Round 5: verify recommended server-side where filters.
-
-MT|https://fwp-gis.mt.gov/arcgis/rest/services/fish/fishViewer/MapServer/38?where=PLANTDATE >= DATE '2023-01-01'
-MT|https://fwp-gis.mt.gov/arcgis/rest/services/fish/fishViewer/MapServer/38?where=SPECIES LIKE '%Trout%'
-UT|https://services.arcgis.com/ZzrwjTRez6FJiOq4/arcgis/rest/services/UDWR_Fish_Stocking_Events_1979_2024_VIEW/FeatureServer/1?where=Stocked_YN = 'Yes'
-UT|https://services.arcgis.com/ZzrwjTRez6FJiOq4/arcgis/rest/services/UDWR_Fish_Stocking_Events_1979_2024_VIEW/FeatureServer/0?where=Stocked_YN = 'Yes'
-CO|https://ndismaps.nrel.colostate.edu/arcgis/rest/services/FishingAtlas2025/FishingInfo2025/MapServer/7?where=STOCKED = 'Catchable trout'
-CO|https://ndismaps.nrel.colostate.edu/arcgis/rest/services/FishingAtlas2025/FishingInfo2025/MapServer/7?where=STOCKED IS NOT NULL
-CA|https://services2.arcgis.com/Uq9r85Potqm3MfRV/arcgis/rest/services/FishingGuide/FeatureServer/2?where=FishType = 'Trout'
-ID|https://gisportal-idfg.idaho.gov/hosting/rest/services/Access/IDFG_Fishing_and_Boating_Access_Sites_Public/FeatureServer/0?where=status = 'Active'
+# Ad-hoc GIS discovery/verification request file (gis-endpoint-verify
+# Actions job). Leave only comments to skip discovery -- the job always
+# verifies data/{stocking,access_points}/sources.json regardless.
+#
+# Either:  states: MT,ID,...        (discovery + auto-verify)
+# Or:      MT|https://host/.../FeatureServer/0   (explicit layer dump)

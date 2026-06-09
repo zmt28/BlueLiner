@@ -136,6 +136,16 @@ def _season_label(months: tuple[int, int]) -> str:
 _TRUTHY = (1, "1", True, "Yes", "YES", "yes", "Y", "y", "true", "True")
 
 
+def _truthy(v) -> bool:
+    """Flag-column truthiness: Y/Yes/1/true strings, plus positive
+    numbers (agencies like WDFW publish counts, e.g. BoatRamps=2)."""
+    if isinstance(v, bool):
+        return v
+    if isinstance(v, (int, float)):
+        return v > 0
+    return v in _TRUTHY
+
+
 def _species_from_props(props: dict, src: dict) -> list[str]:
     """Species list via the source's mapping: `species_flags` maps 0/1
     flag columns to labels (VA style); `species_field` names a free-text
@@ -143,7 +153,7 @@ def _species_from_props(props: dict, src: dict) -> list[str]:
     flags = src.get("species_flags")
     if flags:
         return [label for field, label in flags.items()
-                if props.get(field) in _TRUTHY]
+                if _truthy(props.get(field))]
     field = src.get("species_field")
     raw = props.get(field) if field else _pick(props, _SPECIES_FIELDS)
     if raw in (None, ""):
@@ -156,7 +166,7 @@ def _features_to_points(features: list[dict], src: dict) -> list[dict]:
     name_field = src.get("name_field")
     default_season = tuple(src.get("season_months") or ()) or None
     points: list[dict] = []
-    seen: set[tuple] = set()
+    seen: dict[tuple, dict] = {}
     skipped = 0
     for f in features:
         try:
@@ -175,13 +185,19 @@ def _features_to_points(features: list[dict], src: dict) -> list[dict]:
                      else _pick(props, _NAME_FIELDS)) or "Stocked water"
             if src.get("dedupe"):
                 # One pin per named water per ~0.1 deg cell. Collapses
-                # multi-segment reach layers without merging same-named
-                # creeks in different corners of the state.
+                # multi-segment reach layers (and per-event stocking
+                # records) without merging same-named creeks in
+                # different corners of the state. Species union across
+                # collapsed records so a water stocked with browns in
+                # March and rainbows in May shows both.
                 key = (water.strip().lower(),
                        round(float(c.y), 1), round(float(c.x), 1))
-                if key in seen:
+                prior = seen.get(key)
+                if prior is not None:
+                    for s in _species_from_props(props, src):
+                        if s not in prior["species"]:
+                            prior["species"].append(s)
                     continue
-                seen.add(key)
             points.append({
                 "water": water,
                 "lat": float(c.y),
@@ -193,6 +209,8 @@ def _features_to_points(features: list[dict], src: dict) -> list[dict]:
                 "season_months": default_season or _season_from_props(props),
                 "agency_url": agency_url,
             })
+            if src.get("dedupe"):
+                seen[key] = points[-1]
         except Exception as exc:
             # Don't let one malformed feature drop the whole overlay -- but
             # surface it (the old silent pass hid feed-schema drift).

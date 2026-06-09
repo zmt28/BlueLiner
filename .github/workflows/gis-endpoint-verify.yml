@@ -1,15 +1,25 @@
-name: GIS endpoint verify (western states)
+name: GIS feed verify
 
-# Ad-hoc discovery + verification of state-agency stocking / fishing-access
-# ArcGIS endpoints. Runs in Actions because the crawl needs open egress to
-# arbitrary state GIS hosts. Triggered by pushing changes to the request file
-# (scripts/gis_verify_request.txt) on a working branch; results go to the log.
+# Verifies the live stocking / access-point feed registries
+# (data/{stocking,access_points}/sources.json) end-to-end, plus any
+# candidate leads. Runs in Actions because the Claude Code sandbox's
+# egress allowlist blocks most state GIS hosts -- this job is the
+# gatekeeper for promoting candidates into the registries.
+#
+# Also supports ad-hoc endpoint discovery: put `states: XX,YY` or
+# `ST|layerUrl` lines in scripts/gis_verify_request.txt and push; the
+# prober output lands in the job log and gis_verify_out/REPORT.txt.
 
 on:
   push:
     branches:
       - "claude/hopeful-wozniak-4q57av"
     paths:
+      - "data/stocking/sources.json"
+      - "data/stocking/candidates.json"
+      - "data/access_points/sources.json"
+      - "data/access_points/candidates.json"
+      - "scripts/verify_feed_sources.py"
       - "scripts/gis_verify_request.txt"
       - "scripts/gis_endpoint_verify.py"
       - ".github/workflows/gis-endpoint-verify.yml"
@@ -29,14 +39,21 @@ jobs:
           python-version: "3.11"
       - name: Install deps
         run: pip install httpx
-      - name: Discover + verify
+      - name: Verify feed registries (+ candidates, advisory)
+        run: python scripts/verify_feed_sources.py --candidates
+      - name: Ad-hoc discovery (when requested)
         run: |
-          mkdir -p gis_verify_out
-          python scripts/gis_endpoint_verify.py \
-            --request scripts/gis_verify_request.txt | tee gis_verify_out/REPORT.txt
-      - name: Commit report back to branch
+          if grep -qE '^(states:|[A-Z]{2}\|)' scripts/gis_verify_request.txt; then
+            mkdir -p gis_verify_out
+            python scripts/gis_endpoint_verify.py \
+              --request scripts/gis_verify_request.txt | tee gis_verify_out/REPORT.txt
+          else
+            echo "no ad-hoc request lines; skipping discovery"
+          fi
+      - name: Commit discovery report back to branch
         if: always()
         run: |
+          [ -f gis_verify_out/REPORT.txt ] || exit 0
           git config user.name "gis-verify-bot"
           git config user.email "actions@users.noreply.github.com"
           git add -f gis_verify_out/REPORT.txt

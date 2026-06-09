@@ -78,6 +78,16 @@ def _load_sources() -> dict[str, list[dict]]:
 _TRUTHY = (1, "1", True, "Yes", "YES", "yes", "Y", "y", "true", "True")
 
 
+def _truthy(v) -> bool:
+    """Flag-column truthiness: Y/Yes/1/true strings, plus positive
+    numbers (agencies like WDFW publish counts, e.g. BoatRamps=2)."""
+    if isinstance(v, bool):
+        return v
+    if isinstance(v, (int, float)):
+        return v > 0
+    return v in _TRUTHY
+
+
 ACCESS_SOURCES: dict[str, list[dict]] = _load_sources()
 
 # Field-name candidates (different agencies use different cases). We
@@ -140,7 +150,7 @@ def _features_to_points(features: list[dict], src: dict) -> list[dict]:
             # Agencies like PFBC/MD DNR publish amenities as Y/N columns
             # (RAMP, PIER, SHORE_FISH); first truthy flag wins.
             for field, t in type_flags.items():
-                if props.get(field) in _TRUTHY:
+                if _truthy(props.get(field)):
                     return t
             return "walk_in"
         raw = (str(props.get(type_field))
