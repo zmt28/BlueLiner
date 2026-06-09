@@ -119,9 +119,11 @@ def test_access_points_geojson_shape():
 
 def test_access_unsupported_state_is_empty():
     """States without baseline + without configured ArcGIS source --
-    e.g. Colorado today -- yield an empty FeatureCollection. The
+    e.g. Kansas today -- yield an empty FeatureCollection. The
     client-side checkbox still works; the layer simply has no markers."""
-    fc = access_points.access_points_geojson("CO")
+    assert "KS" not in access_points.ACCESS_BASELINE
+    assert "KS" not in access_points.ACCESS_SOURCES
+    fc = access_points.access_points_geojson("KS")
     assert fc == {"type": "FeatureCollection", "features": []}
 
 
@@ -157,12 +159,13 @@ def test_stocking_features_to_points_skips_bad(caplog):
         {"geometry": None, "properties": {"WATER": "No geom"}},   # skipped
         {"properties": {"WATER": "Missing geom key"}},            # skipped
     ]
-    pts = stocking._features_to_points(feats, "http://agency")
+    pts = stocking._features_to_points(feats, {"agency_url": "http://agency"})
     assert len(pts) == 1
     p = pts[0]
     assert p["water"] == "Good Creek"
     assert p["species"] == ["Brown", "Rainbow"]
     assert p["lat"] == 39.0 and p["lon"] == -77.0
+    assert p["agency_url"] == "http://agency"
 
 
 def test_stocking_season_from_props():
