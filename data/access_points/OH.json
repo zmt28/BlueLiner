@@ -1,0 +1,50 @@
+[
+  {
+    "name": "Mad River - SR 29 / SR 296 access (north of Urbana)",
+    "lat": 40.1300, "lon": -83.8000,
+    "type": "parking",
+    "access": "public",
+    "agency_url": "https://dam.assets.ohio.gov/image/upload/ohiodnr.gov/documents/wildlife/river-stream-fishing/madriver.pdf",
+    "notes": "ODNR parking lot with steps to the river on the brown trout water."
+  },
+  {
+    "name": "Mad River - US 36 bridge access",
+    "lat": 40.1080, "lon": -83.8120,
+    "type": "walk_in",
+    "access": "public",
+    "agency_url": "https://dam.assets.ohio.gov/image/upload/ohiodnr.gov/documents/wildlife/river-stream-fishing/madriver.pdf",
+    "notes": "One of the mapped Champaign County bridge access points on the Mad."
+  },
+  {
+    "name": "Mohican State Park covered bridge (Clear Fork)",
+    "lat": 40.6080, "lon": -82.2890,
+    "type": "walk_in",
+    "access": "public",
+    "agency_url": "https://dam.assets.ohio.gov/image/upload/ohiodnr.gov/documents/wildlife/river-stream-fishing/clearforkbranch.pdf",
+    "notes": "Gorge water below Pleasant Hill Dam; brown trout section."
+  },
+  {
+    "name": "Antrim Park lot (Antrim Lake)",
+    "lat": 40.0660, "lon": -83.0250,
+    "type": "parking",
+    "access": "public",
+    "agency_url": "https://ohiodnr.gov/buy-and-apply/hunting-fishing-boating/fishing-resources/trout-stockings",
+    "notes": "Off Olentangy River Rd, Columbus; shoreline fishing for spring rainbow releases."
+  },
+  {
+    "name": "Olander Park (Olander Lake)",
+    "lat": 41.7100, "lon": -83.7040,
+    "type": "walk_in",
+    "access": "public",
+    "agency_url": "https://ohiodnr.gov/buy-and-apply/hunting-fishing-boating/fishing-resources/trout-stockings",
+    "notes": "Sylvania park; bank fishing for spring rainbow releases."
+  },
+  {
+    "name": "Mt. Gilead State Park Lake shore",
+    "lat": 40.5490, "lon": -82.8060,
+    "type": "walk_in",
+    "access": "public",
+    "agency_url": "https://ohiodnr.gov/buy-and-apply/hunting-fishing-boating/fishing-resources/trout-stockings",
+    "notes": "State park lake on the ODNR spring trout release list."
+  }
+]

@@ -1,0 +1,50 @@
+[
+  {
+    "water": "Cumberland River tailwater (below Wolf Creek Dam)",
+    "lat": 36.8720, "lon": -85.1350,
+    "species": ["Rainbow", "Brown", "Brook"],
+    "category": "Trophy tailwater - 75 miles of stocked trout water",
+    "season_months": [1, 12],
+    "agency_url": "https://fw.ky.gov/Education/Pages/Cumberland-River-Tailwater.aspx"
+  },
+  {
+    "water": "Hatchery Creek (Jamestown)",
+    "lat": 36.8740, "lon": -85.1280,
+    "species": ["Rainbow", "Brown", "Brook"],
+    "category": "Constructed spring creek - lower section catch & release",
+    "season_months": [1, 12],
+    "agency_url": "https://fw.ky.gov/Fish/Pages/Hatchery-Creek-Stream.aspx"
+  },
+  {
+    "water": "Swift Camp Creek (Wolfe Co.)",
+    "lat": 37.7700, "lon": -83.5770,
+    "species": ["Rainbow"],
+    "category": "Seasonal catch & release stream (Oct 1 - May 31)",
+    "season_months": [10, 5],
+    "agency_url": "https://fw.ky.gov/Fish/Pages/Seasonal-Catch-and-Release-Trout-Streams.aspx"
+  },
+  {
+    "water": "East Fork Indian Creek (Menifee Co.)",
+    "lat": 37.8550, "lon": -83.6280,
+    "species": ["Brown", "Rainbow"],
+    "category": "Seasonal catch & release stream (Oct 1 - Mar 31)",
+    "season_months": [10, 3],
+    "agency_url": "https://app.fw.ky.gov/fisheries/waterbodydetail.aspx?wid=379"
+  },
+  {
+    "water": "Rock Creek (McCreary Co.)",
+    "lat": 36.6240, "lon": -84.6800,
+    "species": ["Rainbow", "Brown"],
+    "category": "Seasonal catch & release above Bell Farm (Oct 1 - Mar 31)",
+    "season_months": [10, 3],
+    "agency_url": "https://app.fw.ky.gov/fisheries/waterbodydetail.aspx?wid=382"
+  },
+  {
+    "water": "Trammel Fork (Allen Co.)",
+    "lat": 36.8700, "lon": -86.3600,
+    "species": ["Rainbow", "Brown"],
+    "category": "Seasonal catch & release stream (Oct 1 - Mar 31)",
+    "season_months": [10, 3],
+    "agency_url": "https://fw.ky.gov/Fish/Pages/Seasonal-Catch-and-Release-Trout-Streams.aspx"
+  }
+]

@@ -1,0 +1,58 @@
+[
+  {
+    "name": "Kendall Recreation Area ramp (Cumberland tailwater)",
+    "lat": 36.8700, "lon": -85.1460,
+    "type": "boat_ramp",
+    "access": "public",
+    "agency_url": "https://fw.ky.gov/Fish/Pages/Wade-the-Lake-Cumberland-tailwater-to-beat-the-heat-and-catch-fish.aspx",
+    "notes": "USACE ramp off US 127 just below Wolf Creek Dam; closed some winters for dam ops."
+  },
+  {
+    "name": "Hatchery Creek lot (Wolf Creek NFH visitor center)",
+    "lat": 36.8730, "lon": -85.1300,
+    "type": "parking",
+    "access": "public",
+    "agency_url": "https://fw.ky.gov/Fish/Pages/Hatchery-Creek-Stream.aspx",
+    "notes": "Park at the hatchery visitor center; lower gravel lot off Annex Rd; trails flank the creek."
+  },
+  {
+    "name": "Helm's Landing boat ramp (Cumberland tailwater)",
+    "lat": 36.8950, "lon": -85.0850,
+    "type": "boat_ramp",
+    "access": "public",
+    "agency_url": "https://app.fw.ky.gov/fisheries/accesssitedetail.aspx?asid=543",
+    "notes": "About 4.5 miles below Wolf Creek Dam off KY 379; popular rainbow water."
+  },
+  {
+    "name": "Winfrey's Ferry ramp (Cumberland tailwater)",
+    "lat": 36.9300, "lon": -85.0550,
+    "type": "boat_ramp",
+    "access": "public",
+    "agency_url": "https://fw.ky.gov/Fish/Pages/Wade-the-Lake-Cumberland-tailwater-to-beat-the-heat-and-catch-fish.aspx",
+    "notes": "Takeout for the first 16 miles of tailwater floats from the dam."
+  },
+  {
+    "name": "East Fork Indian Creek access (Daniel Boone NF)",
+    "lat": 37.8550, "lon": -83.6280,
+    "type": "walk_in",
+    "access": "public",
+    "agency_url": "https://app.fw.ky.gov/fisheries/accesssitedetail.aspx?asid=1180",
+    "notes": "KDFWR-listed access on the seasonal catch & release brown trout stream."
+  },
+  {
+    "name": "Rock Creek at Bell Farm bridge",
+    "lat": 36.6240, "lon": -84.6800,
+    "type": "wading_access",
+    "access": "public",
+    "agency_url": "https://app.fw.ky.gov/fisheries/waterbodydetail.aspx?wid=382",
+    "notes": "Seasonal C&R water runs from Bell Farm bridge upstream to the TN line; Daniel Boone NF."
+  },
+  {
+    "name": "Swift Camp Creek / Rock Bridge trailhead (Clifty Wilderness)",
+    "lat": 37.7700, "lon": -83.5770,
+    "type": "walk_in",
+    "access": "public",
+    "agency_url": "https://fw.ky.gov/Fish/Pages/Seasonal-Catch-and-Release-Trout-Streams.aspx",
+    "notes": "Hike-in access off KY 715 to the Red River Gorge area trout stream."
+  }
+]

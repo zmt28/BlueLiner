@@ -1,0 +1,74 @@
+[
+  {
+    "water": "White Clay Creek",
+    "lat": 39.7230, "lon": -75.7570,
+    "species": ["Rainbow"],
+    "category": "Designated trout stream - stocked weekly in spring plus fall; fly-only section",
+    "season_months": [1, 12],
+    "agency_url": "https://dnrec.delaware.gov/fish-wildlife/fishing/freshwater-trout/"
+  },
+  {
+    "water": "Red Clay Creek",
+    "lat": 39.8000, "lon": -75.6750,
+    "species": ["Rainbow"],
+    "category": "Designated trout stream - fly-only section",
+    "season_months": [4, 4],
+    "agency_url": "https://dnrec.delaware.gov/fish-wildlife/fishing/freshwater-trout/"
+  },
+  {
+    "water": "Christina Creek (Newark)",
+    "lat": 39.6650, "lon": -75.7550,
+    "species": ["Rainbow"],
+    "category": "Designated trout stream - spring stocked",
+    "season_months": [4, 4],
+    "agency_url": "https://dnrec.delaware.gov/fish-wildlife/fishing/freshwater-trout/"
+  },
+  {
+    "water": "Pike Creek",
+    "lat": 39.7320, "lon": -75.6980,
+    "species": ["Rainbow"],
+    "category": "Designated trout stream - spring stocked",
+    "season_months": [4, 4],
+    "agency_url": "https://dnrec.delaware.gov/fish-wildlife/fishing/freshwater-trout/"
+  },
+  {
+    "water": "Beaver Run",
+    "lat": 39.8150, "lon": -75.5550,
+    "species": ["Rainbow"],
+    "category": "Designated trout stream - spring stocked",
+    "season_months": [4, 4],
+    "agency_url": "https://dnrec.delaware.gov/fish-wildlife/fishing/freshwater-trout/"
+  },
+  {
+    "water": "Wilson Run (Brandywine Creek State Park)",
+    "lat": 39.8020, "lon": -75.5770,
+    "species": ["Rainbow"],
+    "category": "Designated trout stream - spring stocked",
+    "season_months": [4, 4],
+    "agency_url": "https://dnrec.delaware.gov/fish-wildlife/fishing/freshwater-trout/"
+  },
+  {
+    "water": "Mill Creek",
+    "lat": 39.7600, "lon": -75.6900,
+    "species": ["Rainbow"],
+    "category": "Designated trout stream - spring stocked",
+    "season_months": [4, 4],
+    "agency_url": "https://dnrec.delaware.gov/fish-wildlife/fishing/freshwater-trout/"
+  },
+  {
+    "water": "Tidbury Pond (Camden / Dover)",
+    "lat": 39.0850, "lon": -75.5550,
+    "species": ["Rainbow"],
+    "category": "Spring trout pond - downstate opener",
+    "season_months": [3, 4],
+    "agency_url": "https://dnrec.delaware.gov/fish-wildlife/fishing/freshwater-trout/"
+  },
+  {
+    "water": "Newton Pond (Greenwood)",
+    "lat": 38.8250, "lon": -75.5700,
+    "species": ["Rainbow"],
+    "category": "Spring trout pond - downstate opener",
+    "season_months": [3, 4],
+    "agency_url": "https://dnrec.delaware.gov/fish-wildlife/fishing/freshwater-trout/"
+  }
+]
