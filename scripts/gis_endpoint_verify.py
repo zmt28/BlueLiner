@@ -185,6 +185,10 @@ def trim_props(props: dict, limit_keys: int = 18, limit_val: int = 48) -> dict:
 
 
 def verify_layer(c: httpx.Client, st: str, url: str, full: bool = False) -> bool:
+    where = "1=1"
+    if "?where=" in url:
+        url, _, where = url.partition("?where=")
+        print(f"    [using where={where!r}]")
     meta = get(c, url, {"f": "json"})
     if not meta or "_http" in meta or "error" in meta:
         print(f"  LAYER {url}\n    FAIL meta: {meta}")
@@ -192,10 +196,10 @@ def verify_layer(c: httpx.Client, st: str, url: str, full: bool = False) -> bool
     name, geom = meta.get("name"), meta.get("geometryType")
     fields = meta.get("fields") or []
     cnt = get(c, url + "/query",
-              {"where": "1=1", "returnCountOnly": "true", "f": "json"})
+              {"where": where, "returnCountOnly": "true", "f": "json"})
     count = (cnt or {}).get("count")
     gj = get(c, url + "/query", {
-        "where": "1=1", "outFields": "*", "f": "geojson",
+        "where": where, "outFields": "*", "f": "geojson",
         "resultRecordCount": "3", "outSR": "4326"})
     ok = bool(isinstance(gj, dict) and gj.get("type") == "FeatureCollection"
               and gj.get("features"))
@@ -206,7 +210,7 @@ def verify_layer(c: httpx.Client, st: str, url: str, full: bool = False) -> bool
                 if f.get("type") == "esriFieldTypeString"]
         sub = strs[0] if strs else ""
         gj = get(c, url + "/query", {
-            "where": "1=1", "outFields": sub or "", "f": "geojson",
+            "where": where, "outFields": sub or "", "f": "geojson",
             "resultRecordCount": "3", "outSR": "4326"})
         ok = bool(isinstance(gj, dict) and gj.get("type") == "FeatureCollection"
                   and gj.get("features"))
