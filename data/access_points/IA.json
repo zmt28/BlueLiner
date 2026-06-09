@@ -1,0 +1,50 @@
+[
+  {
+    "name": "Chuck Gipp Decorah Fish Hatchery (Trout Run)",
+    "lat": 43.2800, "lon": -91.7720,
+    "type": "walk_in",
+    "access": "public",
+    "agency_url": "https://www.iowadnr.gov/about/hatcheries/chuck-gipp-decorah-fish-hatchery",
+    "notes": "Open sunrise to sunset year-round; fish Trout Run by the hatchery."
+  },
+  {
+    "name": "Backbone State Park (Richmond Springs)",
+    "lat": 42.6150, "lon": -91.5560,
+    "type": "walk_in",
+    "access": "public",
+    "agency_url": "https://programs.iowadnr.gov/lakemanagement/FishIowa/TroutStreamDetails/TRS28",
+    "notes": "Stocked twice weekly April-October; wild browns present."
+  },
+  {
+    "name": "South Bear Creek access (Highlandville)",
+    "lat": 43.4720, "lon": -91.6950,
+    "type": "walk_in",
+    "access": "public",
+    "agency_url": "https://programs.iowadnr.gov/lakemanagement/FishIowa/TroutStreamDetails/TSB96",
+    "notes": "Weekly stockings April-October; strong wild brown population."
+  },
+  {
+    "name": "Waterloo Creek access (Dorchester)",
+    "lat": 43.4630, "lon": -91.5090,
+    "type": "walk_in",
+    "access": "public",
+    "agency_url": "https://www.iowadnr.gov/things-do/fishing/where-fish/trout-fishing",
+    "notes": "Driftless stream stocked weekly in season."
+  },
+  {
+    "name": "Bloody Run Creek county park (Marquette)",
+    "lat": 43.0480, "lon": -91.2100,
+    "type": "walk_in",
+    "access": "public",
+    "agency_url": "https://www.iowadnr.gov/things-do/fishing/where-fish/trout-fishing",
+    "notes": "Stocked weekly in season along the US-18 corridor."
+  },
+  {
+    "name": "Manchester Fish Hatchery (Spring Branch Creek)",
+    "lat": 42.4800, "lon": -91.4150,
+    "type": "walk_in",
+    "access": "public",
+    "agency_url": "https://www.iowadnr.gov/About-DNR/DNR-Staff-Offices/Fish-Hatcheries",
+    "notes": "Spring-fed creek by the DNR hatchery; stocked at least twice monthly."
+  }
+]
