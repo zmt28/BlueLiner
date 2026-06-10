@@ -92,6 +92,10 @@
          map drags pass through where there is no control; each child opts
          back in to pointer events. -->
     <div class="map-chrome" id="map-chrome">
+        <!-- Connectivity badge: shown only when offline. -->
+        <div class="net-badge" id="net-badge" role="status" hidden>
+            <i data-lucide="wifi-off" aria-hidden="true"></i><span>Offline</span>
+        </div>
         <div class="top-pills">
             <!-- State picker. The native <select id="state-select"> remains the
                  canonical value + accessibility target (visually hidden); the
@@ -278,8 +282,10 @@
                             </button>
                         </div>
                         <div class="bl-offline" id="offline-test" hidden>
-                            <button type="button" id="offline-cache-view" class="bl-offline-btn">⤓ Cache this view (offline beta)</button>
-                            <div id="offline-status" class="bl-offline-status">Offline base: not cached yet.</div>
+                            <div class="bl-offline-label">Offline maps <span class="bl-offline-tag">beta</span></div>
+                            <button type="button" id="offline-download" class="bl-offline-btn">⤓ Download this area</button>
+                            <div id="offline-status" class="bl-offline-status">Save the current map view to use it without a signal.</div>
+                            <button type="button" id="offline-clear" class="bl-offline-clear" hidden>Remove downloads</button>
                         </div>
                     </section>
                     <section class="panel-section">
