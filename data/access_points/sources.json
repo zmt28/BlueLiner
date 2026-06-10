@@ -25,7 +25,12 @@
       "url": "https://mapservices.pasda.psu.edu/server/rest/services/pasda/PAFishBoat/MapServer/0/query?where=1%3D1",
       "agency_url": "https://www.fishandboat.com/Boat/Pages/default.aspx",
       "name_field": "ACC_NAME",
-      "type_flags": {"RAMP": "boat_ramp", "PIER": "pier", "PARKING": "parking", "SHORE_FISH": "walk_in"},
+      "type_flags": {
+        "RAMP": "boat_ramp",
+        "PIER": "pier",
+        "PARKING": "parking",
+        "SHORE_FISH": "walk_in"
+      },
       "notes_field": "WATERBODY"
     },
     {
@@ -34,7 +39,12 @@
       "url": "https://dnr.geodata.md.gov/dnrdata/rest/services/Fisheries/PublicFishingAccessSites/MapServer/0/query?where=1%3D1",
       "agency_url": "https://dnr.maryland.gov/fisheries/pages/fishing-access.aspx",
       "name_field": "Name",
-      "type_flags": {"Ramp": "boat_ramp", "Piers": "pier", "KykCanoeLn": "boat_ramp", "ShoreFishi": "walk_in"},
+      "type_flags": {
+        "Ramp": "boat_ramp",
+        "Piers": "pier",
+        "KykCanoeLn": "boat_ramp",
+        "ShoreFishi": "walk_in"
+      },
       "notes_field": "Waterbody"
     },
     {
@@ -52,7 +62,9 @@
       "url": "https://gisportal-idfg.idaho.gov/hosting/rest/services/Access/IDFG_Fishing_and_Boating_Access_Sites_Public/FeatureServer/0/query?where=status%20%3D%20%27Active%27",
       "agency_url": "https://idfg.idaho.gov/data/app/fishing-and-boating-access-sites-map-center",
       "name_field": "site_name",
-      "type_flags": {"ramp": "boat_ramp"}
+      "type_flags": {
+        "ramp": "boat_ramp"
+      }
     },
     {
       "state": "WY",
@@ -96,7 +108,10 @@
       "url": "https://geodataservices.wdfw.wa.gov/arcgis/rest/services/WP_RealEstate/WaterAccessSites/MapServer/1/query?where=1%3D1",
       "agency_url": "https://wdfw.wa.gov/places-to-go/water-access-sites",
       "name_field": "WaterAccessSiteName",
-      "type_flags": {"BoatRamps": "boat_ramp", "HandLaunches": "boat_ramp"},
+      "type_flags": {
+        "BoatRamps": "boat_ramp",
+        "HandLaunches": "boat_ramp"
+      },
       "notes_field": "BoatRampSurfaceTypes"
     },
     {
@@ -107,6 +122,69 @@
       "name_field": "SiteName",
       "type_field": "AccessType",
       "notes_field": "Waterbody"
+    },
+    {
+      "state": "TN",
+      "label": "TWRA Access Sites",
+      "url": "https://services3.arcgis.com/PWXNAH2YKmZY7lBq/arcgis/rest/services/AllAccessSites/FeatureServer/0/query?where=1%3D1",
+      "agency_url": "https://www.tn.gov/twra/fishing.html",
+      "name_field": "Name",
+      "type_flags": {
+        "Ramps": "boat_ramp"
+      },
+      "notes_field": "Waterway"
+    },
+    {
+      "state": "KY",
+      "label": "KDFWR Fishing Access Sites",
+      "url": "https://services3.arcgis.com/ghsX9CKghMvyYjBU/arcgis/rest/services/Ky_KDFWR_Fishing_Access_Sites_WM_gdb/FeatureServer/0/query?where=1%3D1",
+      "agency_url": "https://fw.ky.gov/",
+      "name_field": "SiteName",
+      "type_field": "AccessType",
+      "notes_field": "WaterBody"
+    },
+    {
+      "state": "OH",
+      "label": "ODNR Lake Erie Public Fishing Access",
+      "url": "https://gis.ohiodnr.gov/arcgis/rest/services/OCM_Services/PublicAccess/FeatureServer/2/query?where=1%3D1",
+      "agency_url": "https://ohiodnr.gov/discover-and-learn/safety-conservation/about-odnr/coastal-management",
+      "name_field": "FishngSite",
+      "type_flags": {
+        "WadeAccess": "wading_access"
+      }
+    },
+    {
+      "state": "DE",
+      "label": "DNREC Fishing Access Areas",
+      "url": "https://enterprise.firstmap.delaware.gov/arcgis/rest/services/Society/DE_Fishing_Access/FeatureServer/0/query?where=1%3D1",
+      "agency_url": "https://dnrec.delaware.gov/fish-wildlife/fishing/access/",
+      "name_field": "TIDAL_FISHING_ACCESS_AREAS",
+      "type_flags": {
+        "RAMPS": "boat_ramp",
+        "FISHING_PIER": "pier",
+        "SHORELINE_FISHING": "walk_in"
+      },
+      "notes_field": "GNIS_NAME"
+    },
+    {
+      "state": "DE",
+      "label": "DNREC Wildlife Area Boat Ramps",
+      "url": "https://enterprise.firstmap.delaware.gov/arcgis/rest/services/Society/DE_Wildlife/FeatureServer/1/query?where=1%3D1",
+      "agency_url": "https://dnrec.delaware.gov/fish-wildlife/fishing/access/",
+      "name_field": "LOCATION",
+      "type_field": "TYPE",
+      "notes_field": "AREA_NAME"
+    },
+    {
+      "state": "NY",
+      "label": "NY DEC Trout Stream Fishing Access (PFR)",
+      "url": "https://services6.arcgis.com/DZHaqZm9cxOD4CWM/arcgis/rest/services/Trout_Stream_Fishing_Access/FeatureServer/1/query?where=1%3D1",
+      "agency_url": "https://dec.ny.gov/things-to-do/freshwater-fishing/places-to-fish/public-fishing-rights-streams",
+      "name_field": "WATER",
+      "fixed_type": "walk_in",
+      "access": "private_easement",
+      "notes_field": "AGENCY",
+      "dedupe": true
     }
   ]
 }

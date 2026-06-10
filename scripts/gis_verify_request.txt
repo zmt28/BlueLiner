@@ -1,2 +1,2 @@
-# Round E1: eastern feed discovery (focused states first).
-states: TN,OH,KY,DE,NJ,NY
+# Round E2: midwest/plains feed discovery.
+states: MI,WI,MN,NE,ND,SD,KS,OK,TX,IL,IN

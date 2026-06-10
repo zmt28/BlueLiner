@@ -111,6 +111,27 @@ def test_access_fixed_type_and_notes_field():
     assert p["access"] == "public"
 
 
+def test_access_type_normalizer_boat_keyword():
+    # KY publishes AccessType values like "Any Boat" / "Small Boat Only"
+    assert access_points._normalize_type("Any Boat") == "boat_ramp"
+    assert access_points._normalize_type("Small Boat Only") == "boat_ramp"
+    assert access_points._normalize_type("Bank Access") == "walk_in"
+
+
+def test_access_dedupe_collapses_parcels():
+    """NY PFR publishes thousands of tiny bank parcels per stream; dedupe
+    keeps one pin per named water per ~1 km cell."""
+    src = {"agency_url": "https://x.gov", "name_field": "W",
+           "fixed_type": "walk_in", "dedupe": True}
+    feats = [
+        _pt({"W": "Beaver Kill"}, lon=-74.9012, lat=41.9501),
+        _pt({"W": "Beaver Kill"}, lon=-74.9014, lat=41.9503),  # same cell
+        _pt({"W": "Beaver Kill"}, lon=-74.93, lat=41.96),      # next cell
+    ]
+    pts = access_points._features_to_points(feats, src)
+    assert len(pts) == 2
+
+
 def test_access_centroids_non_point_geometry():
     src = {"agency_url": "https://x.gov", "name_field": "N"}
     feat = {"type": "Feature",

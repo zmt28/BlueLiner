@@ -8,8 +8,15 @@
       "agency_url": "https://dwr.virginia.gov/fishing/trout-stocking-schedule/",
       "category": "Stocked trout lake (VA DWR)",
       "name_field": "Waterbody",
-      "species_flags": {"RainbowTrout": "Rainbow", "BrownTrout": "Brown", "BrookTrout": "Brook"},
-      "season_months": [10, 5]
+      "species_flags": {
+        "RainbowTrout": "Rainbow",
+        "BrownTrout": "Brown",
+        "BrookTrout": "Brook"
+      },
+      "season_months": [
+        10,
+        5
+      ]
     },
     {
       "state": "VA",
@@ -18,8 +25,15 @@
       "agency_url": "https://dwr.virginia.gov/fishing/trout-stocking-schedule/",
       "category": "Stocked trout water (VA DWR)",
       "name_field": "Waterbody",
-      "species_flags": {"RainbowTrout": "Rainbow", "BrownTrout": "Brown", "BrookTrout": "Brook"},
-      "season_months": [10, 5],
+      "species_flags": {
+        "RainbowTrout": "Rainbow",
+        "BrownTrout": "Brown",
+        "BrookTrout": "Brook"
+      },
+      "season_months": [
+        10,
+        5
+      ],
       "dedupe": true
     },
     {
@@ -105,15 +119,6 @@
       "dedupe": true
     },
     {
-      "state": "NJ",
-      "label": "NJ DEP Trout Stocked Streams",
-      "url": "https://mapsdep.nj.gov/arcgis/rest/services/Features/Environmental_admin/MapServer/35/query?where=1%3D1",
-      "agency_url": "https://dep.nj.gov/njfw/fishing/freshwater/trout-fishing-program/",
-      "category": "Stocked trout water (NJ DEP)",
-      "name_field": "NAME",
-      "dedupe": true
-    },
-    {
       "state": "WV",
       "label": "WV DNR Stocked Trout Streams",
       "url": "https://services.wvgis.wvu.edu/arcgis/rest/services/Applications/dnrRec_fishing/MapServer/4/query?where=Active%20%3D%201%20AND%20StockCode%20%3C%3E%20%27NS%27",
@@ -131,6 +136,39 @@
       "name_field": "WATER",
       "species_field": "STOCKEDSPECIES",
       "dedupe": true
+    },
+    {
+      "state": "NJ",
+      "label": "NJ DEP Trout Stocked Streams (midpoints)",
+      "url": "https://mapsdep.nj.gov/arcgis/rest/services/Features/Environmental_admin/MapServer/34/query?where=1%3D1",
+      "agency_url": "https://dep.nj.gov/njfw/fishing/freshwater/trout-fishing-program/",
+      "category": "Stocked trout water (NJ DEP)",
+      "name_field": "NAME"
+    },
+    {
+      "state": "NJ",
+      "label": "NJ DEP Trout Stocked Lakes (centroids)",
+      "url": "https://mapsdep.nj.gov/arcgis/rest/services/Features/Environmental_admin/MapServer/33/query?where=1%3D1",
+      "agency_url": "https://dep.nj.gov/njfw/fishing/freshwater/trout-fishing-program/",
+      "category": "Stocked trout lake (NJ DEP)",
+      "name_field": "WATERBODY"
+    },
+    {
+      "state": "TN",
+      "label": "TWRA Trout Stocking Locations",
+      "url": "https://services3.arcgis.com/PWXNAH2YKmZY7lBq/arcgis/rest/services/TWRA_Trout_Stocking_Locations/FeatureServer/0/query?where=1%3D1",
+      "agency_url": "https://www.tn.gov/twra/fishing/trout-information-stockings.html",
+      "category": "Stocked trout water (TWRA)",
+      "name_field": "Site_Name",
+      "species_field": "Species"
+    },
+    {
+      "state": "DE",
+      "label": "DNREC Designated Trout Streams",
+      "url": "https://enterprise.firstmap.delaware.gov/arcgis/rest/services/Society/DE_Fishing_Access/FeatureServer/1/query?where=1%3D1",
+      "agency_url": "https://dnrec.delaware.gov/fish-wildlife/fishing/freshwater-trout/",
+      "category": "Designated trout stream (DNREC)",
+      "name_field": "WATERBODYNAME"
     }
   ]
 }
