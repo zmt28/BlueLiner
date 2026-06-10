@@ -1575,8 +1575,10 @@ html, body {
         bottom: 0; left: 0; right: 0;
         background: var(--bg-surface);
         border-top: 1px solid var(--border-1);
+        /* Honor the home-indicator inset without stacking another --space-3 on
+           top of it (which left a tall gap below the labels in standalone). */
         padding: var(--space-3) var(--space-3)
-                 calc(var(--space-3) + env(safe-area-inset-bottom));
+                 max(var(--space-3), env(safe-area-inset-bottom));
         display: grid;
         grid-template-columns: repeat(4, 1fr);
         gap: 2px;
