@@ -1832,3 +1832,55 @@ html, body {
   line-height: 1.35;
   color: var(--bl-ink-500, #647489);
 }
+.bl-offline-label {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--bl-ink-700, #2c3947);
+  margin-bottom: 8px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.bl-offline-tag {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--bl-river-700, #1d6a8a);
+  background: var(--bl-river-50, #e8f2f7);
+  border-radius: 6px;
+  padding: 1px 6px;
+}
+.bl-offline-clear {
+  margin-top: 8px;
+  font: inherit;
+  font-size: 12px;
+  color: var(--bl-ink-500, #647489);
+  background: none;
+  border: none;
+  padding: 2px 0;
+  cursor: pointer;
+  text-decoration: underline;
+}
+.bl-offline-clear:disabled { opacity: 0.6; cursor: default; }
+
+/* Connectivity badge: floats top-center, only while offline. */
+.net-badge {
+  position: absolute;
+  top: calc(var(--space-4) + env(safe-area-inset-top));
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 30;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #fff;
+  background: var(--bl-ink-700, #2c3947);
+  border-radius: 999px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.18);
+  pointer-events: none;
+}
+.net-badge i { width: 15px; height: 15px; }

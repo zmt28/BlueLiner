@@ -26,12 +26,19 @@
  */
 
 import { map, currentBaseKey, setBaseMap, setHydroVisible } from "./map-setup";
-import { BASEMAP_TILES_ENABLED, BASEMAP_TILES_URL } from "./config";
 import {
-  prefetch as offlinePrefetch,
+  BASEMAP_TILES_ENABLED,
+  BASEMAP_TILES_URL,
+  BASEMAP_STYLE_URL,
+  STREAM_TILES_URL,
+} from "./config";
+import {
+  downloadArea,
+  estimateArea,
   offlineStats,
-  requestPersist,
-  tileCount,
+  offlineMeta,
+  clearOffline,
+  type Archive,
   type BBox,
 } from "./offline-tiles";
 import {
@@ -471,47 +478,87 @@ if (basemapSeg) {
   }
 }
 
-// -- Offline base cache (M0 smoke test) ----------------------------
-// Prefetch the basemap tiles for the current viewport into IndexedDB so the
-// vector base renders with the network cut. Behind the basemap flag + IndexedDB
-// support; the small assets (style/sprite/glyphs) are cached by the SW.
+// -- Connectivity badge --------------------------------------------
+// Shows an "Offline" pill whenever the browser reports no network, so a user
+// off-grid knows the map is running on downloaded data.
 
-const offlineTest = document.getElementById("offline-test");
-if (offlineTest && BASEMAP_TILES_ENABLED && "indexedDB" in window) {
-  offlineTest.hidden = false;
-  const btn = document.getElementById("offline-cache-view") as HTMLButtonElement;
+const netBadge = document.getElementById("net-badge");
+if (netBadge) {
+  const reflectNet = (): void => {
+    netBadge.hidden = navigator.onLine;
+  };
+  window.addEventListener("online", reflectNet);
+  window.addEventListener("offline", reflectNet);
+  reflectNet();
+}
+
+// -- Offline maps: download the current view (Phase 2) -------------
+// Cache the basemap + streams tiles (and the basemap assets) for the current
+// viewport into IndexedDB / the SW cache so they render with the network cut.
+// Cumulative across taps. Behind the basemap flag + IndexedDB support.
+
+const offlineSection = document.getElementById("offline-test");
+if (offlineSection && BASEMAP_TILES_ENABLED && "indexedDB" in window) {
+  offlineSection.hidden = false;
+  const dlBtn = document.getElementById("offline-download") as HTMLButtonElement;
+  const clearBtn = document.getElementById("offline-clear") as HTMLButtonElement;
   const status = document.getElementById("offline-status") as HTMLElement;
   const mb = (b: number): string => `${(b / 1048576).toFixed(1)} MB`;
 
-  offlineStats().then((s) => {
-    if (s.entries) status.textContent = `Offline base: ${mb(s.bytes)} cached (${s.entries} ranges).`;
-  });
+  const archives: Archive[] = [{ url: BASEMAP_TILES_URL, label: "base" }];
+  if (STREAM_TILES_URL) archives.push({ url: STREAM_TILES_URL, label: "streams" });
 
-  btn.addEventListener("click", async () => {
+  async function refreshStatus(): Promise<void> {
+    const [s, m] = await Promise.all([offlineStats(), offlineMeta()]);
+    if (m.downloads > 0 && s.bytes > 0) {
+      const when = m.lastAt ? new Date(m.lastAt).toLocaleDateString() : "";
+      status.textContent = `Saved offline: ${mb(s.bytes)} across ${m.downloads} area(s). Last ${when}.`;
+      clearBtn.hidden = false;
+    } else {
+      status.textContent = "Save the current map view to use it without a signal.";
+      clearBtn.hidden = true;
+    }
+  }
+  void refreshStatus();
+
+  dlBtn.addEventListener("click", async () => {
     const b = map.getBounds();
     const bbox: BBox = { w: b.getWest(), s: b.getSouth(), e: b.getEast(), n: b.getNorth() };
     const z = Math.floor(map.getZoom());
-    const minZ = Math.max(0, z);
-    const maxZ = Math.min(14, z + 1);
-    const total = tileCount(bbox, minZ, maxZ);
-    if (total > 4000) {
-      status.textContent = `Area too large (${total} tiles). Zoom in and try again.`;
+    const total = await estimateArea(bbox, archives, z);
+    if (total > 6000) {
+      status.textContent = `This area is too large (${total.toLocaleString()} tiles). Zoom in and try again.`;
       return;
     }
-    btn.disabled = true;
-    await requestPersist();
-    status.textContent = `Caching 0/${total}…`;
+    dlBtn.disabled = true;
+    clearBtn.hidden = true;
+    status.textContent = "Preparing…";
     try {
-      const r = await offlinePrefetch(BASEMAP_TILES_URL, bbox, minZ, maxZ, (done, tot) => {
-        status.textContent = `Caching ${done}/${tot}…`;
+      const r = await downloadArea(bbox, archives, z, BASEMAP_STYLE_URL, (p) => {
+        status.textContent =
+          p.phase === "assets"
+            ? "Saving map style…"
+            : `Saving tiles ${p.done.toLocaleString()}/${p.total.toLocaleString()}…`;
       });
       status.textContent =
-        `Cached ${r.present} tiles (z${minZ}–${maxZ}), ${mb(r.bytes)}. ` +
-        `Now enable airplane mode + reload, pick Vector, and pan this area.`;
+        `Saved ${mb(r.bytes)} for offline use. ` +
+        `Test it: enable airplane mode, reopen, pick Vector, and pan this area.`;
+      clearBtn.hidden = false;
     } catch (e) {
-      status.textContent = `Cache failed: ${(e as Error).message}`;
+      status.textContent = `Download failed: ${(e as Error).message}`;
     } finally {
-      btn.disabled = false;
+      dlBtn.disabled = false;
+    }
+  });
+
+  clearBtn.addEventListener("click", async () => {
+    clearBtn.disabled = true;
+    status.textContent = "Removing…";
+    try {
+      await clearOffline();
+    } finally {
+      clearBtn.disabled = false;
+      await refreshStatus();
     }
   });
 }

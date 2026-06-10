@@ -4,17 +4,17 @@
  * MapLibre exactly once, so this idempotent helper is the single place that does
  * it.
  *
- * M0 (offline smoke test): we keep a reference to the Protocol instance and, for
- * the basemap archive, register a PMTiles instance backed by an IndexedDB
- * byte-range cache (offline-tiles.ts). MapLibre resolves `pmtiles://<url>` to a
- * matching added instance, so the vector base reads through the cache -- which
- * lets it render offline once a region has been prefetched. Streams/public-lands
- * stay on the default fetch source for now (wired in a later milestone).
+ * Offline (Phase 2): we keep a reference to the Protocol instance and register
+ * the basemap AND clickable-streams archives as PMTiles instances backed by an
+ * IndexedDB byte-range cache (offline-tiles.ts). MapLibre resolves
+ * `pmtiles://<url>` to a matching added instance, so those layers read through
+ * the cache -- which lets them render offline once an area has been downloaded.
+ * Public-lands stays on the default fetch source (rarely needed off-grid).
  */
 
 import maplibregl from "maplibre-gl";
 import { Protocol } from "pmtiles";
-import { BASEMAP_TILES_URL } from "./config";
+import { BASEMAP_TILES_URL, STREAM_TILES_URL } from "./config";
 import { cachingPmtiles } from "./offline-tiles";
 
 let _registered = false;
@@ -23,13 +23,15 @@ const protocol = new Protocol();
 export function ensurePmtilesProtocol(): void {
   if (_registered) return;
   maplibregl.addProtocol("pmtiles", protocol.tile);
-  if (BASEMAP_TILES_URL) {
+  // Route the basemap + streams archives through the offline range cache.
+  // Matched by URL, so the `pmtiles://<url>` sources in the style/streams use
+  // these instances.
+  for (const url of [BASEMAP_TILES_URL, STREAM_TILES_URL]) {
+    if (!url) continue;
     try {
-      // Route the basemap archive through the offline range cache. Matched by
-      // URL, so the style's `pmtiles://<BASEMAP_TILES_URL>` source uses it.
-      protocol.add(cachingPmtiles(BASEMAP_TILES_URL));
+      protocol.add(cachingPmtiles(url));
     } catch (_) {
-      /* offline cache unavailable -> base still renders online via fetch */
+      /* offline cache unavailable -> layer still renders online via fetch */
     }
   }
   _registered = true;
