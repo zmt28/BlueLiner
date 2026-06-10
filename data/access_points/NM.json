@@ -1,0 +1,42 @@
+[
+  {
+    "name": "Crusher Hole Day Use Area (San Juan River)",
+    "lat": 36.8000, "lon": -107.6750,
+    "type": "walk_in",
+    "access": "fee",
+    "agency_url": "https://www.emnrd.nm.gov/wp-content/uploads/sites/7/NLtrailmap4guide.pdf",
+    "notes": "Downstream end of the 3.75-mile Special Trout Waters; Navajo Lake State Park day-use pass required."
+  },
+  {
+    "name": "San Juan River trail / day-use areas (Navajo Lake State Park)",
+    "lat": 36.8060, "lon": -107.6360,
+    "type": "wading_access",
+    "access": "fee",
+    "agency_url": "https://www.emnrd.nm.gov/spd/activities/fishing/",
+    "notes": "River trail and parking lots along the quality waters; parks day pass."
+  },
+  {
+    "name": "Hammond Tract Fishing Access (lower San Juan)",
+    "lat": 36.7130, "lon": -107.8460,
+    "type": "walk_in",
+    "access": "public",
+    "agency_url": "https://wildlife.dgf.nm.gov/wp-content/uploads/2014/06/San-Juan-Hammond-WMA-NMDGF.pdf",
+    "notes": "NMDGF fishing access tract near Blanco; coordinates approximate."
+  },
+  {
+    "name": "Pecos Canyon State Park (Pecos River)",
+    "lat": 35.7480, "lon": -105.6650,
+    "type": "walk_in",
+    "access": "fee",
+    "agency_url": "https://www.emnrd.nm.gov/spd/find-a-park/pecos-canyon-state-park/",
+    "notes": "Day-use and camping areas along the upper Pecos north of Pecos village."
+  },
+  {
+    "name": "Villanueva State Park (Pecos River)",
+    "lat": 35.2600, "lon": -105.3400,
+    "type": "walk_in",
+    "access": "fee",
+    "agency_url": "https://www.emnrd.nm.gov/spd/find-a-park/villanueva-state-park/",
+    "notes": "Bank access on the lower Pecos winter trout water; park day-use fee."
+  }
+]

@@ -1,0 +1,50 @@
+[
+  {
+    "water": "Waterloo Creek (Dorchester)",
+    "lat": 43.4630, "lon": -91.5090,
+    "species": ["Rainbow"],
+    "category": "Stocked trout stream",
+    "season_months": [4, 10],
+    "agency_url": "https://www.iowadnr.gov/things-do/fishing/where-fish/trout-fishing"
+  },
+  {
+    "water": "Bloody Run Creek (Marquette)",
+    "lat": 43.0480, "lon": -91.2100,
+    "species": ["Rainbow"],
+    "category": "Stocked trout stream",
+    "season_months": [4, 10],
+    "agency_url": "https://www.iowadnr.gov/things-do/fishing/where-fish/trout-fishing"
+  },
+  {
+    "water": "Spring Branch Creek (Manchester)",
+    "lat": 42.4800, "lon": -91.4150,
+    "species": ["Rainbow"],
+    "category": "Stocked trout stream",
+    "season_months": [4, 10],
+    "agency_url": "https://www.iowadnr.gov/things-do/fishing/where-fish/trout-fishing"
+  },
+  {
+    "water": "Trout Run (Decorah)",
+    "lat": 43.2800, "lon": -91.7720,
+    "species": ["Rainbow", "Brown"],
+    "category": "Stocked trout stream",
+    "season_months": [4, 10],
+    "agency_url": "https://programs.iowadnr.gov/lakemanagement/FishIowa/TroutStreamDetails/TRU96"
+  },
+  {
+    "water": "Richmond Springs (Backbone State Park)",
+    "lat": 42.6150, "lon": -91.5560,
+    "species": ["Rainbow"],
+    "category": "Stocked trout stream",
+    "season_months": [4, 10],
+    "agency_url": "https://programs.iowadnr.gov/lakemanagement/FishIowa/TroutStreamDetails/TRS28"
+  },
+  {
+    "water": "South Bear Creek (Highlandville)",
+    "lat": 43.4720, "lon": -91.6950,
+    "species": ["Rainbow"],
+    "category": "Stocked trout stream",
+    "season_months": [4, 10],
+    "agency_url": "https://programs.iowadnr.gov/lakemanagement/FishIowa/TroutStreamDetails/TSB96"
+  }
+]

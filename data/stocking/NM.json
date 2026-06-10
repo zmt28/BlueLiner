@@ -1,0 +1,42 @@
+[
+  {
+    "water": "San Juan River (Quality Waters below Navajo Dam)",
+    "lat": 36.8070, "lon": -107.6200,
+    "species": ["Rainbow", "Brown"],
+    "category": "Tailwater - wild + stocked",
+    "season_months": [1, 12],
+    "agency_url": "https://wildlife.dgf.nm.gov/fishing/fisheries-management/"
+  },
+  {
+    "water": "Cimarron River (Cimarron Canyon)",
+    "lat": 36.5380, "lon": -105.1600,
+    "species": ["Rainbow", "Brown"],
+    "category": "Put-and-take",
+    "season_months": [4, 9],
+    "agency_url": "https://wildlife.dgf.nm.gov/fishing/weekly-report/"
+  },
+  {
+    "water": "Pecos River (Villanueva winter trout water)",
+    "lat": 35.2570, "lon": -105.3450,
+    "species": ["Rainbow"],
+    "category": "Put-and-take - winter trout water",
+    "season_months": [11, 3],
+    "agency_url": "https://wildlife.dgf.nm.gov/winter-fish-stocking/"
+  },
+  {
+    "water": "Eagle Nest Lake",
+    "lat": 36.5360, "lon": -105.2420,
+    "species": ["Rainbow"],
+    "category": "Stocked trout lake",
+    "season_months": [1, 12],
+    "agency_url": "https://magazine.wildlife.state.nm.us/department-adapts-management-of-eagle-nest-trout-fishery/"
+  },
+  {
+    "water": "Red River (through town of Red River)",
+    "lat": 36.7070, "lon": -105.4065,
+    "species": ["Rainbow", "Brown"],
+    "category": "Put-and-take",
+    "season_months": [1, 12],
+    "agency_url": "https://wildlife.dgf.nm.gov/fishing/game-fish/cold-water-regulations-2/"
+  }
+]

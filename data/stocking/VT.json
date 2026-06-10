@@ -1,0 +1,58 @@
+[
+  {
+    "water": "Otter Creek (Danby - Mt. Tabor trophy reach)",
+    "lat": 43.3480, "lon": -72.9980,
+    "species": ["Rainbow", "Brown"],
+    "category": "Trophy trout - stocked",
+    "season_months": [4, 5],
+    "agency_url": "https://www.vtfishandwildlife.com/fish/fishing-opportunities/trophy-trout"
+  },
+  {
+    "water": "Winooski River (Bolton Dam to Rt 2, Waterbury-Duxbury)",
+    "lat": 44.3320, "lon": -72.7560,
+    "species": ["Rainbow", "Brown"],
+    "category": "Trophy trout - stocked",
+    "season_months": [4, 5],
+    "agency_url": "https://www.vtfishandwildlife.com/fish/fishing-opportunities/trophy-trout"
+  },
+  {
+    "water": "Lamoille River (Fairfax, below Fairfax Falls Dam)",
+    "lat": 44.6580, "lon": -73.0000,
+    "species": ["Rainbow", "Brown"],
+    "category": "Trophy trout - stocked",
+    "season_months": [4, 5],
+    "agency_url": "https://www.vtfishandwildlife.com/fish/fishing-opportunities/trophy-trout"
+  },
+  {
+    "water": "Walloomsac River (Bennington)",
+    "lat": 42.8970, "lon": -73.2320,
+    "species": ["Rainbow", "Brown"],
+    "category": "Trophy trout - stocked",
+    "season_months": [4, 5],
+    "agency_url": "https://www.vtfishandwildlife.com/fish/fishing-opportunities/trophy-trout"
+  },
+  {
+    "water": "Black River (Cavendish, Rt 131 corridor)",
+    "lat": 43.3840, "lon": -72.6030,
+    "species": ["Rainbow", "Brown"],
+    "category": "Trophy trout - stocked",
+    "season_months": [4, 5],
+    "agency_url": "https://www.vtfishandwildlife.com/press-releases/vermonts-trophy-trout-stocking-2024"
+  },
+  {
+    "water": "Missisquoi River (Enosburg Falls)",
+    "lat": 44.9060, "lon": -72.8060,
+    "species": ["Rainbow", "Brown"],
+    "category": "Trophy trout - stocked",
+    "season_months": [4, 5],
+    "agency_url": "https://www.vtfishandwildlife.com/press-releases/vermonts-trophy-trout-stocking-2024"
+  },
+  {
+    "water": "Passumpsic River (St. Johnsbury)",
+    "lat": 44.4190, "lon": -72.0150,
+    "species": ["Rainbow", "Brown"],
+    "category": "Trophy trout - stocked",
+    "season_months": [4, 5],
+    "agency_url": "https://www.vtfishandwildlife.com/press-releases/vermonts-trophy-trout-stocking-2024"
+  }
+]

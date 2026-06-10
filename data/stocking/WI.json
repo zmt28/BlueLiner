@@ -1,0 +1,42 @@
+[
+  {
+    "water": "Willow River (Willow River State Park)",
+    "lat": 45.0170, "lon": -92.7080,
+    "species": ["Rainbow", "Brown"],
+    "category": "Stocked trout stream",
+    "season_months": [3, 5],
+    "agency_url": "https://dnr.wisconsin.gov/topic/parks/willowriver/recreation/fishing"
+  },
+  {
+    "water": "Waupaca River (Waupaca)",
+    "lat": 44.3700, "lon": -89.0680,
+    "species": ["Rainbow"],
+    "category": "Stocked trout stream",
+    "season_months": [3, 5],
+    "agency_url": "https://dnr.wisconsin.gov/topic/Fishing/trout/CatchableTrout"
+  },
+  {
+    "water": "Root River (Racine)",
+    "lat": 42.7390, "lon": -87.8030,
+    "species": ["Steelhead"],
+    "category": "Stocked steelhead tributary",
+    "season_months": [3, 5],
+    "agency_url": "https://dnr.wisconsin.gov/topic/Fishing/lakemichigan/ROOTRIVER"
+  },
+  {
+    "water": "Kewaunee River (Kewaunee)",
+    "lat": 44.4690, "lon": -87.5560,
+    "species": ["Steelhead"],
+    "category": "Stocked steelhead tributary",
+    "season_months": [3, 5],
+    "agency_url": "https://dnr.wisconsin.gov/topic/Fishing/hatcheries/spawning"
+  },
+  {
+    "water": "Ahnapee River (Algoma)",
+    "lat": 44.6110, "lon": -87.4400,
+    "species": ["Steelhead"],
+    "category": "Stocked steelhead tributary",
+    "season_months": [3, 5],
+    "agency_url": "https://dnr.wisconsin.gov/topic/Fishing/hatcheries/spawning"
+  }
+]

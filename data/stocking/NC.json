@@ -1,0 +1,58 @@
+[
+  {
+    "water": "Tuckasegee River (Webster-Dillsboro DH)",
+    "lat": 35.3490, "lon": -83.2210,
+    "species": ["Rainbow", "Brown", "Brook"],
+    "category": "Delayed harvest",
+    "season_months": [10, 5],
+    "agency_url": "https://www.ncwildlife.gov/fishing/trout-fishing-north-carolina"
+  },
+  {
+    "water": "Tuckasegee River (Bryson City DH)",
+    "lat": 35.4300, "lon": -83.4470,
+    "species": ["Rainbow", "Brown", "Brook"],
+    "category": "Delayed harvest",
+    "season_months": [10, 5],
+    "agency_url": "https://www.ncwildlife.gov/fishing/trout-fishing-north-carolina"
+  },
+  {
+    "water": "Nantahala River (gorge above Fontana Lake)",
+    "lat": 35.3300, "lon": -83.6260,
+    "species": ["Rainbow", "Brown", "Brook"],
+    "category": "Delayed harvest",
+    "season_months": [10, 5],
+    "agency_url": "https://www.ncwildlife.gov/fishing/trout-fishing-north-carolina"
+  },
+  {
+    "water": "Wilson Creek (Caldwell Co.)",
+    "lat": 35.9550, "lon": -81.7650,
+    "species": ["Rainbow", "Brown", "Brook"],
+    "category": "Delayed harvest",
+    "season_months": [10, 5],
+    "agency_url": "https://www.ncwildlife.gov/fishing/hatcheries-and-stocking-public-waters"
+  },
+  {
+    "water": "East Prong Roaring River (Stone Mountain SP)",
+    "lat": 36.3870, "lon": -81.0280,
+    "species": ["Rainbow", "Brown", "Brook"],
+    "category": "Delayed harvest",
+    "season_months": [10, 5],
+    "agency_url": "https://www.ncparks.gov/state-parks/stone-mountain-state-park"
+  },
+  {
+    "water": "Stone Mountain Creek (Stone Mountain SP)",
+    "lat": 36.3940, "lon": -81.0430,
+    "species": ["Rainbow", "Brown", "Brook"],
+    "category": "Delayed harvest",
+    "season_months": [10, 5],
+    "agency_url": "https://www.ncwildlife.gov/fishing/hatcheries-and-stocking-public-waters"
+  },
+  {
+    "water": "Davidson River (Avery Creek to lower USFS boundary)",
+    "lat": 35.2760, "lon": -82.7150,
+    "species": ["Rainbow", "Brown", "Brook"],
+    "category": "Hatchery supported",
+    "season_months": [3, 8],
+    "agency_url": "https://www.ncwildlife.gov/fishing/hatcheries-and-stocking-public-waters"
+  }
+]

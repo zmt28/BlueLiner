@@ -1,0 +1,136 @@
+{
+  "_comment": "Declarative live trout-stocking feed registry consumed by stocking.py. One entry per agency layer; a state may declare several (lakes + reaches). Every `url` was verified against the live endpoint when added (layer metadata + returnCountOnly + a real f=geojson sample). Field options per source: `name_field` (water name column), `species_field` (free-text species column) or `species_flags` (map of 0/1 flag columns -> species label, VA style), `category` (fixed label shown in the popup), `category_from_props` (prefer the feed's own category column when present), `season_months` ([start, end] fixed stocking season when the feed carries none), `dedupe` (collapse multi-segment polyline reach layers to one pin per named water per ~0.1 deg cell). The loader centroids non-point geometry and degrades to the bundled baseline when an endpoint is unreachable.",
+  "sources": [
+    {
+      "state": "VA",
+      "label": "VA DWR Stocked Trout Lakes",
+      "url": "https://services.dwr.virginia.gov/arcgis/rest/services/Public/StockedTroutWaters/MapServer/0/query?where=1%3D1",
+      "agency_url": "https://dwr.virginia.gov/fishing/trout-stocking-schedule/",
+      "category": "Stocked trout lake (VA DWR)",
+      "name_field": "Waterbody",
+      "species_flags": {"RainbowTrout": "Rainbow", "BrownTrout": "Brown", "BrookTrout": "Brook"},
+      "season_months": [10, 5]
+    },
+    {
+      "state": "VA",
+      "label": "VA DWR Stocked Trout Reaches",
+      "url": "https://services.dwr.virginia.gov/arcgis/rest/services/Public/StockedTroutWaters/MapServer/1/query?where=1%3D1",
+      "agency_url": "https://dwr.virginia.gov/fishing/trout-stocking-schedule/",
+      "category": "Stocked trout water (VA DWR)",
+      "name_field": "Waterbody",
+      "species_flags": {"RainbowTrout": "Rainbow", "BrownTrout": "Brown", "BrookTrout": "Brook"},
+      "season_months": [10, 5],
+      "dedupe": true
+    },
+    {
+      "state": "PA",
+      "label": "PFBC Stocked Trout Waters (reaches)",
+      "url": "https://mapservices.pasda.psu.edu/server/rest/services/pasda/PAFishBoat/MapServer/3/query?where=1%3D1",
+      "agency_url": "https://www.fishandboat.com/Fish/Trout/Pages/default.aspx",
+      "category": "Stocked trout water (PFBC)",
+      "name_field": "GNIS_Name",
+      "dedupe": true
+    },
+    {
+      "state": "PA",
+      "label": "PFBC Stocked Trout Lakes",
+      "url": "https://mapservices.pasda.psu.edu/server/rest/services/pasda/PAFishBoat/MapServer/1/query?where=1%3D1",
+      "agency_url": "https://www.fishandboat.com/Fish/Trout/Pages/default.aspx",
+      "category": "Stocked trout lake (PFBC)",
+      "name_field": "GNIS_NAME"
+    },
+    {
+      "state": "MD",
+      "label": "MD DNR Trout Stocking Activities (points)",
+      "url": "https://dnr.geodata.md.gov/dnrdata/rest/services/Fisheries/TroutStockingActivities/MapServer/0/query?where=1%3D1",
+      "agency_url": "https://dnr.maryland.gov/fisheries/pages/trout/stocking.aspx",
+      "category": "Stocked this season (MD DNR)",
+      "name_field": "LOCATION",
+      "species_field": "Species"
+    },
+    {
+      "state": "MD",
+      "label": "MD DNR Trout Stocking Activities (reaches)",
+      "url": "https://dnr.geodata.md.gov/dnrdata/rest/services/Fisheries/TroutStockingActivities/MapServer/1/query?where=1%3D1",
+      "agency_url": "https://dnr.maryland.gov/fisheries/pages/trout/stocking.aspx",
+      "category": "Stocked this season (MD DNR)",
+      "name_field": "LOCATION",
+      "species_field": "Species",
+      "dedupe": true
+    },
+    {
+      "state": "MT",
+      "label": "MT FWP Fish Stocking Records (trout, 2023+)",
+      "url": "https://fwp-gis.mt.gov/arcgis/rest/services/fish/fishViewer/MapServer/38/query?where=SPECIES%20LIKE%20%27%25Trout%25%27%20AND%20PLANTDATE%20%3E%3D%20DATE%20%272023-01-01%27",
+      "agency_url": "https://fwp.mt.gov/fish/stocking.html",
+      "category": "Stocked (MT FWP, recent records)",
+      "name_field": "WATERBODY",
+      "species_field": "SPECIES",
+      "dedupe": true
+    },
+    {
+      "state": "CO",
+      "label": "CPW Fishing Atlas - Catchable Trout Waters",
+      "url": "https://ndismaps.nrel.colostate.edu/arcgis/rest/services/FishingAtlas2025/FishingInfo2025/MapServer/7/query?where=STOCKED%20%3D%20%27Catchable%20trout%27",
+      "agency_url": "https://cpw.state.co.us/activities/fishing/where-fish",
+      "category": "Catchable trout - stocked (CPW)",
+      "name_field": "DOW_NAME"
+    },
+    {
+      "state": "UT",
+      "label": "UT DWR Stocked Lakes",
+      "url": "https://services.arcgis.com/ZzrwjTRez6FJiOq4/arcgis/rest/services/UDWR_Fish_Stocking_Events_1979_2024_VIEW/FeatureServer/0/query?where=Stocked_YN%20%3D%20%27Yes%27",
+      "agency_url": "https://dwrapps.utah.gov/fishstocking/Fish",
+      "category": "Stocked water (UT DWR)",
+      "name_field": "WaterName",
+      "dedupe": true
+    },
+    {
+      "state": "UT",
+      "label": "UT DWR Stocked Streams",
+      "url": "https://services.arcgis.com/ZzrwjTRez6FJiOq4/arcgis/rest/services/UDWR_Fish_Stocking_Events_1979_2024_VIEW/FeatureServer/1/query?where=Stocked_YN%20%3D%20%27Yes%27",
+      "agency_url": "https://dwrapps.utah.gov/fishstocking/Fish",
+      "category": "Stocked water (UT DWR)",
+      "name_field": "WaterName",
+      "dedupe": true
+    },
+    {
+      "state": "CA",
+      "label": "CDFW Fish Planting Schedule (trout)",
+      "url": "https://services2.arcgis.com/Uq9r85Potqm3MfRV/arcgis/rest/services/FishingGuide/FeatureServer/2/query?where=FishType%20%3D%20%27Trout%27",
+      "agency_url": "https://wildlife.ca.gov/Fishing/Guide",
+      "category": "Trout plant - CDFW schedule",
+      "name_field": "WaterName",
+      "species_field": "FishType",
+      "dedupe": true
+    },
+    {
+      "state": "NJ",
+      "label": "NJ DEP Trout Stocked Streams",
+      "url": "https://mapsdep.nj.gov/arcgis/rest/services/Features/Environmental_admin/MapServer/35/query?where=1%3D1",
+      "agency_url": "https://dep.nj.gov/njfw/fishing/freshwater/trout-fishing-program/",
+      "category": "Stocked trout water (NJ DEP)",
+      "name_field": "NAME",
+      "dedupe": true
+    },
+    {
+      "state": "WV",
+      "label": "WV DNR Stocked Trout Streams",
+      "url": "https://services.wvgis.wvu.edu/arcgis/rest/services/Applications/dnrRec_fishing/MapServer/4/query?where=Active%20%3D%201%20AND%20StockCode%20%3C%3E%20%27NS%27",
+      "agency_url": "https://wvdnr.gov/fishing/trout-stocking/",
+      "category": "Stocked trout water (WV DNR)",
+      "name_field": "Name",
+      "dedupe": true
+    },
+    {
+      "state": "NY",
+      "label": "NY DEC Stocked Trout Streams",
+      "url": "https://gisservices.dec.ny.gov/arcgis/rest/services/dil/dil_water_activities/MapServer/0/query?where=MGMTCAT%20IN%20(%27Stocked%27%2C%27Stocked-Extended%27)",
+      "agency_url": "https://dec.ny.gov/things-to-do/freshwater-fishing/stocking-lists",
+      "category": "Stocked trout water (NY DEC)",
+      "name_field": "WATER",
+      "species_field": "STOCKEDSPECIES",
+      "dedupe": true
+    }
+  ]
+}

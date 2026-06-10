@@ -17,6 +17,7 @@ and optional ("trailer parking", "no motors", "permit required").
 """
 
 import json
+import logging
 import os
 
 from shapely.geometry import shape
@@ -24,7 +25,19 @@ from shapely.geometry import shape
 from arcgis import fetch_geojson_features
 from cache import LruTtl
 
+logger = logging.getLogger("blueliner.access")
+
 _DATA_DIR = os.path.join(os.path.dirname(__file__), "data", "access_points")
+
+
+def _baseline_states() -> list[str]:
+    """States with a bundled data/access_points/<STATE>.json file."""
+    if not os.path.isdir(_DATA_DIR):
+        return []
+    return sorted(
+        fn[:-5] for fn in os.listdir(_DATA_DIR)
+        if fn.endswith(".json") and len(fn) == 7 and fn[:2].isupper()
+    )
 
 
 def _load_baseline(state: str) -> list[dict]:
@@ -36,34 +49,46 @@ def _load_baseline(state: str) -> list[dict]:
         return json.load(f)
 
 
-# Same four-state seed as stocking. New states drop in via the
-# "Adding a new state" path documented in CONTRIBUTING.md.
 ACCESS_BASELINE: dict[str, list[dict]] = {
-    state: _load_baseline(state) for state in ("MD", "VA", "WV", "PA")
+    state: _load_baseline(state) for state in _baseline_states()
 }
 
-# Live ArcGIS endpoints where verified. Exact URLs differ per agency;
-# entries below are best-effort and the loader degrades to baseline
-# when the endpoint is wrong / unreachable / returns nothing. This
-# mirrors the `STOCKING_SOURCES` pattern in `stocking.py:57-65`.
-ACCESS_SOURCES: dict[str, dict] = {
-    # TODO verify -- VA DWR publishes Public Fishing Lakes + Boat
-    # Ramps via ArcGIS; the exact MapServer layer needs confirmation.
-    # Until verified the bundled baseline ships VA's well-known
-    # walk-in waters.
-    #
-    # "VA": {
-    #     "name": "VA DWR Boating Access",
-    #     "url": ("https://services.dwr.virginia.gov/arcgis/rest/services/"
-    #             "Public/BoatingAccess/MapServer/0/query?where=1%3D1"),
-    # },
-    #
-    # TODO MD -- MD DNR has a Boating Public Landings service; same
-    # verification need.
-    #
-    # TODO PA -- PASDA hosts PA Fish & Boat boat-access points; need to
-    # identify the right layer id within the PAFishBoat service.
-}
+
+def _load_sources() -> dict[str, list[dict]]:
+    """Read the declarative live-feed registry
+    (`data/access_points/sources.json`). Each source dict:
+    {state, label, url, agency_url, name_field?, type_field?, fixed_type?,
+     notes_field?, access?}. Grouped by state; a state may declare several
+    layers (e.g. boat ramps + fishing piers). Every URL in the registry
+    was verified against the live endpoint when added; the loader still
+    degrades to the bundled baseline when one is unreachable."""
+    path = os.path.join(_DATA_DIR, "sources.json")
+    if not os.path.exists(path):
+        return {}
+    with open(path) as f:
+        raw = json.load(f)
+    by_state: dict[str, list[dict]] = {}
+    for src in raw.get("sources", []):
+        st = src.get("state")
+        if st and src.get("url"):
+            by_state.setdefault(st, []).append(src)
+    return by_state
+
+
+_TRUTHY = (1, "1", True, "Yes", "YES", "yes", "Y", "y", "true", "True")
+
+
+def _truthy(v) -> bool:
+    """Flag-column truthiness: Y/Yes/1/true strings, plus positive
+    numbers (agencies like WDFW publish counts, e.g. BoatRamps=2)."""
+    if isinstance(v, bool):
+        return v
+    if isinstance(v, (int, float)):
+        return v > 0
+    return v in _TRUTHY
+
+
+ACCESS_SOURCES: dict[str, list[dict]] = _load_sources()
 
 # Field-name candidates (different agencies use different cases). We
 # pick the first one that's populated, matching `stocking.py:67-70`.
@@ -73,7 +98,10 @@ _TYPE_FIELDS = ("TYPE", "Type", "ACCESS_TYP", "AccessType", "FACILITY_T")
 _NOTES_FIELDS = ("DESCRIPTION", "Description", "NOTES", "Notes",
                  "RAMP_NOTES", "REMARKS")
 
-_access_cache: LruTtl = LruTtl(maxsize=8)
+# Sized for the whole state catalog now that any state can carry live
+# feeds; TTL lets a transient fetch failure (cached baseline-only) heal
+# without a restart.
+_access_cache: LruTtl = LruTtl(maxsize=64, ttl=6 * 3600)
 
 
 def _pick(props: dict, fields: tuple[str, ...]) -> str | None:
@@ -103,11 +131,33 @@ def _normalize_type(raw: str | None) -> str:
     return "walk_in"
 
 
-def _features_to_points(features: list[dict], agency_url: str) -> list[dict]:
+def _features_to_points(features: list[dict], src: dict) -> list[dict]:
     """Convert an ArcGIS GeoJSON FeatureCollection's features into
     canonical access-point dicts. Unparseable / non-point geometry is
     coerced to its centroid (handles agencies that publish ramps as
     small polygons rather than points)."""
+    agency_url = src.get("agency_url") or src.get("url")
+    name_field = src.get("name_field")
+    notes_field = src.get("notes_field")
+    fixed_type = src.get("fixed_type")
+    type_field = src.get("type_field")
+    type_flags = src.get("type_flags")  # ordered {flag column -> type}
+
+    def _type_of(props: dict) -> str:
+        if fixed_type:
+            return fixed_type
+        if type_flags:
+            # Agencies like PFBC/MD DNR publish amenities as Y/N columns
+            # (RAMP, PIER, SHORE_FISH); first truthy flag wins.
+            for field, t in type_flags.items():
+                if _truthy(props.get(field)):
+                    return t
+            return "walk_in"
+        raw = (str(props.get(type_field))
+               if type_field and props.get(type_field)
+               else _pick(props, _TYPE_FIELDS))
+        return _normalize_type(raw)
+
     points: list[dict] = []
     for f in features:
         try:
@@ -119,14 +169,19 @@ def _features_to_points(features: list[dict], agency_url: str) -> list[dict]:
                 continue
             c = geom.centroid
             props = f.get("properties") or {}
+            name = ((str(props.get(name_field)) if props.get(name_field)
+                     else None) if name_field
+                    else _pick(props, _NAME_FIELDS)) or "Access point"
             points.append({
-                "name": _pick(props, _NAME_FIELDS) or "Access point",
+                "name": name,
                 "lat": float(c.y),
                 "lon": float(c.x),
-                "type": _normalize_type(_pick(props, _TYPE_FIELDS)),
-                "access": "public",  # live agency data is by definition public
+                "type": _type_of(props),
+                "access": src.get("access", "public"),
                 "agency_url": agency_url,
-                "notes": _pick(props, _NOTES_FIELDS),
+                "notes": (str(props.get(notes_field))
+                          if notes_field and props.get(notes_field)
+                          else _pick(props, _NOTES_FIELDS)),
             })
         except Exception:
             continue
@@ -134,21 +189,22 @@ def _features_to_points(features: list[dict], agency_url: str) -> list[dict]:
 
 
 def load_access_points(state: str) -> list[dict]:
-    """Baseline points for the state, plus the live overlay when
-    available + reachable. Cached per state."""
+    """Baseline points for the state, plus any live overlays that
+    respond. Cached per state."""
     if state in _access_cache and _access_cache[state] is not None:
         return _access_cache[state]
 
     points = [dict(p, source="baseline")
               for p in ACCESS_BASELINE.get(state, [])]
 
-    source = ACCESS_SOURCES.get(state)
-    if source:
-        features = fetch_geojson_features(source["url"])
+    for src in ACCESS_SOURCES.get(state, []):
+        features = fetch_geojson_features(src["url"])
         if features:
-            agency_url = source.get("agency_url", source["url"])
-            for p in _features_to_points(features, agency_url):
+            for p in _features_to_points(features, src):
                 points.append(dict(p, source="live"))
+        else:
+            logger.info("access live feed unreachable: %s",
+                        src.get("label", src["url"]))
 
     _access_cache[state] = points
     return points

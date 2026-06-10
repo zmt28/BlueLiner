@@ -1,0 +1,42 @@
+[
+  {
+    "water": "Deerfield River (Fife Brook tailwater, Charlemont)",
+    "lat": 42.6280, "lon": -72.8690,
+    "species": ["Rainbow", "Brown"],
+    "category": "Tailwater - wild + stocked",
+    "season_months": [4, 10],
+    "agency_url": "https://www.mass.gov/news/wild-brown-trout-management-in-the-deerfield-river"
+  },
+  {
+    "water": "Deerfield River (lower, Shelburne Falls)",
+    "lat": 42.6040, "lon": -72.7390,
+    "species": ["Brown", "Rainbow"],
+    "category": "Stocked trout river",
+    "season_months": [4, 10],
+    "agency_url": "https://www.mass.gov/news/wild-brown-trout-management-in-the-deerfield-river"
+  },
+  {
+    "water": "Swift River (below Winsor Dam, Belchertown)",
+    "lat": 42.2760, "lon": -72.3340,
+    "species": ["Rainbow", "Brown", "Brook"],
+    "category": "Tailwater - stocked, catch-and-release section",
+    "season_months": [4, 10],
+    "agency_url": "https://www.mass.gov/info-details/swift-river-fisheries-research"
+  },
+  {
+    "water": "Westfield River (Huntington)",
+    "lat": 42.2400, "lon": -72.8610,
+    "species": ["Rainbow"],
+    "category": "Stocked trout river",
+    "season_months": [4, 10],
+    "agency_url": "https://www.mass.gov/info-details/massachusetts-trout-stocked-waters-list"
+  },
+  {
+    "water": "Millers River (Erving)",
+    "lat": 42.6000, "lon": -72.3980,
+    "species": ["Rainbow", "Brown"],
+    "category": "Stocked trout river",
+    "season_months": [4, 10],
+    "agency_url": "https://www.mass.gov/info-details/massachusetts-trout-stocked-waters-list"
+  }
+]

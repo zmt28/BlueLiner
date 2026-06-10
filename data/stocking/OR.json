@@ -1,0 +1,58 @@
+[
+  {
+    "water": "Detroit Reservoir",
+    "lat": 44.7280, "lon": -122.2050,
+    "species": ["Rainbow"],
+    "category": "Stocked reservoir - legal + trophy rainbows",
+    "season_months": [4, 9],
+    "agency_url": "https://myodfw.com/fishing/species/trout/stocking-schedule"
+  },
+  {
+    "water": "McKenzie River (above Leaburg Lake)",
+    "lat": 44.1180, "lon": -122.6250,
+    "species": ["Rainbow"],
+    "category": "Stocked river section - weekly hatchery rainbows",
+    "season_months": [4, 9],
+    "agency_url": "https://myodfw.com/recreation-report/fishing-report/willamette-zone"
+  },
+  {
+    "water": "Henry Hagg Lake",
+    "lat": 45.4550, "lon": -123.1430,
+    "species": ["Rainbow"],
+    "category": "Stocked reservoir - put-and-take",
+    "season_months": [3, 10],
+    "agency_url": "https://myodfw.com/fishing/species/trout/stocking-schedule"
+  },
+  {
+    "water": "Trillium Lake",
+    "lat": 45.2668, "lon": -121.7392,
+    "species": ["Rainbow"],
+    "category": "Stocked Cascade lake - put-and-take",
+    "season_months": [5, 9],
+    "agency_url": "https://myodfw.com/fishing/species/trout/stocking-schedule"
+  },
+  {
+    "water": "Timothy Lake",
+    "lat": 45.1120, "lon": -121.7900,
+    "species": ["Rainbow"],
+    "category": "Stocked Cascade lake",
+    "season_months": [5, 9],
+    "agency_url": "https://myodfw.com/fishing/species/trout/stocking-schedule"
+  },
+  {
+    "water": "East Lake (Newberry Caldera)",
+    "lat": 43.7270, "lon": -121.1990,
+    "species": ["Rainbow"],
+    "category": "Stocked natural lake - quality rainbows",
+    "season_months": [5, 9],
+    "agency_url": "https://myodfw.com/recreation-report/fishing-report/central-zone"
+  },
+  {
+    "water": "South Twin Lake",
+    "lat": 43.7300, "lon": -121.7625,
+    "species": ["Rainbow"],
+    "category": "Stocked natural lake - legal rainbows",
+    "season_months": [4, 9],
+    "agency_url": "https://myodfw.com/recreation-report/fishing-report/central-zone"
+  }
+]

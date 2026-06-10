@@ -1,0 +1,50 @@
+[
+  {
+    "water": "Mad River (West Liberty to Urbana)",
+    "lat": 40.1960, "lon": -83.7680,
+    "species": ["Brown"],
+    "category": "Coldwater stream - yearling browns stocked each fall",
+    "season_months": [10, 10],
+    "agency_url": "https://dam.assets.ohio.gov/image/upload/ohiodnr.gov/documents/wildlife/river-stream-fishing/madriver.pdf"
+  },
+  {
+    "water": "Clear Fork Mohican River (below Pleasant Hill Dam)",
+    "lat": 40.6100, "lon": -82.3000,
+    "species": ["Brown"],
+    "category": "Coldwater tailwater - brown trout program",
+    "season_months": [10, 10],
+    "agency_url": "https://dam.assets.ohio.gov/image/upload/ohiodnr.gov/documents/wildlife/river-stream-fishing/clearforkbranch.pdf"
+  },
+  {
+    "water": "Antrim Lake (Columbus)",
+    "lat": 40.0660, "lon": -83.0250,
+    "species": ["Rainbow"],
+    "category": "Catchable rainbow release - put-and-take",
+    "season_months": [3, 5],
+    "agency_url": "https://ohiodnr.gov/buy-and-apply/hunting-fishing-boating/fishing-resources/trout-stockings"
+  },
+  {
+    "water": "Olander Lake (Sylvania / Toledo)",
+    "lat": 41.7100, "lon": -83.7040,
+    "species": ["Rainbow"],
+    "category": "Catchable rainbow release - put-and-take",
+    "season_months": [3, 5],
+    "agency_url": "https://ohiodnr.gov/buy-and-apply/hunting-fishing-boating/fishing-resources/trout-stockings"
+  },
+  {
+    "water": "Pearson Lake (Toledo Metroparks)",
+    "lat": 41.6430, "lon": -83.4290,
+    "species": ["Rainbow"],
+    "category": "Catchable rainbow release - put-and-take",
+    "season_months": [3, 5],
+    "agency_url": "https://ohiodnr.gov/buy-and-apply/hunting-fishing-boating/fishing-resources/trout-stockings"
+  },
+  {
+    "water": "Mt. Gilead State Park Lake",
+    "lat": 40.5490, "lon": -82.8060,
+    "species": ["Rainbow"],
+    "category": "Catchable rainbow release - put-and-take",
+    "season_months": [3, 5],
+    "agency_url": "https://ohiodnr.gov/buy-and-apply/hunting-fishing-boating/fishing-resources/trout-stockings"
+  }
+]

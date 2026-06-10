@@ -1,0 +1,42 @@
+[
+  {
+    "water": "Connecticut River - Trophy Stretch (Pittsburg)",
+    "lat": 45.1280, "lon": -71.1760,
+    "species": ["Brown", "Rainbow", "Brook"],
+    "category": "Fly-fishing-only - stocked",
+    "season_months": [4, 10],
+    "agency_url": "https://www.wildlife.nh.gov/fishing-new-hampshire/trout-fishing-new-hampshire/fly-fishing-only-waters-nh"
+  },
+  {
+    "water": "Androscoggin River (Errol)",
+    "lat": 44.7780, "lon": -71.1350,
+    "species": ["Brook", "Rainbow", "Brown"],
+    "category": "Stocked trout river",
+    "season_months": [4, 10],
+    "agency_url": "https://www.wildlife.nh.gov/fishing-new-hampshire/trout-fishing-new-hampshire/fly-fishing-only-waters-nh"
+  },
+  {
+    "water": "Saco River (Conway)",
+    "lat": 43.9850, "lon": -71.1130,
+    "species": ["Brook", "Rainbow"],
+    "category": "Stocked trout river",
+    "season_months": [4, 10],
+    "agency_url": "https://www.wildlife.nh.gov/fishing-new-hampshire/stocking-report"
+  },
+  {
+    "water": "Saco River, East Branch (Bartlett)",
+    "lat": 44.0830, "lon": -71.1480,
+    "species": ["Brook"],
+    "category": "Stocked trout stream",
+    "season_months": [4, 10],
+    "agency_url": "https://www.wildlife.nh.gov/fishing-new-hampshire/stocking-report"
+  },
+  {
+    "water": "Merrimack River (Concord, year-round stocked reach)",
+    "lat": 43.2620, "lon": -71.5660,
+    "species": ["Rainbow", "Brown", "Brook"],
+    "category": "Stocked - open year round",
+    "season_months": [1, 12],
+    "agency_url": "https://www.wildlife.nh.gov/fishing-new-hampshire/trout-fishing-new-hampshire/nh-rivers-and-streams-stocked-trout-and-open-year"
+  }
+]

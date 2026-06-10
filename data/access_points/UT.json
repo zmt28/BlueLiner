@@ -1,0 +1,42 @@
+[
+  {
+    "name": "Spillway Boat Ramp (Green River below Flaming Gorge Dam)",
+    "lat": 40.9080, "lon": -109.4150,
+    "type": "boat_ramp",
+    "access": "fee",
+    "agency_url": "https://www.fs.usda.gov/detailfull/ashley/recreation/fishing?cid=stelprdb5270440",
+    "notes": "Upper launch for the A section, ~1 mile below the dam; seasonal fee contact station."
+  },
+  {
+    "name": "Little Hole Boat Ramp (Green River)",
+    "lat": 40.9095, "lon": -109.3290,
+    "type": "boat_ramp",
+    "access": "fee",
+    "agency_url": "https://www.blm.gov/sites/blm.gov/files/uploads/recreation_utah_greenriverbrochure.pdf",
+    "notes": "Take-out for the 7-mile A section; day-use area."
+  },
+  {
+    "name": "Little Hole National Recreation Trail (Green River)",
+    "lat": 40.9070, "lon": -109.4200,
+    "type": "walk_in",
+    "access": "public",
+    "agency_url": "https://www.blm.gov/sites/blm.gov/files/uploads/recreation_utah_greenriverbrochure.pdf",
+    "notes": "7.2-mile angler trail along the river from Spillway to Little Hole."
+  },
+  {
+    "name": "Deer Creek State Park ramp (Provo River chain)",
+    "lat": 40.4580, "lon": -111.4880,
+    "type": "boat_ramp",
+    "access": "fee",
+    "agency_url": "https://stateparks.utah.gov/parks/deer-creek/",
+    "notes": "State park entrance fee; reservoir between the Middle and Lower Provo."
+  },
+  {
+    "name": "Middle Provo River walk-in access (Heber Valley)",
+    "lat": 40.4880, "lon": -111.4640,
+    "type": "walk_in",
+    "access": "public",
+    "agency_url": "https://wildlife.utah.gov/streamaccess.html",
+    "notes": "DWR-secured public access stretches on the middle Provo; coordinates near Charleston."
+  }
+]

@@ -1,0 +1,42 @@
+[
+  {
+    "water": "Boise River (through Boise)",
+    "lat": 43.6630, "lon": -116.2750,
+    "species": ["Rainbow"],
+    "category": "Put-and-take",
+    "season_months": [1, 12],
+    "agency_url": "https://idfg.idaho.gov/fish/stocking"
+  },
+  {
+    "water": "Henrys Lake",
+    "lat": 44.6400, "lon": -111.4200,
+    "species": ["Cutthroat", "Rainbow"],
+    "category": "Stocked trout lake",
+    "season_months": [5, 10],
+    "agency_url": "https://idfg.idaho.gov/ifwis/fishingplanner/water/1114065446388"
+  },
+  {
+    "water": "Horsethief Reservoir",
+    "lat": 44.4900, "lon": -115.8900,
+    "species": ["Rainbow"],
+    "category": "Stocked trout lake",
+    "season_months": [4, 9],
+    "agency_url": "https://idfg.idaho.gov/ifwis/fishingplanner/water/1159143445131"
+  },
+  {
+    "water": "Warm Lake",
+    "lat": 44.6440, "lon": -115.6620,
+    "species": ["Rainbow"],
+    "category": "Stocked trout lake",
+    "season_months": [5, 9],
+    "agency_url": "https://idfg.idaho.gov/article/statewide-trout-stocking-highlights-june-2026"
+  },
+  {
+    "water": "Magic Reservoir",
+    "lat": 43.2600, "lon": -114.3800,
+    "species": ["Rainbow"],
+    "category": "Stocked trout lake",
+    "season_months": [1, 12],
+    "agency_url": "https://idfg.idaho.gov/ifwis/fishingplanner/water/1143740432752"
+  }
+]

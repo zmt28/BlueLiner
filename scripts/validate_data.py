@@ -54,7 +54,8 @@ def validate_stocking() -> int:
     required = {"water", "lat", "lon", "species", "category",
                 "season_months", "agency_url"}
     for fn in sorted(os.listdir(d)):
-        if not fn.endswith(".json"):
+        if (not fn.endswith(".json")
+                or fn in ("sources.json", "candidates.json")):
             continue
         state = fn[:-5].upper()
         path = os.path.join(d, fn)
@@ -85,6 +86,88 @@ def validate_stocking() -> int:
                 err(path, f"entry {i}: season_months must be [1..12, 1..12]")
             count += 1
     return count
+
+
+_ACCESS_TYPES = {"boat_ramp", "walk_in", "pier", "parking", "wading_access"}
+_ACCESS_LEVELS = {"public", "permit", "fee", "private_easement"}
+
+
+def validate_access_points() -> int:
+    count = 0
+    d = os.path.join(_DATA, "access_points")
+    if not os.path.isdir(d):
+        return 0
+    required = {"name", "lat", "lon", "type", "access"}
+    for fn in sorted(os.listdir(d)):
+        if (not fn.endswith(".json")
+                or fn in ("sources.json", "candidates.json")):
+            continue
+        state = fn[:-5].upper()
+        path = os.path.join(d, fn)
+        try:
+            rows = json.load(open(path))
+        except Exception as exc:
+            err(path, f"JSON load failed: {exc}")
+            continue
+        if not isinstance(rows, list):
+            err(path, "top-level must be a list")
+            continue
+        for i, r in enumerate(rows):
+            missing = required - set(r)
+            if missing:
+                err(path, f"entry {i}: missing {sorted(missing)}")
+                continue
+            try:
+                lat, lon = float(r["lat"]), float(r["lon"])
+            except (TypeError, ValueError):
+                err(path, f"entry {i}: non-numeric lat/lon")
+                continue
+            if not _in_state(state, lat, lon):
+                err(path, f"entry {i} ({r['name']}): "
+                          f"({lat},{lon}) outside {state} bbox")
+            if r["type"] not in _ACCESS_TYPES:
+                err(path, f"entry {i}: type {r['type']!r} not in "
+                          f"{sorted(_ACCESS_TYPES)}")
+            if r["access"] not in _ACCESS_LEVELS:
+                err(path, f"entry {i}: access {r['access']!r} not in "
+                          f"{sorted(_ACCESS_LEVELS)}")
+            count += 1
+    return count
+
+
+def validate_live_registry(domain: str) -> int:
+    """Lint data/<domain>/sources.json (live ArcGIS feed registry).
+    Structural checks only -- endpoint liveness is verified when an
+    entry is added, and the runtime loader degrades gracefully."""
+    path = os.path.join(_DATA, domain, "sources.json")
+    if not os.path.exists(path):
+        return 0
+    try:
+        raw = json.load(open(path))
+    except Exception as exc:
+        err(path, f"JSON load failed: {exc}")
+        return 0
+    sources = raw.get("sources")
+    if not isinstance(sources, list):
+        err(path, "must have a top-level 'sources' list")
+        return 0
+    required = {"state", "label", "url", "agency_url"}
+    for i, s in enumerate(sources):
+        missing = required - set(s)
+        if missing:
+            err(path, f"source {i}: missing {sorted(missing)}")
+            continue
+        if s["state"] not in STATE_BBOX:
+            err(path, f"source {i}: unknown state {s['state']!r}")
+        if "/query" not in s["url"]:
+            err(path, f"source {i} ({s['label']}): url must be an "
+                      "ArcGIS /query endpoint")
+        sm = s.get("season_months")
+        if sm is not None and (
+                not isinstance(sm, list) or len(sm) != 2
+                or not all(isinstance(x, int) and 1 <= x <= 12 for x in sm)):
+            err(path, f"source {i}: season_months must be [1..12, 1..12]")
+    return len(sources)
 
 
 def validate_hatch_overrides() -> int:
@@ -154,10 +237,16 @@ def validate_trout() -> int:
 
 def main() -> int:
     stocking_n = validate_stocking()
+    access_n = validate_access_points()
+    stocking_src_n = validate_live_registry("stocking")
+    access_src_n = validate_live_registry("access_points")
     hatch_n = validate_hatch_overrides()
     trout_n = validate_trout()
 
     print(f"[validate] stocking entries: {stocking_n}")
+    print(f"[validate] access entries:   {access_n}")
+    print(f"[validate] stocking feeds:   {stocking_src_n}")
+    print(f"[validate] access feeds:     {access_src_n}")
     print(f"[validate] hatch overrides:  {hatch_n} rivers")
     print(f"[validate] trout files:      {trout_n} states")
 

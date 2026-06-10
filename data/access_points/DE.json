@@ -1,0 +1,42 @@
+[
+  {
+    "name": "White Clay Creek SP - Chambers Rock Rd lot",
+    "lat": 39.7230, "lon": -75.7570,
+    "type": "parking",
+    "access": "fee",
+    "agency_url": "https://www.destateparks.com/park/white-clay-creek/",
+    "notes": "State park entrance fee Mar 1 - Nov 30; most heavily stocked water in Delaware."
+  },
+  {
+    "name": "White Clay Creek SP - Creek Road corridor",
+    "lat": 39.7100, "lon": -75.7600,
+    "type": "walk_in",
+    "access": "fee",
+    "agency_url": "https://www.destateparks.com/park/white-clay-creek/",
+    "notes": "Walk-in stream access along Creek Rd north of Newark; fee booth in season."
+  },
+  {
+    "name": "Brandywine Creek SP main entrance (Wilson Run)",
+    "lat": 39.8020, "lon": -75.5770,
+    "type": "walk_in",
+    "access": "fee",
+    "agency_url": "https://www.destateparks.com/park/brandywine-creek/",
+    "notes": "Off Adams Dam Rd; plenty of parking for the stocked trout stretch; park entrance fee in season."
+  },
+  {
+    "name": "Tidbury Pond shoreline (Tidbury Recreation Park)",
+    "lat": 39.0850, "lon": -75.5550,
+    "type": "walk_in",
+    "access": "public",
+    "agency_url": "https://dnrec.delaware.gov/fish-wildlife/fishing-ponds/",
+    "notes": "Kent County park pond; bank fishing only, no boats; spring trout pond."
+  },
+  {
+    "name": "Newton Pond ramp and pier",
+    "lat": 38.8250, "lon": -75.5700,
+    "type": "pier",
+    "access": "public",
+    "agency_url": "https://dnrec.delaware.gov/fish-wildlife/small-pond-angling/",
+    "notes": "Car-top boat ramp and ADA T-pier; only DNREC small pond with trout."
+  }
+]

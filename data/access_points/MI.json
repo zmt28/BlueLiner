@@ -1,0 +1,42 @@
+[
+  {
+    "name": "Burton's Landing State Forest Campground (Au Sable Holy Water)",
+    "lat": 44.6720, "lon": -84.6450,
+    "type": "walk_in",
+    "access": "fee",
+    "agency_url": "https://www.michigan.gov/recsearch/sfcampgroundsa-m/burtonslanding",
+    "notes": "Carry-down access at the top of the flies-only Holy Water; Recreation Passport required."
+  },
+  {
+    "name": "Tippy Dam Recreation Area (Manistee River)",
+    "lat": 44.2630, "lon": -85.9420,
+    "type": "boat_ramp",
+    "access": "fee",
+    "agency_url": "https://www.michigan.gov/recsearch/parks/tippydam",
+    "notes": "Ramp plus accessible fishing pier below the dam; Recreation Passport required."
+  },
+  {
+    "name": "Proud Lake Recreation Area (Huron River)",
+    "lat": 42.5640, "lon": -83.5320,
+    "type": "wading_access",
+    "access": "fee",
+    "agency_url": "https://www.michigan.gov/dnr/about/newsroom/releases/2026/03/30/mature-trout-stocked-in-huron-river-spring-mill-pond",
+    "notes": "Spring trout water below Proud Lake dam; Recreation Passport required."
+  },
+  {
+    "name": "Yates Park (Clinton River)",
+    "lat": 42.6660, "lon": -83.0890,
+    "type": "walk_in",
+    "access": "public",
+    "agency_url": "https://www.michigan.gov/dnr/about/newsroom/releases/2025/03/31/adult-trout-stocked-in-clinton-and-huron-rivers-spring-mill-pond",
+    "notes": "Popular reach for DNR adult trout stockings near Yates Cider Mill."
+  },
+  {
+    "name": "Spring Mill Pond (Island Lake Recreation Area)",
+    "lat": 42.5090, "lon": -83.7300,
+    "type": "walk_in",
+    "access": "fee",
+    "agency_url": "https://www.michigan.gov/dnr/about/newsroom/releases/2026/03/30/mature-trout-stocked-in-huron-river-spring-mill-pond",
+    "notes": "Stocked pond with bank access; Recreation Passport required."
+  }
+]

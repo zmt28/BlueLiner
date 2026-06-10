@@ -1,0 +1,74 @@
+[
+  {
+    "water": "Chattahoochee River (Sope Creek to US 41 DH)",
+    "lat": 33.9030, "lon": -84.4410,
+    "species": ["Rainbow", "Brown"],
+    "category": "Delayed harvest",
+    "season_months": [11, 5],
+    "agency_url": "https://georgiawildlife.com/delayed-harvest-trout-streams-open-nov-1"
+  },
+  {
+    "water": "Toccoa River DH (Shallowford Bridge reach, Fannin Co.)",
+    "lat": 34.7920, "lon": -84.3640,
+    "species": ["Rainbow", "Brown"],
+    "category": "Delayed harvest",
+    "season_months": [11, 5],
+    "agency_url": "https://georgiawildlife.com/delayed-harvest-trout-streams-open-nov-1"
+  },
+  {
+    "water": "Smith Creek DH (below Unicoi Lake)",
+    "lat": 34.7150, "lon": -83.7270,
+    "species": ["Rainbow", "Brown"],
+    "category": "Delayed harvest",
+    "season_months": [11, 5],
+    "agency_url": "https://georgiawildlife.com/delayed-harvest-trout-streams-open-nov-1"
+  },
+  {
+    "water": "Amicalola Creek DH (Dawson Forest WMA)",
+    "lat": 34.3510, "lon": -84.1820,
+    "species": ["Rainbow", "Brown"],
+    "category": "Delayed harvest",
+    "season_months": [11, 5],
+    "agency_url": "https://georgiawildlife.com/sites/default/files/wrd/pdf/trout/amicaloladh.pdf"
+  },
+  {
+    "water": "Chattooga River DH (Hwy 28 to Reed Creek)",
+    "lat": 34.9270, "lon": -83.1840,
+    "species": ["Rainbow", "Brown"],
+    "category": "Delayed harvest",
+    "season_months": [11, 5],
+    "agency_url": "https://georgiawildlife.com/delayed-harvest-trout-streams-open-nov-1"
+  },
+  {
+    "water": "Rock Creek (Fannin Co., near national fish hatchery)",
+    "lat": 34.7470, "lon": -84.1470,
+    "species": ["Rainbow"],
+    "category": "Put-and-take",
+    "season_months": [3, 9],
+    "agency_url": "https://georgiawildlife.com/Fishing/Trout"
+  },
+  {
+    "water": "Dicks Creek (Chestatee WMA, Lumpkin Co.)",
+    "lat": 34.6780, "lon": -83.9220,
+    "species": ["Rainbow"],
+    "category": "Put-and-take",
+    "season_months": [3, 9],
+    "agency_url": "https://georgiawildlife.com/Fishing/Trout"
+  },
+  {
+    "water": "Tallulah River (Rabun Co.)",
+    "lat": 34.9470, "lon": -83.5530,
+    "species": ["Rainbow"],
+    "category": "Put-and-take",
+    "season_months": [3, 9],
+    "agency_url": "https://georgiawildlife.com/Fishing/Trout"
+  },
+  {
+    "water": "West Fork Chattooga River (Rabun Co.)",
+    "lat": 34.9560, "lon": -83.1640,
+    "species": ["Rainbow"],
+    "category": "Stocked trout stream",
+    "season_months": [3, 9],
+    "agency_url": "https://georgiawildlife.com/Fishing/Trout"
+  }
+]

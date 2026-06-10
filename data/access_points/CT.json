@@ -1,0 +1,42 @@
+[
+  {
+    "name": "Church Pool area (Farmington River WB TMA, Riverton)",
+    "lat": 41.9540, "lon": -72.9960,
+    "type": "walk_in",
+    "access": "public",
+    "agency_url": "https://portal.ct.gov/deep/fishing/fisheries-management/trout-management-areas",
+    "notes": "Classic year-round TMA pool below Riverton."
+  },
+  {
+    "name": "Bulls Bridge (Housatonic River TMA, Kent)",
+    "lat": 41.6760, "lon": -73.5080,
+    "type": "walk_in",
+    "access": "public",
+    "agency_url": "https://portal.ct.gov/deep/fishing/fisheries-management/trout-management-areas",
+    "notes": "Parking at the covered bridge; TMA water up and downstream."
+  },
+  {
+    "name": "Comstock Covered Bridge (Salmon River TMA, East Hampton)",
+    "lat": 41.5560, "lon": -72.4470,
+    "type": "walk_in",
+    "access": "public",
+    "agency_url": "https://portal.ct.gov/deep/fishing/fisheries-management/trout-management-areas",
+    "notes": "Main entry to the Salmon River TMA in the state forest."
+  },
+  {
+    "name": "Willimantic River TMA roadside access (Rt 32, Willington)",
+    "lat": 41.8740, "lon": -72.3060,
+    "type": "parking",
+    "access": "public",
+    "agency_url": "https://portal.ct.gov/deep/fishing/fisheries-management/trout-management-areas",
+    "notes": "Pull-offs along the catch-and-release TMA reach."
+  },
+  {
+    "name": "Hammonasset River TMA (Chestnut Hill Rd, Killingworth)",
+    "lat": 41.3500, "lon": -72.5750,
+    "type": "wading_access",
+    "access": "public",
+    "agency_url": "https://portal.ct.gov/deep/fishing/fisheries-management/trout-management-areas",
+    "notes": "TMA runs from Lake Hammonasset dam to Chestnut Hill Rd."
+  }
+]

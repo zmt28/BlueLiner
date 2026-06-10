@@ -1,0 +1,50 @@
+[
+  {
+    "name": "Hecla Junction (Arkansas Headwaters Rec Area)",
+    "lat": 38.6590, "lon": -106.0530,
+    "type": "boat_ramp",
+    "access": "fee",
+    "agency_url": "https://cpw.state.co.us/state-parks/arkansas-headwaters-recreation-area/arkansas-headwaters-recreation-area-buena-vista",
+    "notes": "Take-out below Browns Canyon; CPW parks pass required."
+  },
+  {
+    "name": "Ruby Mountain (Arkansas Headwaters Rec Area)",
+    "lat": 38.7440, "lon": -106.0770,
+    "type": "boat_ramp",
+    "access": "fee",
+    "agency_url": "https://cpw.state.co.us/state-parks/arkansas-headwaters-recreation-area/arkansas-headwaters-recreation-area-buena-vista",
+    "notes": "Browns Canyon put-in near Nathrop; CPW parks pass required."
+  },
+  {
+    "name": "Salida East (Arkansas Headwaters Rec Area)",
+    "lat": 38.5230, "lon": -105.9500,
+    "type": "boat_ramp",
+    "access": "fee",
+    "agency_url": "https://cpw.state.co.us/state-parks/arkansas-headwaters-recreation-area/arkansas-headwaters-recreation-area-salida-vallie",
+    "notes": "Ramp + bank access 3 miles east of Salida on US-50."
+  },
+  {
+    "name": "Charlie Meyers SWA (Dream Stream)",
+    "lat": 38.9450, "lon": -105.5450,
+    "type": "walk_in",
+    "access": "permit",
+    "agency_url": "https://cpw.state.co.us/state-wildlife-areas/charlie-meyers-swa",
+    "notes": "South Platte between Spinney and Eleven Mile; fishing license or SWA pass required for everyone 16+."
+  },
+  {
+    "name": "Eleven Mile State Park boat ramps",
+    "lat": 38.9230, "lon": -105.4510,
+    "type": "boat_ramp",
+    "access": "fee",
+    "agency_url": "https://cpw.state.co.us/state-parks/eleven-mile-state-park",
+    "notes": "Park entry fee; ramps on the north shore."
+  },
+  {
+    "name": "Spinney Mountain State Park boat ramp",
+    "lat": 38.9750, "lon": -105.5950,
+    "type": "boat_ramp",
+    "access": "fee",
+    "agency_url": "https://cpw.state.co.us/state-parks/spinney-mountain-state-park",
+    "notes": "Day-use park, open ice-off to ice-on; flies and lures only on the reservoir."
+  }
+]

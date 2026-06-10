@@ -1,0 +1,42 @@
+[
+  {
+    "name": "Walhalla State Fish Hatchery pier",
+    "lat": 34.9860, "lon": -83.0700,
+    "type": "pier",
+    "access": "public",
+    "agency_url": "https://hatcheries.dnr.sc.gov/walhalla/stocking.html",
+    "notes": "ADA-accessible fishing pier, picnic area and restrooms at the hatchery."
+  },
+  {
+    "name": "Burrells Ford Campground (Chattooga River)",
+    "lat": 34.9700, "lon": -83.1150,
+    "type": "walk_in",
+    "access": "public",
+    "agency_url": "https://www.dnr.sc.gov/fish/pdf/TroutBook.pdf",
+    "notes": "Walk-in access off SC 107; stocked Mar-Nov around the bridge."
+  },
+  {
+    "name": "Saluda Shoals Park (Lower Saluda River)",
+    "lat": 34.0450, "lon": -81.1830,
+    "type": "boat_ramp",
+    "access": "fee",
+    "agency_url": "https://www.dnr.sc.gov/water/river/scenic/saluda.html",
+    "notes": "Popular winter trout reach below Lake Murray dam; county park fee."
+  },
+  {
+    "name": "Jones Gap State Park (Middle Saluda River)",
+    "lat": 35.1255, "lon": -82.5740,
+    "type": "walk_in",
+    "access": "fee",
+    "agency_url": "https://www.dnr.sc.gov/water/river/scenic/midsaluda.html",
+    "notes": "Trailhead access to SC's first scenic river; park admission."
+  },
+  {
+    "name": "Eastatoe Creek Heritage Preserve trailhead",
+    "lat": 35.0440, "lon": -82.8120,
+    "type": "walk_in",
+    "access": "public",
+    "agency_url": "https://www.dnr.sc.gov/aquaticed/trout/history.html",
+    "notes": "SCDNR Heritage Trust preserve; wild rainbow gorge (approx. trailhead)."
+  }
+]

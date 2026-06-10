@@ -1,0 +1,42 @@
+[
+  {
+    "water": "White River (Bull Shoals tailwater)",
+    "lat": 36.3650, "lon": -92.5750,
+    "species": ["Rainbow", "Brown"],
+    "category": "Tailwater - wild + stocked",
+    "season_months": [1, 12],
+    "agency_url": "https://www.agfc.com/fishing/where-to-fish/trout-waters/bull-shoals-tailwater/"
+  },
+  {
+    "water": "North Fork River (Norfork tailwater)",
+    "lat": 36.2480, "lon": -92.2440,
+    "species": ["Rainbow"],
+    "category": "Tailwater - wild + stocked",
+    "season_months": [1, 12],
+    "agency_url": "https://www.agfc.com/fishing/where-to-fish/trout-waters/norfork-tailwater/"
+  },
+  {
+    "water": "Little Red River (Greers Ferry tailwater)",
+    "lat": 35.5150, "lon": -92.0020,
+    "species": ["Rainbow"],
+    "category": "Tailwater - wild + stocked",
+    "season_months": [1, 12],
+    "agency_url": "https://www.agfc.com/fishing/where-to-fish/trout-waters/greers-ferry-tailwater-little-red-river/"
+  },
+  {
+    "water": "Spring River (Mammoth Spring)",
+    "lat": 36.4960, "lon": -91.5360,
+    "species": ["Rainbow"],
+    "category": "Stocked trout stream",
+    "season_months": [1, 12],
+    "agency_url": "https://www.agfc.com/fishing/where-to-fish/trout-waters/spring-river/"
+  },
+  {
+    "water": "White River (Beaver tailwater)",
+    "lat": 36.4210, "lon": -93.8470,
+    "species": ["Rainbow"],
+    "category": "Tailwater - stocked",
+    "season_months": [1, 12],
+    "agency_url": "https://www.agfc.com/fishing/where-to-fish/trout-waters/beaver-tailwater/"
+  }
+]

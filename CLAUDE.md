@@ -17,7 +17,13 @@ uvicorn main:app --reload          # Dev server on :8000
 pytest -q                          # Run all tests
 pytest -q tests/test_foo.py        # Run a single test file
 pytest -q tests/test_foo.py::test_bar  # Run a single test
-python scripts/validate_data.py    # Lint stocking/trout/hatch JSON schemas
+python scripts/validate_data.py    # Lint stocking/access/trout/hatch JSON schemas
+python scripts/verify_feed_sources.py  # End-to-end check of the live ArcGIS feed
+                                       # registries (--candidates probes unpromoted
+                                       # leads). Run from CI or a dev machine -- the
+                                       # Claude Code sandbox egress blocks most state
+                                       # GIS hosts (a push touching the registries
+                                       # triggers .github/workflows/gis-endpoint-verify.yml)
 ```
 
 ### Data Pipeline (one-time builds, not routine dev)
@@ -45,7 +51,8 @@ BlueLiner is a real-time stream condition monitoring app for fly fishermen. It a
 - **`cache.py`** — `LruTtl` bounded in-memory cache. Used for USGS stats (~6K entries) and gauge metadata (~2K entries, 15-min TTL). Prevents OOM on free tier
 - **`enrichment.py`** — Auto-enriches catch logs with flow-vs-median, water temp, NOAA weather, moon phase
 - **`hatches.py`** — Hatch scheduling with zone-based lookup + curated overrides
-- **`stocking.py`** — State stocking data with ~2 km proximity tagging
+- **`stocking.py`** — State stocking data with ~2 km proximity tagging. Curated baselines in `data/stocking/<ST>.json` (28 states) + live agency ArcGIS feeds declared in `data/stocking/sources.json` (per-source field mappings: `species_flags`, `species_field`, `dedupe`; unverified leads in `candidates.json`)
+- **`access_points.py`** — Angler access points (boat ramps, walk-ins, piers, wading). Same pattern: per-state baselines + `data/access_points/sources.json` live-feed registry (`type_field`/`type_flags`/`fixed_type`)
 - **`trout.py`** — Trout stream overlays (live ArcGIS + bundled GeoJSON fallback)
 - **`data_source.py`** — Resolves data files from Cloudflare R2 or bundled fallback
 

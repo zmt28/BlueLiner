@@ -1,0 +1,58 @@
+[
+  {
+    "name": "Warm Springs Boat Ramp (Lower Deschutes)",
+    "lat": 44.7610, "lon": -121.2390,
+    "type": "boat_ramp",
+    "access": "public",
+    "agency_url": "https://www.blm.gov/sites/default/files/prog_rec_permits_deschutes_map1.pdf",
+    "notes": "River mile 97.8 launch for the Warm Springs-Trout Creek wild redband water; boater pass required to float."
+  },
+  {
+    "name": "Mecca Flat Campground (Lower Deschutes)",
+    "lat": 44.7760, "lon": -121.2330,
+    "type": "walk_in",
+    "access": "public",
+    "agency_url": "https://www.blm.gov/visit/mecca-flat-campground",
+    "notes": "BLM site off US 26 near Warm Springs; day use free; southern end of the 7-mile Trout Creek bank trail."
+  },
+  {
+    "name": "Wizard Falls Fish Hatchery (Metolius River)",
+    "lat": 44.4950, "lon": -121.6310,
+    "type": "walk_in",
+    "access": "public",
+    "agency_url": "https://myodfw.com/wizard-falls-hatchery-visitors-guide",
+    "notes": "ODFW hatchery on the wild, fly-only Metolius; river trail access both banks."
+  },
+  {
+    "name": "Camp Sherman day-use (Metolius River)",
+    "lat": 44.4653, "lon": -121.6390,
+    "type": "walk_in",
+    "access": "public",
+    "agency_url": "https://www.fs.usda.gov/r06/deschutes/recreation/metolius-river",
+    "notes": "Fish viewing platform and Metolius River Trail; wild trout, no stocking since 1996."
+  },
+  {
+    "name": "Lower Bridge Campground (Metolius River)",
+    "lat": 44.5210, "lon": -121.6340,
+    "type": "walk_in",
+    "access": "public",
+    "agency_url": "https://www.fs.usda.gov/r06/deschutes/recreation/metolius-river",
+    "notes": "Deschutes NF campground; trail access to lower fly water."
+  },
+  {
+    "name": "Chimney Rock Campground (Crooked River)",
+    "lat": 44.1280, "lon": -120.8020,
+    "type": "wading_access",
+    "access": "public",
+    "agency_url": "https://www.blm.gov/visit/chimney-rock-campground",
+    "notes": "BLM Wild & Scenic corridor below Bowman Dam along Hwy 27; fishing platform; day use free."
+  },
+  {
+    "name": "Palisades Campground (Crooked River)",
+    "lat": 44.1430, "lon": -120.8000,
+    "type": "wading_access",
+    "access": "public",
+    "agency_url": "https://www.blm.gov/visit/palisades-campground-or",
+    "notes": "One of a dozen BLM pullouts on the redband tailwater below Bowman Dam; fishing platform."
+  }
+]

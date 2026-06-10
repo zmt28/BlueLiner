@@ -1,0 +1,42 @@
+[
+  {
+    "water": "Au Sable River below Mio Dam",
+    "lat": 44.6630, "lon": -84.1270,
+    "species": ["Brown", "Rainbow"],
+    "category": "Tailwater - stocked",
+    "season_months": [3, 6],
+    "agency_url": "https://www2.dnr.state.mi.us/publications/pdfs/DNRFishLibrary/StatusoftheFisheryResourceReports/0107_2007_AuSableRiver.pdf"
+  },
+  {
+    "water": "Manistee River below Tippy Dam",
+    "lat": 44.2630, "lon": -85.9420,
+    "species": ["Brown", "Steelhead", "Coho"],
+    "category": "Tailwater - wild + stocked",
+    "season_months": [3, 6],
+    "agency_url": "https://www2.dnr.state.mi.us/publications/pdfs/arcgisonline/storymaps/fish_troutTrails/PDFs/TT2016057.pdf"
+  },
+  {
+    "water": "Huron River (Proud Lake Recreation Area)",
+    "lat": 42.5640, "lon": -83.5320,
+    "species": ["Rainbow", "Brown"],
+    "category": "Put-and-take",
+    "season_months": [3, 4],
+    "agency_url": "https://www.michigan.gov/dnr/about/newsroom/releases/2026/03/30/mature-trout-stocked-in-huron-river-spring-mill-pond"
+  },
+  {
+    "water": "Clinton River (Yates Park, Rochester Hills)",
+    "lat": 42.6660, "lon": -83.0890,
+    "species": ["Brown", "Rainbow"],
+    "category": "Put-and-take",
+    "season_months": [3, 4],
+    "agency_url": "https://www.michigan.gov/dnr/about/newsroom/releases/2025/03/31/adult-trout-stocked-in-clinton-and-huron-rivers-spring-mill-pond"
+  },
+  {
+    "water": "Spring Mill Pond (Island Lake Recreation Area)",
+    "lat": 42.5090, "lon": -83.7300,
+    "species": ["Rainbow", "Brown"],
+    "category": "Put-and-take",
+    "season_months": [3, 4],
+    "agency_url": "https://www.michigan.gov/dnr/about/newsroom/releases/2026/03/30/mature-trout-stocked-in-huron-river-spring-mill-pond"
+  }
+]

@@ -1,0 +1,58 @@
+[
+  {
+    "water": "Bennett Spring (Bennett Spring State Park)",
+    "lat": 37.7190, "lon": -92.8580,
+    "species": ["Rainbow"],
+    "category": "Trout park - stocked",
+    "season_months": [3, 10],
+    "agency_url": "https://mdc.mo.gov/fishing/species/trout/trout-parks"
+  },
+  {
+    "water": "Current River headwaters (Montauk State Park)",
+    "lat": 37.4530, "lon": -91.6890,
+    "species": ["Rainbow"],
+    "category": "Trout park - stocked",
+    "season_months": [3, 10],
+    "agency_url": "https://mdc.mo.gov/fishing/species/trout/trout-parks"
+  },
+  {
+    "water": "Roaring River (Roaring River State Park)",
+    "lat": 36.5870, "lon": -93.8330,
+    "species": ["Rainbow"],
+    "category": "Trout park - stocked",
+    "season_months": [3, 10],
+    "agency_url": "https://mdc.mo.gov/fishing/species/trout/trout-parks"
+  },
+  {
+    "water": "Maramec Spring branch (Maramec Spring Park)",
+    "lat": 37.9540, "lon": -91.5330,
+    "species": ["Rainbow"],
+    "category": "Trout park - stocked",
+    "season_months": [3, 10],
+    "agency_url": "https://mdc.mo.gov/fishing/species/trout/trout-parks"
+  },
+  {
+    "water": "Lake Taneycomo (Table Rock Dam tailwater)",
+    "lat": 36.5960, "lon": -93.3090,
+    "species": ["Rainbow", "Brown"],
+    "category": "Tailwater - wild + stocked",
+    "season_months": [1, 12],
+    "agency_url": "https://mdc.mo.gov/fishing/fishing-prospects/areas/lake-taneycomo"
+  },
+  {
+    "water": "Current River (Blue Ribbon, Montauk to Cedar Grove)",
+    "lat": 37.4430, "lon": -91.6640,
+    "species": ["Brown"],
+    "category": "Blue Ribbon - stocked brown trout",
+    "season_months": [1, 12],
+    "agency_url": "https://mdc.mo.gov/fishing/regulations/special-waterbody-regulations/current-river-blue-ribbon"
+  },
+  {
+    "water": "Eleven Point River (Greer Spring to Turner Mill)",
+    "lat": 36.7860, "lon": -91.3420,
+    "species": ["Rainbow"],
+    "category": "Blue Ribbon - stocked rainbow",
+    "season_months": [3, 11],
+    "agency_url": "https://mdc.mo.gov/fishing/regulations/special-waterbody-regulations/eleven-point-river"
+  }
+]

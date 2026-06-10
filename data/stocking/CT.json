@@ -1,0 +1,50 @@
+[
+  {
+    "water": "Farmington River, West Branch TMA (Barkhamsted - New Hartford)",
+    "lat": 41.8930, "lon": -72.9640,
+    "species": ["Brown", "Rainbow", "Brook"],
+    "category": "Trout Management Area - year-round",
+    "season_months": [3, 10],
+    "agency_url": "https://portal.ct.gov/deep/fishing/fisheries-management/trout-management-areas"
+  },
+  {
+    "water": "Farmington River, West Branch (Hogback reach, Riverton)",
+    "lat": 41.9580, "lon": -72.9980,
+    "species": ["Brown", "Rainbow"],
+    "category": "Stocked trout river",
+    "season_months": [3, 5],
+    "agency_url": "https://portal.ct.gov/DEEP/Fishing/General-Information/Trout-Stocking-Maps"
+  },
+  {
+    "water": "Housatonic River - Bulls Bridge TMA (Kent)",
+    "lat": 41.6760, "lon": -73.5080,
+    "species": ["Brown", "Rainbow"],
+    "category": "Trout Management Area",
+    "season_months": [3, 5],
+    "agency_url": "https://portal.ct.gov/deep/fishing/fisheries-management/trout-management-areas"
+  },
+  {
+    "water": "Salmon River TMA (Colchester / East Hampton)",
+    "lat": 41.5560, "lon": -72.4470,
+    "species": ["Brown", "Rainbow", "Brook"],
+    "category": "Trout Management Area",
+    "season_months": [3, 10],
+    "agency_url": "https://portal.ct.gov/deep/fishing/fisheries-management/trout-management-areas"
+  },
+  {
+    "water": "Willimantic River TMA (Tolland / Willington)",
+    "lat": 41.8740, "lon": -72.3060,
+    "species": ["Brook", "Brown", "Rainbow"],
+    "category": "Trout Management Area",
+    "season_months": [3, 10],
+    "agency_url": "https://portal.ct.gov/deep/fishing/fisheries-management/trout-management-areas"
+  },
+  {
+    "water": "Hammonasset River TMA (Killingworth / Madison)",
+    "lat": 41.3500, "lon": -72.5750,
+    "species": ["Brown", "Rainbow"],
+    "category": "Trout Management Area",
+    "season_months": [3, 5],
+    "agency_url": "https://portal.ct.gov/deep/fishing/fisheries-management/trout-management-areas"
+  }
+]
