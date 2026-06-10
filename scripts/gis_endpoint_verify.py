@@ -28,12 +28,20 @@ import time
 import httpx
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 try:
     # (lat_min, lat_max, lon_min, lon_max) for all 50 states + DC --
     # covers explicit-mode requests outside the western BBOX table.
     from states import STATE_BBOX as _APP_BBOX
 except Exception:                                  # pragma: no cover
     _APP_BBOX = {}
+try:
+    # Per-state agency GIS roots + full state-name table maintained by the
+    # trout discovery pipeline -- reused so both crawlers share one seed list.
+    from discovery.catalogs import (SEED_ARCGIS_HOSTS as _SEED_HOSTS,
+                                    STATE_NAMES as _ALL_STATE_NAMES)
+except Exception:                                  # pragma: no cover
+    _SEED_HOSTS, _ALL_STATE_NAMES = {}, {}
 
 UA = {"User-Agent": "Blueliner-discovery/0.1 (+https://blueliner.app)"}
 TIMEOUT = 15.0
@@ -57,6 +65,7 @@ STATE_NAMES = {
     "UT": "Utah", "NM": "New Mexico", "AZ": "Arizona", "NV": "Nevada",
     "CA": "California", "OR": "Oregon", "WA": "Washington",
 }
+STATE_NAMES.update(_ALL_STATE_NAMES)  # full 50-state table when importable
 
 ORG_CATALOGS = {
     "WY": ["https://services6.arcgis.com/cWzdqIyxbijuhPLw/arcgis/rest/services"],
@@ -75,7 +84,28 @@ SERVER_ROOTS = {
     "UT": ["https://maps.dnr.utah.gov/arcgis/rest/services"],
     "WA": ["https://geodataservices.wdfw.wa.gov/arcgis/rest/services"],
     "CA": ["https://map.dfg.ca.gov/arcgis/rest/services"],
+    # Eastern/midwest roots beyond the discovery.catalogs seeds (those are
+    # merged in below). Sources: round-1 research leads + known agency hubs.
+    "OH": ["https://gis2.ohiodnr.gov/arcgis/rest/services",
+           "https://gis.ohiodnr.gov/arcgis/rest/services"],
+    "KY": ["https://kygisserver.ky.gov/arcgisweb/rest/services"],
+    "MO": ["https://gisblue.mdc.mo.gov/arcgis/rest/services"],
+    "ND": ["https://ndgishub.nd.gov/arcgis/rest/services"],
+    "TX": ["https://tpwd.texas.gov/server/rest/services"],
+    "DE": ["https://enterprise.firstmap.delaware.gov/arcgis/rest/services"],
+    "ME": ["https://gis.maine.gov/mapservices/rest/services"],
+    "RI": ["https://risegis.ri.gov/hosting/rest/services"],
+    "NC": ["https://services1.arcgis.com/YfqBAUM5nWR3yhGP/arcgis/rest/services"],
+    "SC": ["https://services.arcgis.com/acgZYxoN5Oj8pDLa/arcgis/rest/services"],
+    "GA": ["https://services6.arcgis.com/9QlSLDqa0P1cHLhu/arcgis/rest/services"],
+    "CT": ["https://services1.arcgis.com/FjPcSmEFuDYlIdKC/arcgis/rest/services"],
+    "MI": ["https://services3.arcgis.com/Jdnp1TjADvSDxMAX/arcgis/rest/services"],
 }
+# Merge the trout-discovery seed roots (VA/MD/NJ/VT/NY/WV/PA/MA/WI/MI/IA/
+# CO/TN/MN/MT/ID/UT/WY/NH) without clobbering the curated entries above.
+for _st, _roots in _SEED_HOSTS.items():
+    merged = SERVER_ROOTS.get(_st, [])
+    SERVER_ROOTS[_st] = merged + [r for r in _roots if r not in merged]
 
 BASE_TERMS = (
     "{n} trout stocking",
@@ -95,6 +125,34 @@ EXTRA_TERMS = {
     "WY": ["Wyoming Game Fish stocked", "WGFD public access fishing"],
     "UT": ["Utah DWR stocked waters", "Utah community fisheries"],
     "CO": ["CPW fishing access boating", "Colorado stocked waters CPW"],
+    "TN": ["TWRA boat launch access", "TWRA stocked trout fisheries"],
+    "OH": ["ODNR boating access", "Ohio trout stocking ODNR"],
+    "KY": ["KDFWR boat ramps", "Kentucky fishing access KDFWR"],
+    "MI": ["Michigan DNR boating access site", "MI DNR fish stocking"],
+    "WI": ["Wisconsin DNR boat access landing", "WI DNR trout stocking"],
+    "MN": ["Minnesota DNR water access site", "MN DNR trout stream"],
+    "IN": ["Indiana DNR fishing access site", "IDNR boat ramp"],
+    "IL": ["Illinois DNR boat access", "IDNR trout stocking Illinois"],
+    "NE": ["Nebraska Game Parks boat ramp", "Outdoor Nebraska access"],
+    "ND": ["North Dakota Game Fish fishing waters", "NDGF boat ramp"],
+    "SD": ["South Dakota GFP water access", "SD lakes boat ramp GFP"],
+    "KS": ["KDWP fishing atlas access", "Kansas wildlife parks boat ramp"],
+    "OK": ["ODWC fishing access", "Oklahoma boat ramp wildlife"],
+    "TX": ["TPWD boat ramp", "TPWD river access lease"],
+    "NJ": ["NJ fish wildlife boat ramp", "NJDEP fishing access"],
+    "NY": ["NY DEC boat launch", "NY DEC fishing access site"],
+    "NC": ["NCWRC boating access area", "NC public fishing area PFA"],
+    "SC": ["SCDNR boat landing", "SC public fishing access"],
+    "GA": ["GA DNR boat ramp", "Georgia WRD public fishing area"],
+    "AL": ["Alabama WFF boat ramp", "Outdoor Alabama fishing access"],
+    "AR": ["AGFC boat ramp access", "Arkansas trout stocking AGFC"],
+    "NH": ["NH Fish Game boat access", "New Hampshire fish stocking"],
+    "ME": ["Maine IFW boat launch", "MaineDOT boat facilities"],
+    "MA": ["MassWildlife pond access", "Massachusetts boat ramp access"],
+    "CT": ["CT DEEP boat launch", "Connecticut fishing access"],
+    "VT": ["VT fishing access area", "Vermont F&W boat access"],
+    "RI": ["RIDEM boat ramp", "Rhode Island fishing access"],
+    "DE": ["DNREC boat ramp", "Delaware fishing access"],
 }
 
 STOCK_KW = ("stock", "plant", "hatch")
