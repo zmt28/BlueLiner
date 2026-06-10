@@ -42,6 +42,7 @@ jobs:
       - name: Verify feed registries (+ candidates, advisory)
         run: python scripts/verify_feed_sources.py --candidates
       - name: Ad-hoc discovery (when requested)
+        if: always()
         run: |
           if grep -qE '^(states:|[A-Z]{2}\|)' scripts/gis_verify_request.txt; then
             mkdir -p gis_verify_out

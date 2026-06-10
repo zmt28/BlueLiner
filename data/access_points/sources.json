@@ -164,7 +164,9 @@
         "FISHING_PIER": "pier",
         "SHORELINE_FISHING": "walk_in"
       },
-      "notes_field": "GNIS_NAME"
+      "notes_field": "GNIS_NAME",
+      "flaky": true,
+      "note": "flaky host: enterprise.firstmap.delaware.gov passed the full 4-check protocol 2026-06-09 but has multi-hour outage windows (timed out in 3 consecutive gate runs 2026-06-10 even with retries). Runtime degrades to the DE baseline while it's down."
     },
     {
       "state": "DE",
@@ -173,7 +175,9 @@
       "agency_url": "https://dnrec.delaware.gov/fish-wildlife/fishing/access/",
       "name_field": "LOCATION",
       "type_field": "TYPE",
-      "notes_field": "AREA_NAME"
+      "notes_field": "AREA_NAME",
+      "flaky": true,
+      "note": "flaky host: enterprise.firstmap.delaware.gov passed the full 4-check protocol 2026-06-09 but has multi-hour outage windows (timed out in 3 consecutive gate runs 2026-06-10 even with retries). Runtime degrades to the DE baseline while it's down."
     },
     {
       "state": "NY",

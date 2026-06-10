@@ -162,8 +162,16 @@ def run(path: str, required: bool, client: httpx.Client) -> int:
     for src in raw.get("sources", []):
         fails = verify_source(client, src)
         if fails:
-            n_failed += 1
-            sev = "FAIL" if required else "warn"
+            # `flaky: true` marks a source whose host has a documented
+            # history of multi-hour outages (DE firstmap). It was fully
+            # verified when added and the runtime loader degrades to the
+            # baseline while it's down -- so it warns instead of
+            # redding the gate.
+            hard = required and not src.get("flaky")
+            if hard:
+                n_failed += 1
+            sev = "FAIL" if hard else ("warn (flaky)" if src.get("flaky")
+                                       else "warn")
             for f in fails:
                 print(f"  {sev}: [{src.get('state')}] "
                       f"{src.get('label')}: {f}")

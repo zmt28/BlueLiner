@@ -168,7 +168,9 @@
       "url": "https://enterprise.firstmap.delaware.gov/arcgis/rest/services/Society/DE_Fishing_Access/FeatureServer/1/query?where=1%3D1",
       "agency_url": "https://dnrec.delaware.gov/fish-wildlife/fishing/freshwater-trout/",
       "category": "Designated trout stream (DNREC)",
-      "name_field": "WATERBODYNAME"
+      "name_field": "WATERBODYNAME",
+      "flaky": true,
+      "note": "flaky host: enterprise.firstmap.delaware.gov passed the full 4-check protocol 2026-06-09 but has multi-hour outage windows (timed out in 3 consecutive gate runs 2026-06-10 even with retries). Runtime degrades to the DE baseline while it's down."
     }
   ]
 }
