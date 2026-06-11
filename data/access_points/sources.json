@@ -206,7 +206,9 @@
       "agency_url": "https://dnr.wisconsin.gov/topic/lands/boataccess",
       "name_field": "LMS_BOAT_LANDING_NAME",
       "type_field": "LANDING_TYPE_CODE",
-      "notes_field": "WATERBODY_NAME_TEXT"
+      "notes_field": "WATERBODY_NAME_TEXT",
+      "flaky": true,
+      "note": "flaky host: dnrmaps.wi.gov passed the full 4-check protocol 2026-06-10 (discovery round E2) but timed out in two consecutive gate runs 2026-06-11 (attempts 1+2, with retries). Runtime degrades to the WI baseline while it's down."
     },
     {
       "state": "WI",
@@ -215,7 +217,9 @@
       "agency_url": "https://dnr.wisconsin.gov/topic/fishing",
       "name_field": "FACILITY_NAME_TEXT",
       "fixed_type": "walk_in",
-      "notes_field": "WATERBODY_NAME_TEXT"
+      "notes_field": "WATERBODY_NAME_TEXT",
+      "flaky": true,
+      "note": "flaky host: dnrmaps.wi.gov passed the full 4-check protocol 2026-06-10 (discovery round E2) but timed out in two consecutive gate runs 2026-06-11 (attempts 1+2, with retries). Runtime degrades to the WI baseline while it's down."
     },
     {
       "state": "MN",
