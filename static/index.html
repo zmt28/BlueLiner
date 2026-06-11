@@ -96,6 +96,21 @@
         <div class="net-badge" id="net-badge" role="status" hidden>
             <i data-lucide="wifi-off" aria-hidden="true"></i><span>Offline</span>
         </div>
+
+        <!-- Offline download: framing overlay + action bar (download mode). -->
+        <div class="offline-select" id="offline-select" hidden>
+            <div class="offline-select-box">
+                <span class="offline-select-tag">Save this area</span>
+            </div>
+        </div>
+        <div class="offline-actionbar" id="offline-actionbar" hidden>
+            <span class="offline-actionbar-est" id="offline-est">Frame the area to save</span>
+            <span class="offline-actionbar-btns">
+                <button type="button" id="offline-cancel" class="offline-actionbar-cancel">Cancel</button>
+                <button type="button" id="offline-go" class="offline-actionbar-go">Download</button>
+            </span>
+        </div>
+
         <div class="top-pills">
             <!-- State picker. The native <select id="state-select"> remains the
                  canonical value + accessibility target (visually hidden); the
@@ -283,8 +298,8 @@
                         </div>
                         <div class="bl-offline" id="offline-test" hidden>
                             <div class="bl-offline-label">Offline maps <span class="bl-offline-tag">beta</span></div>
-                            <button type="button" id="offline-download" class="bl-offline-btn">⤓ Download this area</button>
-                            <div id="offline-status" class="bl-offline-status">Save the current map view to use it without a signal.</div>
+                            <button type="button" id="offline-download" class="bl-offline-btn">⤓ Download an area</button>
+                            <div id="offline-status" class="bl-offline-status">Pick an area on the map to use it without a signal.</div>
                             <button type="button" id="offline-clear" class="bl-offline-clear" hidden>Remove downloads</button>
                         </div>
                     </section>

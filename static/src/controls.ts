@@ -479,17 +479,34 @@ if (basemapSeg) {
 }
 
 // -- Connectivity badge --------------------------------------------
-// Shows an "Offline" pill whenever the browser reports no network, so a user
-// off-grid knows the map is running on downloaded data.
+// Shows an "Offline" pill when the device actually can't reach the server.
+// navigator.onLine alone is unreliable (it can report offline with signal), so
+// we confirm with a tiny /healthz probe and only show the badge if it fails.
 
 const netBadge = document.getElementById("net-badge");
 if (netBadge) {
-  const reflectNet = (): void => {
-    netBadge.hidden = navigator.onLine;
+  let probing = false;
+  const probe = async (): Promise<void> => {
+    if (probing) return;
+    probing = true;
+    try {
+      const ctrl = new AbortController();
+      const t = setTimeout(() => ctrl.abort(), 3000);
+      await fetch("/healthz", { method: "GET", cache: "no-store", signal: ctrl.signal });
+      clearTimeout(t);
+      netBadge.hidden = true; // reachable
+    } catch (_) {
+      netBadge.hidden = false; // unreachable -> offline
+    } finally {
+      probing = false;
+    }
   };
-  window.addEventListener("online", reflectNet);
-  window.addEventListener("offline", reflectNet);
-  reflectNet();
+  window.addEventListener("online", probe);
+  window.addEventListener("offline", probe);
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible") void probe();
+  });
+  void probe();
 }
 
 // -- Offline maps: download the current view (Phase 2) -------------
@@ -503,6 +520,12 @@ if (offlineSection && BASEMAP_TILES_ENABLED && "indexedDB" in window) {
   const dlBtn = document.getElementById("offline-download") as HTMLButtonElement;
   const clearBtn = document.getElementById("offline-clear") as HTMLButtonElement;
   const status = document.getElementById("offline-status") as HTMLElement;
+  const overlay = document.getElementById("offline-select") as HTMLElement;
+  const box = overlay.querySelector(".offline-select-box") as HTMLElement;
+  const actionbar = document.getElementById("offline-actionbar") as HTMLElement;
+  const estEl = document.getElementById("offline-est") as HTMLElement;
+  const goBtn = document.getElementById("offline-go") as HTMLButtonElement;
+  const cancelBtn = document.getElementById("offline-cancel") as HTMLButtonElement;
   const mb = (b: number): string => `${(b / 1048576).toFixed(1)} MB`;
 
   const archives: Archive[] = [{ url: BASEMAP_TILES_URL, label: "base" }];
@@ -515,39 +538,86 @@ if (offlineSection && BASEMAP_TILES_ENABLED && "indexedDB" in window) {
       status.textContent = `Saved offline: ${mb(s.bytes)} across ${m.downloads} area(s). Last ${when}.`;
       clearBtn.hidden = false;
     } else {
-      status.textContent = "Save the current map view to use it without a signal.";
+      status.textContent = "Pick an area on the map to use it without a signal.";
       clearBtn.hidden = true;
     }
   }
   void refreshStatus();
 
-  dlBtn.addEventListener("click", async () => {
-    const b = map.getBounds();
-    const bbox: BBox = { w: b.getWest(), s: b.getSouth(), e: b.getEast(), n: b.getNorth() };
+  // The framing box covers a fixed slice of the screen; the user pans/zooms the
+  // map under it to choose what to save. bbox = unproject its screen corners.
+  function boxBBox(): BBox {
+    const r = box.getBoundingClientRect();
+    const a = map.unproject([r.left, r.top]);
+    const b = map.unproject([r.right, r.bottom]);
+    return {
+      w: Math.min(a.lng, b.lng),
+      e: Math.max(a.lng, b.lng),
+      s: Math.min(a.lat, b.lat),
+      n: Math.max(a.lat, b.lat),
+    };
+  }
+
+  let estTimer: ReturnType<typeof setTimeout> | null = null;
+  let busy = false;
+  async function updateEstimate(): Promise<void> {
+    if (busy) return;
     const z = Math.floor(map.getZoom());
-    const total = await estimateArea(bbox, archives, z);
-    if (total > 6000) {
-      status.textContent = `This area is too large (${total.toLocaleString()} tiles). Zoom in and try again.`;
-      return;
+    const total = await estimateArea(boxBBox(), archives, z);
+    if (total === 0) {
+      estEl.textContent = "Zoom to the area you want to save";
+      goBtn.disabled = true;
+    } else if (total > 6000) {
+      estEl.textContent = `Area too large (${total.toLocaleString()} tiles) — zoom in`;
+      goBtn.disabled = true;
+    } else {
+      estEl.textContent = `≈ ${total.toLocaleString()} map tiles`;
+      goBtn.disabled = false;
     }
-    dlBtn.disabled = true;
-    clearBtn.hidden = true;
-    status.textContent = "Preparing…";
+  }
+  const scheduleEstimate = (): void => {
+    if (estTimer) clearTimeout(estTimer);
+    estTimer = setTimeout(() => void updateEstimate(), 250);
+  };
+
+  function enterDownloadMode(): void {
+    closePanel(); // so the map is visible for framing
+    overlay.hidden = false;
+    actionbar.hidden = false;
+    map.on("moveend", scheduleEstimate);
+    void updateEstimate();
+  }
+  function exitDownloadMode(): void {
+    overlay.hidden = true;
+    actionbar.hidden = true;
+    map.off("moveend", scheduleEstimate);
+  }
+
+  dlBtn.addEventListener("click", enterDownloadMode);
+  cancelBtn.addEventListener("click", exitDownloadMode);
+
+  goBtn.addEventListener("click", async () => {
+    const bbox = boxBBox();
+    const z = Math.floor(map.getZoom());
+    busy = true;
+    goBtn.disabled = true;
+    cancelBtn.disabled = true;
     try {
       const r = await downloadArea(bbox, archives, z, BASEMAP_STYLE_URL, (p) => {
-        status.textContent =
+        estEl.textContent =
           p.phase === "assets"
             ? "Saving map style…"
-            : `Saving tiles ${p.done.toLocaleString()}/${p.total.toLocaleString()}…`;
+            : `Saving ${p.done.toLocaleString()}/${p.total.toLocaleString()}…`;
       });
-      status.textContent =
-        `Saved ${mb(r.bytes)} for offline use. ` +
-        `Test it: enable airplane mode, reopen, pick Vector, and pan this area.`;
-      clearBtn.hidden = false;
+      estEl.textContent = `Saved ${mb(r.bytes)} for offline use ✓`;
+      await refreshStatus();
+      setTimeout(exitDownloadMode, 1400);
     } catch (e) {
-      status.textContent = `Download failed: ${(e as Error).message}`;
+      estEl.textContent = `Download failed: ${(e as Error).message}`;
     } finally {
-      dlBtn.disabled = false;
+      busy = false;
+      cancelBtn.disabled = false;
+      void updateEstimate();
     }
   });
 
