@@ -669,3 +669,36 @@ map.on("moveend", () => {
   (document.getElementById("stocked-only") as HTMLInputElement).checked = false;
   onFilterChange();
 };
+
+// -- TEMP: standalone bottom-nav diagnostics (remove after measuring) --------
+// On-screen readout of the safe-area inset + tab-bar metrics so the iOS
+// standalone spacing can be pinned without a desktop inspector. `gapBelow` is
+// the key number: pixels of empty space between the tab bar and the screen
+// bottom (i.e. how far the bar floats above the bottom).
+(function navDebug(): void {
+  const probe = document.createElement("div");
+  probe.style.cssText =
+    "position:fixed;left:0;bottom:0;width:0;height:0;visibility:hidden;padding-bottom:env(safe-area-inset-bottom);";
+  document.body.appendChild(probe);
+  const pill = document.createElement("div");
+  pill.style.cssText =
+    "position:fixed;left:8px;bottom:120px;z-index:9999;background:rgba(11,22,34,.92);color:#fff;" +
+    "font:11px/1.45 ui-monospace,monospace;padding:6px 9px;border-radius:8px;pointer-events:none;white-space:pre;";
+  document.body.appendChild(pill);
+  const read = (): void => {
+    const sab = getComputedStyle(probe).paddingBottom;
+    const ih = window.innerHeight;
+    const vv = window.visualViewport ? Math.round(window.visualViewport.height) : -1;
+    const bar = document.querySelector<HTMLElement>(".mobile-tabbar");
+    let barInfo = "bar: none/hidden";
+    if (bar && getComputedStyle(bar).display !== "none") {
+      const r = bar.getBoundingClientRect();
+      barInfo = `barH=${Math.round(r.height)} pb=${getComputedStyle(bar).paddingBottom} gapBelow=${Math.round(ih - r.bottom)}`;
+    }
+    pill.textContent = `sab=${sab} ih=${ih} vv=${vv}\n${barInfo}`;
+  };
+  read();
+  setTimeout(read, 800);
+  window.addEventListener("resize", read);
+  window.visualViewport?.addEventListener("resize", read);
+})();
