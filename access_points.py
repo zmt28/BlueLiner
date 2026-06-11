@@ -120,7 +120,7 @@ def _normalize_type(raw: str | None) -> str:
     if not raw:
         return "walk_in"
     s = raw.lower()
-    if "ramp" in s or "launch" in s:
+    if "ramp" in s or "launch" in s or "boat" in s:
         return "boat_ramp"
     if "pier" in s or "platform" in s:
         return "pier"
@@ -159,6 +159,7 @@ def _features_to_points(features: list[dict], src: dict) -> list[dict]:
         return _normalize_type(raw)
 
     points: list[dict] = []
+    seen: set[tuple] = set()
     for f in features:
         try:
             g = f.get("geometry")
@@ -172,6 +173,16 @@ def _features_to_points(features: list[dict], src: dict) -> list[dict]:
             name = ((str(props.get(name_field)) if props.get(name_field)
                      else None) if name_field
                     else _pick(props, _NAME_FIELDS)) or "Access point"
+            if src.get("dedupe"):
+                # One pin per named water per ~1 km cell -- collapses
+                # parcel-per-row easement layers (NY PFR publishes
+                # thousands of tiny bank polygons along each stream)
+                # into a usable marker corridor.
+                key = (name.strip().lower(),
+                       round(float(c.y), 2), round(float(c.x), 2))
+                if key in seen:
+                    continue
+                seen.add(key)
             points.append({
                 "name": name,
                 "lat": float(c.y),

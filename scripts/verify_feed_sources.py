@@ -39,10 +39,26 @@ sys.path.insert(0, ROOT)
 
 from states import STATE_BBOX  # noqa: E402
 
-TIMEOUT = 20.0
+TIMEOUT = 30.0
 UA = {"User-Agent": "Blueliner/1.0 (+https://blueliner.app)"}
 
 DOMAINS = ("stocking", "access_points")
+
+
+def _get_json(client: httpx.Client, url: str, params: dict) -> dict:
+    """GET with 3 attempts + backoff. Some agency hosts (DE firstmap)
+    are chronically slow and time out on the first hit but answer on
+    retry; the runtime fetcher degrades gracefully, but the CI gate
+    shouldn't go red on a single slow response."""
+    import time
+    last: Exception | None = None
+    for attempt in range(3):
+        try:
+            return client.get(url, params=params).json()
+        except Exception as exc:
+            last = exc
+            time.sleep(2 * (attempt + 1))
+    raise last
 
 
 def _layer_url(query_url: str) -> str:
@@ -77,7 +93,7 @@ def verify_source(client: httpx.Client, src: dict) -> list[str]:
     state = src.get("state")
 
     try:
-        meta = client.get(layer, params={"f": "json"}).json()
+        meta = _get_json(client, layer, {"f": "json"})
     except Exception as exc:
         return [f"layer metadata fetch failed: {exc}"]
     if "error" in meta or not meta.get("geometryType"):
@@ -100,9 +116,9 @@ def verify_source(client: httpx.Client, src: dict) -> list[str]:
         where = q.get("where", "1=1")
 
     try:
-        cnt = client.get(base, params={
+        cnt = _get_json(client, base, {
             "where": where, "returnCountOnly": "true", "f": "json",
-        }).json().get("count")
+        }).get("count")
     except Exception as exc:
         cnt = None
         fails.append(f"count query failed: {exc}")
@@ -110,10 +126,10 @@ def verify_source(client: httpx.Client, src: dict) -> list[str]:
         fails.append("layer is empty (count=0)")
 
     try:
-        gj = client.get(base, params={
+        gj = _get_json(client, base, {
             "where": where, "outFields": "*", "f": "geojson",
             "outSR": "4326", "resultRecordCount": "5",
-        }).json()
+        })
         feats = gj.get("features") or []
     except Exception as exc:
         return fails + [f"f=geojson sample failed: {exc}"]
@@ -146,8 +162,16 @@ def run(path: str, required: bool, client: httpx.Client) -> int:
     for src in raw.get("sources", []):
         fails = verify_source(client, src)
         if fails:
-            n_failed += 1
-            sev = "FAIL" if required else "warn"
+            # `flaky: true` marks a source whose host has a documented
+            # history of multi-hour outages (DE firstmap). It was fully
+            # verified when added and the runtime loader degrades to the
+            # baseline while it's down -- so it warns instead of
+            # redding the gate.
+            hard = required and not src.get("flaky")
+            if hard:
+                n_failed += 1
+            sev = "FAIL" if hard else ("warn (flaky)" if src.get("flaky")
+                                       else "warn")
             for f in fails:
                 print(f"  {sev}: [{src.get('state')}] "
                       f"{src.get('label')}: {f}")
