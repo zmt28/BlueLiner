@@ -251,6 +251,80 @@
       "name_field": "RACA_site_name",
       "fixed_type": "walk_in",
       "notes_field": "River"
+    },
+    {
+      "state": "NH",
+      "label": "NHFG Access Sites to Public Waters",
+      "url": "https://services8.arcgis.com/hg1B9Egwk1I5p300/arcgis/rest/services/nh_access_sites/FeatureServer/0/query?where=1%3D1",
+      "agency_url": "https://www.wildlife.nh.gov/fishing-nh",
+      "name_field": "FACILITY",
+      "type_flags": {
+        "BOAT": "boat_ramp"
+      },
+      "notes_field": "WATER_BODY"
+    },
+    {
+      "state": "CT",
+      "label": "CT DEEP Trailered Boat Launches",
+      "url": "https://services1.arcgis.com/FjPcSmEFuDYlIdKC/arcgis/rest/services/DEEP_State_Trailered_Boat_Launches/FeatureServer/0/query?where=STATUS%20%3D%20%27Open%27",
+      "agency_url": "https://portal.ct.gov/DEEP/Boating/Boat-Launches/State-Boat-Launches",
+      "name_field": "ACCSS_NAME",
+      "fixed_type": "boat_ramp",
+      "notes_field": "WATERBODY"
+    },
+    {
+      "state": "CT",
+      "label": "CT DEEP Cartop/Carry-In Boat Launches",
+      "url": "https://services1.arcgis.com/FjPcSmEFuDYlIdKC/arcgis/rest/services/DEEP_State_Cartop_Boat_Launches/FeatureServer/0/query?where=STATUS%20%3D%20%27Open%27",
+      "agency_url": "https://portal.ct.gov/DEEP/Boating/Boat-Launches/State-Boat-Launches",
+      "name_field": "ACCSS_NAME",
+      "fixed_type": "boat_ramp",
+      "notes_field": "WATERBODY"
+    },
+    {
+      "state": "VT",
+      "label": "VT F&W Fishing Access Areas",
+      "url": "https://anrmaps.vermont.gov/arcgis/rest/services/map_services/MAP_ANR_ANRATLASFISHWILDLIFE_WM_NOCACHE/MapServer/2/query?where=1%3D1",
+      "agency_url": "https://vtfishandwildlife.com/fish/fishing-access-areas",
+      "name_field": "AccessName",
+      "type_field": "AccessType",
+      "notes_field": "WaterBody"
+    },
+    {
+      "state": "RI",
+      "label": "RIGIS Fishing & Boating Access (2012)",
+      "url": "https://services7.arcgis.com/7EbO0sDrpxYJfbeG/arcgis/rest/services/RIGIS_FishingBoatingAccess_2012/FeatureServer/0/query?where=1%3D1",
+      "agency_url": "https://dem.ri.gov/natural-resources-bureau/fish-wildlife",
+      "name_field": "NAME",
+      "type_field": "TYPE",
+      "notes_field": "RMP_CNS"
+    },
+    {
+      "state": "SC",
+      "label": "SCDNR Public Water Access",
+      "url": "https://services.arcgis.com/acgZYxoN5Oj8pDLa/arcgis/rest/services/South_Carolina_Public_Water_Access_PUBLIC_VIEW/FeatureServer/0/query?where=1%3D1",
+      "agency_url": "https://www.dnr.sc.gov/boating.html",
+      "name_field": "WaterAccessName",
+      "type_field": "WaterAccessType",
+      "notes_field": "Waterbody"
+    },
+    {
+      "state": "GA",
+      "label": "GA WRD Water Access Points",
+      "url": "https://services6.arcgis.com/9QlSLDqa0P1cHLhu/arcgis/rest/services/WRD_Water_Access_Points/FeatureServer/0/query?where=1%3D1",
+      "agency_url": "https://georgiawildlife.com/allboatramps",
+      "name_field": "Name",
+      "fixed_type": "boat_ramp",
+      "notes_field": "Waterbody"
+    },
+    {
+      "state": "AR",
+      "label": "AGFC Water Access Site Features",
+      "url": "https://services.arcgis.com/5bMc8SlGDYGINZr5/arcgis/rest/services/AGFC_Water_Access/FeatureServer/0/query?where=1%3D1",
+      "agency_url": "https://www.agfc.com/fishing/",
+      "name_field": "official_name",
+      "type_field": "feature_type",
+      "notes_field": "waterbody_name"
     }
   ]
 }

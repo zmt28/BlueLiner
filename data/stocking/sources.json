@@ -181,6 +181,62 @@
       "name_field": "Lake_Name",
       "species_field": "Species",
       "dedupe": true
+    },
+    {
+      "state": "NH",
+      "label": "NHFG Stocked Streams",
+      "url": "https://services8.arcgis.com/hg1B9Egwk1I5p300/arcgis/rest/services/FishStocking_view/FeatureServer/2/query?where=STOCKED%20%3D%20%27Y%27",
+      "agency_url": "https://www.wildlife.nh.gov/fishing-nh/fish-stocking-report",
+      "category": "Stocked trout water (NHFG)",
+      "name_field": "GNIS_Name",
+      "species_flags": {
+        "BT_SUM": "Brown",
+        "EBT_SUM": "Brook",
+        "RT_SUM": "Rainbow"
+      },
+      "dedupe": true
+    },
+    {
+      "state": "NH",
+      "label": "NHFG Stocked Lakes",
+      "url": "https://services8.arcgis.com/hg1B9Egwk1I5p300/arcgis/rest/services/FishStocking_view/FeatureServer/3/query?where=STOCKED%20%3D%20%27Y%27",
+      "agency_url": "https://www.wildlife.nh.gov/fishing-nh/fish-stocking-report",
+      "category": "Stocked trout lake (NHFG)",
+      "name_field": "GNIS_Name",
+      "species_flags": {
+        "BT_SUM": "Brown",
+        "EBT_SUM": "Brook",
+        "RT_SUM": "Rainbow"
+      },
+      "dedupe": true
+    },
+    {
+      "state": "CT",
+      "label": "CT DEEP Fisheries Stocking Sites",
+      "url": "https://services1.arcgis.com/FjPcSmEFuDYlIdKC/arcgis/rest/services/CT_Fisheries_Stocking_Sites/FeatureServer/0/query?where=active%20%3D%20%27Y%27",
+      "agency_url": "https://portal.ct.gov/deep/fishing/general-information/weekly-fish-stocking-report",
+      "category": "Stocking site (CT DEEP)",
+      "name_field": "route_name",
+      "dedupe": true
+    },
+    {
+      "state": "VT",
+      "label": "VT F&W Fish Stocking Locations",
+      "url": "https://anrmaps.vermont.gov/arcgis/rest/services/map_services/MAP_ANR_ANRATLASFISHWILDLIFE_WM_NOCACHE/MapServer/52/query?where=1%3D1",
+      "agency_url": "https://vtfishandwildlife.com/fish/fishing-opportunities",
+      "category": "Stocking location (VT F&W)",
+      "name_field": "Waterbody",
+      "species_field": "Species",
+      "dedupe": true
+    },
+    {
+      "state": "GA",
+      "label": "GA WRD Recently Stocked Trout Streams",
+      "url": "https://services6.arcgis.com/9QlSLDqa0P1cHLhu/arcgis/rest/services/Recently_Stocked_Streams/FeatureServer/0/query?where=1%3D1",
+      "agency_url": "https://georgiawildlife.com/trout-fishing",
+      "category": "Recently stocked trout stream (GA WRD)",
+      "name_field": "Name",
+      "dedupe": true
     }
   ]
 }

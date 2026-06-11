@@ -1,2 +1,6 @@
-# Round E3: New England + Southeast feed discovery (final round).
-states: NH,ME,MA,CT,VT,RI,NC,SC,GA,AL,AR
+# Ad-hoc GIS discovery/verification request file (gis-endpoint-verify
+# Actions job). Leave only comments to skip discovery -- the job always
+# verifies data/{stocking,access_points}/sources.json regardless.
+#
+# Either:  states: MT,ID,...        (discovery + auto-verify)
+# Or:      MT|https://host/.../FeatureServer/0   (explicit layer dump)

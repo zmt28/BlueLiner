@@ -38,6 +38,23 @@
       "url": "https://services.arcgis.com/V6ZHFr6zdgNZuVG0/arcgis/rest/services/Parks___Brandt_Mobile1_WFL1/FeatureServer/4/query?where=1%3D1",
       "agency_url": "https://gfp.sd.gov/boating/",
       "note": "Only SD layer that passed (376 ramps) but it is owner=russell_jsapi, a personal account mirroring GFP data. Do NOT promote; find the GFP-owned service instead."
+    },
+    {
+      "state": "NC",
+      "label": "NCWRC Boating Access Areas (inland)",
+      "url": "https://services1.arcgis.com/aT1T0pU1ZdpuDk1t/arcgis/rest/services/NCPublicBoatRamps_WFL1/FeatureServer/2/query?where=Site_Status%20%3D%20%27OPEN%27",
+      "agency_url": "https://www.ncwildlife.gov/boating/boating-access-areas",
+      "name_field": "BAA_Name",
+      "fixed_type": "boat_ramp",
+      "notes_field": "Water_Access",
+      "note": "184 inland BAA points (plus /0 joint 31, /1 coastal 37). Content matches official WRC records (depot names, Land & Water Access phone 919-707-0150) and passed all checks 2026-06-11, but the AGOL org aT1T0pU1ZdpuDk1t isn't confirmed as NCWRC -- cross-check against the official nconemap.gov ncwrc::ncwrc-boating-access-areas dataset, then promote."
+    },
+    {
+      "state": "AL",
+      "label": "AL boat ramps (third-party national org)",
+      "url": "https://services2.arcgis.com/C8EMgrsFcRFL6LrL/arcgis/rest/services/US_Recreational_Facilities/FeatureServer/2/query?where=1%3D1",
+      "agency_url": "https://www.outdooralabama.com/",
+      "note": "Only 33 coastal ramps on a non-agency 'US_Recreational_Facilities' org. Not authoritative; outdooralabama.com publishes a ramp finder whose underlying service wasn't discoverable. Do not promote as-is."
     }
   ]
 }
