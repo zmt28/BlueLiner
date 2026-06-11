@@ -1,2 +1,2 @@
-# Round E2: midwest/plains feed discovery.
-states: MI,WI,MN,NE,ND,SD,KS,OK,TX,IL,IN
+# Round E3: New England + Southeast feed discovery (final round).
+states: NH,ME,MA,CT,VT,RI,NC,SC,GA,AL,AR

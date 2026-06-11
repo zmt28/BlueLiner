@@ -2,13 +2,6 @@
   "_comment": "UNVERIFIED access-point feed leads -- same shape as sources.json. The Claude Code sandbox egress allowlist blocks these hosts, so the end-to-end check couldn't run when they were researched (2026-06). Run `python scripts/verify_feed_sources.py --candidates` from a dev machine or CI (open egress), fill in field mappings from the dump, and promote passing entries into sources.json. Leads without a confirmed layer/service URL: TN TWRA boat launch + fishing access datasets (tn-tnmap.opendata.arcgis.com / tnmap.tn.gov ENVIRONMENTAL/TWRA MapServer), KY KDFWR boat ramps (opengisdata.ky.gov item a519a58869e2488a8b073fbdf1717129), NE Game & Parks Public Access Boat Ramps (data-outdoornebraska.opendata.arcgis.com), IN DNR Fishing Access Sites (indianamap.org INMap::fishing-access-sites), OH ODNR boating access (gis-odnr.opendata.arcgis.com), MN DNR Water Access Sites (gisdata.mn.gov / arcgis.dnr.state.mn.us).",
   "sources": [
     {
-      "state": "TX",
-      "label": "TPWD River Access and Conservation Areas",
-      "url": "https://tpwd.texas.gov/server/rest/services/inland/River_Access_and_Conservation_Areas/FeatureServer/0/query?where=1%3D1",
-      "agency_url": "https://tpwd.texas.gov/fishboat/fish/recreational/rivers/",
-      "note": "Leased river-access program sites; some are walk-in angler easements (access may be 'permit'). Passed the CI candidates check 2026-06-09 but the host flaked on a follow-up field dump (meta fetch timed out) -- verify twice before promoting."
-    },
-    {
       "state": "DE",
       "label": "DNREC Public Fishing Ponds",
       "url": "https://enterprise.firstmap.delaware.gov/arcgis/rest/services/Hydrology/DE_Public_Ponds/MapServer/0/query?where=1%3D1",
@@ -31,6 +24,20 @@
       "url": "https://services.arcgis.com/ZzrwjTRez6FJiOq4/arcgis/rest/services/Community_fisheries/FeatureServer/0/query?where=1%3D1",
       "agency_url": "https://wildlife.utah.gov/community-fisheries.html",
       "note": "64 community fishing ponds (2021 vintage), verified PASS; UT has no statewide DWR access layer (boating access is State Parks territory). Promote if pond-level access is wanted."
+    },
+    {
+      "state": "TX",
+      "label": "TX Public Water Access / Boat Ramps (owner unconfirmed)",
+      "url": "https://services1.arcgis.com/1mtXwieMId59thmg/arcgis/rest/services/BoatRamps_Public/FeatureServer/0/query?where=1%3D1",
+      "agency_url": "https://tpwd.texas.gov/fishboat/boat/",
+      "note": "2,235 points with TPWD PWAID/TPWAID ids; passed all checks 2026-06-10 but the AGOL org owner couldn't be confirmed as TPWD -- confirm item ownership before promoting."
+    },
+    {
+      "state": "SD",
+      "label": "SD boat ramps (NOT authoritative -- personal AGOL)",
+      "url": "https://services.arcgis.com/V6ZHFr6zdgNZuVG0/arcgis/rest/services/Parks___Brandt_Mobile1_WFL1/FeatureServer/4/query?where=1%3D1",
+      "agency_url": "https://gfp.sd.gov/boating/",
+      "note": "Only SD layer that passed (376 ramps) but it is owner=russell_jsapi, a personal account mirroring GFP data. Do NOT promote; find the GFP-owned service instead."
     }
   ]
 }

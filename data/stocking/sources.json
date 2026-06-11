@@ -171,6 +171,16 @@
       "name_field": "WATERBODYNAME",
       "flaky": true,
       "note": "flaky host: enterprise.firstmap.delaware.gov passed the full 4-check protocol 2026-06-09 but has multi-hour outage windows (timed out in 3 consecutive gate runs 2026-06-10 even with retries). Runtime degrades to the DE baseline while it's down."
+    },
+    {
+      "state": "ND",
+      "label": "ND Game & Fish Stocking Records (trout, 2023+)",
+      "url": "https://ndgishub.nd.gov/arcgis/rest/services/Applications/GNF_FishingWaters/MapServer/3/query?where=Species%20LIKE%20%27%25Trout%25%27%20AND%20StockYear%20%3E%3D%202023",
+      "agency_url": "https://gf.nd.gov/fishing/stocking-reports",
+      "category": "Stocked (ND Game & Fish, recent records)",
+      "name_field": "Lake_Name",
+      "species_field": "Species",
+      "dedupe": true
     }
   ]
 }

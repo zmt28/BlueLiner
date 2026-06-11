@@ -189,6 +189,68 @@
       "access": "private_easement",
       "notes_field": "AGENCY",
       "dedupe": true
+    },
+    {
+      "state": "MI",
+      "label": "MI DNR Boating Access Sites",
+      "url": "https://services3.arcgis.com/Jdnp1TjADvSDxMAX/arcgis/rest/services/DNR_State_Sponsored_Developed_Boating_Access_Sites_Public_View/FeatureServer/0/query?where=1%3D1",
+      "agency_url": "https://www.michigan.gov/dnr/places/boating-access",
+      "name_field": "name",
+      "fixed_type": "boat_ramp",
+      "notes_field": "waterbody"
+    },
+    {
+      "state": "WI",
+      "label": "WI DNR Boat Access Sites",
+      "url": "https://dnrmaps.wi.gov/arcgis/rest/services/LF_DML/AGOL_LF_DNR_BOAT_ACCESS_WTM_Ext/MapServer/3/query?where=ABANDON_FLAG%20%3D%20%27No%27",
+      "agency_url": "https://dnr.wisconsin.gov/topic/lands/boataccess",
+      "name_field": "LMS_BOAT_LANDING_NAME",
+      "type_field": "LANDING_TYPE_CODE",
+      "notes_field": "WATERBODY_NAME_TEXT"
+    },
+    {
+      "state": "WI",
+      "label": "WI DNR Shore Fishing Sites",
+      "url": "https://dnrmaps.wi.gov/arcgis/rest/services/LF_DML/AGOL_LF_DNR_BOAT_ACCESS_WTM_Ext/MapServer/2/query?where=1%3D1",
+      "agency_url": "https://dnr.wisconsin.gov/topic/fishing",
+      "name_field": "FACILITY_NAME_TEXT",
+      "fixed_type": "walk_in",
+      "notes_field": "WATERBODY_NAME_TEXT"
+    },
+    {
+      "state": "MN",
+      "label": "MN DNR Water Access Sites",
+      "url": "https://enterprise.gisdata.mn.gov/aghost/rest/services/us_mn_state_dnr/struc_water_access_sites/FeatureServer/0/query?where=1%3D1",
+      "agency_url": "https://www.dnr.state.mn.us/water_access/index.html",
+      "name_field": "access_name",
+      "type_field": "launch_type",
+      "notes_field": "lake_name"
+    },
+    {
+      "state": "NE",
+      "label": "Nebraska Game & Parks Boat Ramps",
+      "url": "https://services5.arcgis.com/IOshH1zLrIieqrNk/arcgis/rest/services/Boating_App_Web_Layers/FeatureServer/0/query?where=1%3D1",
+      "agency_url": "http://outdoornebraska.gov/boating/",
+      "name_field": "rAreaName",
+      "fixed_type": "boat_ramp"
+    },
+    {
+      "state": "ND",
+      "label": "ND Game & Fish Fishing Facilities",
+      "url": "https://ndgishub.nd.gov/arcgis/rest/services/Applications/GNF_FishingWaters/MapServer/4/query?where=Useable%20%3D%20%27Y%27",
+      "agency_url": "https://gf.nd.gov/fishing",
+      "name_field": "Lake_Name",
+      "type_field": "code_Name",
+      "notes_field": "code_Name"
+    },
+    {
+      "state": "TX",
+      "label": "TPWD River Access and Conservation Areas",
+      "url": "https://tpwd.texas.gov/server/rest/services/Inland/River_Access_and_Conservation_Areas/FeatureServer/0/query?where=Lease_Status%20%3D%20%27current%27",
+      "agency_url": "https://tpwd.texas.gov/fishboat/fish/recreational/rivers/",
+      "name_field": "RACA_site_name",
+      "fixed_type": "walk_in",
+      "notes_field": "River"
     }
   ]
 }
