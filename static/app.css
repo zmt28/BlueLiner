@@ -2019,3 +2019,30 @@ html, body {
   border-color: var(--bl-river-700, #1d6a8a);
 }
 .offline-actionbar-go:disabled { opacity: 0.5; cursor: default; }
+
+/* Stream-class filter chips (Filters pane → Stream network). The hidden
+   checkbox drives the chip state; an unchecked class reads as faded/dashed. */
+.class-filter {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+.class-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 11px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--bl-ink-700, #2c3947);
+  background: var(--bg-surface, #fff);
+  border: 1px solid var(--bl-ink-200, #d7dde5);
+  border-radius: 999px;
+  cursor: pointer;
+  user-select: none;
+}
+.class-chip input { position: absolute; opacity: 0; width: 0; height: 0; }
+.class-chip .class-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+.class-chip:has(input:not(:checked)) { opacity: 0.42; border-style: dashed; }
+.class-chip:has(input:focus-visible) { outline: 2px solid var(--bl-river-500, #2f93bd); outline-offset: 1px; }

@@ -236,10 +236,12 @@ interface ReachDetail {
     (gold / class1 / class2 / class3), or "unclassified" when no tier applies. */
 type StreamTier = "gold" | "class1" | "class2" | "class3" | "unclassified";
 
-/** The two orthogonal stream filters layered over the tier coloring. */
+/** Stream-network filters layered over the tier coloring: which quality tiers
+ *  to show, plus the orthogonal wild / native narrowing. */
 interface StreamFilters {
   wild: boolean;
   native: boolean;
+  tiers: Record<StreamTier, boolean>;
 }
 
 /** /api/stocking feature properties (one per stocked water). */

@@ -97,31 +97,60 @@ export function streamColor(p: ClickableStreamProps): string {
   return TIER_COLOR[streamTier(p)];
 }
 
-// -- Stream filters (wild / native) ---------------------------------
-// Two orthogonal toggles layered over the tier coloring: show only reaches
-// with naturally-reproducing wild trout, and/or native species. Persisted to
-// localStorage; applied via setFilter on both stream layers (no refetch).
+// -- Stream filters (class + wild / native) -------------------------
+// Three filters layered over the tier coloring, AND-ed: which quality classes
+// to show (Gold / Class 1-3 / Unclassified), plus narrow to naturally-
+// reproducing wild trout and/or native species. Persisted to localStorage;
+// applied via setFilter on both stream layers (no refetch).
+
+const ALL_TIERS: StreamTier[] = ["gold", "class1", "class2", "class3", "unclassified"];
 
 function loadStreamFilters(): StreamFilters {
+  const tiers = {} as Record<StreamTier, boolean>;
+  let saved: string[] | null = null;
+  let wild = false;
+  let native = false;
   try {
-    return {
-      wild: localStorage.getItem("bl_filter_wild") === "1",
-      native: localStorage.getItem("bl_filter_native") === "1",
-    };
+    const raw = localStorage.getItem("bl_filter_tiers");
+    if (raw != null) saved = raw.split(",").filter(Boolean);
+    wild = localStorage.getItem("bl_filter_wild") === "1";
+    native = localStorage.getItem("bl_filter_native") === "1";
   } catch (_) {
-    return { wild: false, native: false };
+    /* localStorage unavailable -> defaults */
   }
+  for (const t of ALL_TIERS) tiers[t] = saved ? saved.includes(t) : true;
+  return { wild, native, tiers };
 }
 
 let _filters: StreamFilters = loadStreamFilters();
 
 export function currentStreamFilters(): StreamFilters {
-  return { ..._filters };
+  return { ..._filters, tiers: { ..._filters.tiers } };
 }
 
-/** MapLibre filter for the active wild/native toggles (AND), or null = all. */
+/** Class-selection clause for the layer filter; null when all classes are on. */
+function tierClause(): unknown[] | null {
+  const on = ALL_TIERS.filter((t) => _filters.tiers[t]);
+  if (on.length === ALL_TIERS.length) return null; // all on -> no constraint
+  if (on.length === 0) return ["==", ["literal", 1], ["literal", 0]]; // none -> hide all
+  const named = on.filter((t) => t !== "unclassified");
+  const clauses: unknown[] = [];
+  if (named.length) clauses.push(["in", ["get", "tier"], ["literal", named]]);
+  // "Unclassified" = a reach whose tier isn't one of the four named tiers.
+  if (_filters.tiers.unclassified) {
+    clauses.push([
+      "!",
+      ["in", ["get", "tier"], ["literal", ["gold", "class1", "class2", "class3"]]],
+    ]);
+  }
+  return clauses.length === 1 ? (clauses[0] as unknown[]) : ["any", ...clauses];
+}
+
+/** MapLibre filter for the active class + wild/native filters (AND), or null. */
 function streamFilterExpr(): unknown[] | null {
   const clauses: unknown[] = [];
+  const tc = tierClause();
+  if (tc) clauses.push(tc);
   if (_filters.wild) clauses.push(["==", ["get", "is_wild"], true]);
   if (_filters.native) clauses.push(["==", ["get", "is_native"], true]);
   return clauses.length ? ["all", ...clauses] : null;
@@ -134,11 +163,20 @@ function applyStreamFilter(): void {
   }
 }
 
-export function setStreamFilters(next: Partial<StreamFilters>): void {
-  _filters = { ..._filters, ...next };
+type StreamFilterPatch = {
+  wild?: boolean;
+  native?: boolean;
+  tiers?: Partial<Record<StreamTier, boolean>>;
+};
+
+export function setStreamFilters(next: StreamFilterPatch): void {
+  if (next.tiers) _filters.tiers = { ..._filters.tiers, ...next.tiers };
+  if (next.wild !== undefined) _filters.wild = next.wild;
+  if (next.native !== undefined) _filters.native = next.native;
   try {
     localStorage.setItem("bl_filter_wild", _filters.wild ? "1" : "0");
     localStorage.setItem("bl_filter_native", _filters.native ? "1" : "0");
+    localStorage.setItem("bl_filter_tiers", ALL_TIERS.filter((t) => _filters.tiers[t]).join(","));
   } catch (_) {
     /* localStorage unavailable; in-memory state still reflects */
   }

@@ -311,22 +311,6 @@
                             <button type="button" id="offline-clear" class="bl-offline-clear" hidden>Remove downloads</button>
                         </div>
                     </section>
-                    <section class="panel-section">
-                        <div class="panel-section-label">Trout filters</div>
-                        <label class="filter-row-toggle">
-                            <span class="filter-row-icon"><i data-lucide="fish" aria-hidden="true"></i></span>
-                            <span class="filter-row-label">Wild trout rivers</span>
-                            <input type="checkbox" id="filter-wild">
-                            <span class="filter-row-check"><i data-lucide="check" aria-hidden="true"></i></span>
-                        </label>
-                        <label class="filter-row-toggle">
-                            <span class="filter-row-icon"><i data-lucide="leaf" aria-hidden="true"></i></span>
-                            <span class="filter-row-label">Native trout rivers</span>
-                            <input type="checkbox" id="filter-native">
-                            <span class="filter-row-check"><i data-lucide="check" aria-hidden="true"></i></span>
-                        </label>
-                        <p class="panel-note">Streams are colored by quality tier (Gold / Class 1&ndash;3). These toggles narrow the network to wild-reproducing and/or native-species rivers.</p>
-                    </section>
                 </div>
 
                 <!-- ===== Map Filters & Settings ===== -->
@@ -356,6 +340,29 @@
                             <input type="checkbox" id="stocked-only">
                             <span class="filter-row-check"><i data-lucide="check" aria-hidden="true"></i></span>
                         </label>
+                    </section>
+                    <section class="panel-section">
+                        <div class="panel-section-label">Stream network</div>
+                        <div class="class-filter" id="class-filter" role="group" aria-label="Filter streams by class">
+                            <label class="class-chip"><input type="checkbox" data-tier="gold" checked><span class="class-dot" style="background:#d4af37"></span>Gold</label>
+                            <label class="class-chip"><input type="checkbox" data-tier="class1" checked><span class="class-dot" style="background:#1e8449"></span>Class 1</label>
+                            <label class="class-chip"><input type="checkbox" data-tier="class2" checked><span class="class-dot" style="background:#2e86c1"></span>Class 2</label>
+                            <label class="class-chip"><input type="checkbox" data-tier="class3" checked><span class="class-dot" style="background:#7f8c9a"></span>Class 3</label>
+                            <label class="class-chip"><input type="checkbox" data-tier="unclassified" checked><span class="class-dot" style="background:#8a9bb0"></span>Unclassified</label>
+                        </div>
+                        <label class="filter-row-toggle">
+                            <span class="filter-row-icon"><i data-lucide="fish" aria-hidden="true"></i></span>
+                            <span class="filter-row-label">Wild trout rivers</span>
+                            <input type="checkbox" id="filter-wild">
+                            <span class="filter-row-check"><i data-lucide="check" aria-hidden="true"></i></span>
+                        </label>
+                        <label class="filter-row-toggle">
+                            <span class="filter-row-icon"><i data-lucide="leaf" aria-hidden="true"></i></span>
+                            <span class="filter-row-label">Native trout rivers</span>
+                            <input type="checkbox" id="filter-native">
+                            <span class="filter-row-check"><i data-lucide="check" aria-hidden="true"></i></span>
+                        </label>
+                        <p class="panel-note">Filter the clickable stream network by quality class, and narrow to wild-reproducing and/or native-species water.</p>
                     </section>
                     <button id="filter-reset" type="button" class="filter-reset">Reset filters</button>
                     <section class="panel-section">
