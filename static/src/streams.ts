@@ -36,7 +36,7 @@ import { selectRiver } from "./selection";
 // to name the exact agency designation on the reach card. Wild/native are
 // separate filter flags (is_wild / is_native), not part of the color.
 
-const TIER_COLOR: Record<StreamTier, string> = {
+export const TIER_COLOR: Record<StreamTier, string> = {
   gold: "#d4af37", // gold -- premier / blue-ribbon water
   class1: "#1e8449", // green -- high-quality
   class2: "#2e86c1", // blue -- solid everyday trout water

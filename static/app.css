@@ -763,13 +763,9 @@ html, body {
     background: var(--bl-pin);
     transform: rotate(-45deg);
 }
-.legend-dot--stocked { background: var(--bl-stocked); position: relative; }
-.legend-dot--stocked::after {
-    content: ""; position: absolute;
-    top: 50%; left: 50%; width: 5px; height: 5px;
-    transform: translate(-50%, -50%);
-    border-radius: 50%; background: #fff;
-}
+/* Stream-tier swatches: a short stroked squiggle (legend.ts), because
+   tiers are LINE colors on the map -- a dot here read as a marker. */
+.legend-line { flex-shrink: 0; display: block; }
 
 /* POI markers (access points, stocked waters): one brand-blue disc
    with a white type glyph (poi-icons.ts) -- type is the glyph, never a
