@@ -125,6 +125,20 @@ MAX_PAGES = 80
 MAX_RETRIES = 5  # per-request retries (transport errors + 5xx) before giving up
 SPATIAL_JOIN_BUFFER_DEG = 0.001  # ~100 m
 
+# Per-SOURCE retries (on top of _http_get_retry's per-request backoff): a state
+# server that passes a light probe but flaps mid-pagination (CPW) gets the whole
+# paginated pull retried a bounded number of times before we fall back to its
+# seed. 3 attempts, waiting 15s then 45s between them.
+SOURCE_FETCH_ATTEMPTS = 3
+SOURCE_FETCH_BACKOFF = (15, 45)
+
+# Auto-captured last-known-good seeds: after a successful live fetch+join, each
+# source's tagged COMID set is written here (one JSON per source) so the next
+# build can tag that state from the prior capture if its server is down.
+# data-build.yml commits refreshed seeds back to the repo after a full build.
+SEEDS_DIR = os.path.join(ROOT, "data", "nhdplus", "seeds")
+PROBE_TIMEOUT = 15.0  # preflight layer-metadata probe
+
 
 # ──────────────────────── NHDPlus download / parse ────────────────────────
 
@@ -388,22 +402,145 @@ def fetch_arcgis_features(query_url: str, page_size: int = 1000) -> list[dict]:
     return features
 
 
-# ──────────────────────── Trout GIS ingestion ────────────────────────
+# ──────────────────── Last-known-good seeds (per source) ────────────────────
+# A seed is a committed capture of one source's tagged COMID set -- everything
+# needed to re-tag that state's reaches ((trout_class, tier, native) per group)
+# without its live endpoint. Two flavors:
+#   * auto-captured: data/nhdplus/seeds/<slug>.json, written by this build after
+#     every successful live fetch+join (full builds only) and committed back by
+#     data-build.yml. Preferred because it's the freshest.
+#   * legacy `seed:` registry key (MD): a hand-captured single-class file; kept
+#     working as a pre-seeded entry until the auto seed supersedes it.
 
-def load_seed(rel_path: str) -> tuple[str, set[int]] | None:
-    """Fallback when a live endpoint is down: load a committed
-    (trout_class, {COMIDs}) capture. Returns None if absent/empty."""
-    path = os.path.join(ROOT, rel_path)
-    if not os.path.exists(path):
-        return None
-    with open(path, encoding="utf-8") as f:
-        seed = json.load(f)
-    comids = {int(c) for c in seed.get("comids", [])}
+def seed_slug(source: dict) -> str:
+    """Stable filesystem-safe slug of state+label (one seed file per source;
+    `label` disambiguates states with multiple sources, e.g. CT)."""
+    raw = f"{source['state']} {source.get('label', '')}".lower()
+    return re.sub(r"[^a-z0-9]+", "-", raw).strip("-")
+
+
+def seed_path(source: dict, seed_dir: str = SEEDS_DIR) -> str:
+    return os.path.join(seed_dir, f"{seed_slug(source)}.json")
+
+
+def _parse_seed_groups(seed: dict, source: dict) -> list[tuple[tuple, set[int]]]:
+    """Normalize a seed file (either flavor) to [((class, tier, native),
+    {COMIDs}), ...]. Legacy single-class files get the class-fallback tier and
+    the source's registry `native` flag, matching the old MD behavior."""
+    if "groups" in seed:  # auto-captured shape
+        out = []
+        for g in seed["groups"]:
+            comids = {int(c) for c in g.get("comids", [])}
+            if comids:
+                out.append(((g["trout_class"], g.get("tier"),
+                             bool(g.get("native", False))), comids))
+        return out
+    comids = {int(c) for c in seed.get("comids", [])}  # legacy shape
     if not comids:
+        return []
+    cls = seed["trout_class"]
+    return [((cls, trout_registry.FALLBACK_CLASS_TIER.get(cls),
+              trout_registry.is_native(source)), comids)]
+
+
+def find_seed_file(source: dict, seed_dir: str = SEEDS_DIR) -> str | None:
+    """Path of this source's seed if one exists (auto capture preferred, then
+    the legacy `seed:` registry file). None when the source has no seed yet --
+    normal until the first post-merge full build populates the directory."""
+    auto = seed_path(source, seed_dir)
+    if os.path.exists(auto):
+        return auto
+    legacy = source.get("seed")
+    if legacy:
+        path = os.path.join(ROOT, legacy)
+        if os.path.exists(path):
+            return path
+    return None
+
+
+def load_source_seed(source: dict,
+                     seed_dir: str = SEEDS_DIR) -> list[tuple[tuple, set[int]]]:
+    """Fallback when a live endpoint is down: load this source's committed
+    capture. Returns [] when no usable seed exists."""
+    path = find_seed_file(source, seed_dir)
+    if not path:
+        return []
+    try:
+        with open(path, encoding="utf-8") as f:
+            seed = json.load(f)
+        groups = _parse_seed_groups(seed, source)
+    except Exception as e:
+        print(f"  WARNING: unusable seed {path}: {e}")
+        return []
+    if not groups:
+        return []
+    n = sum(len(c) for _, c in groups)
+    captured = seed.get("captured_at") or seed.get("captured_from") or "unknown date"
+    stale = ""
+    try:
+        import datetime
+        dt = datetime.datetime.fromisoformat(str(seed["captured_at"]))
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=datetime.timezone.utc)
+        age = (datetime.datetime.now(datetime.timezone.utc) - dt).days
+        stale = f"; {age}d stale"
+    except Exception:
+        pass
+    print(f"  [trout] seed: tagging {n:,} COMIDs from a prior capture "
+          f"({os.path.relpath(path, ROOT)}, captured {captured}{stale})")
+    return groups
+
+
+def write_source_seed(source: dict, groups: dict[tuple, set[int]],
+                      seed_dir: str = SEEDS_DIR) -> str | None:
+    """Persist a source's freshly-captured tagged COMID set (compact JSON,
+    sorted int lists). Skips the write -- preserving captured_at, so the
+    workflow's changed-seeds guard stays meaningful -- when the capture is
+    empty or identical to the existing seed. Returns the path written."""
+    glist = []
+    for key in sorted(groups, key=lambda k: (k[0] or "", k[1] or "", k[2])):
+        comids = sorted(int(c) for c in groups[key])
+        if not comids:
+            continue
+        cls, tier, native = key
+        glist.append({"trout_class": cls, "tier": tier, "native": bool(native),
+                      "comid_count": len(comids), "comids": comids})
+    if not glist:
         return None
-    print(f"  [trout] seed: {len(comids):,} '{seed['trout_class']}' COMIDs "
-          f"from {seed.get('captured_from', '?')}")
-    return seed["trout_class"], comids
+    path = seed_path(source, seed_dir)
+    if os.path.exists(path):
+        try:
+            with open(path, encoding="utf-8") as f:
+                prev = json.load(f).get("groups")
+            if prev is not None and [
+                {k: g[k] for k in ("trout_class", "tier", "native", "comids")}
+                for g in prev
+            ] == [
+                {k: g[k] for k in ("trout_class", "tier", "native", "comids")}
+                for g in glist
+            ]:
+                return None  # unchanged; keep the existing captured_at
+        except Exception:
+            pass  # unreadable previous seed -> overwrite
+    import datetime
+    obj = {
+        "version": 1,
+        "state": source["state"],
+        "label": source.get("label", source["state"]),
+        "captured_at": datetime.datetime.now(datetime.timezone.utc)
+                               .isoformat(timespec="seconds"),
+        "git_sha": os.environ.get("GITHUB_SHA"),
+        "comid_count": sum(g["comid_count"] for g in glist),
+        "groups": glist,
+    }
+    os.makedirs(seed_dir, exist_ok=True)
+    with open(path, "w", encoding="utf-8") as f:
+        json.dump(obj, f, separators=(",", ":"))
+        f.write("\n")
+    return path
+
+
+# ──────────────────────── Trout GIS ingestion ────────────────────────
 
 
 def _split_by_value(gdf: gpd.GeoDataFrame,
@@ -429,8 +566,8 @@ def _split_by_value(gdf: gpd.GeoDataFrame,
 
 def fetch_trout_source(source: dict) -> list[tuple[tuple, gpd.GeoDataFrame]]:
     """Fetch one registry source -> [((trout_class, tier, native), GeoDataFrame),
-    ...], handling every mode. Raises on transport error so the caller's
-    fetch_source marks the state unreachable (and may then fall back to a seed)."""
+    ...], handling every mode. Raises on transport error so collect_trout_taggers
+    can retry and then fall back to the source's last-known-good seed."""
     if source["mode"] == "multi_layer":
         out: list[tuple[tuple, gpd.GeoDataFrame]] = []
         for layer in source["layers"]:
@@ -467,6 +604,120 @@ def fetch_trout_source(source: dict) -> list[tuple[tuple, gpd.GeoDataFrame]]:
               f"skipping {source['state']}")
         return []
     return _split_by_value(gdf, source)
+
+
+def fetch_trout_source_with_retries(source: dict,
+                                    attempts: int = SOURCE_FETCH_ATTEMPTS,
+                                    backoff=SOURCE_FETCH_BACKOFF,
+                                    fetch=None, sleep=time.sleep):
+    """Per-SOURCE retry wrapper around fetch_trout_source: a server that dies
+    mid-pagination (one bad page) gets the whole source re-pulled after a
+    15s/45s wait, a bounded number of times -- not per-page-infinitely. Raises
+    the last error after `attempts` so the caller can fall back to a seed."""
+    fetch = fetch or fetch_trout_source
+    err: Exception | None = None
+    for attempt in range(1, attempts + 1):
+        try:
+            return fetch(source)
+        except Exception as e:
+            err = e
+            if attempt >= attempts:
+                break
+            wait = backoff[min(attempt - 1, len(backoff) - 1)]
+            print(f"  source retry {attempt}/{attempts - 1} after {e} "
+                  f"(waiting {wait}s)")
+            sleep(wait)
+    raise err  # type: ignore[misc]
+
+
+def collect_trout_taggers(sources: list[dict], fetch=None,
+                          seed_dir: str = SEEDS_DIR):
+    """Fetch every registry source (with per-source retries), falling back to
+    its last-known-good seed when the live endpoint is down.
+
+    Returns (taggers, trout_status). Each tagger preserves registry order
+    (= precedence) and is either
+        {"slug", "label", "source", "live": True,
+         "groups": [((class, tier, native), GeoDataFrame, bounds), ...]}
+    or, seed-backed,
+        {"slug", "label", "source", "live": False,
+         "groups": [((class, tier, native), {COMIDs}), ...]}.
+    trout_status[label] is "ok" | "bundled-seed" | "unreachable"; "unreachable"
+    now means NEITHER live data NOR a seed (the --require-trout gate)."""
+    fetch = fetch or fetch_trout_source_with_retries
+    taggers: list[dict] = []
+    trout_status: dict[str, str] = {}
+    for source in sources:
+        # `label` lets one state contribute multiple sources (e.g. CT's WTMA
+        # wild layer + its general stocked-streams layer), each tracked
+        # independently in trout_status; defaults to the state code.
+        label = source.get("label", source["state"])
+        result = None
+        try:
+            result = fetch(source)
+            trout_status[label] = "ok"
+        except Exception as e:  # transport/HTTP error after all retries
+            print(f"  WARNING: {label} trout source unreachable: {e}")
+        if result is not None:
+            groups = [(key, g, tuple(g.total_bounds))
+                      for key, g in result if len(g)]
+            taggers.append({"slug": seed_slug(source), "label": label,
+                            "source": source, "live": True, "groups": groups})
+            continue
+        seed_groups = load_source_seed(source, seed_dir)
+        if seed_groups:
+            taggers.append({"slug": seed_slug(source), "label": label,
+                            "source": source, "live": False,
+                            "groups": seed_groups})
+            trout_status[label] = "bundled-seed"
+        else:
+            trout_status[label] = "unreachable"
+    return taggers, trout_status
+
+
+# ──────────────────────── Preflight reachability ────────────────────────
+
+def source_probe_urls(source: dict) -> list[str]:
+    """Layer-metadata URL(s) to probe for one source (cheap GET, no features)."""
+    if source["mode"] == "multi_layer":
+        return [f"{source['base']}/{layer['id']}" for layer in source["layers"]]
+    from urllib.parse import urlsplit
+    s = urlsplit(source["url"])
+    return [f"{s.scheme}://{s.netloc}{s.path}".rsplit("/query", 1)[0]]
+
+
+def _probe_layer(url: str) -> bool:
+    """True if the layer's metadata endpoint answers sanely. ArcGIS returns
+    HTTP 200 with an `error` body for broken layers, so check both."""
+    try:
+        with httpx.Client(timeout=PROBE_TIMEOUT, follow_redirects=True,
+                          headers={"User-Agent": USER_AGENT}) as client:
+            r = client.get(url, params={"f": "json"})
+            return r.status_code == 200 and "error" not in r.json()
+    except Exception:
+        return False
+
+
+def preflight_sources(sources: list[dict], seed_dir: str = SEEDS_DIR,
+                      probe=None) -> list[tuple[str, str]]:
+    """Quick reachability pass over all sources BEFORE any heavy work:
+    [(label, "reachable" | "will-use-seed" | "NO DATA"), ...]. A probe pass is
+    no guarantee the full paginated pull succeeds (CPW flaps exactly this way)
+    -- the fetch stage still has its own seed fallback -- but a NO-DATA source
+    (no live endpoint, no seed) is certain to fail the gate, so the build can
+    exit 3 immediately instead of after the NHDPlus downloads."""
+    probe = probe or (lambda s: all(_probe_layer(u) for u in source_probe_urls(s)))
+    rows: list[tuple[str, str]] = []
+    for source in sources:
+        label = source.get("label", source["state"])
+        if probe(source):
+            status = "reachable"
+        elif find_seed_file(source, seed_dir):
+            status = "will-use-seed"
+        else:
+            status = "NO DATA"
+        rows.append((label, status))
+    return rows
 
 
 # ──────────────────────── Join trout to NHD COMIDs ────────────────────────
@@ -630,9 +881,10 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
                         "Default is to delete (bounds peak disk to ~one region) "
                         "so a full lower-48 build fits a small CI runner.")
     p.add_argument("--require-trout", action="store_true",
-                   help="Fail (exit 3) if any state trout source can't be "
-                        "fetched, instead of degrading to untagged geometry. "
-                        "Use for canonical/published release builds.")
+                   help="Fail (exit 3) if any state trout source has NEITHER "
+                        "live data NOR a last-known-good seed, instead of "
+                        "degrading to untagged geometry. Use for canonical/"
+                        "published release builds.")
     p.add_argument("--manifest", default="",
                    help="Also write a provenance manifest JSON (regions, "
                         "resolved NHD archive vintages, feature count) here.")
@@ -659,47 +911,41 @@ def main(argv: list[str] | None = None) -> int:
           f"{', '.join(r['id'] for r in regions)}")
     print(f"NHDPlus cache: {args.cache_dir}\n")
 
+    sources = trout_registry.load_sources()
+
+    # ── Step 0: Preflight (fast-fail before any heavy work) ──
+    # Cheap layer-metadata probes over all sources. Only a NO-DATA source (no
+    # live endpoint AND no seed) is a certain gate failure, so only that exits
+    # early; a flaky-but-probe-passing server still gets the full fetch +
+    # seed-fallback treatment below.
+    print("── Trout-source preflight ──")
+    pf_rows = preflight_sources(sources)
+    width = max(len(label) for label, _ in pf_rows)
+    for label, status in pf_rows:
+        print(f"  {label:<{width}}  {status}")
+    no_data = [label for label, status in pf_rows if status == "NO DATA"]
+    if no_data:
+        print(f"\n⚠ preflight: no live endpoint AND no seed for: "
+              f"{', '.join(no_data)}")
+        if args.require_trout:
+            print("--require-trout set; failing fast before NHDPlus downloads.",
+                  file=sys.stderr)
+            return 3
+
     # ── Step 1: Fetch state trout GIS (small; held in memory once) ──
-    # These are third-party state ArcGIS servers that occasionally go down. After
-    # _http_get_retry has exhausted its backoff, a source is reported unreachable
-    # rather than aborting the whole build: the clickable geometry still ships, it
-    # just isn't trout-tagged for that state. A canonical release should pass
-    # --require-trout so an incomplete artifact never gets published silently.
-    trout_status: dict[str, str] = {}  # source label -> "ok" | "unreachable"
-
-    def fetch_source(label: str, fn):
-        try:
-            result = fn()
-            trout_status[label] = "ok"
-            return result
-        except Exception as e:  # transport/HTTP error after retries
-            print(f"  WARNING: {label} trout source unreachable: {e}")
-            trout_status[label] = "unreachable"
-            return None
-
-    # ── Trout sources from the declarative registry (data/trout/sources.json) ──
-    # Order = precedence (first writer wins per COMID); states don't overlap, so
-    # order among them is immaterial. Each entry's mode is handled by
-    # fetch_trout_source. A source with a `seed` falls back to its committed
-    # COMID capture when the live endpoint is unreachable (MD), so the build
-    # stays complete enough for --require-trout.
-    trout_sources: list[tuple[str, gpd.GeoDataFrame, tuple]] = []
-    md_seed: tuple[str, set[int]] | None = None
-    for source in trout_registry.load_sources():
-        # `label` lets one state contribute multiple sources (e.g. CT's WTMA
-        # wild layer + its general stocked-streams layer), each tracked
-        # independently in trout_status; defaults to the state code.
-        label = source.get("label", source["state"])
-        result = fetch_source(label, lambda s=source: fetch_trout_source(s))
-        if result:
-            for key, g in result:
-                if len(g):
-                    trout_sources.append((key, g, tuple(g.total_bounds)))
-        elif source.get("seed") and trout_status.get(label) == "unreachable":
-            seed = load_seed(source["seed"])
-            if seed:
-                md_seed = seed
-                trout_status[label] = "bundled-seed"
+    # Third-party state ArcGIS servers occasionally go down. Each source gets
+    # per-request backoff (_http_get_retry) plus per-source retries
+    # (fetch_trout_source_with_retries); after those, it falls back to its
+    # last-known-good seed (data/nhdplus/seeds/, or the legacy `seed:` registry
+    # key). Only a source with NEITHER live data NOR a seed is "unreachable" --
+    # the clickable geometry still ships, that state just isn't trout-tagged.
+    # A canonical release should pass --require-trout so an incomplete artifact
+    # never gets published silently.
+    #
+    # Tagger order = registry order = precedence (first writer wins per COMID);
+    # states don't overlap, so order among them is immaterial.
+    print("\n── Trout-source fetch ──")
+    taggers, trout_status = collect_trout_taggers(sources)
 
     seeded = sorted(k for k, v in trout_status.items() if v == "bundled-seed")
     if seeded:
@@ -707,8 +953,9 @@ def main(argv: list[str] | None = None) -> int:
               f"(live endpoint down; tagging from a prior capture).")
     unreachable = sorted(k for k, v in trout_status.items() if v == "unreachable")
     if unreachable:
-        print(f"\n⚠ trout sources unreachable: {', '.join(unreachable)} — "
-              f"clickable geometry still builds, but those states are untagged.")
+        print(f"\n⚠ trout sources unreachable (no live data, no seed): "
+              f"{', '.join(unreachable)} — clickable geometry still builds, "
+              f"but those states are untagged.")
         if args.require_trout:
             print("--require-trout set; refusing to ship an incomplete release.",
                   file=sys.stderr)
@@ -729,6 +976,10 @@ def main(argv: list[str] | None = None) -> int:
     keep = args.keep_extracts or args.skip_download
     print("\n── Building (VPU-streaming) ──")
     resolved: dict[str, dict] = {}   # region id -> {snap, attr} (provenance)
+    # Per-source live-join capture: slug -> key -> COMIDs, written out as
+    # last-known-good seeds after the loop (full builds only).
+    captured: dict[str, dict[tuple, set[int]]] = \
+        defaultdict(lambda: defaultdict(set))
     by_class: dict[str, int] = defaultdict(int)
     by_tier: dict[str, int] = defaultdict(int)   # post eastern-gold (calibration)
     native_count = 0                             # emitted reaches with is_native
@@ -756,27 +1007,29 @@ def main(argv: list[str] | None = None) -> int:
             rbounds = tuple(gdf.total_bounds)
             region_trout: dict[int, tuple] = {}   # comid -> (class, tier); first wins
             region_native: set[int] = set()        # comid -> native; OR-merged overlay
-            # Bundled MD seed first (highest precedence, == live MD order): tag
-            # the seed COMIDs that fall in this region. Membership in `attrs`
-            # confines them to their own VPU, mirroring the live spatial join.
-            if md_seed:
-                seed_cls, seed_comids = md_seed
-                seed_val = (seed_cls,
-                            trout_registry.FALLBACK_CLASS_TIER.get(seed_cls))
-                for c in seed_comids:
-                    if c in attrs:
-                        region_trout.setdefault(c, seed_val)
-            # class/tier are first-writer-wins (state precedence); the native flag
-            # is OR-merged across sources so a native overlay (e.g. TU brook trout)
-            # enriches a state-claimed reach instead of being dropped on collision.
-            for value, tgdf, tbounds in trout_sources:
-                if not _bbox_overlap(rbounds, tbounds):
-                    continue
-                cls, tier, nat = value
-                for c in spatial_join_trout(tgdf, gdf, attrs):
-                    region_trout.setdefault(c, (cls, tier))
-                    if nat:
-                        region_native.add(c)
+            # class/tier are first-writer-wins (state precedence = tagger order);
+            # the native flag is OR-merged across sources so a native overlay
+            # (e.g. TU brook trout) enriches a state-claimed reach instead of
+            # being dropped on collision. Seed-backed taggers replay a prior
+            # capture: membership in `attrs` confines their COMIDs to this VPU,
+            # mirroring the live spatial join. Live join results accumulate into
+            # `captured` so a fresh seed can be written after the build.
+            for tagger in taggers:
+                for grp in tagger["groups"]:
+                    if tagger["live"]:
+                        key, tgdf, tbounds = grp
+                        if not _bbox_overlap(rbounds, tbounds):
+                            continue
+                        hits = spatial_join_trout(tgdf, gdf, attrs)
+                        captured[tagger["slug"]][key] |= hits
+                    else:
+                        key, seed_comids = grp
+                        hits = {c for c in seed_comids if c in attrs}
+                    cls, tier, nat = key
+                    for c in hits:
+                        region_trout.setdefault(c, (cls, tier))
+                        if nat:
+                            region_native.add(c)
             for cls, _tier in region_trout.values():
                 by_class[cls] += 1
 
@@ -839,10 +1092,29 @@ def main(argv: list[str] | None = None) -> int:
         print(f"    {t}: {n:,} ({100 * n / _tier_total:.1f}% of tagged)")
     print(f"  native reaches (is_native): {native_count:,}")
 
-    # ── Step 3: PA validation (data collected during the emit loop) ──
+    # ── Step 3: refresh last-known-good seeds (full builds only) ──
+    # A partial --regions run would capture only a subset of a source's COMIDs
+    # and clobber a complete national seed, so skip it there. data-build.yml
+    # commits any changed seed files back to the repo after the build.
+    if args.regions.strip():
+        print("\n[seeds] partial-region build; not refreshing seed captures")
+    else:
+        wrote = 0
+        for tagger in taggers:
+            if not tagger["live"] or trout_status.get(tagger["label"]) != "ok":
+                continue
+            path = write_source_seed(tagger["source"], captured[tagger["slug"]])
+            if path:
+                n = sum(len(c) for c in captured[tagger["slug"]].values())
+                print(f"[seeds] {os.path.relpath(path, ROOT)} ({n:,} COMIDs)")
+                wrote += 1
+        print(f"[seeds] refreshed {wrote} seed file(s) in "
+              f"{os.path.relpath(SEEDS_DIR, ROOT)}")
+
+    # ── Step 4: PA validation (data collected during the emit loop) ──
     validate_pa_coverage(val_clickable, val_trout, name_to_comids)
 
-    # ── Step 4: provenance manifest (for the build/ship runbook) ──
+    # ── Step 5: provenance manifest (for the build/ship runbook) ──
     if args.manifest:
         write_manifest(args.manifest, [r["id"] for r in regions], resolved,
                        n_feats, dict(by_class), trout_status, dict(by_tier),

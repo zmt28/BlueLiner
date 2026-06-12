@@ -32,8 +32,10 @@ on:
         type: boolean
         default: false
 
+# contents: write so the build can commit refreshed last-known-good trout
+# seeds (data/nhdplus/seeds/) back to the triggering branch.
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   build:
@@ -89,6 +91,24 @@ jobs:
           if os.environ.get("REGIONS", "") == "" and n < 500_000:
               sys.exit(f"national build only {n} features — looks truncated")
           PY
+
+      # Persist the build's freshly-captured last-known-good seeds
+      # (data/nhdplus/seeds/, one JSON per trout source) so the NEXT build can
+      # tag a state from a prior capture when its ArcGIS server is down. The
+      # builder only writes seeds on full-region runs and skips byte-identical
+      # captures, so this commits nothing on partial/dry runs with no changes.
+      - name: Commit refreshed trout seeds
+        run: |
+          git config user.name "data-build-bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add data/nhdplus/seeds
+          if git diff --cached --quiet; then
+            echo "seed captures unchanged; nothing to commit"
+            exit 0
+          fi
+          git commit -m "data-build: refresh trout-source seeds [no ci]"
+          git pull --rebase origin "${GITHUB_REF_NAME}" || true
+          git push origin "HEAD:${GITHUB_REF_NAME}"
 
       - name: Build PMTiles
         env:
