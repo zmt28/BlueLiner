@@ -1575,10 +1575,12 @@ html, body {
         bottom: 0; left: 0; right: 0;
         background: var(--bg-surface);
         border-top: 1px solid var(--border-1);
-        /* Sit the labels close to the home indicator. Device readout showed the
-           bar was reserving the FULL ~34px inset below the labels (too tall);
-           reserve ~half so the labels sit just above the indicator line. */
-        padding: 6px var(--space-3) max(6px, calc(env(safe-area-inset-bottom) - 16px));
+        /* Device readout (15 Pro Max, 932pt; ih=873 => the 59pt diff is the top
+           Dynamic Island inset, not a bottom gap): the bar reaches the screen
+           bottom, and the space below the labels is the home-indicator safe
+           area. Compact bar + reserve ~18px so labels sit just clear of the
+           indicator line (going lower crowds it). */
+        padding: 4px var(--space-3) max(8px, calc(env(safe-area-inset-bottom) - 16px));
         display: grid;
         grid-template-columns: repeat(4, 1fr);
         gap: 2px;
@@ -1588,12 +1590,12 @@ html, body {
         border: none; background: transparent;
         cursor: pointer; font: inherit;
         color: var(--fg-3);
-        padding: 6px 2px;
+        padding: 4px 2px;
         display: flex; flex-direction: column; align-items: center;
-        gap: 4px;
+        gap: 3px;
         border-radius: var(--radius-2);
     }
-    .mobile-tab i { width: 22px; height: 22px; }
+    .mobile-tab i { width: 20px; height: 20px; }
     .mobile-tab-label { font-size: 10px; font-weight: var(--fw-medium); }
     .mobile-tab.is-active, .mobile-tab.is-active i { color: var(--bl-river-700); }
 
