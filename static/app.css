@@ -1204,6 +1204,14 @@ html, body {
 .panel-verdict.is-fair { background: var(--bl-cond-fair-50); border-color: var(--bl-cond-fair-100); }
 .panel-verdict.is-poor { background: var(--bl-cond-poor-50); border-color: var(--bl-cond-poor-100); }
 .panel-verdict.is-none { background: var(--bg-page); border-color: var(--border-1); color: var(--fg-3); }
+/* The condition label that leads the verdict ("Good — flow is ...").
+   This folds in what used to be a separate title-row badge, so it
+   carries the condition color: the box tint + bold colored label
+   together read as "this is the condition, and here's why." */
+.verdict-label { font-weight: var(--fw-bold); color: var(--bl-cond-good-700); }
+.panel-verdict.is-fair .verdict-label { color: var(--bl-cond-fair-700); }
+.panel-verdict.is-poor .verdict-label { color: var(--bl-cond-poor-700); }
+.panel-verdict.is-none .verdict-label { color: var(--fg-2); }
 /* Pill row -- a quick-readable line of property chips just under the
    title. Each pill renders conditionally on the river's data, so an
    ungauged class-IV stream gets a leaner header instead of a row of
@@ -1765,6 +1773,11 @@ html, body {
 .pill--hatch   .pill-dot { background: var(--bl-hatch); }
 .pill--access  { color: #0E4961; background: #D6EAF2;                border-color: var(--bl-access); }
 .pill--access  .pill-dot { background: var(--bl-access); }
+/* "No trout designation" -- the muted mirror of .pill--trout, shown on
+   every stream that carries no state trout designation so the absence
+   reads as deliberate, not missing data. */
+.pill--none    { color: var(--bl-cond-none-700); background: var(--bl-cond-none-50); border-color: var(--bl-cond-none-500); }
+.pill--none    .pill-dot { background: var(--bl-cond-none-500); }
 
 /* Button family. Primary is copper (single warm accent for user
    action), brand is river-700 (system actions like sign-in submit),

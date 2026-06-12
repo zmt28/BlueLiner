@@ -28,6 +28,7 @@ import { STREAM_TILES_ENABLED, STREAM_TILES_URL, STREAM_SOURCE_LAYER } from "./c
 import { ensurePmtilesProtocol } from "./tiles";
 import { prepareRiverPanel, commitRiverPanelOpen } from "./river-panel";
 import { selectRiver } from "./selection";
+import { refreshIcons } from "./util";
 
 // -- Stream tier coloring (the nationwide quality axis) --------------
 // Tiles carry `tier` (gold/class1/class2/class3 or null), normalized in the
@@ -596,155 +597,79 @@ export function onStreamClick(
     return;
   }
   // Ungauged reach: highlight it, but it's a stream selection, not a
-  // river selection (selection.ts stays null) -- the card below is all
-  // this reach gets.
+  // river selection (selection.ts stays null). The panel is the SAME
+  // full layout as a gauged river -- server-rendered popup_html with the
+  // four tabs, opened on Hatches with a "no live gauge" Conditions note
+  // -- fetched from /api/reach_detail so gauged and ungauged never drift.
   highlightStream(p);
   const got = prepareRiverPanel();
   if (!got) return;
   const { panel, body } = got;
-  const cls = p.trout_class;
-  const label = (cls && STREAM_CLASS_LABEL[String(cls)]) || "No trout designation";
-  const loading = '<div class="bl-reach-msg">Loading&hellip;</div>';
+  const name = _cleanName(p.gnis_name);
+  // Open instantly with a skeleton (the panel snap-animates in now, not
+  // after the round-trip); the server-rendered body swaps in below.
   body.innerHTML =
     `<div class="bl-card"><div class="bl-card-head">` +
-    `<div style="font-size:18px;font-weight:700;color:#1a1a2e">${esc(_cleanName(p.gnis_name) || "Unnamed stream")}</div>` +
-    `<span class="stream-badge" style="background:${esc(streamColor(p))}">${esc(label)}</span>` +
-    `<span class="stream-badge" style="background:#64748b">Order ${esc(p.streamorder)}</span>` +
-    `<div class="bl-summary">Ungauged reach &mdash; no live USGS flow here. Showing what we know.</div>` +
-    `</div><div class="bl-card-body">` +
-    `<div class="bl-catch-cta"></div>` +
-    `<details class="bl-section bl-hatch" open><summary>Hatching now</summary>` +
-    `<div class="bl-section-body" data-reach-sec="hatch">${loading}</div></details>` +
-    `<details class="bl-section"><summary>Trout</summary>` +
-    `<div class="bl-section-body">${esc(label)}${cls ? " (state designation)" : ""}.</div></details>` +
-    `<details class="bl-section"><summary>Stocked nearby</summary>` +
-    `<div class="bl-section-body" data-reach-sec="stocked">${loading}</div></details>` +
-    `<details class="bl-section"><summary>Access</summary>` +
-    `<div class="bl-section-body" data-reach-sec="access">${loading}</div></details>` +
-    `<details class="bl-section"><summary>Conditions</summary>` +
-    `<div class="bl-section-body">No USGS gauge on this reach &mdash; no live flow or temperature here. ` +
-    `Tap a nearby gauged river for current conditions.</div></details>` +
+    `<div class="panel-title-row"><div class="bl-title">${esc(name || "Unnamed stream")}</div></div>` +
+    `<div class="bl-reach-msg">Loading&hellip;</div>` +
     `</div></div>`;
-  commitRiverPanelOpen(panel, body, "open");
-  if (window.wireCatch) {
-    window.wireCatch(body, {
-      name: _cleanName(p.gnis_name),
-      site_no: null,
-      lat: lngLat ? lngLat.lat : null,
-      lon: lngLat ? lngLat.lng : null,
-    });
-  }
-  loadReachDetail(body, lngLat, _cleanName(p.gnis_name));
+  commitRiverPanelOpen(panel, body, "auto");
+  loadReachPanel(body, lngLat, name, streamTier(p) !== "unclassified");
 }
 
-// -- Ungauged-card data (hatch / stocked / access) -------------------
-// Filled async after the card opens so the panel appears instantly. A
+// -- Ungauged-panel load ---------------------------------------------
+// Fetches the server-rendered popup_html for the clicked reach and swaps
+// it into the already-open panel, then wires the catch CTA + icons (the
+// same post-inject steps openRiverPanel runs for a gauged river). A
 // sequence guard drops a stale response if the user clicks another reach
 // before this one returns.
 
 let _reachSeq = 0;
 
-function _fillReachSection(
-  body: HTMLElement,
-  sec: "hatch" | "stocked" | "access",
-  html: string,
-): void {
-  const el = body.querySelector(`[data-reach-sec="${sec}"]`);
-  if (el) el.innerHTML = html;
-}
-
-function _typeLabel(t: string | undefined): string {
-  return (t || "access").replace(/_/g, " ");
-}
-
-function renderReachHatch(h: ReachDetail["hatch"]): string {
-  const zone = h.zone ? ` &middot; ${esc(h.zone)}` : "";
-  if (!h.active || !h.active.length) {
-    return `<div class="bl-reach-msg">No major mayfly/caddis hatches indexed ` +
-      `this month${zone} &mdash; fish midges, eggs, and streamers.</div>`;
-  }
-  const rows = h.active.map((e) => {
-    const patterns = (e.patterns || []).join(", ");
-    const meta = [e.hook_sizes ? `Hooks ${esc(e.hook_sizes)}` : "",
-                  e.time_of_day ? esc(e.time_of_day) : ""]
-      .filter(Boolean).join(" &middot; ");
-    return `<div class="bl-reach-row">` +
-      `<div class="bl-reach-row-title">${esc(e.common_name || "")}` +
-      (e.insect ? ` <span class="bl-reach-sci">${esc(e.insect)}</span>` : "") +
-      `</div>` +
-      (meta ? `<div class="bl-reach-row-meta">${meta}</div>` : "") +
-      (patterns ? `<div class="bl-reach-row-try">Try: ${esc(patterns)}</div>` : "") +
-      `</div>`;
-  }).join("");
-  return `<div class="bl-reach-sub">Hatching now${zone}</div>${rows}`;
-}
-
-function renderReachStocked(list: ReachStockedEntry[]): string {
-  if (!list.length) {
-    return `<div class="bl-reach-msg">No stocked waters mapped within ~3&nbsp;km.</div>`;
-  }
-  return list.map((s) => {
-    const species = (s.species || []).join(", ");
-    const sub = [species, s.category ? esc(s.category) : ""]
-      .filter(Boolean).join(" &middot; ");
-    const link = s.agency_url
-      ? ` <a href="${esc(s.agency_url)}" target="_blank" rel="noopener noreferrer">info &rarr;</a>`
-      : "";
-    return `<div class="bl-reach-row">` +
-      `<div class="bl-reach-row-title">${esc(s.water || "Stocked water")}${link}</div>` +
-      (sub ? `<div class="bl-reach-row-meta">${esc(species)}${species && s.category ? " &middot; " : ""}${esc(s.category || "")}</div>` : "") +
-      `</div>`;
-  }).join("");
-}
-
-function renderReachAccess(list: ReachAccessEntry[]): string {
-  if (!list.length) {
-    return `<div class="bl-reach-msg">No mapped access points within ~3&nbsp;km. ` +
-      `Public/private land is coming in a later pass.</div>`;
-  }
-  return list.map((a) => {
-    const meta = [_typeLabel(a.type), a.access ? esc(a.access) : ""]
-      .filter(Boolean).join(" &middot; ");
-    const notes = a.notes ? `<div class="bl-reach-row-meta">${esc(a.notes)}</div>` : "";
-    const link = a.agency_url
-      ? ` <a href="${esc(a.agency_url)}" target="_blank" rel="noopener noreferrer">info &rarr;</a>`
-      : "";
-    return `<div class="bl-reach-row">` +
-      `<div class="bl-reach-row-title">${esc(a.name || "Access point")}${link}</div>` +
-      `<div class="bl-reach-row-meta">${esc(meta)}</div>` +
-      notes +
-      `</div>`;
-  }).join("");
-}
-
-async function loadReachDetail(
+async function loadReachPanel(
   body: HTMLElement,
   lngLat: maplibregl.LngLat | null,
   name: string | null,
+  trout: boolean,
 ): Promise<void> {
   const seq = ++_reachSeq;
   if (!lngLat) {
-    const msg = `<div class="bl-reach-msg">Location unavailable.</div>`;
-    for (const s of ["hatch", "stocked", "access"] as const) _fillReachSection(body, s, msg);
+    body.innerHTML = `<div class="bl-card"><div class="bl-card-head">` +
+      `<div class="bl-reach-msg">Location unavailable.</div></div></div>`;
     return;
   }
-  const q = new URLSearchParams({ lat: String(lngLat.lat), lon: String(lngLat.lng) });
+  const q = new URLSearchParams({
+    lat: String(lngLat.lat),
+    lon: String(lngLat.lng),
+    trout: trout ? "1" : "0",
+  });
   if (name) q.set("name", name);
-  let data: ReachDetail | null = null;
+  let data: { popup_html?: string } | null = null;
   try {
-    data = (await fetch(`/api/reach_detail?${q.toString()}`).then((r) => r.json())) as ReachDetail;
+    data = (await fetch(`/api/reach_detail?${q.toString()}`).then((r) => r.json())) as {
+      popup_html?: string;
+    };
   } catch (_) {
     data = null;
   }
   if (seq !== _reachSeq) return; // superseded by a newer reach click
-  if (!data) {
-    const err = `<div class="bl-reach-msg">Couldn't load reach details.</div>`;
-    for (const s of ["hatch", "stocked", "access"] as const) _fillReachSection(body, s, err);
+  if (!data || !data.popup_html) {
+    body.innerHTML = `<div class="bl-card"><div class="bl-card-head">` +
+      `<div class="bl-reach-msg">Couldn't load reach details.</div></div></div>`;
     return;
   }
-  _fillReachSection(body, "hatch", renderReachHatch(data.hatch));
-  _fillReachSection(body, "stocked", renderReachStocked(data.stocked || []));
-  _fillReachSection(body, "access", renderReachAccess(data.access || []));
+  body.innerHTML = data.popup_html;
+  // Same post-inject wiring as openRiverPanel: catch CTA + lucide icons.
+  // No trend / flow chart -- an ungauged reach has no gauge site.
+  if (window.wireCatch) {
+    window.wireCatch(body, {
+      name,
+      site_no: null,
+      lat: lngLat.lat,
+      lon: lngLat.lng,
+    });
+  }
+  refreshIcons();
 }
 
 // -- Window bridge ----------------------------------------------------
