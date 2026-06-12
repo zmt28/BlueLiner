@@ -3,7 +3,7 @@
  * GL JS (PR B2). Replaces the Leaflet layer-group version.
  *
  * Owns:
- *   - access           type-coded access-point HTML markers (lazy per-state)
+ *   - access           glyph-coded access-point HTML markers (lazy per-state)
  *   - stocked          stocked-water HTML markers (lazy per-state); shown
  *                       when the toggle is on OR the Stocked map style is active
  *   - public-lands     PAD-US parcels (GeoJSON source + fill/line layers,
@@ -31,6 +31,7 @@ import {
   PUBLIC_LANDS_SOURCE_LAYER,
 } from "./config";
 import { ensurePmtilesProtocol } from "./tiles";
+import { makePoiElement } from "./poi-icons";
 
 // Desired visibility (matches the HTML checkbox defaults; controls.ts
 // overrides from saved prefs before the map `load` fires).
@@ -42,23 +43,8 @@ function vis(on: boolean): "visible" | "none" {
 }
 
 // -- Access points ------------------------------------------------------
-
-const ACCESS_TYPE_META: Record<string, { glyph: string; color: string }> = {
-  boat_ramp: { glyph: "B", color: "#d97706" },
-  walk_in: { glyph: "W", color: "#0891b2" },
-  wading_access: { glyph: "W", color: "#0891b2" },
-  pier: { glyph: "P", color: "#7c3aed" },
-  parking: { glyph: "P", color: "#475569" },
-};
-
-/** The DOM element for an access marker (the old divIcon HTML). */
-export function makeAccessElement(type: string | undefined): HTMLElement {
-  const meta = ACCESS_TYPE_META[type ?? "walk_in"] || ACCESS_TYPE_META.walk_in;
-  const wrap = document.createElement("div");
-  wrap.className = "access-marker";
-  wrap.innerHTML = `<div class="access-marker-pin" style="background:${meta.color}">${esc(meta.glyph)}</div>`;
-  return wrap;
-}
+// Markers are makePoiElement discs -- the access TYPE is the glyph
+// (sailboat / footprints / waves / dock / P), one brand-blue disc for all.
 
 export function accessPopupHtml(p: AccessFeatureProps): string {
   const accessChip = p.access
@@ -83,14 +69,39 @@ export function accessPopupHtml(p: AccessFeatureProps): string {
 let accessMarkers: Marker[] = [];
 let accessLoadedState: string | null = null;
 let accessLoading = false;
+let _accessShown = false; // markers currently added to the map
 
-export function setAccessVisible(on: boolean): void {
-  _accessVisible = on;
+// Perf guard: live DNR feeds can deliver 1000+ access points per state.
+// Above this count the markers stay hidden until the user zooms in --
+// at state zoom that many HTML markers are decoration that janks panning.
+const ACCESS_GATE_ZOOM = 10;
+const ACCESS_GATE_COUNT = 300;
+
+function _accessShouldShow(): boolean {
+  return (
+    _accessVisible &&
+    (accessMarkers.length <= ACCESS_GATE_COUNT ||
+      map.getZoom() >= ACCESS_GATE_ZOOM)
+  );
+}
+
+function _applyAccessVisibility(): void {
+  const on = _accessShouldShow();
+  if (on === _accessShown) return;
   for (const m of accessMarkers) {
     if (on) m.addTo(map);
     else m.remove();
   }
+  _accessShown = on;
 }
+
+export function setAccessVisible(on: boolean): void {
+  _accessVisible = on;
+  _applyAccessVisibility();
+}
+
+// Cross the zoom gate -> show/hide the large-set markers.
+map.on("zoomend", _applyAccessVisibility);
 
 export async function ensureAccess(state: string): Promise<void> {
   if (accessLoadedState === state || accessLoading) return;
@@ -101,6 +112,7 @@ export async function ensureAccess(state: string): Promise<void> {
     ).then((r) => r.json());
     for (const m of accessMarkers) m.remove();
     accessMarkers = [];
+    _accessShown = false;
     for (const f of fc.features || []) {
       const c =
         f.geometry && "coordinates" in f.geometry
@@ -108,7 +120,7 @@ export async function ensureAccess(state: string): Promise<void> {
           : null;
       const p = f.properties || ({} as AccessFeatureProps);
       if (!c || c.length < 2) continue;
-      const el = makeAccessElement(p.type);
+      const el = makePoiElement(p.type || "walk_in");
       // Selecting an access point is a POI click -> close the rail panel.
       el.addEventListener("click", () =>
         document.dispatchEvent(new Event("bl:poi-open")),
@@ -117,8 +129,8 @@ export async function ensureAccess(state: string): Promise<void> {
         .setLngLat([c[0], c[1]]) // GeoJSON is already [lng, lat]
         .setPopup(makePopup().setHTML(accessPopupHtml(p)));
       accessMarkers.push(m);
-      if (_accessVisible) m.addTo(map);
     }
+    _applyAccessVisibility(); // adds them only if visible + zoom-gate passes
     accessLoadedState = state;
   } catch (_) {
     /* leave empty; user can re-toggle to retry */
@@ -141,13 +153,6 @@ let stockedLoadedState: string | null = null;
 let stockedLoading = false;
 let _stockedToggle = false; // the lyr-stocked checkbox
 let _stockedStyleActive = false; // the Stocked map style
-
-function makeStockedElement(): HTMLElement {
-  const wrap = document.createElement("div");
-  wrap.className = "stocked-marker";
-  wrap.innerHTML = `<div class="stocked-marker-pin"></div>`;
-  return wrap;
-}
 
 export function stockedPopupHtml(p: StockedFeatureProps): string {
   const species = (p.species || []).join(", ");
@@ -216,7 +221,7 @@ export async function ensureStocked(state: string): Promise<void> {
           : null;
       const p = f.properties || ({} as StockedFeatureProps);
       if (!c || c.length < 2) continue;
-      const el = makeStockedElement();
+      const el = makePoiElement("stocked");
       // Selecting a stocked water is a POI click -> close the rail panel.
       el.addEventListener("click", () =>
         document.dispatchEvent(new Event("bl:poi-open")),
