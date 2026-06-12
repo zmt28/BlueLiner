@@ -60,6 +60,12 @@ const VERDICT_COLOR: Record<ConditionKey, string> = {
 /** Selection color for ungauged reaches (no verdict feature-state). */
 const SELECTED_FALLBACK = "#e74c3c";
 
+/** Line opacity for non-matching / ungauged reaches while a condition
+ *  overlay is active. 0.15 keeps the network faintly traceable on the
+ *  light street/topo basemaps without competing on dark satellite
+ *  imagery (there is no CSS dark mode; satellite is the dark theme). */
+const COND_FADE_OPACITY = 0.15;
+
 export const TIER_LABEL: Record<StreamTier, string> = {
   gold: "Gold — premier water",
   class1: "Class 1 — high quality",
@@ -163,32 +169,56 @@ const TIER_OPACITY_MATCH: ExpressionSpecification = [
   0.35, // no tier -- receded
 ] as unknown as ExpressionSpecification;
 
+/** Verdict-color match on the `verdict` feature-state (the Phase 2
+ *  mechanism, shared by the selection highlight and the condition
+ *  overlay). `fallback` paints when no verdict state is set. */
+function verdictMatch(fallback: unknown): unknown[] {
+  return [
+    "match",
+    ["coalesce", ["feature-state", "verdict"], ""],
+    "green", VERDICT_COLOR.green,
+    "yellow", VERDICT_COLOR.yellow,
+    "red", VERDICT_COLOR.red,
+    "gray", VERDICT_COLOR.gray,
+    fallback,
+  ];
+}
+
 function colorExpr(): ExpressionSpecification {
   // Selected: verdict-colored when the river is gauged (the `verdict`
   // feature-state carries conditions.overall), flat red otherwise. The
   // "selected" signal itself stays width-8 + opacity (WIDTH_EXPR).
+  // Condition-overlay matches (`cond` feature-state) paint in the same
+  // verdict palette; the branch is inert while no overlay is active
+  // because no feature carries the state then.
   return [
     "case",
     ["boolean", ["feature-state", "selected"], false],
-    [
-      "match",
-      ["coalesce", ["feature-state", "verdict"], ""],
-      "green", VERDICT_COLOR.green,
-      "yellow", VERDICT_COLOR.yellow,
-      "red", VERDICT_COLOR.red,
-      "gray", VERDICT_COLOR.gray,
-      SELECTED_FALLBACK,
-    ],
+    verdictMatch(SELECTED_FALLBACK),
+    ["boolean", ["feature-state", "cond"], false],
+    verdictMatch(TIER_COLOR_MATCH),
     TIER_COLOR_MATCH,
   ] as unknown as ExpressionSpecification;
 }
 
 function opacityExpr(): ExpressionSpecification {
+  // While a condition overlay is active, everything that isn't the
+  // selection or an overlay match fades to COND_FADE_OPACITY so the
+  // matching reaches read at a glance. Swapped via setPaintProperty on
+  // overlay toggle (paint-only; no refetch).
+  const rest: unknown = _condFilter
+    ? [
+        "case",
+        ["boolean", ["feature-state", "cond"], false],
+        0.9,
+        COND_FADE_OPACITY,
+      ]
+    : TIER_OPACITY_MATCH;
   return [
     "case",
     ["boolean", ["feature-state", "selected"], false],
     0.95,
-    TIER_OPACITY_MATCH,
+    rest,
   ] as unknown as ExpressionSpecification;
 }
 
@@ -241,10 +271,13 @@ onMapReady(() => {
   } as LayerSpecification);
   // Apply the persisted wild/native filter to the freshly-added layers.
   applyStreamFilter();
-  // Re-apply the selection highlight as new tiles arrive (pan/zoom).
+  // Re-apply the selection highlight (and, while a condition filter is
+  // active, the conditions overlay) as new tiles arrive (pan/zoom) --
+  // fresh tiles carry no feature-state.
   map.on("sourcedata", (e) => {
     if (e.sourceId === "clickable-streams" && e.isSourceLoaded) {
       reapplyStreamHighlight();
+      _applyCondOverlay();
     }
   });
   map.on("click", "clickable-streams-hit", (e) => {
@@ -368,6 +401,106 @@ export function clearStreamHighlight(): void {
     });
   }
   _selStreamKey = null;
+  // removeFeatureState above is source-wide, so it also dropped the
+  // condition overlay's `cond`/`verdict` states -- restore them.
+  _applyCondOverlay();
+}
+
+// -- Conditions overlay (the Condition filter) -------------------------
+// When the Filters pane's Condition dropdown is not "Any", the reaches of
+// every gauged river in the active catalog whose `conditions.overall`
+// matches are painted in that verdict's color (the same `verdict`
+// feature-state the selection highlight uses, plus a `cond` flag), and
+// everything else fades via opacityExpr(). Nothing is persisted; the
+// filter resets to Any on reload.
+
+let _condFilter: ConditionKey | null = null;
+// Matching rivers indexed once per catalog refresh: O(1) lookups per
+// feature, so each tile-batch pass is O(features), not O(rivers x features).
+let _condIndex: { lpids: Set<number>; names: Set<string> } | null = null;
+
+export function activeConditionFilter(): ConditionKey | null {
+  return _condFilter;
+}
+
+/** Rebuild the matching-river index from the active catalog
+ *  (window.allRivers -- rivers.ts keeps it pointed at whichever of
+ *  viewport/state mode is current). */
+function _buildCondIndex(): void {
+  if (!_condFilter) {
+    _condIndex = null;
+    return;
+  }
+  const lpids = new Set<number>();
+  const names = new Set<string>();
+  for (const r of window.allRivers || []) {
+    if (!r.conditions || r.conditions.overall !== _condFilter) continue;
+    for (const id of r.levelpathids || []) lpids.add(id);
+    const n = _normName(r.name);
+    if (n) names.add(n);
+  }
+  _condIndex = { lpids, names };
+}
+
+/** Set `cond` + `verdict` feature-state on every loaded reach matching
+ *  the index -- levelpathid primary, normalized GNIS name fallback. All
+ *  indexed rivers share the filter's verdict, so the state is uniform.
+ *  No-op while no condition filter is active. */
+function _applyCondOverlay(): void {
+  if (!_condFilter || !_condIndex) return;
+  const src = "clickable-streams";
+  if (!map.getSource(src)) return;
+  const state = { cond: true, verdict: _condFilter };
+  const feats = map.querySourceFeatures(src, { sourceLayer: STREAM_SOURCE_LAYER });
+  for (const f of feats) {
+    if (f.id == null) continue;
+    const p = (f.properties || {}) as ClickableStreamProps;
+    const hit =
+      (p.levelpathid != null && _condIndex.lpids.has(p.levelpathid)) ||
+      _condIndex.names.has(_normName(p.gnis_name));
+    if (hit) {
+      map.setFeatureState(
+        { source: src, sourceLayer: STREAM_SOURCE_LAYER, id: f.id },
+        state,
+      );
+    }
+  }
+}
+
+/** Drop all feature-state, then restore whatever should survive (the
+ *  selection highlight always; the overlay only when active). */
+function _resetFeatureState(): void {
+  if (map.getSource("clickable-streams")) {
+    map.removeFeatureState({
+      source: "clickable-streams",
+      sourceLayer: STREAM_SOURCE_LAYER,
+    });
+  }
+  reapplyStreamHighlight();
+  _applyCondOverlay();
+}
+
+/** Activate / switch / clear (null) the conditions overlay. Called from
+ *  the Condition dropdown wiring in controls.ts. */
+export function setConditionOverlay(cond: ConditionKey | null): void {
+  if (cond === _condFilter) return;
+  _condFilter = cond;
+  _buildCondIndex();
+  // Swap the fade in/out (paint-only). Color needs no swap: the `cond`
+  // branch of colorExpr is permanent but inert without feature-state.
+  if (map.getLayer("clickable-streams")) {
+    map.setPaintProperty("clickable-streams", "line-opacity", opacityExpr());
+  }
+  _resetFeatureState();
+}
+
+/** Re-index + re-apply after the active catalog changes (state load,
+ *  viewport load, the z9 mode swap -- renderRivers() calls this). Only
+ *  does work while a condition filter is active. */
+export function refreshConditionOverlay(): void {
+  if (!_condFilter) return;
+  _buildCondIndex();
+  _resetFeatureState();
 }
 
 // -- Click bridging: clickable reach -> gauged river ------------------

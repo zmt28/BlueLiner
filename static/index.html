@@ -136,6 +136,16 @@
                     title="Account" aria-label="Account">ZT</button>
         </div>
 
+        <!-- Active condition-filter chip (conditions overlay). Shown under the
+             state pill only while the Filters pane's Condition dropdown is not
+             "Any"; x resets it. Wired in controls.ts; never persisted. -->
+        <div class="cond-chip" id="cond-chip" role="status" hidden>
+            <span class="cond-chip-dot" id="cond-chip-dot"></span>
+            <span id="cond-chip-label">Showing: Good conditions</span>
+            <button type="button" class="cond-chip-x" id="cond-chip-clear"
+                    aria-label="Clear condition filter" title="Clear">&times;</button>
+        </div>
+
         <!-- Bottom-right control stack. -->
         <div class="map-controls">
             <button class="drop-pin-btn" id="drop-pin" type="button" title="Drop a pin"

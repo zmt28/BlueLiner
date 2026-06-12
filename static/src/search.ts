@@ -17,6 +17,7 @@
 
 import { map } from "./map-setup";
 import { selectRiver } from "./selection";
+import { activeConditionFilter } from "./streams";
 import { riverLngLat } from "./coords";
 import { refreshIcons, esc } from "./util";
 
@@ -45,6 +46,17 @@ if (wrap && iconBtn && pill && input && results) {
     return (window.allRivers as River[] | undefined) || [];
   }
 
+  /** The searchable pool: the live catalog, scoped by the Condition
+   *  filter (the conditions overlay, streams.ts) when one is active --
+   *  the map fades non-matching rivers, so surfacing them here would
+   *  contradict the overlay. */
+  function pool(): River[] {
+    const cond = activeConditionFilter();
+    const all = rivers();
+    if (!cond) return all;
+    return all.filter((r) => (r.conditions?.overall || "gray") === cond);
+  }
+
   /** Collapse to the round icon button (mobile only, empty query). */
   function applyCollapsedState(): void {
     if (isMobileView() && !focused && !input!.value.trim()) {
@@ -67,20 +79,21 @@ if (wrap && iconBtn && pill && input && results) {
   function renderResults(): void {
     const q = input!.value.trim().toLowerCase();
     const all = rivers();
+    const scoped = pool(); // condition-scoped; === all when filter is Any
     if (!focused) {
       results!.hidden = true;
       return;
     }
     let html = "";
     if (!q) {
-      const recent = all.slice(0, 5);
+      const recent = scoped.slice(0, 5);
       if (recent.length) {
         html =
           '<div class="search-results-group"><div class="search-results-label">Rivers</div>' +
           recent
             .map(
-              (r, i) =>
-                `<button type="button" class="search-result" data-i="${i}">` +
+              (r) =>
+                `<button type="button" class="search-result" data-i="${all.indexOf(r)}">` +
                 `<span class="search-result-icon"><i data-lucide="clock"></i></span>` +
                 `<span class="search-result-text"><span class="search-result-name">${esc(r.name)}</span>` +
                 `<span class="search-result-meta">${esc(r.label || "")}</span></span></button>`,
@@ -89,11 +102,13 @@ if (wrap && iconBtn && pill && input && results) {
           "</div>";
       }
     } else {
-      const matches = all
+      const matches = scoped
         .filter((r) => r.name.toLowerCase().includes(q))
         .slice(0, 12);
       if (!matches.length) {
-        html = `<div class="search-empty">No matches for "${esc(input!.value.trim())}"</div>`;
+        const cond = activeConditionFilter();
+        const scope = cond ? ` with ${condLabel(cond)} conditions` : "";
+        html = `<div class="search-empty">No matches for "${esc(input!.value.trim())}"${esc(scope)}</div>`;
       } else {
         html =
           '<div class="search-results-group"><div class="search-results-label">Rivers</div>' +
