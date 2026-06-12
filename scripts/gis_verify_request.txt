@@ -1,7 +1,3 @@
-# CO sublayers 0/2/3 (multi_layer entry) + NV candidate layer ids after republish.
-CO|https://services5.arcgis.com/ttNGmDvKQA7oeDQ3/arcgis/rest/services/CPWSB181AquaticData/FeatureServer/0
-CO|https://services5.arcgis.com/ttNGmDvKQA7oeDQ3/arcgis/rest/services/CPWSB181AquaticData/FeatureServer/2
-CO|https://services5.arcgis.com/ttNGmDvKQA7oeDQ3/arcgis/rest/services/CPWSB181AquaticData/FeatureServer/3
-NV|https://services.arcgis.com/RyxlXSfFi87rAosq/arcgis/rest/services/LCT_Occupied_Streams_NV/FeatureServer/1
-NV|https://services.arcgis.com/RyxlXSfFi87rAosq/arcgis/rest/services/LCT_Occupied_Streams_NV/FeatureServer/2
-NV|https://services.arcgis.com/RyxlXSfFi87rAosq/arcgis/rest/services/LCT_Occupied_Streams_NV/FeatureServer/3
+# Find NDOW's republished Lahontan cutthroat occupied-streams service
+# (LCT_Occupied_Streams_NV now returns 'layer not found' for all ids).
+states: NV
