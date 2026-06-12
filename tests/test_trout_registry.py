@@ -207,10 +207,11 @@ def test_co_multi_layer_native_wild_sportfish_stocked():
     assert co["layers"][-1]["class"] == "stocked"  # stocked listed last
 
 
-def test_nv_lahontan_single_wild():
-    nv = SOURCES["NV"]
-    assert nv["mode"] == "single"
-    assert reg.row_bucket(nv, {}) == "wild_reproduction"
+def test_nv_lahontan_removed_pending_successor():
+    # NDOW retired LCT_Occupied_Streams_NV (every layerId 404s, verified
+    # 2026-06-12); the entry is dropped until the republished service is
+    # found so it can't trip the data-build unreachable-source gate.
+    assert "NV" not in SOURCES
 
 
 def test_ca_heritage_wild_single_wild():
@@ -282,7 +283,7 @@ def test_row_tier_falls_back_from_class():
 def test_wild_and_native_flags():
     assert reg.class_is_wild("wild_reproduction") and reg.class_is_wild("class_a")
     assert not reg.class_is_wild("stocked")
-    assert reg.is_native(SOURCES["NV"]) is True
+    assert reg.is_native(SOURCES["UTCT"]) is True
     assert reg.is_native(SOURCES["VA"]) is False
 
 
