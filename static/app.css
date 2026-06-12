@@ -1575,11 +1575,12 @@ html, body {
         bottom: 0; left: 0; right: 0;
         background: var(--bg-surface);
         border-top: 1px solid var(--border-1);
-        /* iPhone 16 Pro is 874pt tall and ih≈873, so the bar reaches the screen
-           bottom -- the space below the labels is the home-indicator safe area
-           (every app reserves it). Keep a compact bar and sit the labels as low
-           as is safe above the indicator line (~12px). */
-        padding: 4px var(--space-3) max(4px, calc(env(safe-area-inset-bottom) - 22px));
+        /* Device readout (15 Pro Max, 932pt; ih=873 => the 59pt diff is the top
+           Dynamic Island inset, not a bottom gap): the bar reaches the screen
+           bottom, and the space below the labels is the home-indicator safe
+           area. Compact bar + reserve ~18px so labels sit just clear of the
+           indicator line (going lower crowds it). */
+        padding: 4px var(--space-3) max(8px, calc(env(safe-area-inset-bottom) - 16px));
         display: grid;
         grid-template-columns: repeat(4, 1fr);
         gap: 2px;
