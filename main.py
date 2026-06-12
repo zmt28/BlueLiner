@@ -449,6 +449,13 @@ _CHIP_ACCESS = (
     '<span class="pill pill--access">'
     '<span class="pill-dot"></span>Public access</span>'
 )
+# Shown on the title pill row when a stream carries no state trout
+# designation. Standardized so it appears on every such stream (gauged
+# or ungauged), the mirror of _CHIP_TROUT.
+_CHIP_NO_TROUT = (
+    '<span class="pill pill--none">'
+    '<span class="pill-dot"></span>No trout designation</span>'
+)
 
 
 def _readings_table_html(variables: list[dict]) -> str:
@@ -553,17 +560,27 @@ def _verdict_variant(river: dict) -> str:
 
 def _ranking_summary_html(river: dict) -> str:
     """One-line plain-English read on why the river is rated as it is,
-    e.g. 'Flow is 20% below average and water temp is ideal.' Built from
-    the primary gauge's flow-vs-median ratio + water temperature.
+    e.g. 'Good — flow is 20% below average and water temp is ideal.'
+    Built from the primary gauge's flow-vs-median ratio + water
+    temperature.
 
-    Rendered into a .panel-verdict box (design-system component); the
-    tone modifier (is-fair / is-poor / is-none) matches the overall
-    score so the callout color reinforces the headline badge. Inline
-    numeric insertions get wrapped in <strong> for prominence."""
+    Leads with the condition label (Good / Fair / Poor) so this callout
+    *is* the condition verdict -- it folds in what used to be a separate
+    badge in the title row, making explicit that, e.g., "Good" means the
+    flow/temp described in the sentence are good. Rendered into a
+    .panel-verdict box (design-system component); the tone modifier
+    (is-fair / is-poor / is-none) matches the overall score so the
+    callout color reinforces the label. Inline numeric insertions get
+    wrapped in <strong> for prominence."""
     variant = _verdict_variant(river)
     primary = _primary_gauge(river["gauges"])
     if not primary:
         return ""
+    overall = river.get("overall", "gray")
+    # Title-case the SCORE_LABELS value ("GOOD" -> "Good") for the inline
+    # label; the box tint already carries the color, so the label reads as
+    # the headline of the sentence rather than a shouty all-caps badge.
+    label = f'<span class="verdict-label">{SCORE_LABELS[overall].title()}</span>'
     cond = primary.get("conditions", {})
     median = primary.get("historical_median")
     parts: list[str] = []
@@ -598,39 +615,42 @@ def _ranking_summary_html(river: dict) -> str:
             parts.append("water is too warm")
 
     if not parts:
+        # Nothing to qualify -- leading with the score label would just be
+        # redundant ("No data -- limited live data"), so skip it here.
         return f'<div class="panel-verdict{variant}">Limited live data right now.</div>'
     sentence = " and ".join(parts)
-    sentence = sentence[0].upper() + sentence[1:] + "."
-    return f'<div class="panel-verdict{variant}">{sentence}</div>'
+    return f'<div class="panel-verdict{variant}">{label} &mdash; {sentence}.</div>'
 
 
 def _panel_header_html(river: dict) -> str:
-    """Top of the river panel: name + condition badge on the title row,
-    feature pills, verdict callout, stat grid. This block fits in the
-    mobile snap-sheet's peek view (~38vh) so the angler sees the
-    headline info before deciding to expand the sheet.
+    """Top of the river panel: name on the title row, feature pills,
+    verdict callout, stat grid. This block fits in the mobile snap-
+    sheet's peek view (~38vh) so the angler sees the headline info
+    before deciding to expand the sheet.
+
+    The condition score is no longer a separate title-row badge -- it is
+    folded into the .panel-verdict callout (see _ranking_summary_html),
+    so "Good" reads as the headline of "...flow is near normal for this
+    time of year." The trout-designation and "Hatching now" pills are
+    standardized: every stream shows a trout pill (the designation or
+    "No trout designation"), and "Hatching now" whenever a hatch is on,
+    on gauged and ungauged streams alike.
 
     Uses the design-system component primitives:
-        .cond + .cond-glyph + .cond--good/fair/poor/none
-        .pill + .pill-dot + .pill--trout/stocked/hatch/access
+        .pill + .pill-dot + .pill--trout/none/stocked/hatch/access
         .panel-verdict (with is-fair / is-poor / is-none tone modifiers)
         .bl-num (tabular numerals on the stat-grid numbers)
     """
-    overall = river["overall"]
-    variant = COND_VARIANT.get(overall, "none")
-    badge_label = SCORE_LABELS[overall]
-    pills = []
-    if river.get("on_trout"):
-        pills.append(_CHIP_TROUT)
+    # Trout pill always present -- the designation, or its explicit
+    # absence -- so two otherwise-similar streams read consistently.
+    pills = [_CHIP_TROUT if river.get("on_trout") else _CHIP_NO_TROUT]
     if river.get("near_stocked"):
         pills.append(_CHIP_STOCKED)
     if river.get("active"):
         pills.append(_CHIP_HATCH_NOW)
     if river.get("access_count", 0):
         pills.append(_CHIP_ACCESS)
-    pills_row = (
-        f'<div class="bl-pills">{"".join(pills)}</div>' if pills else ""
-    )
+    pills_row = f'<div class="bl-pills">{"".join(pills)}</div>'
     n_gauges = len(river.get("gauges") or [])
     n_active = len(river.get("active") or [])
     n_stocked = len(river.get("stocked_waters") or [])
@@ -651,9 +671,6 @@ def _panel_header_html(river: dict) -> str:
         <div class="bl-card-head">
             <div class="panel-title-row">
                 <div class="bl-title">{river["name"]}</div>
-                <span class="cond cond--{variant}">
-                    <span class="cond-glyph"></span>{badge_label}
-                </span>
             </div>
             {pills_row}
             {_ranking_summary_html(river)}
@@ -684,23 +701,34 @@ def _panel_gauge_section_html(g: dict, is_primary: bool) -> str:
         </details>"""
 
 
-def _panel_tabs_html(river: dict, chart_html: str) -> str:
+def _panel_tabs_html(river: dict, chart_html: str,
+                     default_tab: str = "conditions") -> str:
     """Four-tab content area: Conditions / Hatches / Stocking / Log.
     Pure CSS pattern -- a hidden radio per tab + sibling-selector show/
     hide on the panels. The Catch tab gets the .bl-catch-cta hook so
     wireCatch() can populate it on panel open (same as before, just
     relocated). flowchart placeholder + autoLoadFlowChart() hook still
     fire on open even when the Conditions tab isn't visible -- they
-    populate the element silently, render kicks in when displayed."""
+    populate the element silently, render kicks in when displayed.
+
+    `default_tab` selects which radio is pre-checked. Gauged rivers open
+    on Conditions; an ungauged reach (no gauges) opens on Hatches, since
+    its Conditions tab is just a "no live gauge here" note."""
     primary = _primary_gauge(river["gauges"])
     gauges_html = "".join(
         _panel_gauge_section_html(g, g is primary)
         for g in river["gauges"]
     )
+    # No gauge on this reach -> the Conditions tab explains the absence
+    # instead of showing an empty chart, so the panel stays the full
+    # gauged layout (same tabs, same header) with hatches defaulted.
+    conditions_body = f"{chart_html}{gauges_html}" if river["gauges"] else (
+        '<div class="bl-reach-msg">No USGS gauge on this reach &mdash; no '
+        'live flow or temperature here. Tap a nearby gauged river for '
+        'current conditions.</div>')
     conditions_panel = f"""
         <div class="bl-tab-panel" data-tab="conditions">
-            {chart_html}
-            {gauges_html}
+            {conditions_body}
         </div>"""
     hatches_panel = f"""
         <div class="bl-tab-panel" data-tab="hatches">
@@ -716,12 +744,14 @@ def _panel_tabs_html(river: dict, chart_html: str) -> str:
         </div>"""
     # Radios + labels for the tab bar. data-tab on the label matches the
     # panel so CSS `:checked ~ ... [data-tab="..."]` can drive visibility.
-    tab_bar = """
+    def _chk(tab: str) -> str:
+        return " checked" if tab == default_tab else ""
+    tab_bar = f"""
         <div class="bl-tabs" role="tablist">
-            <input type="radio" name="bl-tab" id="bl-tab-conditions" checked>
-            <input type="radio" name="bl-tab" id="bl-tab-hatches">
-            <input type="radio" name="bl-tab" id="bl-tab-stocking">
-            <input type="radio" name="bl-tab" id="bl-tab-catch">
+            <input type="radio" name="bl-tab" id="bl-tab-conditions"{_chk("conditions")}>
+            <input type="radio" name="bl-tab" id="bl-tab-hatches"{_chk("hatches")}>
+            <input type="radio" name="bl-tab" id="bl-tab-stocking"{_chk("stocking")}>
+            <input type="radio" name="bl-tab" id="bl-tab-catch"{_chk("catch")}>
             <div class="bl-tab-bar">
                 <label for="bl-tab-conditions" class="bl-tab" data-tab="conditions">Conditions</label>
                 <label for="bl-tab-hatches" class="bl-tab" data-tab="hatches">Hatches</label>
@@ -746,6 +776,51 @@ def build_river_popup_html(river: dict) -> str:
             {_panel_header_html(river)}
             <div class="bl-card-body">
                 {_panel_tabs_html(river, chart_html)}
+            </div>
+        </div>
+    """
+
+
+def build_reach_popup_html(lat: float, lon: float, name: str | None,
+                           on_trout: bool) -> str:
+    """The same full panel as a gauged river, for an ungauged NHD reach
+    the user clicked. There's no USGS gauge here, so `gauges` is empty:
+    the Conditions tab shows a "no live gauge" note and the panel opens
+    on the Hatches tab (when a hatch is active) instead. The header still
+    renders the standardized trout / "Hatching now" pills.
+
+    Hatch + nearby access/stocking come from the same helpers the gauged
+    panel and /api/reach_detail use, so the numbers agree across both."""
+    month_now = datetime.now(timezone.utc).month
+    zone = hatches.zone_for_river(name or "", lat, lon)
+    active = hatches.active_hatches(zone, month_now)
+    state = point_in_state(lat, lon)
+    access_count = 0
+    stocked_waters: list[dict] = []
+    if state:
+        apts = access_points.load_access_points(state)
+        spts = stocking.stocked_points(state)
+        access_count = len(access_points.nearby_access(
+            lat, lon, apts, buffer_deg=0.03))
+        stocked_waters = stocking.nearby_stocked(lat, lon, spts, buffer_deg=0.03)
+    river = {
+        "name": name or "Unnamed stream",
+        "overall": "gray",
+        "on_trout": bool(on_trout),
+        "near_stocked": bool(stocked_waters),
+        "hatch_zone": zone, "active": active, "month": month_now,
+        "stocked_waters": stocked_waters,
+        "access_count": access_count,
+        "gauges": [],
+    }
+    # Default to Hatches when there's something hatching; otherwise the
+    # Conditions note is the most useful first thing to read.
+    default_tab = "hatches" if active else "conditions"
+    return f"""
+        <div class="bl-card">
+            {_panel_header_html(river)}
+            <div class="bl-card-body">
+                {_panel_tabs_html(river, "", default_tab=default_tab)}
             </div>
         </div>
     """
@@ -1400,13 +1475,21 @@ async def api_reach_detail(
     lat: float = Query(..., ge=-90, le=90),
     lon: float = Query(..., ge=-180, le=180),
     name: str | None = Query(default=None, max_length=120),
+    trout: bool = Query(default=False),
 ):
-    """Context for an ungauged stream reach the user clicked: active
-    hatches for its zone, plus nearby access points and stocked waters.
-    Conditions are intentionally omitted (no gauge on the reach); the
-    card shows a short note instead. All inputs are already public map
-    data, so no auth."""
-    payload = await asyncio.to_thread(_reach_detail_payload, lat, lon, name)
+    """Context for an ungauged stream reach the user clicked. Returns the
+    fully server-rendered `popup_html` -- the same panel layout as a
+    gauged river (header pills, four tabs), opened on Hatches with a
+    "no live gauge here" note under Conditions -- so the ungauged card no
+    longer drifts from the gauged one. `trout` flags whether the clicked
+    reach carries a state trout designation (drives the trout pill). The
+    structured hatch/access/stocked fields are kept for compatibility.
+    All inputs are already public map data, so no auth."""
+    payload, popup_html = await asyncio.gather(
+        asyncio.to_thread(_reach_detail_payload, lat, lon, name),
+        asyncio.to_thread(build_reach_popup_html, lat, lon, name, trout),
+    )
+    payload["popup_html"] = popup_html
     return _cached_json(request, payload, max_age=300)
 
 
