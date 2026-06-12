@@ -1,7 +1,7 @@
 
 ======== CO explicit ========
-  LAYER https://services5.arcgis.com/ttNGmDvKQA7oeDQ3/arcgis/rest/services/CPWSB181AquaticData/FeatureServer/1
-    PASS name='Aquatic Gold Medal Waters SB181C' geom=esriGeometryPolygon count=17 geojson_ok=True in_state=True
+  LAYER https://services5.arcgis.com/ttNGmDvKQA7oeDQ3/arcgis/rest/services/CPWSB181AquaticData/FeatureServer/0
+    PASS name='Aquatic Cutthroat Trout Designated Crucial Habitat SB181C' geom=esriGeometryPolygon count=281 geojson_ok=True in_state=True
     fields:
       OBJECTID | OID | 'OBJECTID'
       Species_Ac | String | 'Species_Ac'
@@ -10,10 +10,48 @@
       BufferDist | String | 'BufferDist'
       Shape__Area | Double | 'Shape__Area'
       Shape__Length | Double | 'Shape__Length'
-    sample={"OBJECTID": 1, "Species_Ac": "Aquatic Gold Medal Waters", "Activity_C": "GMW", "UpdateComm": "Captured on 12/03/2024", "BufferDist": "500 feet", "Shape__Area": 3356771.87890625, "Shape__Length": 18093.32822629905}
-    sample={"OBJECTID": 2, "Species_Ac": "Aquatic Gold Medal Waters", "Activity_C": "GMW", "UpdateComm": "Captured on 12/03/2024", "BufferDist": "500 feet", "Shape__Area": 15577311.87890625, "Shape__Length": 79888.27045668106}
-    sample={"OBJECTID": 3, "Species_Ac": "Aquatic Gold Medal Waters", "Activity_C": "GMW", "UpdateComm": "Captured on 12/03/2024", "BufferDist": "500 feet", "Shape__Area": 24063395.43359375, "Shape__Length": 123294.28375424659}
+    sample={"OBJECTID": 1, "Species_Ac": "Aquatic Cutthroat Trout Designated Crucial Habitat", "Activity_C": "CTDCH", "UpdateComm": "Captured on 12/03/2024", "BufferDist": "500 feet", "Shape__Area": 70807.5390625, "Shape__Length": 1713.4354489716254}
+    sample={"OBJECTID": 2, "Species_Ac": "Aquatic Cutthroat Trout Designated Crucial Habitat", "Activity_C": "CTDCH", "UpdateComm": "Captured on 12/03/2024", "BufferDist": "500 feet", "Shape__Area": 147976.41015625, "Shape__Length": 1525.8214940326666}
+    sample={"OBJECTID": 3, "Species_Ac": "Aquatic Cutthroat Trout Designated Crucial Habitat", "Activity_C": "CTDCH", "UpdateComm": "Captured on 12/03/2024", "BufferDist": "500 feet", "Shape__Area": 368011.37109375, "Shape__Length": 2766.869693868757}
+
+======== CO explicit ========
+  LAYER https://services5.arcgis.com/ttNGmDvKQA7oeDQ3/arcgis/rest/services/CPWSB181AquaticData/FeatureServer/2
+    PASS name='Aquatic Native Species Conservation Waters SB181C' geom=esriGeometryPolygon count=1779 geojson_ok=True in_state=True
+    fields:
+      OBJECTID | OID | 'OBJECTID'
+      Activity_C | String | 'Activity_C'
+      UpdateComm | String | 'UpdateComm'
+      BufferDist | String | 'BufferDist'
+      Species_Ac | String | 'Species_Ac'
+      Shape__Area | Double | 'Shape__Area'
+      Shape__Length | Double | 'Shape__Length'
+    sample={"OBJECTID": 1, "Activity_C": "ANSCW", "UpdateComm": "Captured on 12/03/2024", "BufferDist": "500 feet", "Species_Ac": "Aquatic Native Species Conservation Waters", "Shape__Area": 4798983.34375, "Shape__Length": 25263.681379377358}
+    sample={"OBJECTID": 2, "Activity_C": "ANSCW", "UpdateComm": "Captured on 12/03/2024", "BufferDist": "500 feet", "Species_Ac": "Aquatic Native Species Conservation Waters", "Shape__Area": 2848717.6328125, "Shape__Length": 16066.70886921029}
+    sample={"OBJECTID": 3, "Activity_C": "ANSCW", "UpdateComm": "Captured on 12/03/2024", "BufferDist": "500 feet", "Species_Ac": "Aquatic Native Species Conservation Waters", "Shape__Area": 2996620.10546875, "Shape__Length": 15900.139795675064}
+
+======== CO explicit ========
+  LAYER https://services5.arcgis.com/ttNGmDvKQA7oeDQ3/arcgis/rest/services/CPWSB181AquaticData/FeatureServer/3
+    PASS name='Aquatic Sportsfish Management Waters SB181C' geom=esriGeometryPolygon count=2351 geojson_ok=True in_state=True
+    fields:
+      OBJECTID | OID | 'OBJECTID'
+      Activity_C | String | 'Activity_C'
+      UpdateComm | String | 'UpdateComm'
+      BufferDist | String | 'BufferDist'
+      Species_Ac | String | 'Species_Ac'
+      Shape__Area | Double | 'Shape__Area'
+      Shape__Length | Double | 'Shape__Length'
+    sample={"OBJECTID": 1, "Activity_C": "ASMW", "UpdateComm": "Captured on 12/03/2024", "BufferDist": "500 feet", "Species_Ac": "Aquatic Sportfish Management Waters", "Shape__Area": 254130.10546875, "Shape__Length": 1810.0943967387757}
+    sample={"OBJECTID": 2, "Activity_C": "ASMW", "UpdateComm": "Captured on 12/03/2024", "BufferDist": "500 feet", "Species_Ac": "Aquatic Sportfish Management Waters", "Shape__Area": 408200.74609375, "Shape__Length": 2475.7070827193525}
+    sample={"OBJECTID": 3, "Activity_C": "ASMW", "UpdateComm": "Captured on 12/03/2024", "BufferDist": "500 feet", "Species_Ac": "Aquatic Sportfish Management Waters", "Shape__Area": 157493.6796875, "Shape__Length": 1444.7256899350348}
 
 ======== NV explicit ========
-  LAYER https://services.arcgis.com/RyxlXSfFi87rAosq/arcgis/rest/services/LCT_Occupied_Streams_NV/FeatureServer/0
-    FAIL meta: {'error': {'code': 400, 'message': '', 'details': ['The requested layer (layerId: 0) was not found.']}}
+  LAYER https://services.arcgis.com/RyxlXSfFi87rAosq/arcgis/rest/services/LCT_Occupied_Streams_NV/FeatureServer/1
+    FAIL meta: {'error': {'code': 400, 'message': '', 'details': ['The requested layer (layerId: 1) was not found.']}}
+
+======== NV explicit ========
+  LAYER https://services.arcgis.com/RyxlXSfFi87rAosq/arcgis/rest/services/LCT_Occupied_Streams_NV/FeatureServer/2
+    FAIL meta: {'error': {'code': 400, 'message': '', 'details': ['The requested layer (layerId: 2) was not found.']}}
+
+======== NV explicit ========
+  LAYER https://services.arcgis.com/RyxlXSfFi87rAosq/arcgis/rest/services/LCT_Occupied_Streams_NV/FeatureServer/3
+    FAIL meta: {'error': {'code': 400, 'message': '', 'details': ['The requested layer (layerId: 3) was not found.']}}
