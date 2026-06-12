@@ -5,7 +5,8 @@
  * (the old HTML hand-copied the tier hexes). Static legend sections
  * (gauge conditions, public lands, the scoring note) stay in
  * index.html; this module fills the #legend-tiers / #legend-points
- * placeholders.
+ * placeholders and stamps the matching POI glyph discs into the
+ * Filters-pane layer rows ([data-poi]).
  *
  * Runs at import (app-boot loads after the DOM is parsed, same pattern
  * as controls.ts).
@@ -69,5 +70,20 @@ function renderPoints(): void {
     `<div class="legend-item"><div class="legend-dot legend-dot--pin"></div> Saved pin</div>`;
 }
 
+/** Filters-pane rows marked data-poi get the same glyph disc as the
+ *  map marker + legend row, so all three stay in sync. The saved-pins
+ *  row goes copper -- its map marker is the copper teardrop, not a
+ *  brand-blue POI disc. */
+function stampPoiRows(): void {
+  document
+    .querySelectorAll<HTMLElement>(".filter-row-icon[data-poi]")
+    .forEach((el) => {
+      const type = el.dataset.poi || "";
+      el.innerHTML = poiIconHtml(type, 18);
+      if (type === "pin") el.firstElementChild?.classList.add("poi-icon--pin");
+    });
+}
+
 renderTiers();
 renderPoints();
+stampPoiRows();

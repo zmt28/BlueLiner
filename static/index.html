@@ -349,14 +349,18 @@
                             <input type="checkbox" id="lyr-usgs" checked>
                             <span class="filter-row-check"><i data-lucide="check" aria-hidden="true"></i></span>
                         </label>
+                        <!-- data-poi rows get the matching poi-icons.ts marker
+                             disc stamped in by legend.ts, so panel rows match
+                             the map markers + legend. Line/fill layers
+                             (streams, waterways, public lands) keep Lucide. -->
                         <label class="filter-row-toggle">
-                            <span class="filter-row-icon"><i data-lucide="map-pin" aria-hidden="true"></i></span>
+                            <span class="filter-row-icon" data-poi="walk_in"></span>
                             <span class="filter-row-label">Access points</span>
                             <input type="checkbox" id="lyr-access">
                             <span class="filter-row-check"><i data-lucide="check" aria-hidden="true"></i></span>
                         </label>
                         <label class="filter-row-toggle">
-                            <span class="filter-row-icon"><i data-lucide="fish" aria-hidden="true"></i></span>
+                            <span class="filter-row-icon" data-poi="stocked"></span>
                             <span class="filter-row-label">Stocked waters</span>
                             <input type="checkbox" id="lyr-stocked">
                             <span class="filter-row-check"><i data-lucide="check" aria-hidden="true"></i></span>
@@ -368,7 +372,7 @@
                             <span class="filter-row-check"><i data-lucide="check" aria-hidden="true"></i></span>
                         </label>
                         <label class="filter-row-toggle">
-                            <span class="filter-row-icon"><i data-lucide="bookmark" aria-hidden="true"></i></span>
+                            <span class="filter-row-icon" data-poi="pin"></span>
                             <span class="filter-row-label">Saved pins</span>
                             <input type="checkbox" id="lyr-pins" checked>
                             <span class="filter-row-check"><i data-lucide="check" aria-hidden="true"></i></span>
