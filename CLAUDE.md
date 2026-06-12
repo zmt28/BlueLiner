@@ -118,9 +118,12 @@ Hosted on **Render** (free tier). GitHub Actions provide:
 - **Actions artifacts are NOT downloadable from the sandbox** (Azure blob
   storage host is blocked). To inspect build output, print what you need in
   the workflow log or commit small reports back to the branch.
-- **`data-build.yml` publishes to R2 only from `main`** -- branch runs build +
-  artifact only (Publish step skipped). Production data updates require
-  merge first, then a run from main.
+- **`data-build.yml` publishes to R2 only from `main` AND only with the
+  `upload: true` dispatch input** (defaults to false -- a run with just
+  `r2_prefix` set builds an artifact and silently skips the Publish step).
+  Production data updates require merge first, then a main dispatch with
+  BOTH `r2_prefix` and `upload: true`, then a `DATA_BASE_URL` cutover on
+  Render to the new prefix.
 - **Anonymous GitHub API rate-limits fast** (60/hr shared) -- poll at >=120s
   intervals or use the authenticated GitHub MCP tools (whose list responses
   are huge: extract fields via the saved-output file, never read raw).
