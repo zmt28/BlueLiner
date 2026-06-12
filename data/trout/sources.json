@@ -1,52 +1,84 @@
 {
-  "_comment": "Declarative trout-source registry consumed by scripts/build_clickable_streams.py via scripts/trout_registry.py. Order = precedence (first writer wins per COMID; states don't geographically overlap, so order among them is immaterial -- kept as the historical MD->VA->PA->NE->NY->NC->GA order for byte-identical output). Adding a state = adding an entry here (the discovery dossiers emit draft entries in this shape), not new Python. Modes: single (whole layer -> one class) | multi_layer (one class per sublayer) | field_map (exact value->class; unmapped rows dropped) | field_prefix (ordered substring rules over coalesced fields; unmatched dropped) | flags (any 'Yes' flag field -> stocked, else default). A `seed` is a committed COMID fallback used only if the live endpoint is unreachable.",
+  "_comment": "Declarative trout-source registry consumed by scripts/build_clickable_streams.py via scripts/trout_registry.py. Order = precedence (first writer wins per COMID; states don't geographically overlap, so order among them is immaterial -- kept as the historical MD->VA->PA->NE->NY->NC->GA order for byte-identical output). Adding a state = adding an entry here (the discovery dossiers emit draft entries in this shape), not new Python. Modes: single (whole layer -> one class) | multi_layer (one class per sublayer) | field_map (exact value->class; unmapped rows dropped) | field_prefix (ordered substring rules over coalesced fields; unmatched dropped) | flags (any 'Yes' flag field -> stocked, else default). A `seed` is a committed COMID fallback used only if the live endpoint is unreachable. NV REMOVED 2026-06-12: NDOW retired LCT_Occupied_Streams_NV (service answers but every layerId returns 'not found'; verified via CI probe, see gis_verify_out history). It blocked the data-build unreachable-source gate. Re-add when the republished NDOW service is found (discovery round was in flight).",
   "sources": [
     {
-      "state": "MD", "label": "Maryland Designated Use Trout",
-      "mode": "single", "class": "designated",
+      "state": "MD",
+      "label": "Maryland Designated Use Trout",
+      "mode": "single",
+      "class": "designated",
       "url": "https://dnr.geodata.md.gov/dnrdata/rest/services/Fisheries/DesignatedUse_Trout/MapServer/0/query?where=1%3D1",
       "seed": "data/nhdplus/MD_designated_comids.json"
     },
     {
-      "state": "VA", "label": "Virginia Wild Trout Streams",
-      "mode": "single", "class": "wild_reproduction",
+      "state": "VA",
+      "label": "Virginia Wild Trout Streams",
+      "mode": "single",
+      "class": "wild_reproduction",
       "url": "https://services.dwr.virginia.gov/arcgis/rest/services/Public/WildTroutStreams/MapServer/0/query?where=1%3D1"
     },
     {
-      "state": "PA", "label": "PA PASDA trout", "mode": "multi_layer",
+      "state": "PA",
+      "label": "PA PASDA trout",
+      "mode": "multi_layer",
       "base": "https://mapservices.pasda.psu.edu/server/rest/services/pasda/PAFishBoat/MapServer",
       "layers": [
-        {"id": 36, "class": "wild_reproduction", "label": "Trout Natural Reproduction with Tributaries"},
-        {"id": 9,  "class": "class_a",           "label": "Class A Streams"},
-        {"id": 31, "class": "wilderness",        "label": "Wilderness Trout Streams"},
-        {"id": 3,  "class": "stocked",           "label": "Stocked Trout Waters"}
+        {
+          "id": 36,
+          "class": "wild_reproduction",
+          "label": "Trout Natural Reproduction with Tributaries"
+        },
+        {
+          "id": 9,
+          "class": "class_a",
+          "label": "Class A Streams"
+        },
+        {
+          "id": 31,
+          "class": "wilderness",
+          "label": "Wilderness Trout Streams"
+        },
+        {
+          "id": 3,
+          "class": "stocked",
+          "label": "Stocked Trout Waters"
+        }
       ]
     },
     {
-      "state": "NJ", "label": "NJ Trout Stocked Streams",
-      "mode": "single", "class": "stocked",
+      "state": "NJ",
+      "label": "NJ Trout Stocked Streams",
+      "mode": "single",
+      "class": "stocked",
       "url": "https://mapsdep.nj.gov/arcgis/rest/services/Features/Environmental_admin/MapServer/35/query?where=1%3D1"
     },
     {
-      "state": "VT", "label": "VT Brook Trout Waters",
-      "mode": "single", "class": "wild_reproduction",
+      "state": "VT",
+      "label": "VT Brook Trout Waters",
+      "mode": "single",
+      "class": "wild_reproduction",
       "note": "EBTJV catchment polygons, not centerlines -- tags every NHD flowline inside each polygon (renders coarser).",
       "url": "https://anrmaps.vermont.gov/arcgis/rest/services/map_services/MAP_ANR_ANRATLASFISHWILDLIFE_WM_NOCACHE/MapServer/49/query?where=1%3D1"
     },
     {
-      "state": "MA", "label": "MA Coldwater Fisheries Resources",
-      "mode": "single", "class": "wild_reproduction",
+      "state": "MA",
+      "label": "MA Coldwater Fisheries Resources",
+      "mode": "single",
+      "class": "wild_reproduction",
       "url": "https://arcgisserver.digital.mass.gov/arcgisserver/rest/services/AGOL/DFW_CFR/FeatureServer/0/query?where=1%3D1"
     },
     {
-      "state": "WV", "label": "WV Stocked Trout Streams",
-      "mode": "single", "class": "stocked",
+      "state": "WV",
+      "label": "WV Stocked Trout Streams",
+      "mode": "single",
+      "class": "stocked",
       "url": "https://services.wvgis.wvu.edu/arcgis/rest/services/Applications/dnrRec_fishing/MapServer/4/query?where=1%3D1"
     },
     {
       "_comment": "W1 of docs/trout-coverage-expansion-plan.md sought an AUTHORITATIVE NY DEC statewide trout classification/survey/distribution layer to sit AFTER this management layer (broader coverage, lower precedence). The CI crawl (gis_verify_out/REPORT.txt) found NONE suitable: every trout-related PASS from the authoritative NYSDEC org (services6.arcgis.com/DZHaqZm9cxOD4CWM) or gisservices.dec.ny.gov is either ACCESS, not distribution -- 'Trout Stream Fishing Access' (3811 Public-Fishing-Rights easement polygons, fields WATER/AGENCY/COMMENTS) and boat launches -- or is this same management layer (the AGOL mirror Inland_Trout_Stream_Fishing/0 was the dil_water_activities/0 data, skipped). The only distribution/survey-shaped candidates were non-authoritative: 'High_Risk_Trout_Streams' and a rehosted 'Inland_Trout_Stream_Fishing' (452 reaches -- FEWER than this layer) both live in a Syracuse University org (services.arcgis.com/uDTUpUPbk8X8mXwl, owner 75be5e_SyrUniv), and the 'NYSM Fish Atlas Database' is owned by a Trout Unlimited user (not NYSDEC) and did not PASS the crawl. So no broader-coverage NY source is added; this management layer remains NY's only entry. Re-run scripts/gis_verify_request.txt with a 'distribution/survey/classified' keyword focus if DEC later publishes a statewide trout-survey dataset.",
-      "state": "NY", "label": "NY Inland Trout Stream Fishing",
-      "mode": "field_map", "field": "MGMTCAT",
+      "state": "NY",
+      "label": "NY Inland Trout Stream Fishing",
+      "mode": "field_map",
+      "field": "MGMTCAT",
       "url": "https://gisservices.dec.ny.gov/arcgis/rest/services/dil/dil_water_activities/MapServer/0/query?where=1%3D1",
       "map": {
         "Stocked": "stocked",
@@ -56,63 +88,161 @@
         "Other": "wild_reproduction"
       },
       "tier_map": {
-        "Stocked": "class3", "Stocked-Extended": "class3",
-        "Wild-Quality": "class2", "Wild-Premier": "class1", "Other": "class2"
+        "Stocked": "class3",
+        "Stocked-Extended": "class3",
+        "Wild-Quality": "class2",
+        "Wild-Premier": "class1",
+        "Other": "class2"
       }
     },
     {
-      "state": "NC", "label": "NC Public Mountain Trout Waters",
-      "mode": "field_prefix", "fields": ["FIRST_WRC_", "WRC_Class"],
+      "state": "NC",
+      "label": "NC Public Mountain Trout Waters",
+      "mode": "field_prefix",
+      "fields": [
+        "FIRST_WRC_",
+        "WRC_Class"
+      ],
       "url": "https://services1.arcgis.com/YfqBAUM5nWR3yhGP/arcgis/rest/services/PMTW_streams_2025/FeatureServer/0/query?where=1%3D1",
       "rules": [
-        {"contains": ["hatchery supported", "delayed harvest"], "bucket": "stocked"},
-        {"contains": ["wild trout", "catch and release", "special regulation"], "bucket": "wild_reproduction"}
+        {
+          "contains": [
+            "hatchery supported",
+            "delayed harvest"
+          ],
+          "bucket": "stocked"
+        },
+        {
+          "contains": [
+            "wild trout",
+            "catch and release",
+            "special regulation"
+          ],
+          "bucket": "wild_reproduction"
+        }
       ],
       "tier_rules": [
-        {"contains": ["hatchery supported", "delayed harvest"], "tier": "class2"},
-        {"contains": ["wild trout", "catch and release", "special regulation"], "tier": "class1"}
+        {
+          "contains": [
+            "hatchery supported",
+            "delayed harvest"
+          ],
+          "tier": "class2"
+        },
+        {
+          "contains": [
+            "wild trout",
+            "catch and release",
+            "special regulation"
+          ],
+          "tier": "class1"
+        }
       ]
     },
     {
-      "state": "GA", "label": "GA Trout Streams",
-      "mode": "flags", "stocked_flags": ["Hvy_stock", "Delay_har"], "default": "wild_reproduction",
+      "state": "GA",
+      "label": "GA Trout Streams",
+      "mode": "flags",
+      "stocked_flags": [
+        "Hvy_stock",
+        "Delay_har"
+      ],
+      "default": "wild_reproduction",
       "url": "https://services6.arcgis.com/9QlSLDqa0P1cHLhu/arcgis/rest/services/Georgia_Trout_Streams_Public_Download_All_Layers/FeatureServer/1/query?where=1%3D1"
     },
     {
       "_comment": "CT is two sources. WTMA layer first (wild claims Class-1 reaches before the stocked layer colors the rest). CT DEEP Fisheries Management Areas carries the WTMA class in MGMT_AREA -- '... Wild Trout Management Area (Class 1)' is self-sustaining/unstocked -> wild; Class 2/3 are stocked-supplemented, and Trophy/Trout Management Area/Trout Park are stocked -> the `default`. FISH_TYPE='Trout' drops the Bass/lake rows.",
-      "state": "CT", "label": "CT (WTMA)",
-      "mode": "field_prefix", "fields": ["MGMT_AREA"],
+      "state": "CT",
+      "label": "CT (WTMA)",
+      "mode": "field_prefix",
+      "fields": [
+        "MGMT_AREA"
+      ],
       "url": "https://services1.arcgis.com/FjPcSmEFuDYlIdKC/arcgis/rest/services/Fisheries_management_Areas/FeatureServer/0/query?where=FISH_TYPE%3D%27Trout%27",
-      "rules": [{"contains": ["(class 1)"], "bucket": "wild_reproduction"}],
+      "rules": [
+        {
+          "contains": [
+            "(class 1)"
+          ],
+          "bucket": "wild_reproduction"
+        }
+      ],
       "default": "stocked",
-      "tier_rules": [{"contains": ["(class 1)"], "tier": "class1"}],
+      "tier_rules": [
+        {
+          "contains": [
+            "(class 1)"
+          ],
+          "tier": "class1"
+        }
+      ],
       "tier_default": "class3"
     },
     {
       "_comment": "CT general stocked-streams universe (the 'No Special Management' reaches the WTMA layer doesn't carry). Whole layer -> stocked; Class-1 WTMA COMIDs are already claimed wild by the CT (WTMA) source above.",
-      "state": "CT", "label": "CT (stocked)",
-      "mode": "single", "class": "stocked",
+      "state": "CT",
+      "label": "CT (stocked)",
+      "mode": "single",
+      "class": "stocked",
       "url": "https://services1.arcgis.com/FjPcSmEFuDYlIdKC/arcgis/rest/services/Connecticut_Stocked_Streams/FeatureServer/0/query?where=1%3D1"
     },
     {
       "_comment": "WI DNR classified trout streams -- TROUT_CLASS_CODE on the WY_FISHERIES_WATERS 'Trout Stream Lines' layer (Class I/II/III unique-value renderer). Per the nationwide principle (natural reproduction present -> wild; pure put-and-take -> stocked): Class I (self-sustaining wild) and Class II (some natural reproduction, stocking supplements it) -> wild_reproduction; Class III (no natural reproduction, annual put-and-take) -> stocked. Substring rules are lowercased and ordered III/3 before the II/I/2/1 wild rule so 'class i' can't match 'class ii'/'class iii'; both roman and arabic forms covered.",
-      "state": "WI", "label": "WI Classified Trout Streams",
-      "mode": "field_prefix", "fields": ["TROUT_CLASS_CODE"],
+      "state": "WI",
+      "label": "WI Classified Trout Streams",
+      "mode": "field_prefix",
+      "fields": [
+        "TROUT_CLASS_CODE"
+      ],
       "url": "https://dnrmaps.wi.gov/arcgis/rest/services/WT_SWDV/WY_FISHERIES_WATERS/MapServer/9/query?where=1%3D1",
       "rules": [
-        {"contains": ["class iii", "class 3"], "bucket": "stocked"},
-        {"contains": ["class ii", "class i", "class 2", "class 1"], "bucket": "wild_reproduction"}
+        {
+          "contains": [
+            "class iii",
+            "class 3"
+          ],
+          "bucket": "stocked"
+        },
+        {
+          "contains": [
+            "class ii",
+            "class i",
+            "class 2",
+            "class 1"
+          ],
+          "bucket": "wild_reproduction"
+        }
       ],
       "tier_rules": [
-        {"contains": ["class iii", "class 3"], "tier": "class3"},
-        {"contains": ["class ii", "class 2"], "tier": "class2"},
-        {"contains": ["class i", "class 1"], "tier": "class1"}
+        {
+          "contains": [
+            "class iii",
+            "class 3"
+          ],
+          "tier": "class3"
+        },
+        {
+          "contains": [
+            "class ii",
+            "class 2"
+          ],
+          "tier": "class2"
+        },
+        {
+          "contains": [
+            "class i",
+            "class 1"
+          ],
+          "tier": "class1"
+        }
       ]
     },
     {
       "_comment": "MI DNR Designated Trout Streams -- RegulationDesc on DNRFisheriesTroutRegsOPENDATA (Michigan's Type 1-4 inland-trout regulation system, ~60k polylines). Per the nationwide principle (natural reproduction present -> wild; pure put-and-take -> stocked): Type 1 (self-sustaining wild) and Type 2 (natural reproduction, stocking supplements it) -> wild_reproduction. Type 3 stays stocked as an 'stricter on edges' call -- its natural reproduction is marginal/limited and the fishery is stocking-dependent; Type 4 (no natural reproduction, put-and-take) -> stocked. GR (Gear Restricted) and BTRA (Brook Trout Restoration Area) qualifiers ride on top of a type and follow the type number. All 'Non Designated' variants and the bare 'GR Designated' (no type) are omitted -> dropped. field_map is an EXACT match, so casing/spacing mirror the live distinct values from the discovery dossier.",
-      "state": "MI", "label": "MI Designated Trout Streams",
-      "mode": "field_map", "field": "RegulationDesc",
+      "state": "MI",
+      "label": "MI Designated Trout Streams",
+      "mode": "field_map",
+      "field": "RegulationDesc",
       "url": "https://services3.arcgis.com/Jdnp1TjADvSDxMAX/arcgis/rest/services/DNRFisheriesTroutRegsOPENDATA/FeatureServer/0/query?where=1%3D1",
       "map": {
         "Type 1 Designated": "wild_reproduction",
@@ -141,8 +271,10 @@
     },
     {
       "_comment": "ME IFW Wild Brook Trout Priority Conservation Areas (gis.maine.gov ifw/IFW_Wild_BKT_Priority_Conservation_Areas) -- stream reaches rated for wild brook trout conservation from the EBTJV/USGS-catchment model. The ifw_prty field has three live values (verified via the probe-layer run): 'Very High' and 'High' are strong wild brook trout reaches -> wild_reproduction; 'Not' is the barrier-maintenance / not-connect class (maintain barriers to keep invasive fish out -- not an occupancy rating) -> dropped. Cut set at Very High + High per the 'don't overclaim wild/green' rule; Maine does not stock these wild-managed waters, so there's no stocked-green risk. field_map is exact-match.",
-      "state": "ME", "label": "ME Wild Brook Trout Priority Waters",
-      "mode": "field_map", "field": "ifw_prty",
+      "state": "ME",
+      "label": "ME Wild Brook Trout Priority Waters",
+      "mode": "field_map",
+      "field": "ifw_prty",
       "url": "https://gis.maine.gov/mapservices/rest/services/ifw/IFW_Wild_BKT_Priority_Conservation_Areas/MapServer/0/query?where=1%3D1",
       "map": {
         "Very High": "wild_reproduction",
@@ -151,8 +283,10 @@
     },
     {
       "_comment": "MO Department of Conservation trout management areas (gisblue.mdc.mo.gov Aquatic/MO_Fishing_Interactive_Map layer 7 'Trout Streams'; AreaType field, values verified via probe-layer). Blue Ribbon = wild, naturally reproducing trout managed with a wild emphasis (not put-and-take) -> wild_reproduction. Red Ribbon (trophy browns, stocked 1-2x/yr), White Ribbon (put-and-take rainbow), Trout Park (the heavily-stocked spring parks) and Lake Taneycomo (stocked tailwater) -> stocked. The clean inverse of the western quality-ribbon trap: MO's ribbons encode management/stocking, not just fishing quality. field_map exact-match.",
-      "state": "MO", "label": "MO Trout Management Areas",
-      "mode": "field_map", "field": "AreaType",
+      "state": "MO",
+      "label": "MO Trout Management Areas",
+      "mode": "field_map",
+      "field": "AreaType",
       "url": "https://gisblue.mdc.mo.gov/arcgis/rest/services/Aquatic/MO_Fishing_Interactive_Map/MapServer/7/query?where=1%3D1",
       "map": {
         "Blue Ribbon": "wild_reproduction",
@@ -171,47 +305,93 @@
     },
     {
       "_comment": "IA DNR Trout Streams (programs.iowadnr.gov Recreation/Fishing layer 4; wild_trt field = naturally reproducing wild trout species present -- values verified via probe-layer: blank / Brook / Brown / Rainbow and combos). Textbook case of the nationwide principle: any wild species present -> wild_reproduction (even where also supplementally stocked); blank (put-and-take, no natural reproduction) -> stocked. field_prefix on species names so any current or future combo classifies wild; default stocked never greens a blank reach.",
-      "state": "IA", "label": "IA Trout Streams",
-      "mode": "field_prefix", "fields": ["wild_trt"],
+      "state": "IA",
+      "label": "IA Trout Streams",
+      "mode": "field_prefix",
+      "fields": [
+        "wild_trt"
+      ],
       "url": "https://programs.iowadnr.gov/geospatial/rest/services/Recreation/Fishing/MapServer/4/query?where=1%3D1",
       "rules": [
-        {"contains": ["brook", "brown", "rainbow"], "bucket": "wild_reproduction"}
+        {
+          "contains": [
+            "brook",
+            "brown",
+            "rainbow"
+          ],
+          "bucket": "wild_reproduction"
+        }
       ],
       "default": "stocked"
     },
     {
       "_comment": "WY Game & Fish Blue Ribbon Streams (services6.arcgis.com/cWzdqIyxbijuhPLw Blue_Ribbon_Streams). WGFD's top trout-stream tier -- >600 lb trout/mile, 'national importance', the top 3-5% of WY streams; these are de-facto self-sustaining wild trout fisheries. Per the nationwide principle's western-coverage carve-out: a quality/biomass tier with no reproduction field -> treat the top Blue Ribbon tier as wild. This layer is the Blue-Ribbon subset only (lower Red/Yellow/Green tiers aren't in it, so there's nothing to drop). Whole layer -> wild_reproduction.",
-      "state": "WY", "label": "WY Blue Ribbon Trout Streams",
-      "mode": "single", "class": "wild_reproduction", "tier": "gold",
+      "state": "WY",
+      "label": "WY Blue Ribbon Trout Streams",
+      "mode": "single",
+      "class": "wild_reproduction",
+      "tier": "gold",
       "url": "https://services6.arcgis.com/cWzdqIyxbijuhPLw/arcgis/rest/services/Blue_Ribbon_Streams/FeatureServer/0/query?where=1%3D1"
     },
     {
       "_comment": "UT DWR Blue Ribbon Fisheries, rivers only (Blue_Ribbon_Fisheries_VIEW/FeatureServer/0 = Blue_Ribbon_Rivers; the /1 lakes layer is intentionally excluded to avoid greening stocked reservoirs). UT's single Blue Ribbon quality tier -- ~17 premier river segments (Green, Provo, Weber, Logan, ...), de-facto wild trout rivers. Per the western-coverage carve-out (top tier = wild). Whole layer -> wild_reproduction.",
-      "state": "UT", "label": "UT Blue Ribbon Trout Rivers",
-      "mode": "single", "class": "wild_reproduction", "tier": "gold",
+      "state": "UT",
+      "label": "UT Blue Ribbon Trout Rivers",
+      "mode": "single",
+      "class": "wild_reproduction",
+      "tier": "gold",
       "url": "https://services.arcgis.com/ZzrwjTRez6FJiOq4/arcgis/rest/services/Blue_Ribbon_Fisheries_VIEW/FeatureServer/0/query?where=1%3D1"
     },
     {
       "_comment": "CO Parks & Wildlife SB181 Aquatic Management Units (CPWSB181AquaticData). Native Species Conservation, Cutthroat Crucial Habitat, and Gold Medal (CO's premier quality tier) -> wild; Sportfish Management -> stocked. The features are polygons that are ~500-ft buffers around the actual reaches (BufferDist field; 1,779 native-conservation polygons), so the build's buffer+intersect join tags the corridor flowlines precisely -- tighter than the already-shipped VT catchment polygons. Gold Medal -> wild per the western-coverage carve-out (top quality tier = wild, as with WY/UT Blue Ribbon). Wild sublayers are listed before the stocked one so wild wins on any overlap.",
-      "state": "CO", "label": "CO Aquatic Management Waters", "mode": "multi_layer",
+      "state": "CO",
+      "label": "CO Aquatic Management Waters",
+      "mode": "multi_layer",
       "base": "https://services5.arcgis.com/ttNGmDvKQA7oeDQ3/arcgis/rest/services/CPWSB181AquaticData/FeatureServer",
       "layers": [
-        {"id": 2, "class": "wild_reproduction", "tier": "class2", "native": true, "label": "Aquatic Native Species Conservation Waters"},
-        {"id": 0, "class": "wild_reproduction", "tier": "class2", "native": true, "label": "Aquatic Cutthroat Trout Designated Crucial Habitat"},
-        {"id": 1, "class": "wild_reproduction", "tier": "gold",                   "label": "Aquatic Gold Medal Waters"},
-        {"id": 3, "class": "stocked",           "tier": "class3",                 "label": "Aquatic Sportsfish Management Waters"}
+        {
+          "id": 2,
+          "class": "wild_reproduction",
+          "tier": "class2",
+          "native": true,
+          "label": "Aquatic Native Species Conservation Waters"
+        },
+        {
+          "id": 0,
+          "class": "wild_reproduction",
+          "tier": "class2",
+          "native": true,
+          "label": "Aquatic Cutthroat Trout Designated Crucial Habitat"
+        },
+        {
+          "id": 1,
+          "class": "wild_reproduction",
+          "tier": "gold",
+          "label": "Aquatic Gold Medal Waters"
+        },
+        {
+          "id": 3,
+          "class": "stocked",
+          "tier": "class3",
+          "label": "Aquatic Sportsfish Management Waters"
+        }
       ]
     },
     {
       "_comment": "CA CDFW Designated Heritage and Wild Trout Waters (biosds1356_fpu / ds1356). The entire dataset is state-designated Heritage Trout Waters (native wild) + Wild Trout Waters (self-sustaining), so the whole layer -> wild_reproduction. Polygon features (Water_Type = Stream / Stream-tributaries / Lake / Watershed); the build's buffer+intersect join tags the interior flowlines, like the shipped VT/CO polygon sources. A few Lake/Watershed features render coarser -- acceptable since every designated water here is wild.",
-      "state": "CA", "label": "CA Heritage & Wild Trout Waters",
-      "mode": "single", "class": "wild_reproduction", "tier": "class1",
+      "state": "CA",
+      "label": "CA Heritage & Wild Trout Waters",
+      "mode": "single",
+      "class": "wild_reproduction",
+      "tier": "class1",
       "url": "https://services2.arcgis.com/Uq9r85Potqm3MfRV/arcgis/rest/services/biosds1356_fpu/FeatureServer/0/query?where=1%3D1"
     },
     {
       "_comment": "SC DNR Trout Streams (Trout_Streams FeatureServer layer 4 = SC_Trout_Streams polylines; trout_category field, values verified via probe-layer). w (wild) and cr (catch-and-release -- SC's self-sustaining mountain wild reaches) -> wild_reproduction; dh (delayed harvest), pt (put-take) and pg (put-grow-take) -> stocked. Consistent with the NC entry (catch-and-release -> wild, delayed harvest -> stocked).",
-      "state": "SC", "label": "SC Trout Streams",
-      "mode": "field_map", "field": "trout_category",
+      "state": "SC",
+      "label": "SC Trout Streams",
+      "mode": "field_map",
+      "field": "trout_category",
       "url": "https://services.arcgis.com/acgZYxoN5Oj8pDLa/arcgis/rest/services/Trout_Streams/FeatureServer/4/query?where=1%3D1",
       "map": {
         "w": "wild_reproduction",
@@ -221,15 +401,12 @@
         "pg": "stocked"
       },
       "tier_map": {
-        "w": "class1", "cr": "class1",
-        "dh": "class2", "pt": "class3", "pg": "class3"
+        "w": "class1",
+        "cr": "class1",
+        "dh": "class2",
+        "pt": "class3",
+        "pg": "class3"
       }
-    },
-    {
-      "_comment": "NV Dept of Wildlife Lahontan Cutthroat Trout Occupied Streams (LCT_Occupied_Streams_NV). Stream reaches occupied by Nevada's native, self-sustaining Lahontan cutthroat (~480 mi of habitat) -- a naturally-reproducing native-trout distribution layer -> wild_reproduction, following the CO/CA native pattern (self-sustaining = wild). Whole layer -> wild. (NV's Bonneville cutthroat / redband occupied-stream layers could be added the same way later.)",
-      "state": "NV", "label": "NV Lahontan Cutthroat Streams",
-      "mode": "single", "class": "wild_reproduction", "native": true,
-      "url": "https://services.arcgis.com/RyxlXSfFi87rAosq/arcgis/rest/services/LCT_Occupied_Streams_NV/FeatureServer/0/query?where=1%3D1"
     },
     {
       "_comment": "NATIONWIDE NATIVE OVERLAY (range-wide eastern brook trout). TU / Eastern Brook Trout Joint Venture 'Most Recent Brook Trout Portfolio Assessment' -- 21,439 catchment polygons stitched from 9 regional EBTJV assessments covering the entire eastern brook trout native range (ME->GA, west to MN). Each catchment carries a Trout_community classification; this entry keeps the catchments where BROOK trout are actually present (allopatric, or sympatric with brown/rainbow) and drops the rest ('No brook trout', 'Brown/Rainbow trout only', 'No trout'). Brook trout present in an occupied catchment => native + naturally reproducing => is_native:true + wild_reproduction (per the self-sustaining=wild principle; brook trout are the native eastern char). The species-unspecified 'Wild trout' value is intentionally NOT in this entry's map -- it is brown/rainbow wild water (NOT native brook trout) and is carried by the SEPARATE non-native EBTJV entry below (W1 of docs/trout-coverage-expansion-plan.md); keeping it out of this native entry is what stops an is_native:true OR-merge from wrongly tagging brown/rainbow reaches as native brook trout. INDEPENDENT native overlay: appended after the state sources so every state source wins trout_class/tier precedence (step 3A OR-merges is_native across sources), and where a catchment has no state designation it still lights up as a generic wild (class2) native reach -- the eastern half of TroutRoutes-style range-wide coverage. Catchment polygons intersect the NHDPlus flowlines inside them (geometry-agnostic build). Source: services1.arcgis.com org 754BERmVIq3RqSf8 (TU conservation-portfolio org), layer 'Most Recent Brook Trout Portfolio Asssessment'.",
@@ -261,32 +438,47 @@
     },
     {
       "_comment": "WESTERN NATIVE OVERLAY -- Utah cutthroat. TU 'Cutthroat trout streams' (Utah_Cutthroat_trout): 2,292 stream polylines occupied by Utah's native cutthroat (subspecies field = Bonneville / Colorado River / Yellowstone cutthroat). An occupied-distribution layer -> whole layer is native + self-sustaining -> wild_reproduction + is_native (the cutthroat analog of the NV Lahontan source). Appended after the state sources so they keep trout_class/tier precedence; is_native OR-merges (step 3A).",
-      "state": "UTCT", "label": "UT Cutthroat Streams (TU)",
-      "mode": "single", "class": "wild_reproduction", "native": true,
+      "state": "UTCT",
+      "label": "UT Cutthroat Streams (TU)",
+      "mode": "single",
+      "class": "wild_reproduction",
+      "native": true,
       "url": "https://services1.arcgis.com/754BERmVIq3RqSf8/arcgis/rest/services/Utah_Cutthroat_trout/FeatureServer/0/query?where=1%3D1"
     },
     {
       "_comment": "WESTERN NATIVE OVERLAY -- Yellowstone cutthroat. TU 'YCT_CONS_POP_2018' (2018_YCT_Portfolio): 8,116 stream polylines = Yellowstone cutthroat conservation populations across the YCT range (MT/WY/ID). Every feature is an occupied conservation population (carries HybridRisk/PopQualifier/Connectedness attributes but all are occupied native populations), so whole layer -> native + self-sustaining -> wild_reproduction + is_native. Hybridized/at-risk populations are kept (still native cutthroat lineage, naturally reproducing) -- consistent with the whole-layer occupied treatment of the other native sources.",
-      "state": "YCT", "label": "Yellowstone Cutthroat Conservation Populations (TU)",
-      "mode": "single", "class": "wild_reproduction", "native": true,
+      "state": "YCT",
+      "label": "Yellowstone Cutthroat Conservation Populations (TU)",
+      "mode": "single",
+      "class": "wild_reproduction",
+      "native": true,
       "url": "https://services1.arcgis.com/754BERmVIq3RqSf8/arcgis/rest/services/2018_YCT_Portfolio/FeatureServer/0/query?where=1%3D1"
     },
     {
       "_comment": "WESTERN NATIVE OVERLAY -- Rio Grande cutthroat. TU 'Rio Grande Cutthroat Trout Conservation Portfolio 2009' (RGCT_Conservation_Portfolio): 121 stream polylines = RGCT conservation populations (NM / southern CO; GMU field = Lower Rio Grande / Pecos / Rio Grande Headwaters / Upper Canadian). Occupied native populations -> whole layer -> wild_reproduction + is_native. Lights up native trout where we previously had no New Mexico data. (CRCT_Conservation_Portfolio and HUC10Publish_WesternNativeFish were rejected: the former is only 8 coarse management-unit polygons, the latter a single dissolved range polygon -- both too coarse to map onto reaches.)",
-      "state": "RGCT", "label": "Rio Grande Cutthroat Conservation Populations (TU)",
-      "mode": "single", "class": "wild_reproduction", "native": true,
+      "state": "RGCT",
+      "label": "Rio Grande Cutthroat Conservation Populations (TU)",
+      "mode": "single",
+      "class": "wild_reproduction",
+      "native": true,
       "url": "https://services1.arcgis.com/754BERmVIq3RqSf8/arcgis/rest/services/RGCT_Conservation_Portfolio/FeatureServer/0/query?where=1%3D1"
     },
     {
       "_comment": "WESTERN NATIVE OVERLAY -- Bonneville cutthroat. TU 'Bonneville cutthroat trout conservation populations 2015' (Bonneville_cutthroat_trout_portfolio_2015): 2,240 stream polylines = BCT conservation populations across ID/NV/UT/WY (State field). Occupied native populations -> whole layer -> wild_reproduction + is_native; extends Bonneville coverage beyond the UT-only cutthroat-streams layer into Idaho/Wyoming/Nevada. (TU's Lahontan_Cutthroat_trout_populations layer returned no metadata when probed -- skipped; NV Lahontan is already covered by the NV DWR occupied-streams source above.)",
-      "state": "BCT", "label": "Bonneville Cutthroat Conservation Populations (TU)",
-      "mode": "single", "class": "wild_reproduction", "native": true,
+      "state": "BCT",
+      "label": "Bonneville Cutthroat Conservation Populations (TU)",
+      "mode": "single",
+      "class": "wild_reproduction",
+      "native": true,
       "url": "https://services1.arcgis.com/754BERmVIq3RqSf8/arcgis/rest/services/Bonneville_cutthroat_trout_portfolio_2015/FeatureServer/0/query?where=1%3D1"
     },
     {
       "_comment": "WESTERN NATIVE OVERLAY -- Gila trout (NM/AZ). TU 'Gila Trout Populations 2017' (Gila_Trout_Populations_2017): 581 NHD-aligned stream polylines for the Gila trout recovery program. field_map on Status2017: 'Current population' and 'Recently restored' (native Gila present) -> wild_reproduction + is_native; 'Eliminated' and 'Potential Recovery Stream' drop (no current fish). Gila is one of the rarest native US trout; recovery populations are managed native lineage in their historic headwaters. Appended after state sources (is_native OR-merges, step 3A).",
-      "state": "GILA", "label": "Gila Trout Populations (TU 2017)",
-      "mode": "field_map", "field": "Status2017", "native": true,
+      "state": "GILA",
+      "label": "Gila Trout Populations (TU 2017)",
+      "mode": "field_map",
+      "field": "Status2017",
+      "native": true,
       "map": {
         "Current population": "wild_reproduction",
         "Recently restored": "wild_reproduction"
@@ -295,20 +487,29 @@
     },
     {
       "_comment": "WESTERN NATIVE OVERLAY -- Westslope cutthroat (PNW). PSMFC StreamNet 'Fish_Dist' MapServer layer 12 = Westslope Cutthroat Trout (Oncorhynchus clarkii lewisi), 8,970 stream polylines compiled regionally-consistent by IDFG/MFWP/ODFW/WDFW (ID/MT/OR/WA). StreamNet generalized distribution = current presence, so whole layer -> native + self-sustaining -> wild_reproduction + is_native. This is the authoritative western analog to EBTJV; the gis.psmfc.org ArcGIS Server is reachable from the build runner (maps.psmfc.org 404s -- gis.psmfc.org is the live host).",
-      "state": "WCT", "label": "Westslope Cutthroat Trout (PSMFC StreamNet)",
-      "mode": "single", "class": "wild_reproduction", "native": true,
+      "state": "WCT",
+      "label": "Westslope Cutthroat Trout (PSMFC StreamNet)",
+      "mode": "single",
+      "class": "wild_reproduction",
+      "native": true,
       "url": "https://gis.psmfc.org/server/rest/services/StreamNet/Fish_Dist/MapServer/12/query?where=1%3D1"
     },
     {
       "_comment": "WESTERN NATIVE OVERLAY -- Bull trout (PNW, native char). PSMFC StreamNet 'Fish_Dist' MapServer layer 14 = Bull Trout (Salvelinus confluentus), regionally-consistent ID/MT/OR/WA distribution. Bull trout are a native char (like brook trout), self-sustaining -> wild_reproduction + is_native. Server-side where excludes UseType='Historical (use type unknown)' so only CURRENT-presence reaches tag native (consistent with dropping EBTJV 'No brook trout' and Gila 'Eliminated').",
-      "state": "BULL", "label": "Bull Trout (PSMFC StreamNet)",
-      "mode": "single", "class": "wild_reproduction", "native": true,
+      "state": "BULL",
+      "label": "Bull Trout (PSMFC StreamNet)",
+      "mode": "single",
+      "class": "wild_reproduction",
+      "native": true,
       "url": "https://gis.psmfc.org/server/rest/services/StreamNet/Fish_Dist/MapServer/14/query?where=UseType%20%3C%3E%20%27Historical%20(use%20type%20unknown)%27"
     },
     {
       "_comment": "WESTERN NATIVE OVERLAY -- Columbia redband (PNW). PSMFC StreamNet 'Fish_Dist' MapServer layer 16 = Redband Trout (Oncorhynchus mykiss gairdneri / newberrii / subsp.), 6,665 stream polylines region-wide (IDFG/MFWP/ODFW). Replaces the earlier Deschutes-only TU redband source with the regionally-consistent StreamNet distribution. Whole layer -> native redband -> wild_reproduction + is_native; server-side where excludes UseType='Historical (use type unknown)' (current presence only).",
-      "state": "RBT", "label": "Redband Trout (PSMFC StreamNet)",
-      "mode": "single", "class": "wild_reproduction", "native": true,
+      "state": "RBT",
+      "label": "Redband Trout (PSMFC StreamNet)",
+      "mode": "single",
+      "class": "wild_reproduction",
+      "native": true,
       "url": "https://gis.psmfc.org/server/rest/services/StreamNet/Fish_Dist/MapServer/16/query?where=UseType%20%3C%3E%20%27Historical%20(use%20type%20unknown)%27"
     }
   ]
