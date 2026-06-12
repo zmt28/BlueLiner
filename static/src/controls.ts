@@ -718,6 +718,15 @@ function wireStreamFilter(id: string, key: "wild" | "native"): void {
 wireStreamFilter("filter-wild", "wild");
 wireStreamFilter("filter-native", "native");
 
+// Stream-class chips: each toggles one quality tier in the network filter.
+for (const cb of document.querySelectorAll<HTMLInputElement>("#class-filter input[data-tier]")) {
+  const tier = cb.dataset.tier as StreamTier;
+  cb.checked = _initialStreamFilters.tiers[tier];
+  cb.addEventListener("change", () =>
+    setStreamFilters({ tiers: { [tier]: cb.checked } as Partial<Record<StreamTier, boolean>> }),
+  );
+}
+
 // -- Viewport watcher: refetch the clickable network + public lands
 // when the user settles after panning/zooming. Debounced 500 ms so
 // touch-device momentum-pans don't fire two fetches per gesture --
@@ -738,5 +747,16 @@ map.on("moveend", () => {
   (document.getElementById("cond-select") as HTMLSelectElement).value = "any";
   (document.getElementById("hatch-select") as HTMLSelectElement).value = "any";
   (document.getElementById("stocked-only") as HTMLInputElement).checked = false;
+  // Stream network: all classes on, wild/native off.
+  const tiers: Partial<Record<StreamTier, boolean>> = {};
+  for (const cb of document.querySelectorAll<HTMLInputElement>("#class-filter input[data-tier]")) {
+    cb.checked = true;
+    tiers[cb.dataset.tier as StreamTier] = true;
+  }
+  const wildEl = document.getElementById("filter-wild") as HTMLInputElement | null;
+  const nativeEl = document.getElementById("filter-native") as HTMLInputElement | null;
+  if (wildEl) wildEl.checked = false;
+  if (nativeEl) nativeEl.checked = false;
+  setStreamFilters({ tiers, wild: false, native: false });
   onFilterChange();
 };

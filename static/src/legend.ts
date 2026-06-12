@@ -40,10 +40,6 @@ function renderTiers(): void {
   const rows = TIER_ORDER.map(
     (t) => `<div class="legend-item">${lineSwatch(TIER_COLOR[t])} ${TIER_LABEL[t]}</div>`,
   );
-  // The faint USGS hydro overlay (lyr-usgs) is a line layer too.
-  rows.push(
-    `<div class="legend-item">${lineSwatch("var(--bl-river-300)")} All waterways</div>`,
-  );
   host.innerHTML = rows.join("");
 }
 
