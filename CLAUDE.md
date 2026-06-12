@@ -105,3 +105,22 @@ Hosted on **Render** (free tier). GitHub Actions provide:
 - `refresh-precompute.yml` — POST `/internal/refresh` every 30 min (needs `BLUELINES_URL` + `REFRESH_TOKEN` secrets)
 - `keep-warm.yml` — GET `/healthz` every 10 min to prevent free-tier sleep
 - `data-build.yml` — Scheduled NHDPlus/PAD-US rebuilds
+
+## Claude Code sandbox limitations (read before network/CI work)
+
+- **Egress allowlist**: only hosts the app calls at runtime are reachable
+  (USGS/NOAA, services.dwr.virginia.gov, dnr.geodata.md.gov, PASDA, github.com).
+  Most state GIS hosts, all `*.arcgis.com` orgs, `www.arcgis.com` search, and
+  WebFetch targets return proxy 403 "Host not in allowlist". Do NOT burn time
+  probing endpoints locally -- use the gis-endpoint-verify workflow: put
+  `states:`/`ST|url` lines in `scripts/gis_verify_request.txt`, push, and read
+  the committed `gis_verify_out/REPORT.txt`.
+- **Actions artifacts are NOT downloadable from the sandbox** (Azure blob
+  storage host is blocked). To inspect build output, print what you need in
+  the workflow log or commit small reports back to the branch.
+- **`data-build.yml` publishes to R2 only from `main`** -- branch runs build +
+  artifact only (Publish step skipped). Production data updates require
+  merge first, then a run from main.
+- **Anonymous GitHub API rate-limits fast** (60/hr shared) -- poll at >=120s
+  intervals or use the authenticated GitHub MCP tools (whose list responses
+  are huge: extract fields via the saved-output file, never read raw).
