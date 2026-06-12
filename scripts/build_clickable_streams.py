@@ -479,7 +479,15 @@ def spatial_join_trout(trout_gdf: gpd.GeoDataFrame,
     applies the source's (class, tier) and native flag."""
     import warnings
     id_col = next(c for c in nhd_gdf.columns if c.lower() == "comid")
+    # Rename the NHD id column to a collision-proof sentinel BEFORE the join.
+    # A trout layer can carry its own id field whose name case-exactly matches
+    # this region's NHD column (e.g. NHDPlus-catchment overlays like the EBTJV
+    # portfolio carry a "ComID" field, and some VPU shapefiles spell the NHD
+    # column "ComID" rather than "COMID"). gpd.sjoin suffixes such colliding
+    # columns to <name>_left/<name>_right, after which `joined[id_col]` is a
+    # KeyError. Renaming up front removes the collision regardless of casing.
     nhd_sub = nhd_gdf[[id_col, "geometry"]].copy()
+    nhd_sub = nhd_sub.rename(columns={id_col: "_nhd_comid"})
     nhd_sub = nhd_sub[~nhd_sub.geometry.isna() & ~nhd_sub.geometry.is_empty]
 
     trout_buf = trout_gdf.copy()
@@ -487,9 +495,16 @@ def spatial_join_trout(trout_gdf: gpd.GeoDataFrame,
         warnings.simplefilter("ignore", UserWarning)
         trout_buf["geometry"] = trout_buf.geometry.buffer(SPATIAL_JOIN_BUFFER_DEG)
     trout_buf = trout_buf[~trout_buf.geometry.isna() & ~trout_buf.geometry.is_empty]
+    # Drop any column that would still collide with our sentinel (paranoia: a
+    # source field literally named "_nhd_comid"); the trout attrs aren't needed.
+    trout_buf = trout_buf[["geometry"]]
+    if nhd_sub.empty or trout_buf.empty:
+        return set()
 
     joined = gpd.sjoin(nhd_sub, trout_buf, how="inner", predicate="intersects")
-    comids = set(int(c) for c in joined[id_col].unique() if c is not None)
+    if joined.empty:  # bbox-overlapping but no actual intersection
+        return set()
+    comids = set(int(c) for c in joined["_nhd_comid"].unique() if c is not None)
     return {c for c in comids if c in all_attrs}
 
 
