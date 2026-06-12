@@ -26,11 +26,8 @@ import { map, onMapReady } from "./map-setup";
 import { esc } from "./util";
 import { STREAM_TILES_ENABLED, STREAM_TILES_URL, STREAM_SOURCE_LAYER } from "./config";
 import { ensurePmtilesProtocol } from "./tiles";
-import {
-  prepareRiverPanel,
-  commitRiverPanelOpen,
-  openRiverPanel,
-} from "./river-panel";
+import { prepareRiverPanel, commitRiverPanelOpen } from "./river-panel";
+import { selectRiver } from "./selection";
 
 // -- Stream tier coloring (the nationwide quality axis) --------------
 // Tiles carry `tier` (gold/class1/class2/class3 or null), normalized in the
@@ -378,14 +375,17 @@ export function onStreamClick(
   p: ClickableStreamProps,
   lngLat: maplibregl.LngLat | null,
 ): void {
-  highlightStream(p);
   const gauged = _gaugedRiverFor(p, lngLat);
   if (gauged) {
-    // The clicked reach already carries the red selection highlight
-    // (highlightStream above); the gauged river's panel just opens.
-    openRiverPanel(gauged);
+    // Gauged river: central selection opens the panel and highlights by
+    // the clicked reach's identity.
+    selectRiver(gauged, p);
     return;
   }
+  // Ungauged reach: highlight it, but it's a stream selection, not a
+  // river selection (selection.ts stays null) -- the card below is all
+  // this reach gets.
+  highlightStream(p);
   const got = prepareRiverPanel();
   if (!got) return;
   const { panel, body } = got;
@@ -410,7 +410,7 @@ export function onStreamClick(
     `<div class="bl-section-body" data-reach-sec="access">${loading}</div></details>` +
     `<details class="bl-section"><summary>Conditions</summary>` +
     `<div class="bl-section-body">No USGS gauge on this reach &mdash; no live flow or temperature here. ` +
-    `Tap a nearby gauged river (colored gauge icon) for current conditions.</div></details>` +
+    `Tap a nearby gauged river for current conditions.</div></details>` +
     `</div></div>`;
   commitRiverPanelOpen(panel, body, "open");
   if (window.wireCatch) {

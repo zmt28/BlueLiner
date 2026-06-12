@@ -65,8 +65,8 @@ import { centerLngLat } from "./coords";
 import { refreshIcons } from "./util";
 
 // -- Filter controls -------------------------------------------------
-// Each onchange re-runs the filter predicate, which rebuilds the
-// per-gauge condition markers for the rivers that now pass.
+// Each onchange re-runs renderRivers (now a selection refresh -- gauge
+// condition discs render only for the selected river).
 
 function onFilterChange(): void {
   renderRivers();

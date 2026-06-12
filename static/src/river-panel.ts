@@ -121,6 +121,9 @@ export function closeRiverPanel(): void {
   }, 240);
   // Deselect the highlighted river reaches (the clickable-streams network).
   if (window.clearStreamHighlight) window.clearStreamHighlight();
+  // Clear the central river selection (selection.ts; via window because
+  // selection.ts imports openRiverPanel from this module).
+  if (window.clearRiverSelection) window.clearRiverSelection();
 }
 
 // -- Primary-gauge flow chart (auto-loaded on panel open) --------------
