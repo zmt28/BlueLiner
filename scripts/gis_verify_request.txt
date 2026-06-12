@@ -1,3 +1,7 @@
-# Diagnose data-build gate failures: CO CPW + NV NDOW trout layers.
-CO|https://services5.arcgis.com/ttNGmDvKQA7oeDQ3/arcgis/rest/services/CPWSB181AquaticData/FeatureServer/1
-NV|https://services.arcgis.com/RyxlXSfFi87rAosq/arcgis/rest/services/LCT_Occupied_Streams_NV/FeatureServer/0
+# CO sublayers 0/2/3 (multi_layer entry) + NV candidate layer ids after republish.
+CO|https://services5.arcgis.com/ttNGmDvKQA7oeDQ3/arcgis/rest/services/CPWSB181AquaticData/FeatureServer/0
+CO|https://services5.arcgis.com/ttNGmDvKQA7oeDQ3/arcgis/rest/services/CPWSB181AquaticData/FeatureServer/2
+CO|https://services5.arcgis.com/ttNGmDvKQA7oeDQ3/arcgis/rest/services/CPWSB181AquaticData/FeatureServer/3
+NV|https://services.arcgis.com/RyxlXSfFi87rAosq/arcgis/rest/services/LCT_Occupied_Streams_NV/FeatureServer/1
+NV|https://services.arcgis.com/RyxlXSfFi87rAosq/arcgis/rest/services/LCT_Occupied_Streams_NV/FeatureServer/2
+NV|https://services.arcgis.com/RyxlXSfFi87rAosq/arcgis/rest/services/LCT_Occupied_Streams_NV/FeatureServer/3
