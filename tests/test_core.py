@@ -380,7 +380,10 @@ def test_point_in_state():
 def test_reach_detail_payload_shape():
     # Gunpowder Falls, MD -- a reach with hatch zone + likely nearby data.
     payload = main._reach_detail_payload(39.4, -76.4, "Gunpowder Falls")
-    assert set(payload) == {"hatch", "access", "stocked"}
+    assert set(payload) == {"hatch", "access", "stocked", "trout"}
+    # River-level trout block always present; class may be None (no
+    # evidence) but the keys are stable for the card renderer.
+    assert set(payload["trout"]) == {"river_class", "river_label"}
     assert isinstance(payload["hatch"]["active"], list)
     assert isinstance(payload["access"], list)
     assert isinstance(payload["stocked"], list)
@@ -460,8 +463,10 @@ def test_build_river_popup_html():
     html = main.build_river_popup_html(river)
     assert "Gunpowder Falls" in html
     # Pill labels are sentence case per the design system spec
-    # ("Trout water" / "Recently stocked", not Title Case).
-    assert "Recently stocked" in html                       # near_stocked pill
+    # ("Trout water" / "Stocked water nearby", not Title Case). The
+    # stocked/access pills say "nearby" -- they're click/centroid
+    # proximity signals, not river-wide claims (W3 honest copy).
+    assert "Stocked water nearby" in html                   # near_stocked pill
     assert "Trout water" in html                            # on_trout pill
     assert "Stocked nearby" in html                         # stocked block
     assert "Gunpowder falls near glencoe, md" in html       # gauge sub-header

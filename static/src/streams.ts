@@ -614,7 +614,7 @@ export function onStreamClick(
     `<div class="bl-reach-msg">Loading&hellip;</div>` +
     `</div></div>`;
   commitRiverPanelOpen(panel, body, "auto");
-  loadReachPanel(body, lngLat, name, streamTier(p) !== "unclassified");
+  loadReachPanel(body, lngLat, name, streamTier(p) !== "unclassified", p.levelpathid ?? null);
 }
 
 // -- Ungauged-panel load ---------------------------------------------
@@ -631,6 +631,7 @@ async function loadReachPanel(
   lngLat: maplibregl.LngLat | null,
   name: string | null,
   trout: boolean,
+  levelpathid: number | null,
 ): Promise<void> {
   const seq = ++_reachSeq;
   if (!lngLat) {
@@ -644,6 +645,11 @@ async function loadReachPanel(
     trout: trout ? "1" : "0",
   });
   if (name) q.set("name", name);
+  // W3: the reach's levelpathid lets the server answer for the whole
+  // river (strongest trout designation on any flowline of its levelpath
+  // group), so the panel's trout pill describes the river, not the
+  // clicked pixel.
+  if (levelpathid != null) q.set("levelpathid", String(levelpathid));
   let data: { popup_html?: string } | null = null;
   try {
     data = (await fetch(`/api/reach_detail?${q.toString()}`).then((r) => r.json())) as {

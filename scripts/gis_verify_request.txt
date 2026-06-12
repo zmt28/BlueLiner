@@ -1,6 +1,3 @@
-# Ad-hoc GIS discovery/verification request file (gis-endpoint-verify
-# Actions job). Leave only comments to skip discovery -- the job always
-# verifies data/{stocking,access_points}/sources.json regardless.
-#
-# Either:  states: MT,ID,...        (discovery + auto-verify)
-# Or:      MT|https://host/.../FeatureServer/0   (explicit layer dump)
+# W1 trout-distribution discovery: NY statewide trout classification /
+# survey / distribution layers (beyond the managed-reach layer we use).
+states: NY
