@@ -14,8 +14,7 @@
 
 import maplibregl, { Marker } from "maplibre-gl";
 import { map } from "./map-setup";
-import { openRiverPanel } from "./river-panel";
-import { highlightStream } from "./streams";
+import { selectRiver } from "./selection";
 import { getCurrentSt } from "./state";
 import { esc } from "./util";
 import { createMarkerTooltip } from "./popups";
@@ -109,13 +108,8 @@ export function renderRivers(): void {
       const el = makeConditionElement(overall);
       el.addEventListener("click", (ev) => {
         ev.stopPropagation();
-        openRiverPanel(r);
-        // Highlight the river's reaches in the clickable network.
-        highlightStream({
-          gnis_name: r.name,
-          levelpathid:
-            r.levelpathids && r.levelpathids.length ? r.levelpathids[0] : null,
-        } as ClickableStreamProps);
+        // Central selection: opens the panel + highlights the reaches.
+        selectRiver(r);
       });
       const ll: [number, number] = [g.lon, g.lat];
       const m = new maplibregl.Marker({ element: el, anchor: "center" })

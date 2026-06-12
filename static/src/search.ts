@@ -11,13 +11,12 @@
  *
  * Cross-module deps:
  *   - map from map-setup (pan to a result)
- *   - openRiverPanel from river-panel (open the detail panel on select)
+ *   - selectRiver from selection (open the detail panel + highlight on select)
  *   - refreshIcons / esc from util
  */
 
 import { map } from "./map-setup";
-import { openRiverPanel } from "./river-panel";
-import { highlightStream } from "./streams";
+import { selectRiver } from "./selection";
 import { riverLngLat } from "./coords";
 import { refreshIcons, esc } from "./util";
 
@@ -126,19 +125,15 @@ if (wrap && iconBtn && pill && input && results) {
       b.addEventListener("click", () => {
         const i = Number(b.dataset.i);
         const r = rivers()[i];
-        if (r) selectRiver(r);
+        if (r) selectResult(r);
       }),
     );
   }
 
-  function selectRiver(r: River): void {
+  function selectResult(r: River): void {
     map.flyTo({ center: riverLngLat(r), zoom: Math.max(map.getZoom(), 12) });
-    openRiverPanel(r);
-    // Highlight the selected river's reaches in the clickable network.
-    highlightStream({
-      gnis_name: r.name,
-      levelpathid: r.levelpathids && r.levelpathids.length ? r.levelpathids[0] : null,
-    } as ClickableStreamProps);
+    // Central selection: opens the panel + highlights the reaches.
+    selectRiver(r);
     focused = false;
     pill!.classList.remove("is-focused");
     results!.hidden = true;
