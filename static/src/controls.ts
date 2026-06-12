@@ -54,6 +54,7 @@ import {
   setStreamsVisible,
   setStreamFilters,
   currentStreamFilters,
+  setConditionOverlay,
 } from "./streams";
 import {
   loadRivers,
@@ -66,15 +67,62 @@ import { refreshIcons } from "./util";
 
 // -- Filter controls -------------------------------------------------
 // Each onchange re-runs renderRivers (now a selection refresh -- gauge
-// condition discs render only for the selected river).
+// condition discs render only for the selected river). The Condition
+// dropdown additionally drives the on-demand conditions overlay
+// (streams.ts) and the "Showing: ... conditions" map chip.
+
+const condSelect = document.getElementById("cond-select") as HTMLSelectElement;
+
+// Conditions are live data -- never persist (or let the browser restore)
+// a stale condition filter across reloads. Firefox in particular restores
+// <select> values on reload; force the default.
+condSelect.value = "any";
+
+const COND_CHIP_LABEL: Record<ConditionKey, string> = {
+  green: "Good",
+  yellow: "Fair",
+  red: "Poor",
+  gray: "No data",
+};
+const COND_CHIP_VARIANT: Record<ConditionKey, string> = {
+  green: "good",
+  yellow: "fair",
+  red: "poor",
+  gray: "none",
+};
+
+/** Reflect the active condition filter on the floating map chip. */
+function updateCondChip(cond: ConditionKey | null): void {
+  const chip = document.getElementById("cond-chip");
+  if (!chip) return;
+  if (!cond) {
+    chip.hidden = true;
+    return;
+  }
+  const label = document.getElementById("cond-chip-label");
+  if (label) label.textContent = `Showing: ${COND_CHIP_LABEL[cond]} conditions`;
+  const dot = document.getElementById("cond-chip-dot");
+  if (dot) dot.className = `cond-chip-dot is-${COND_CHIP_VARIANT[cond]}`;
+  chip.hidden = false;
+}
 
 function onFilterChange(): void {
+  const v = condSelect.value;
+  const cond: ConditionKey | null = v === "any" ? null : (v as ConditionKey);
+  setConditionOverlay(cond);
+  updateCondChip(cond);
   renderRivers();
 }
 
-(document.getElementById("cond-select") as HTMLSelectElement).onchange = onFilterChange;
+condSelect.onchange = onFilterChange;
 (document.getElementById("stocked-only") as HTMLInputElement).onchange = onFilterChange;
 (document.getElementById("hatch-select") as HTMLSelectElement).onchange = onFilterChange;
+
+// The chip's x resets the Condition filter back to Any.
+document.getElementById("cond-chip-clear")?.addEventListener("click", () => {
+  condSelect.value = "any";
+  onFilterChange();
+});
 
 // -- State selector --------------------------------------------------
 

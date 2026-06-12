@@ -24,6 +24,7 @@ import { wireRiverPanel } from "./river-panel";
 import "./streams";
 import { loadRivers } from "./rivers";
 import "./controls";
+import "./legend";
 import "./search";
 import { initAuth } from "./auth";
 import "./catches";

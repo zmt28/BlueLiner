@@ -21,6 +21,7 @@ import {
 import { getCurrentSt } from "./state";
 import { esc } from "./util";
 import { createMarkerTooltip } from "./popups";
+import { refreshConditionOverlay } from "./streams";
 
 // -- State catalog ----------------------------------------------------
 
@@ -139,6 +140,9 @@ export function hideSelectedGauges(): void {
 
 export function renderRivers(): void {
   refreshSelectedRiver(allRivers);
+  // The conditions overlay (Condition filter) indexes the active catalog;
+  // re-match it against the fresh River objects. No-op while inactive.
+  refreshConditionOverlay();
 }
 
 // -- Hybrid loading: state overview when zoomed out, live viewport when in --

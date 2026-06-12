@@ -221,6 +221,54 @@ html, body {
 .state-menu-item i { width: 14px; height: 14px; }
 .state-menu-empty { padding: 16px; text-align: center; color: var(--fg-3); font-size: var(--fs-meta); }
 
+/* ---- Active condition-filter chip (conditions overlay) ----
+   Floats just under the state pill while the Condition filter is active.
+   Same pill family as .state-pill: surface bg, hairline border, soft
+   shadow. The dot carries the verdict color. */
+.cond-chip {
+    position: absolute;
+    top: calc(var(--space-5) + env(safe-area-inset-top) + 52px);
+    left: var(--space-5);
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 6px 6px 12px;
+    background: var(--bg-surface);
+    border: 1px solid var(--border-1);
+    border-radius: var(--radius-pill);
+    box-shadow: var(--elev-2);
+    font-size: var(--fs-meta);
+    font-weight: var(--fw-semibold);
+    color: var(--fg-1);
+}
+.cond-chip[hidden] { display: none; }
+.cond-chip-dot {
+    width: 9px; height: 9px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    background: var(--fg-3);
+}
+.cond-chip-dot.is-good { background: var(--bl-cond-good-500); }
+.cond-chip-dot.is-fair { background: var(--bl-cond-fair-500); }
+.cond-chip-dot.is-poor { background: var(--bl-cond-poor-500); }
+.cond-chip-dot.is-none { background: var(--bl-cond-none-500); }
+.cond-chip-x {
+    width: 22px; height: 22px;
+    border: none;
+    border-radius: 50%;
+    background: transparent;
+    color: var(--fg-3);
+    font: inherit;
+    font-size: 15px;
+    line-height: 1;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    flex-shrink: 0;
+}
+.cond-chip-x:hover { background: var(--bg-hover); color: var(--fg-1); }
+
 /* ---- Search pill ---- */
 .search-wrap { position: relative; flex: 1; min-width: 0; max-width: 460px; }
 .search-icon-btn {
@@ -763,48 +811,38 @@ html, body {
     background: var(--bl-pin);
     transform: rotate(-45deg);
 }
-.legend-dot--stocked { background: var(--bl-stocked); position: relative; }
-.legend-dot--stocked::after {
-    content: ""; position: absolute;
-    top: 50%; left: 50%; width: 5px; height: 5px;
-    transform: translate(-50%, -50%);
-    border-radius: 50%; background: #fff;
-}
+/* Stream-tier swatches: a short stroked squiggle (legend.ts), because
+   tiers are LINE colors on the map -- a dot here read as a marker. */
+.legend-line { flex-shrink: 0; display: block; }
 
-/* Access-point markers: small colored discs with a single glyph
-   (B/W/P) indicating the access type. Sits on top of the base map
-   without competing with the gauge condition markers. */
-.access-marker { background: transparent; border: none; }
-.access-marker-pin {
-    width: 22px; height: 22px;
+/* POI markers (access points, stocked waters): one brand-blue disc
+   with a white type glyph (poi-icons.ts) -- type is the glyph, never a
+   color code, so line colors keep a single meaning on the map. */
+.poi-marker { background: transparent; border: none; }
+.poi-marker-pin {
+    width: 24px; height: 24px;
     border-radius: 50%;
+    background: var(--bl-river-700);
     color: var(--fg-on-accent);
-    font-weight: var(--fw-bold);
-    font-size: var(--fs-caption);
-    line-height: 22px;
-    text-align: center;
+    display: inline-flex; align-items: center; justify-content: center;
     border: 2px solid var(--bg-surface);
     box-shadow: 0 1px 3px rgba(11,22,34,0.35);
     cursor: pointer;
 }
-/* Stocked-water markers: a solid bl-stocked dot with a white center, so it
-   reads distinctly from the type-glyph access pins. */
-.stocked-marker { background: transparent; border: none; }
-.stocked-marker-pin {
-    width: 16px; height: 16px;
+/* The same disc shrunk for legend rows + Filters-panel layer rows
+   (poiIconHtml sets width/height inline). */
+.poi-icon {
+    box-sizing: border-box;
+    flex-shrink: 0;
     border-radius: 50%;
-    background: var(--bl-stocked);
-    border: 2px solid var(--bg-surface);
-    box-shadow: 0 1px 3px rgba(11,22,34,0.35);
-    position: relative;
-    cursor: pointer;
+    background: var(--bl-river-700);
+    color: var(--fg-on-accent);
+    display: inline-flex; align-items: center; justify-content: center;
+    border: 1.5px solid var(--bg-surface);
+    box-shadow: 0 1px 2px rgba(11,22,34,0.25);
 }
-.stocked-marker-pin::after {
-    content: ""; position: absolute;
-    top: 50%; left: 50%; width: 5px; height: 5px;
-    transform: translate(-50%, -50%);
-    border-radius: 50%; background: #fff;
-}
+/* Saved-pins panel row: copper to match the user-owned teardrop marker. */
+.poi-icon--pin { background: var(--bl-pin); }
 .ap-popup { font-size: var(--fs-meta); line-height: 1.4; color: var(--fg-1); }
 .ap-name { font-weight: var(--fw-bold); font-size: 14px; margin-bottom: 2px; }
 .ap-meta {
