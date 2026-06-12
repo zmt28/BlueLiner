@@ -410,7 +410,7 @@ export function onStreamClick(
     `<div class="bl-section-body" data-reach-sec="access">${loading}</div></details>` +
     `<details class="bl-section"><summary>Conditions</summary>` +
     `<div class="bl-section-body">No USGS gauge on this reach &mdash; no live flow or temperature here. ` +
-    `Tap a nearby gauged river (colored gauge icon) for current conditions.</div></details>` +
+    `Tap a nearby gauged river for current conditions.</div></details>` +
     `</div></div>`;
   commitRiverPanelOpen(panel, body, "open");
   if (window.wireCatch) {

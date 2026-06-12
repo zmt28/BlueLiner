@@ -26,6 +26,23 @@ export function getSelectedRiver(): River | null {
   return _selectedRiver;
 }
 
+// -- Gauge-disc renderer (rivers.ts) -----------------------------------
+// Condition discs render only for the selected river. rivers.ts owns
+// the markers and registers its show/hide pair here (registration
+// rather than an import: rivers.ts imports selectRiver, so importing
+// rivers.ts back would be a cycle).
+
+interface GaugeRenderer {
+  show(river: River): void;
+  hide(): void;
+}
+
+let _gaugeRenderer: GaugeRenderer | null = null;
+
+export function registerGaugeRenderer(r: GaugeRenderer): void {
+  _gaugeRenderer = r;
+}
+
 /**
  * Select a gauged river: open its detail panel and highlight its
  * reaches in the clickable network. `streamProps` carries the clicked
@@ -34,6 +51,7 @@ export function getSelectedRiver(): River | null {
  * reaches to highlight.
  */
 export function selectRiver(river: River, streamProps?: ClickableStreamProps): void {
+  const changed = river !== _selectedRiver;
   _selectedRiver = river;
   openRiverPanel(river);
   window.highlightStream(
@@ -46,12 +64,37 @@ export function selectRiver(river: River, streamProps?: ClickableStreamProps): v
             : null,
       } as ClickableStreamProps),
   );
+  // Re-clicking a shown gauge disc re-selects the same River object;
+  // skip the disc rebuild so the element under the cursor (and its
+  // hover tooltip) survives.
+  if (changed && _gaugeRenderer) _gaugeRenderer.show(river);
 }
 
 /** Deselect. Hooked into closeRiverPanel(), the single choke point all
  *  close paths funnel through. */
 export function clearRiverSelection(): void {
   _selectedRiver = null;
+  if (_gaugeRenderer) _gaugeRenderer.hide();
+}
+
+/**
+ * Re-resolve the selection against a freshly-loaded catalog. The
+ * loaders replace River objects wholesale (state load, viewport load,
+ * the z9 viewport-mode swap, SW stale-while-revalidate), so the held
+ * reference must be re-matched -- by composite site_no, falling back to
+ * name -- and the discs re-rendered to pick up fresh verdicts. When the
+ * river isn't in the new list (e.g. panned away in viewport mode) the
+ * old reference keeps the discs alive unchanged.
+ */
+export function refreshSelectedRiver(rivers: River[]): void {
+  const cur = _selectedRiver;
+  if (!cur) return;
+  const next = rivers.find((r) =>
+    cur.site_no ? r.site_no === cur.site_no : r.name === cur.name,
+  );
+  if (!next || next === cur) return;
+  _selectedRiver = next;
+  if (_gaugeRenderer) _gaugeRenderer.show(next);
 }
 
 // -- Window bridge ----------------------------------------------------

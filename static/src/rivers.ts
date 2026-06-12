@@ -3,18 +3,21 @@
  * viewport-vs-state mode, the filter predicate, and the per-gauge condition
  * icon renderer.
  *
- * Conditions are shown as one HTML marker per USGS gauge -- at the gauge's
- * own lat/lon, colored by that gauge's condition (`.marker.marker--*`).
- * Stream geometry + trout-class color come from the clickable-streams vector
- * tiles (streams.ts); clicking a gauge icon opens the river panel and
- * highlights that river's reaches. (The old condition-colored NLDI flowline
- * layer + its per-gauge fetching were removed when conditions moved onto the
- * gauge icons.)
+ * Condition discs (`.marker.marker--*`, one HTML marker per USGS gauge at
+ * the gauge's own lat/lon) render only for the SELECTED river: selection.ts
+ * calls showGaugesFor / hideSelectedGauges (registered at module init), so
+ * the map carries no catalog-wide markers. Stream geometry + tier color come
+ * from the clickable-streams vector tiles (streams.ts); tapping a reach (or
+ * a search result) is what selects a river.
  */
 
 import maplibregl, { Marker } from "maplibre-gl";
 import { map } from "./map-setup";
-import { selectRiver } from "./selection";
+import {
+  selectRiver,
+  registerGaugeRenderer,
+  refreshSelectedRiver,
+} from "./selection";
 import { getCurrentSt } from "./state";
 import { esc } from "./util";
 import { createMarkerTooltip } from "./popups";
@@ -30,7 +33,8 @@ let _viewportSeq = 0;
 const VIEWPORT_MIN_ZOOM = 9;
 let _lazyRetry: ReturnType<typeof setTimeout> | null = null;
 
-// Per-gauge condition HTML markers, rebuilt each renderRivers().
+// Per-gauge condition HTML markers for the selected river only,
+// rebuilt by showGaugesFor() / removed by hideSelectedGauges().
 let gaugeMarkers: Marker[] = [];
 let _markerTip: ReturnType<typeof createMarkerTooltip> | null = null;
 
@@ -94,31 +98,47 @@ function gaugeTooltip(g: GaugePoint, r: River): string {
   return `<b>${esc(g.site_name || r.name)}</b><br>${esc(label)}`;
 }
 
-// -- Render: one condition icon per gauge ----------------------------
+// -- Selected-river gauge discs ---------------------------------------
+// Condition discs render only for the selected river: selectRiver()
+// shows them, clearRiverSelection() removes them, refreshSelectedRiver()
+// re-renders them when fresh catalog data lands (so verdicts stay
+// current). Registered with selection.ts at module init.
 
-export function renderRivers(): void {
+export function showGaugesFor(river: River): void {
   if (!_markerTip) _markerTip = createMarkerTooltip(map);
+  hideSelectedGauges();
+  for (const g of river.gauges || []) {
+    if (g.lat == null || g.lon == null) continue;
+    const overall = (g.conditions?.overall || "gray") as ConditionKey;
+    const el = makeConditionElement(overall);
+    el.addEventListener("click", (ev) => {
+      ev.stopPropagation();
+      // Its river is already selected; re-selecting just re-opens the
+      // panel (harmless when it's already open).
+      selectRiver(river);
+    });
+    const ll: [number, number] = [g.lon, g.lat];
+    const m = new maplibregl.Marker({ element: el, anchor: "center" })
+      .setLngLat(ll)
+      .addTo(map);
+    _markerTip.bind(el, ll, gaugeTooltip(g, river));
+    gaugeMarkers.push(m);
+  }
+}
+
+export function hideSelectedGauges(): void {
   for (const m of gaugeMarkers) m.remove();
   gaugeMarkers = [];
-  for (const r of allRivers) {
-    if (!riverPasses(r)) continue;
-    for (const g of r.gauges || []) {
-      if (g.lat == null || g.lon == null) continue;
-      const overall = (g.conditions?.overall || "gray") as ConditionKey;
-      const el = makeConditionElement(overall);
-      el.addEventListener("click", (ev) => {
-        ev.stopPropagation();
-        // Central selection: opens the panel + highlights the reaches.
-        selectRiver(r);
-      });
-      const ll: [number, number] = [g.lon, g.lat];
-      const m = new maplibregl.Marker({ element: el, anchor: "center" })
-        .setLngLat(ll)
-        .addTo(map);
-      _markerTip.bind(el, ll, gaugeTooltip(g, r));
-      gaugeMarkers.push(m);
-    }
-  }
+}
+
+// -- Render hook -------------------------------------------------------
+// The catalog-wide per-gauge marker loop lived here until the gauges-
+// on-selection change. This remains the hook the loaders + filter
+// controls call after the catalog changes: re-resolve the selection
+// against the new River objects so its discs pick up fresh verdicts.
+
+export function renderRivers(): void {
+  refreshSelectedRiver(allRivers);
 }
 
 // -- Hybrid loading: state overview when zoomed out, live viewport when in --
@@ -196,6 +216,13 @@ export async function loadRivers(state: string): Promise<void> {
     if (!stateRivers.length) scheduleLazyRetry(state); // not computed yet
   }
 }
+
+// -- Selection registration --------------------------------------------
+// Hand the disc renderer to selection.ts (registration instead of an
+// import there: this module imports selectRiver, so the reverse import
+// would be a cycle).
+
+registerGaugeRenderer({ show: showGaugesFor, hide: hideSelectedGauges });
 
 // -- Window bridge ----------------------------------------------------
 
