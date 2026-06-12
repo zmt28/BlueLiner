@@ -4,16 +4,21 @@ sources).
 
 Covers: seed write/read round-trip, fallback-to-seed when a source's fetch
 fails, the unreachable gate only firing with no-live-AND-no-seed, per-source
-retry backoff, and the preflight classification. All synthetic, no network --
-the fetch/probe/sleep hooks are injected.
+retry backoff, the preflight classification, the bounded preflight re-probe
+wait loop, shaky-last fetch ordering + end-of-phase final retry, and
+pagination truncation detection. All synthetic, no network -- the
+fetch/probe/sleep/clock hooks are injected (pagination uses
+httpx.MockTransport).
 
 The module under test imports geopandas at import time (a build dev dep), so
 like test_spatial_join_trout.py these skip when it's absent.
 """
 import json
 import os
+import re
 import sys
 
+import httpx
 import pytest
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "scripts"))
@@ -225,3 +230,223 @@ def test_source_probe_urls():
                         {"id": 5, "class": "stocked"}]}
     assert b.source_probe_urls(multi) == \
         ["https://example.test/MapServer/3", "https://example.test/MapServer/5"]
+
+
+# ───────────────────── preflight bounded wait loop ─────────────────────
+# The bootstrap fix: a NO-DATA source gets a re-probe window (every ~120s up
+# to --preflight-wait) instead of an instant exit 3, so one flapping server
+# among ~30 can't block the publish that would create its seed.
+
+class FakeClock:
+    """Injected sleep+clock pair: sleep() advances the clock, recording the
+    requested waits, so the schedule is asserted without real time."""
+
+    def __init__(self):
+        self.t = 0.0
+        self.sleeps = []
+
+    def sleep(self, s):
+        self.sleeps.append(s)
+        self.t += s
+
+    def now(self):
+        return self.t
+
+
+def test_preflight_wait_schedule_and_budget_exhaustion():
+    clk = FakeClock()
+    probes = []
+
+    def probe(s):
+        probes.append((clk.t, s["label"]))
+        return False  # never recovers
+
+    recovered, still = b.preflight_wait_for_no_data(
+        [dict(SRC, label="NY flapping")], wait_budget=300, interval=120,
+        probe=probe, sleep=clk.sleep, clock=clk.now)
+    assert recovered == [] and still == ["NY flapping"]
+    # rounds at 120s and 240s, then a final round clipped to the 300s budget
+    assert clk.sleeps == [120, 120, 60]
+    assert [t for t, _ in probes] == [120, 240, 300]
+
+
+def test_preflight_wait_success_mid_window_stops_early():
+    clk = FakeClock()
+    recovered, still = b.preflight_wait_for_no_data(
+        [dict(SRC, label="NY")], wait_budget=1500, interval=120,
+        probe=lambda s: clk.t >= 240,  # server back during round 2
+        sleep=clk.sleep, clock=clk.now)
+    assert recovered == ["NY"] and still == []
+    assert clk.sleeps == [120, 120]  # no further rounds once everyone is back
+
+
+def test_preflight_wait_reprobes_only_still_failing_sources():
+    clk = FakeClock()
+    calls = []
+
+    def probe(s):
+        calls.append((clk.t, s["label"]))
+        return s["label"] == "CO" and clk.t >= 120
+
+    recovered, still = b.preflight_wait_for_no_data(
+        [dict(SRC, label="CO"), dict(SRC, label="NY")],
+        wait_budget=240, interval=120,
+        probe=probe, sleep=clk.sleep, clock=clk.now)
+    assert recovered == ["CO"] and still == ["NY"]
+    # CO recovered in round 1 and is NOT probed again in round 2
+    assert calls == [(120, "CO"), (120, "NY"), (240, "NY")]
+
+
+def test_preflight_wait_zero_budget_returns_immediately():
+    clk = FakeClock()
+    recovered, still = b.preflight_wait_for_no_data(
+        [dict(SRC, label="NY")], wait_budget=0,
+        probe=lambda s: True, sleep=clk.sleep, clock=clk.now)
+    # no sleeping, no probing -- behaves exactly like the old instant verdict
+    assert recovered == [] and still == ["NY"] and clk.sleeps == []
+
+
+# ───────────── fetch ordering + end-of-phase final retry ─────────────
+
+def test_shaky_sources_fetched_last_but_taggers_keep_registry_order(tmp_path):
+    order = []
+
+    def fetch(source):
+        order.append(source["label"])
+        return [(KEY, FakeGdf())]
+
+    srcs = [dict(SRC, state="AA", label="AA shaky"),
+            dict(SRC, state="BB", label="BB ok"),
+            dict(SRC, state="CC", label="CC ok")]
+    taggers, status = b.collect_trout_taggers(
+        srcs, fetch=fetch, seed_dir=str(tmp_path), fetch_last={"AA shaky"})
+    # preflight-shaky source pulled last (max recovery time) ...
+    assert order == ["BB ok", "CC ok", "AA shaky"]
+    # ... but output stays in registry order (= tagging precedence)
+    assert [t["label"] for t in taggers] == ["AA shaky", "BB ok", "CC ok"]
+    assert set(status.values()) == {"ok"}
+
+
+def test_no_seed_failure_gets_final_retry_at_end_of_phase(tmp_path):
+    calls = []
+
+    def fetch(source):
+        calls.append(source["label"])
+        if source["label"] == "NY bare" and calls.count("NY bare") == 1:
+            raise RuntimeError("flapping")
+        return [(KEY, FakeGdf())]
+
+    taggers, status = b.collect_trout_taggers(
+        [dict(SRC, state="NY", label="NY bare"),
+         dict(SRC, state="VA", label="VA ok")],
+        fetch=fetch, seed_dir=str(tmp_path))
+    # the failed no-seed source is retried once more AFTER everything else
+    assert calls == ["NY bare", "VA ok", "NY bare"]
+    assert status == {"NY bare": "ok", "VA ok": "ok"}
+    assert [(t["label"], t["live"]) for t in taggers] == \
+        [("NY bare", True), ("VA ok", True)]
+
+
+def test_final_retry_exhaustion_is_unreachable(tmp_path):
+    calls = []
+
+    def dead(source):
+        calls.append(source["label"])
+        raise RuntimeError("still down")
+
+    taggers, status = b.collect_trout_taggers(
+        [dict(SRC, state="NY", label="NY bare")],
+        fetch=dead, seed_dir=str(tmp_path))
+    assert calls == ["NY bare", "NY bare"]  # initial + one final retry
+    assert status == {"NY bare": "unreachable"} and taggers == []
+
+
+def test_seeded_failure_skips_final_retry(tmp_path):
+    sd = str(tmp_path)
+    b.write_source_seed(SRC, {KEY: {7}}, seed_dir=sd)
+    calls = []
+
+    def dead(source):
+        calls.append(source["label"])
+        raise RuntimeError("down")
+
+    taggers, status = b.collect_trout_taggers([SRC], fetch=dead, seed_dir=sd)
+    # a seed already degrades gracefully -- no extra end-of-phase pull
+    assert calls == ["CO Aquatic Management Waters"]
+    assert status == {"CO Aquatic Management Waters": "bundled-seed"}
+    assert taggers[0]["live"] is False
+
+
+# ───────────────────── pagination truncation detection ─────────────────────
+
+def _arcgis_transport(total: int):
+    """MockTransport for an ArcGIS layer with `total` features, OBJECTID
+    1..total, honoring keyset pagination + resultRecordCount."""
+    def handler(request):
+        if not request.url.path.endswith("/query"):
+            return httpx.Response(200, json={
+                "objectIdField": "OBJECTID",
+                "fields": [{"name": "OBJECTID"}]})
+        params = dict(request.url.params)
+        n = int(params.get("resultRecordCount", 1000))
+        m = re.search(r"OBJECTID > (-?\d+)", params.get("where", ""))
+        bound = max(int(m.group(1)), 0) if m else 0
+        feats = [{"type": "Feature", "properties": {"OBJECTID": i},
+                  "geometry": {"type": "Point", "coordinates": [1.0, 2.0, None]}}
+                 for i in range(bound + 1, min(bound + n, total) + 1)]
+        return httpx.Response(200, json={"type": "FeatureCollection",
+                                         "features": feats})
+    return httpx.MockTransport(handler)
+
+
+def _mock_client(monkeypatch, transport):
+    real = httpx.Client
+    monkeypatch.setattr(b.httpx, "Client",
+                        lambda **kw: real(transport=transport, **kw))
+
+
+QUERY_URL = "https://example.test/arcgis/rest/services/X/MapServer/0/query?where=1%3D1"
+
+
+def test_pagination_completes_and_strips_z(monkeypatch):
+    _mock_client(monkeypatch, _arcgis_transport(total=250))
+    feats = b.fetch_arcgis_features(QUERY_URL, page_size=100)
+    assert len(feats) == 250
+    assert sorted(f["properties"]["OBJECTID"] for f in feats) == \
+        list(range(1, 251))
+    assert feats[0]["geometry"]["coordinates"] == [1.0, 2.0]  # Z dropped
+
+
+def test_pagination_truncation_raises_instead_of_shipping_partial(monkeypatch):
+    # 1000 features but only 3 pages allowed: a silently-partial layer must
+    # raise (so the per-source retry / seed fallback engage), never return.
+    _mock_client(monkeypatch, _arcgis_transport(total=1000))
+    monkeypatch.setattr(b, "MAX_PAGES", 3)
+    with pytest.raises(RuntimeError, match="truncated"):
+        b.fetch_arcgis_features(QUERY_URL, page_size=100)
+
+
+def test_metadata_failure_no_longer_silently_single_pages(monkeypatch):
+    # A broken layer-metadata endpoint used to downgrade the pull to ONE
+    # unpaginated page; now it propagates as a fetch failure.
+    def handler(request):
+        if not request.url.path.endswith("/query"):
+            return httpx.Response(500)
+        return httpx.Response(200, json={"features": []})
+    _mock_client(monkeypatch, httpx.MockTransport(handler))
+    monkeypatch.setattr(b, "MAX_RETRIES", 1)
+    with pytest.raises(httpx.HTTPStatusError):
+        b.fetch_arcgis_features(QUERY_URL, page_size=100)
+
+
+# ───────────────────────── seed-write atomicity ─────────────────────────
+
+def test_seed_write_replaces_corrupt_file_and_leaves_no_temp(tmp_path):
+    sd = str(tmp_path)
+    path = b.seed_path(SRC, sd)
+    with open(path, "w") as f:
+        f.write("{corrupt json")  # e.g. a crash mid-write under the old code
+    out = b.write_source_seed(SRC, {KEY: {1, 2}}, seed_dir=sd)
+    assert out == path and json.load(open(path))["comid_count"] == 2
+    # atomic os.replace: no .tmp (or any other) residue alongside the seed
+    assert os.listdir(sd) == [os.path.basename(path)]
