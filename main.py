@@ -31,6 +31,7 @@ import db
 import enrichment
 import data_source
 import access_points
+import reach_trout
 
 
 logging.basicConfig(
@@ -81,6 +82,14 @@ async def lifespan(app: FastAPI):
             await asyncio.to_thread(load_trout_streams, "MD")
         except Exception as exc:
             logger.warning("MD trout warm failed: %s", exc)
+        # River-level trout index (levelpathid/name -> strongest class)
+        # over the bundled clickable-streams properties. Built once
+        # (~2 s scan); drives the panel's "Trout water" chip so it
+        # describes the whole river, not the clicked flowline.
+        try:
+            await asyncio.to_thread(reach_trout.ensure_loaded)
+        except Exception as exc:
+            logger.warning("river trout index warm failed: %s", exc)
         # NHDPlusV2 VAA: ~300K rows from data/nhdplus/vaa.csv.gz on
         # first boot. Idempotent (skips if already loaded), so this is
         # a no-op on warm restarts. Drives the LevelPathID flowline
@@ -433,21 +442,44 @@ def _trend_html(site_no: str | None) -> str:
         </div>"""
 
 
-_CHIP_TROUT = (
-    '<span class="pill pill--trout">'
-    '<span class="pill-dot"></span>Trout water</span>'
-)
+# Short chip qualifiers for the river-level trout class (W3): the chip
+# names the strongest designation found anywhere along the river's
+# levelpath group, falling back to plain "Trout water" when the evidence
+# is proximity-only (no classed flowline indexed).
+_TROUT_CHIP_QUALIFIER = {
+    "class_a": "Class A wild",
+    "wilderness": "wilderness",
+    "wild_reproduction": "wild",
+    "designated": "designated",
+    "stocked": "stocked",
+}
+
+
+def _trout_chip_html(trout_class: str | None) -> str:
+    label = "Trout water"
+    qual = _TROUT_CHIP_QUALIFIER.get(trout_class or "")
+    if qual:
+        label += f" &middot; {qual}"
+    return ('<span class="pill pill--trout">'
+            f'<span class="pill-dot"></span>{label}</span>')
+
+
+def _access_chip_html(n: int) -> str:
+    # Honest copy: the count is click/centroid proximity (~3 km), not a
+    # river-wide inventory -- say "nearby" rather than implying the river
+    # itself has public access end to end.
+    noun = "access point" if n == 1 else "access points"
+    return ('<span class="pill pill--access">'
+            f'<span class="pill-dot"></span>{n} {noun} nearby</span>')
+
+
 _CHIP_STOCKED = (
     '<span class="pill pill--stocked">'
-    '<span class="pill-dot"></span>Recently stocked</span>'
+    '<span class="pill-dot"></span>Stocked water nearby</span>'
 )
 _CHIP_HATCH_NOW = (
     '<span class="pill pill--hatch">'
     '<span class="pill-dot"></span>Hatching now</span>'
-)
-_CHIP_ACCESS = (
-    '<span class="pill pill--access">'
-    '<span class="pill-dot"></span>Public access</span>'
 )
 
 
@@ -621,13 +653,16 @@ def _panel_header_html(river: dict) -> str:
     badge_label = SCORE_LABELS[overall]
     pills = []
     if river.get("on_trout"):
-        pills.append(_CHIP_TROUT)
+        # River-level: trout_class is the strongest designation found on
+        # ANY flowline in the river's levelpath group (reach_trout index),
+        # so the chip describes the river, not one clicked/nearby segment.
+        pills.append(_trout_chip_html(river.get("trout_class")))
     if river.get("near_stocked"):
         pills.append(_CHIP_STOCKED)
     if river.get("active"):
         pills.append(_CHIP_HATCH_NOW)
     if river.get("access_count", 0):
-        pills.append(_CHIP_ACCESS)
+        pills.append(_access_chip_html(int(river["access_count"])))
     pills_row = (
         f'<div class="bl-pills">{"".join(pills)}</div>' if pills else ""
     )
@@ -644,7 +679,7 @@ def _panel_header_html(river: dict) -> str:
         f'<div class="bl-stat"><div class="bl-stat-n bl-num">{n_stocked}</div>'
         f'<div class="bl-stat-label">Stocked nearby</div></div>'
         f'<div class="bl-stat"><div class="bl-stat-n bl-num">{n_access}</div>'
-        f'<div class="bl-stat-label">Access points</div></div>'
+        f'<div class="bl-stat-label">Access nearby</div></div>'
         '</div>'
     )
     return f"""
@@ -832,6 +867,12 @@ async def _assemble_rivers(time_series: list, trout_layers: list,
     today_key = (today.month, today.day)
     month_now = today.month
     tgs = [g for g in trout_layers if g is not None]
+    # River-level trout index (one-time build, then O(1) lookups). Off the
+    # event loop so the first assembly after a cold start doesn't block.
+    try:
+        await asyncio.to_thread(reach_trout.ensure_loaded)
+    except Exception as exc:
+        logger.warning("river trout index load failed: %s", exc)
 
     sites = defaultdict(lambda: {"variables": [], "site_no": None})
     for series in time_series:
@@ -937,9 +978,18 @@ async def _assemble_rivers(time_series: list, trout_layers: list,
         access_count = len(access_points.nearby_access(
             clat, clon, access_pts, buffer_deg=0.03))
         stocked_waters = stocking.nearby_stocked(clat, clon, stocked_pts)
+        # W3: the "Trout water" chip describes the RIVER -- strongest
+        # trout_class on any flowline sharing the river's levelpath
+        # group (name fallback when the gauges carry no levelpathid).
+        # The per-gauge proximity check (tgs) is kept as a secondary
+        # signal for rivers absent from the clickable bundle.
+        river_trout_cls = reach_trout.river_trout_class(
+            g["levelpathids"], g["name"])
         river = {
             "name": g["name"], "lat": clat, "lon": clon, "overall": overall,
-            "on_trout": g["on_trout"], "near_stocked": bool(stocked_waters),
+            "on_trout": g["on_trout"] or bool(river_trout_cls),
+            "trout_class": river_trout_cls,
+            "near_stocked": bool(stocked_waters),
             "hatch_zone": zone, "active": active, "month": month_now,
             "stocked_waters": stocked_waters,
             "access_count": access_count,
@@ -1369,11 +1419,24 @@ def _reach_hatch_block(name: str, lat: float, lon: float) -> dict:
     }
 
 
-def _reach_detail_payload(lat: float, lon: float, name: str | None) -> dict:
-    """Hatch + nearby access/stocking for an ungauged reach at lat/lon.
-    Synchronous (cached, in-memory lookups); the endpoint runs it off the
-    event loop. ~0.03 deg ~= 3 km, matching the gauged panel's buffers."""
+def _reach_detail_payload(lat: float, lon: float, name: str | None,
+                          levelpathid: int | None = None) -> dict:
+    """Hatch + nearby access/stocking + river-level trout class for an
+    ungauged reach at lat/lon. Synchronous (cached, in-memory lookups);
+    the endpoint runs it off the event loop. ~0.03 deg ~= 3 km, matching
+    the gauged panel's buffers.
+
+    The `trout` block answers for the whole river (W3): strongest
+    trout_class on any flowline sharing the clicked reach's levelpathid,
+    with the normalized name as fallback -- so the card's designation
+    reflects the river even when the clicked flowline is untagged."""
     hatch = _reach_hatch_block(name or "", lat, lon)
+    river_cls = reach_trout.river_trout_class(
+        [levelpathid] if levelpathid is not None else [], name)
+    trout_block = {
+        "river_class": river_cls,
+        "river_label": reach_trout.CLASS_LABEL.get(river_cls or ""),
+    }
     state = point_in_state(lat, lon)
     access: list[dict] = []
     stocked: list[dict] = []
@@ -1391,7 +1454,8 @@ def _reach_detail_payload(lat: float, lon: float, name: str | None) -> dict:
              "category": s.get("category"), "agency_url": s.get("agency_url")}
             for s in stocking.nearby_stocked(lat, lon, spts, buffer_deg=0.03)[:6]
         ]
-    return {"hatch": hatch, "access": access, "stocked": stocked}
+    return {"hatch": hatch, "access": access, "stocked": stocked,
+            "trout": trout_block}
 
 
 @app.get("/api/reach_detail")
@@ -1400,13 +1464,16 @@ async def api_reach_detail(
     lat: float = Query(..., ge=-90, le=90),
     lon: float = Query(..., ge=-180, le=180),
     name: str | None = Query(default=None, max_length=120),
+    levelpathid: int | None = Query(default=None, ge=0),
 ):
     """Context for an ungauged stream reach the user clicked: active
-    hatches for its zone, plus nearby access points and stocked waters.
+    hatches for its zone, nearby access points and stocked waters, plus
+    the river-level trout designation for the reach's levelpath group.
     Conditions are intentionally omitted (no gauge on the reach); the
     card shows a short note instead. All inputs are already public map
     data, so no auth."""
-    payload = await asyncio.to_thread(_reach_detail_payload, lat, lon, name)
+    payload = await asyncio.to_thread(
+        _reach_detail_payload, lat, lon, name, levelpathid)
     return _cached_json(request, payload, max_age=300)
 
 

@@ -229,6 +229,13 @@ interface ReachDetail {
   hatch: { zone?: string | null; active: ReachHatchEntry[] };
   access: ReachAccessEntry[];
   stocked: ReachStockedEntry[];
+  /** River-level trout designation for the clicked reach's levelpath
+      group (strongest class on ANY flowline of the river; name fallback
+      when the reach has no levelpathid). Null class = no evidence. */
+  trout?: {
+    river_class?: string | null;
+    river_label?: string | null;
+  };
 }
 
 /** Nationwide quality tier -- the stream color axis. The raw per-state

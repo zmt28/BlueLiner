@@ -85,6 +85,21 @@ export const STREAM_CLASS_LABEL: Record<string, string> = {
   designated: "Designated trout",
 };
 
+/** trout_class -> fallback tier, for coloring a class-only badge (the
+ *  river-level designation from /api/reach_detail carries no tier).
+ *  Mirrors FALLBACK_CLASS_TIER in scripts/trout_registry.py. */
+const CLASS_FALLBACK_TIER: Record<string, StreamTier> = {
+  class_a: "class1",
+  wilderness: "class1",
+  wild_reproduction: "class2",
+  stocked: "class3",
+  designated: "class3",
+};
+
+function classColor(cls: string): string {
+  return TIER_COLOR[CLASS_FALLBACK_TIER[cls] || "unclassified"];
+}
+
 export function streamTier(p: ClickableStreamProps): StreamTier {
   const t = p.tier;
   return t && t in TIER_COLOR ? (t as StreamTier) : "unclassified";
@@ -570,7 +585,7 @@ export function onStreamClick(
   body.innerHTML =
     `<div class="bl-card"><div class="bl-card-head">` +
     `<div style="font-size:18px;font-weight:700;color:#1a1a2e">${esc(_cleanName(p.gnis_name) || "Unnamed stream")}</div>` +
-    `<span class="stream-badge" style="background:${esc(streamColor(p))}">${esc(label)}</span>` +
+    `<span class="stream-badge" data-reach-trout-badge style="background:${esc(streamColor(p))}">${esc(label)}</span>` +
     `<span class="stream-badge" style="background:#64748b">Order ${esc(p.streamorder)}</span>` +
     `<div class="bl-summary">Ungauged reach &mdash; no live USGS flow here. Showing what we know.</div>` +
     `</div><div class="bl-card-body">` +
@@ -578,10 +593,10 @@ export function onStreamClick(
     `<details class="bl-section bl-hatch" open><summary>Hatching now</summary>` +
     `<div class="bl-section-body" data-reach-sec="hatch">${loading}</div></details>` +
     `<details class="bl-section"><summary>Trout</summary>` +
-    `<div class="bl-section-body">${esc(label)}${cls ? " (state designation)" : ""}.</div></details>` +
+    `<div class="bl-section-body" data-reach-sec="trout">${esc(label)}${cls ? " (state designation)" : ""}.</div></details>` +
     `<details class="bl-section"><summary>Stocked nearby</summary>` +
     `<div class="bl-section-body" data-reach-sec="stocked">${loading}</div></details>` +
-    `<details class="bl-section"><summary>Access</summary>` +
+    `<details class="bl-section"><summary>Access nearby</summary>` +
     `<div class="bl-section-body" data-reach-sec="access">${loading}</div></details>` +
     `<details class="bl-section"><summary>Conditions</summary>` +
     `<div class="bl-section-body">No USGS gauge on this reach &mdash; no live flow or temperature here. ` +
@@ -596,7 +611,7 @@ export function onStreamClick(
       lon: lngLat ? lngLat.lng : null,
     });
   }
-  loadReachDetail(body, lngLat, _cleanName(p.gnis_name));
+  loadReachDetail(body, lngLat, _cleanName(p.gnis_name), p);
 }
 
 // -- Ungauged-card data (hatch / stocked / access) -------------------
@@ -608,7 +623,7 @@ let _reachSeq = 0;
 
 function _fillReachSection(
   body: HTMLElement,
-  sec: "hatch" | "stocked" | "access",
+  sec: "hatch" | "stocked" | "access" | "trout",
   html: string,
 ): void {
   const el = body.querySelector(`[data-reach-sec="${sec}"]`);
@@ -679,10 +694,55 @@ function renderReachAccess(list: ReachAccessEntry[]): string {
   }).join("");
 }
 
+/** River-level trout copy for the reach card's Trout section. The
+ *  designation comes from /api/reach_detail (any flowline sharing the
+ *  clicked reach's levelpath group; strongest class wins), so it
+ *  describes the river even when the clicked flowline is untagged. */
+function renderReachTrout(
+  t: ReachDetail["trout"],
+  clickedCls: string | null | undefined,
+): string {
+  const riverCls = t && t.river_class;
+  const riverLabel =
+    (t && t.river_label) || (riverCls && STREAM_CLASS_LABEL[riverCls]) || riverCls;
+  const clickedLabel = (clickedCls && STREAM_CLASS_LABEL[String(clickedCls)]) || clickedCls;
+  if (!riverCls) {
+    return clickedCls
+      ? `${esc(String(clickedLabel))} (state designation).`
+      : "No trout designation found along this river.";
+  }
+  if (!clickedCls) {
+    return `Trout water along this river &mdash; ${esc(String(riverLabel))} ` +
+      `(state designation on other reaches of this stream).`;
+  }
+  if (String(clickedCls) === String(riverCls)) {
+    return `${esc(String(riverLabel))} (state designation).`;
+  }
+  return `${esc(String(clickedLabel))} on this reach &middot; strongest ` +
+    `designation along the river: ${esc(String(riverLabel))}.`;
+}
+
+/** Upgrade the header badge from the clicked pixel to the river: when the
+ *  clicked flowline is untagged but the river carries a designation, the
+ *  badge should say so instead of "No trout designation". */
+function _upgradeReachTroutBadge(
+  body: HTMLElement,
+  t: ReachDetail["trout"],
+  clickedCls: string | null | undefined,
+): void {
+  const riverCls = t && t.river_class;
+  if (clickedCls || !riverCls) return;
+  const el = body.querySelector<HTMLElement>("[data-reach-trout-badge]");
+  if (!el) return;
+  el.textContent = (t && t.river_label) || STREAM_CLASS_LABEL[riverCls] || riverCls;
+  el.style.background = classColor(riverCls);
+}
+
 async function loadReachDetail(
   body: HTMLElement,
   lngLat: maplibregl.LngLat | null,
   name: string | null,
+  p: ClickableStreamProps,
 ): Promise<void> {
   const seq = ++_reachSeq;
   if (!lngLat) {
@@ -692,6 +752,7 @@ async function loadReachDetail(
   }
   const q = new URLSearchParams({ lat: String(lngLat.lat), lon: String(lngLat.lng) });
   if (name) q.set("name", name);
+  if (p.levelpathid != null) q.set("levelpathid", String(p.levelpathid));
   let data: ReachDetail | null = null;
   try {
     data = (await fetch(`/api/reach_detail?${q.toString()}`).then((r) => r.json())) as ReachDetail;
@@ -700,6 +761,7 @@ async function loadReachDetail(
   }
   if (seq !== _reachSeq) return; // superseded by a newer reach click
   if (!data) {
+    // The Trout section keeps its clicked-pixel fallback content.
     const err = `<div class="bl-reach-msg">Couldn't load reach details.</div>`;
     for (const s of ["hatch", "stocked", "access"] as const) _fillReachSection(body, s, err);
     return;
@@ -707,6 +769,8 @@ async function loadReachDetail(
   _fillReachSection(body, "hatch", renderReachHatch(data.hatch));
   _fillReachSection(body, "stocked", renderReachStocked(data.stocked || []));
   _fillReachSection(body, "access", renderReachAccess(data.access || []));
+  _fillReachSection(body, "trout", renderReachTrout(data.trout, p.trout_class));
+  _upgradeReachTroutBadge(body, data.trout, p.trout_class);
 }
 
 // -- Window bridge ----------------------------------------------------
