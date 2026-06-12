@@ -1575,10 +1575,11 @@ html, body {
         bottom: 0; left: 0; right: 0;
         background: var(--bg-surface);
         border-top: 1px solid var(--border-1);
-        /* Sit the labels close to the home indicator. Device readout showed the
-           bar was reserving the FULL ~34px inset below the labels (too tall);
-           reserve ~half so the labels sit just above the indicator line. */
-        padding: 6px var(--space-3) max(6px, calc(env(safe-area-inset-bottom) - 16px));
+        /* iPhone 16 Pro is 874pt tall and ih≈873, so the bar reaches the screen
+           bottom -- the space below the labels is the home-indicator safe area
+           (every app reserves it). Keep a compact bar and sit the labels as low
+           as is safe above the indicator line (~12px). */
+        padding: 4px var(--space-3) max(4px, calc(env(safe-area-inset-bottom) - 22px));
         display: grid;
         grid-template-columns: repeat(4, 1fr);
         gap: 2px;
@@ -1588,12 +1589,12 @@ html, body {
         border: none; background: transparent;
         cursor: pointer; font: inherit;
         color: var(--fg-3);
-        padding: 6px 2px;
+        padding: 4px 2px;
         display: flex; flex-direction: column; align-items: center;
-        gap: 4px;
+        gap: 3px;
         border-radius: var(--radius-2);
     }
-    .mobile-tab i { width: 22px; height: 22px; }
+    .mobile-tab i { width: 20px; height: 20px; }
     .mobile-tab-label { font-size: 10px; font-weight: var(--fw-medium); }
     .mobile-tab.is-active, .mobile-tab.is-active i { color: var(--bl-river-700); }
 
