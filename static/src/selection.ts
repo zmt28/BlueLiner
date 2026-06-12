@@ -63,6 +63,10 @@ export function selectRiver(river: River, streamProps?: ClickableStreamProps): v
             ? river.levelpathids[0]
             : null,
       } as ClickableStreamProps),
+    // Gauged rivers paint the highlight in their overall verdict color
+    // (the same palette as the discs); streams.ts falls back to red
+    // when this is null.
+    river.conditions ? river.conditions.overall : null,
   );
   // Re-clicking a shown gauge disc re-selects the same River object;
   // skip the disc rebuild so the element under the cursor (and its
@@ -95,6 +99,10 @@ export function refreshSelectedRiver(rivers: River[]): void {
   if (!next || next === cur) return;
   _selectedRiver = next;
   if (_gaugeRenderer) _gaugeRenderer.show(next);
+  // Fresh data can change the overall verdict -- recolor the line
+  // highlight to match the rebuilt discs (window: import-cycle dodge,
+  // same as highlightStream above).
+  window.setStreamHighlightVerdict(next.conditions ? next.conditions.overall : null);
 }
 
 // -- Window bridge ----------------------------------------------------

@@ -47,6 +47,19 @@ const TIER_COLOR: Record<StreamTier, string> = {
 /** Faint color for reaches with no tier. Recedes via low opacity too. */
 const FAINT = TIER_COLOR.unclassified;
 
+// Verdict colors for the selected river's line highlight. MapLibre paint
+// needs literal hexes, so these mirror the --bl-cond-*-500 tokens in
+// tokens.css -- the same palette as the gauge condition discs.
+const VERDICT_COLOR: Record<ConditionKey, string> = {
+  green: "#4A8C5C", // --bl-cond-good-500 (moss)
+  yellow: "#B7892F", // --bl-cond-fair-500 (ochre)
+  red: "#B3473B", // --bl-cond-poor-500 (clay)
+  gray: "#7F8B9C", // --bl-cond-none-500 (stone)
+};
+
+/** Selection color for ungauged reaches (no verdict feature-state). */
+const SELECTED_FALLBACK = "#e74c3c";
+
 export const TIER_LABEL: Record<StreamTier, string> = {
   gold: "Gold — premier water",
   class1: "Class 1 — high quality",
@@ -151,10 +164,21 @@ const TIER_OPACITY_MATCH: ExpressionSpecification = [
 ] as unknown as ExpressionSpecification;
 
 function colorExpr(): ExpressionSpecification {
+  // Selected: verdict-colored when the river is gauged (the `verdict`
+  // feature-state carries conditions.overall), flat red otherwise. The
+  // "selected" signal itself stays width-8 + opacity (WIDTH_EXPR).
   return [
     "case",
     ["boolean", ["feature-state", "selected"], false],
-    "#e74c3c",
+    [
+      "match",
+      ["coalesce", ["feature-state", "verdict"], ""],
+      "green", VERDICT_COLOR.green,
+      "yellow", VERDICT_COLOR.yellow,
+      "red", VERDICT_COLOR.red,
+      "gray", VERDICT_COLOR.gray,
+      SELECTED_FALLBACK,
+    ],
     TIER_COLOR_MATCH,
   ] as unknown as ExpressionSpecification;
 }
@@ -270,6 +294,10 @@ interface SelStreamKey {
 }
 
 let _selStreamKey: SelStreamKey | null = null;
+// Overall verdict of the selected GAUGED river, carried into the
+// `verdict` feature-state so the highlight paints in condition color.
+// Null for ungauged-reach selections (colorExpr falls back to red).
+let _selVerdict: ConditionKey | null = null;
 
 function _cleanName(s: string | null | undefined): string | null {
   // The tiles can carry the literal string "nan" -- a pandas NaN that got
@@ -301,14 +329,18 @@ function _applyHighlight(key: SelStreamKey): void {
     if (_featMatchesKey((f.properties || {}) as ClickableStreamProps, key)) {
       map.setFeatureState(
         { source: src, sourceLayer: STREAM_SOURCE_LAYER, id: f.id },
-        { selected: true },
+        _selVerdict ? { selected: true, verdict: _selVerdict } : { selected: true },
       );
     }
   }
 }
 
-export function highlightStream(p: ClickableStreamProps): void {
+export function highlightStream(
+  p: ClickableStreamProps,
+  verdict: ConditionKey | null = null,
+): void {
   clearStreamHighlight();
+  _selVerdict = verdict;
   const name = _normName(p && p.gnis_name);
   _selStreamKey = {
     name: name || null,
@@ -317,7 +349,17 @@ export function highlightStream(p: ClickableStreamProps): void {
   _applyHighlight(_selStreamKey);
 }
 
+/** Update the verdict on the live highlight without re-keying it --
+ *  fresh /api/rivers data can change the selected river's overall
+ *  verdict (refreshSelectedRiver in selection.ts). */
+export function setStreamHighlightVerdict(verdict: ConditionKey | null): void {
+  if (verdict === _selVerdict) return;
+  _selVerdict = verdict;
+  if (_selStreamKey != null) _applyHighlight(_selStreamKey);
+}
+
 export function clearStreamHighlight(): void {
+  _selVerdict = null;
   if (_selStreamKey == null) return;
   if (map.getSource("clickable-streams")) {
     map.removeFeatureState({
@@ -541,6 +583,7 @@ declare global {
     streamColor: typeof streamColor;
     loadClickableStreams: typeof loadClickableStreams;
     highlightStream: typeof highlightStream;
+    setStreamHighlightVerdict: typeof setStreamHighlightVerdict;
     clearStreamHighlight: typeof clearStreamHighlight;
     onStreamClick: typeof onStreamClick;
   }
@@ -549,5 +592,6 @@ declare global {
 window.streamColor = streamColor;
 window.loadClickableStreams = loadClickableStreams;
 window.highlightStream = highlightStream;
+window.setStreamHighlightVerdict = setStreamHighlightVerdict;
 window.clearStreamHighlight = clearStreamHighlight;
 window.onStreamClick = onStreamClick;
