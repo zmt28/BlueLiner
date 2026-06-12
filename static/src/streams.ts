@@ -543,11 +543,34 @@ export function refreshConditionOverlay(): void {
 
 // -- Click bridging: clickable reach -> gauged river ------------------
 
+/** A reach's river name: its own GNIS name, or -- since NHD names flowlines
+ *  inconsistently, leaving blanks along the same river -- one borrowed from a
+ *  loaded reach sharing its levelpathid. So clicking any segment of a river
+ *  resolves to the same identity (its named card / gauged river) instead of
+ *  flipping to "Unnamed stream". */
+function _resolveName(p: ClickableStreamProps): string | null {
+  const own = _cleanName(p.gnis_name);
+  if (own) return own;
+  if (p.levelpathid == null || !map.getSource("clickable-streams")) return null;
+  const feats = map.querySourceFeatures("clickable-streams", {
+    sourceLayer: STREAM_SOURCE_LAYER,
+  });
+  for (const f of feats) {
+    const fp = (f.properties || {}) as ClickableStreamProps;
+    if (fp.levelpathid === p.levelpathid) {
+      const n = _cleanName(fp.gnis_name);
+      if (n) return n;
+    }
+  }
+  return null;
+}
+
 function _gaugedRiverFor(
   p: ClickableStreamProps,
   lngLat: maplibregl.LngLat | null,
+  resolvedName: string | null,
 ): River | null {
-  const name = _normName(p.gnis_name);
+  const name = _normName(resolvedName);
   const lpid = p.levelpathid;
   if (!name && lpid == null) return null;
   const seen = new Set<string>();
@@ -588,7 +611,8 @@ export function onStreamClick(
   p: ClickableStreamProps,
   lngLat: maplibregl.LngLat | null,
 ): void {
-  const gauged = _gaugedRiverFor(p, lngLat);
+  const name = _resolveName(p);
+  const gauged = _gaugedRiverFor(p, lngLat, name);
   if (gauged) {
     // Gauged river: central selection opens the panel and highlights by
     // the clicked reach's identity.
@@ -607,7 +631,7 @@ export function onStreamClick(
   const loading = '<div class="bl-reach-msg">Loading&hellip;</div>';
   body.innerHTML =
     `<div class="bl-card"><div class="bl-card-head">` +
-    `<div style="font-size:18px;font-weight:700;color:#1a1a2e">${esc(_cleanName(p.gnis_name) || "Unnamed stream")}</div>` +
+    `<div style="font-size:18px;font-weight:700;color:#1a1a2e">${esc(name || "Unnamed stream")}</div>` +
     `<span class="stream-badge" style="background:${esc(streamColor(p))}">${esc(label)}</span>` +
     `<span class="stream-badge" style="background:#64748b">Order ${esc(p.streamorder)}</span>` +
     `<div class="bl-summary">Ungauged reach &mdash; no live USGS flow here. Showing what we know.</div>` +
@@ -628,13 +652,13 @@ export function onStreamClick(
   commitRiverPanelOpen(panel, body, "open");
   if (window.wireCatch) {
     window.wireCatch(body, {
-      name: _cleanName(p.gnis_name),
+      name: name,
       site_no: null,
       lat: lngLat ? lngLat.lat : null,
       lon: lngLat ? lngLat.lng : null,
     });
   }
-  loadReachDetail(body, lngLat, _cleanName(p.gnis_name));
+  loadReachDetail(body, lngLat, name);
 }
 
 // -- Ungauged-card data (hatch / stocked / access) -------------------
