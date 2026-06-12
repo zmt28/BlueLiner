@@ -315,11 +315,17 @@ def test_refine_tier_size_ladder():
     assert r("gold", True, "Big River", 6) == "gold"        # already gold
 
 
+EBTJV_NATIVE_LABEL = "EBTJV / TU Eastern Brook Trout Portfolio (range-wide native)"
+EBTJV_WILD_LABEL = "EBTJV / TU Eastern Brook Trout Portfolio (species-unspecified wild trout)"
+
+
 def test_ebtjv_native_overlay_field_map():
     # Range-wide eastern brook trout native overlay (TU/EBTJV portfolio):
     # brook-trout-present catchments -> wild_reproduction + is_native; everything
-    # else (no brook trout / non-native-only / species-unspecified) drops.
-    e = SOURCES["EBTJV"]
+    # else drops HERE -- including the species-unspecified "Wild trout" value,
+    # which the separate NON-native EBTJV entry carries (see test below).
+    e = BY_LABEL[EBTJV_NATIVE_LABEL]
+    assert e["state"] == "EBTJV"
     assert e["mode"] == "field_map" and e["field"] == "Trout_community"
     assert reg.is_native(e) is True
     for present in ("Allopatric", "Allopatric EBT", "Sympatric",
@@ -335,11 +341,38 @@ def test_ebtjv_native_overlay_field_map():
     # missing field drops too (guards the build's classify-field check)
     assert reg.row_bucket(e, {}) is None
     assert reg.classify_fields(e) == ["Trout_community"]
-    # EBTJV and the western cutthroat overlays trail the state sources, so every
-    # state source keeps trout_class/tier precedence (is_native OR-merges).
+
+
+def test_ebtjv_wild_trout_overlay_is_non_native():
+    # W1: the species-unspecified "Wild trout" catchments (brown/rainbow wild --
+    # Fall Creek, Six Mile Creek, Cayuga Inlet) are a SECOND EBTJV entry mapped to
+    # generic wild (class2) but WITHOUT native:true -- they are not native eastern
+    # brook trout, so is_native must stay False on these COMIDs.
+    w = BY_LABEL[EBTJV_WILD_LABEL]
+    assert w["state"] == "EBTJV"
+    assert w["mode"] == "field_map" and w["field"] == "Trout_community"
+    assert reg.is_native(w) is False
+    assert reg.row_bucket(w, {"Trout_community": "Wild trout"}) == "wild_reproduction"
+    assert reg.row_tier(w, {"Trout_community": "Wild trout"}) == "class2"
+    # the two EBTJV entries partition the value space: brook-trout values aren't
+    # in this entry's map (the native entry above carries them) -> dropped here.
+    assert reg.row_bucket(w, {"Trout_community": "Allopatric"}) is None
+    assert reg.row_bucket(w, {}) is None
+    assert reg.classify_fields(w) == ["Trout_community"]
+
+
+def test_overlays_trail_state_sources():
+    # EBTJV (brook native + "Wild trout") and the western cutthroat/char overlays
+    # all trail the state sources, so every state source keeps trout_class/tier
+    # precedence (is_native OR-merges). Every tail entry is a native overlay
+    # EXCEPT the deliberate non-native EBTJV "Wild trout" entry.
     states = [s["state"] for s in ALL_SOURCES]
     i = states.index("EBTJV")
-    assert all(s.get("native") for s in ALL_SOURCES[i:])
+    for s in ALL_SOURCES[i:]:
+        if s["label"] == EBTJV_WILD_LABEL:
+            assert not s.get("native")   # the one intentional non-native overlay
+        else:
+            assert s.get("native")
 
 
 def test_western_cutthroat_native_overlays():
