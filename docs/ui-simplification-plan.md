@@ -93,20 +93,41 @@ Layers pane (TroutRoutes parity) — pure HTML movement, but checkbox IDs
 (`lyr-*`) must be preserved or `bl_layers` prefs reset
 (`controls.ts:392-452`).
 
-### Phase 6 (deferred) — map-wide "Conditions" line-color mode
-Feature-state-paint all gauged rivers' reaches by verdict, fade the rest.
-Riskiest (per-`sourcedata` matching, partial coverage UX). Build only if
-Phases 1-2 leave users wanting at-a-glance verdicts at state zoom. This is
-also what gives the Condition filter its visible meaning back.
+### Phase 6 — Condition filter drives an on-demand conditions overlay
+The existing Condition dropdown (`cond-select`, `index.html:315-321`, in the
+Filters pane) becomes the way users see conditions at a glance — instead of
+losing its visible effect when pins go away:
+
+- **Filter = Any (default):** lines tier-colored, map clean. No matcher
+  runs; zero overhead.
+- **Filter = Good / Fair / Poor:** paint the reaches of gauged rivers whose
+  `conditions.overall` matches by verdict color (feature-state, reusing the
+  Phase 2 plumbing) and fade non-matching reaches; rivers without gauges
+  fade too. Clearing the filter restores tier colors.
+- Search already scopes by the same filter (`riverPasses`,
+  `rivers.ts:40-50`) — keep that wiring intact throughout Phases 0-5 so
+  condition search never regresses.
+
+Implementation: the inverse of `_gaugedRiverFor` — map each filtered
+river's `levelpathids`/GNIS name onto loaded reaches, set feature-state per
+`sourcedata` batch, clear on filter reset. Run the matcher only while a
+condition filter is active (bounded: O(matching rivers x loaded features)
+per tile batch, fine at state zoom). UI polish: show an active-filter chip
+("Showing: Good conditions") so the faded map is self-explaining.
+
+This phase ships with the series (after Phases 1-2 validate the
+feature-state plumbing), not as a maybe — it is the replacement for the
+at-a-glance verdict view the pins used to provide.
 
 ## Known UX trade-offs (accepted for v1)
 
 - At state zoom (z7) the thinned tile network replaces 22px discs as the tap
   affordance; the 16px hit casing helps, but watch for "where did the pins
-  go" feedback. Search + filters remain the zoomed-out conditions path.
-- The Condition dropdown (`cond-select`, `index.html:315-321`) visibly does
-  nothing once pins are gone (it still scopes search). Annotate it or hide
-  it until Phase 6.
+  go" feedback. Search + the Phase 6 condition filter are the zoomed-out
+  conditions path.
+- Between Phase 1 landing and Phase 6 landing, the Condition dropdown only
+  scopes search results. Either ship Phase 6 in the same release train, or
+  temporarily annotate the dropdown ("applies to search") in Phase 1.
 
 ## Test/verify
 
