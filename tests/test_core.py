@@ -496,6 +496,56 @@ def test_build_river_popup_html():
     assert "bl-catch-cta" in html
 
 
+def test_build_reach_popup_html_unified():
+    # Ungauged reach -> the SAME full panel as a gauged river, but with
+    # no gauges: Conditions tab carries a "no gauge" note, Hatches is the
+    # default-checked tab, and the trout pill reflects the `trout` flag.
+    html = main.build_reach_popup_html(39.6, -76.7, "Gunpowder Falls", True)
+    assert 'class="bl-tabs"' in html                        # same tabbed body
+    assert 'data-tab="conditions"' in html and 'data-tab="hatches"' in html
+    assert "No USGS gauge on this reach" in html            # conditions note
+    assert "bl-flow-chart" not in html                      # no gauge -> no chart
+    assert "Trout water" in html                             # trout=True pill
+    # Default tab is Hatches (a hatch is active here in season-agnostic
+    # data) or, off-season, Conditions -- either way one radio is checked.
+    assert "checked" in html
+    # Untrout reach -> the standardized "No trout designation" pill.
+    html2 = main.build_reach_popup_html(39.6, -76.7, "Some Creek", False)
+    assert "No trout designation" in html2
+    assert "pill--none" in html2
+
+
+def test_ranking_summary_leads_with_label():
+    # The condition score is folded into the verdict callout: a "good"
+    # river leads with a "Good" label, not a separate title-row badge.
+    river = {
+        "overall": "green",
+        "gauges": [{
+            "site_no": "X",
+            "variables": [{"variable": "Streamflow", "value": "85"}],
+            "conditions": {"current_flow": 85.0, "temp_f": 55.0},
+            "historical_median": 80.0}],
+    }
+    s = main._ranking_summary_html(river)
+    assert 'class="verdict-label">Good<' in s
+    assert "near normal" in s
+
+
+def test_panel_header_drops_badge_keeps_trout_pill():
+    # No more .cond title-row badge; trout pill is always present (the
+    # designation, or "No trout designation").
+    base = {
+        "name": "Test R", "overall": "yellow", "near_stocked": False,
+        "active": [], "access_count": 0, "gauges": [],
+        "stocked_waters": [], "hatch_zone": {"name": "Z"}, "month": 5,
+    }
+    designated = main._panel_header_html({**base, "on_trout": True})
+    assert "cond--" not in designated                       # badge removed
+    assert "Trout water" in designated
+    undesignated = main._panel_header_html({**base, "on_trout": False})
+    assert "No trout designation" in undesignated
+
+
 def test_score_conditions_returns_temp_f():
     out = main.score_conditions(
         [{"variable": "Temperature, water, C", "value": "15"}], None)

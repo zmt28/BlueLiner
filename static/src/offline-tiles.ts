@@ -56,6 +56,14 @@ function db(): Promise<IDBDatabase> {
   return (_db ??= openDb());
 }
 
+// Writes to the cache happen ONLY while an explicit download is running, so the
+// offline cache holds deliberately-downloaded areas -- not everything the user
+// panned over online. Reads always check the cache (that's what serves offline).
+let _persisting = false;
+export function setPersisting(on: boolean): void {
+  _persisting = on;
+}
+
 /**
  * A PMTiles Source that reads through the IndexedDB range cache: a cache hit
  * skips the network entirely (offline), a miss fetches from the wrapped remote
@@ -82,10 +90,12 @@ class CachingSource implements Source {
       /* IndexedDB unavailable -> fall through to network */
     }
     const resp = await this.inner.getBytes(offset, length, signal, etag);
-    try {
-      await idbPut(await db(), key, resp.data);
-    } catch (_) {
-      /* best-effort persist; rendering still works online */
+    if (_persisting) {
+      try {
+        await idbPut(await db(), key, resp.data);
+      } catch (_) {
+        /* best-effort persist; rendering still works online */
+      }
     }
     return resp;
   }
@@ -216,9 +226,15 @@ export async function requestPersist(): Promise<boolean> {
 
 // -- download log (meta store) --------------------------------------
 
+export interface OfflineArea {
+  lng: number;
+  lat: number;
+  zoom: number;
+}
 export interface OfflineMeta {
   downloads: number;
   lastAt: number | null; // epoch ms of the last successful download
+  lastArea: OfflineArea | null; // center+zoom of the last download, to return to offline
 }
 
 function metaGet(d: IDBDatabase, key: string): Promise<unknown> {
@@ -240,9 +256,9 @@ function metaPut(d: IDBDatabase, key: string, val: unknown): Promise<void> {
 export async function offlineMeta(): Promise<OfflineMeta> {
   try {
     const m = (await metaGet(await db(), "summary")) as OfflineMeta | undefined;
-    return m ?? { downloads: 0, lastAt: null };
+    return m ?? { downloads: 0, lastAt: null, lastArea: null };
   } catch (_) {
-    return { downloads: 0, lastAt: null };
+    return { downloads: 0, lastAt: null, lastArea: null };
   }
 }
 
@@ -365,21 +381,35 @@ export async function downloadArea(
   let done = 0;
   let tiles = 0;
 
-  if (styleUrl) {
-    onProgress?.({ phase: "assets", done, total: grand });
-    await cacheAssets(styleUrl);
-  }
-  for (const plan of plans) {
-    const r = await prefetch(plan.url, bbox, plan.minZ, plan.maxZ, () => {
-      done++;
-      onProgress?.({ phase: "tiles", done, total: grand });
-    });
-    tiles += r.present;
+  setPersisting(true);
+  try {
+    if (styleUrl) {
+      onProgress?.({ phase: "assets", done, total: grand });
+      await cacheAssets(styleUrl);
+    }
+    for (const plan of plans) {
+      const r = await prefetch(plan.url, bbox, plan.minZ, plan.maxZ, () => {
+        done++;
+        onProgress?.({ phase: "tiles", done, total: grand });
+      });
+      tiles += r.present;
+    }
+  } finally {
+    setPersisting(false);
   }
 
   try {
     const meta = await offlineMeta();
-    await metaPut(await db(), "summary", { downloads: meta.downloads + 1, lastAt: Date.now() });
+    const lastArea: OfflineArea = {
+      lng: (bbox.w + bbox.e) / 2,
+      lat: (bbox.s + bbox.n) / 2,
+      zoom: viewZoom,
+    };
+    await metaPut(await db(), "summary", {
+      downloads: meta.downloads + 1,
+      lastAt: Date.now(),
+      lastArea,
+    });
   } catch (_) {
     /* meta is best-effort */
   }

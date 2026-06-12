@@ -1204,6 +1204,14 @@ html, body {
 .panel-verdict.is-fair { background: var(--bl-cond-fair-50); border-color: var(--bl-cond-fair-100); }
 .panel-verdict.is-poor { background: var(--bl-cond-poor-50); border-color: var(--bl-cond-poor-100); }
 .panel-verdict.is-none { background: var(--bg-page); border-color: var(--border-1); color: var(--fg-3); }
+/* The condition label that leads the verdict ("Good — flow is ...").
+   This folds in what used to be a separate title-row badge, so it
+   carries the condition color: the box tint + bold colored label
+   together read as "this is the condition, and here's why." */
+.verdict-label { font-weight: var(--fw-bold); color: var(--bl-cond-good-700); }
+.panel-verdict.is-fair .verdict-label { color: var(--bl-cond-fair-700); }
+.panel-verdict.is-poor .verdict-label { color: var(--bl-cond-poor-700); }
+.panel-verdict.is-none .verdict-label { color: var(--fg-2); }
 /* Pill row -- a quick-readable line of property chips just under the
    title. Each pill renders conditionally on the river's data, so an
    ungauged class-IV stream gets a leaner header instead of a row of
@@ -1613,10 +1621,12 @@ html, body {
         bottom: 0; left: 0; right: 0;
         background: var(--bg-surface);
         border-top: 1px solid var(--border-1);
-        /* Honor the home-indicator inset without stacking another --space-3 on
-           top of it (which left a tall gap below the labels in standalone). */
-        padding: var(--space-3) var(--space-3)
-                 max(var(--space-3), env(safe-area-inset-bottom));
+        /* Device readout (15 Pro Max, 932pt; ih=873 => the 59pt diff is the top
+           Dynamic Island inset, not a bottom gap): the bar reaches the screen
+           bottom, and the space below the labels is the home-indicator safe
+           area. Compact bar + reserve ~18px so labels sit just clear of the
+           indicator line (going lower crowds it). */
+        padding: 4px var(--space-3) max(8px, calc(env(safe-area-inset-bottom) - 16px));
         display: grid;
         grid-template-columns: repeat(4, 1fr);
         gap: 2px;
@@ -1626,12 +1636,12 @@ html, body {
         border: none; background: transparent;
         cursor: pointer; font: inherit;
         color: var(--fg-3);
-        padding: 6px 2px;
+        padding: 4px 2px;
         display: flex; flex-direction: column; align-items: center;
-        gap: 4px;
+        gap: 3px;
         border-radius: var(--radius-2);
     }
-    .mobile-tab i { width: 22px; height: 22px; }
+    .mobile-tab i { width: 20px; height: 20px; }
     .mobile-tab-label { font-size: 10px; font-weight: var(--fw-medium); }
     .mobile-tab.is-active, .mobile-tab.is-active i { color: var(--bl-river-700); }
 
@@ -1763,6 +1773,11 @@ html, body {
 .pill--hatch   .pill-dot { background: var(--bl-hatch); }
 .pill--access  { color: #0E4961; background: #D6EAF2;                border-color: var(--bl-access); }
 .pill--access  .pill-dot { background: var(--bl-access); }
+/* "No trout designation" -- the muted mirror of .pill--trout, shown on
+   every stream that carries no state trout designation so the absence
+   reads as deliberate, not missing data. */
+.pill--none    { color: var(--bl-cond-none-700); background: var(--bl-cond-none-50); border-color: var(--bl-cond-none-500); }
+.pill--none    .pill-dot { background: var(--bl-cond-none-500); }
 
 /* Button family. Primary is copper (single warm accent for user
    action), brand is river-700 (system actions like sign-in submit),
@@ -1902,10 +1917,11 @@ html, body {
 }
 .bl-offline-clear:disabled { opacity: 0.6; cursor: default; }
 
-/* Connectivity badge: floats top-center, only while offline. */
+/* Connectivity badge: floats bottom-center (clear of the top pills), only
+   while offline. */
 .net-badge {
   position: absolute;
-  top: calc(var(--space-4) + env(safe-area-inset-top));
+  bottom: calc(96px + env(safe-area-inset-bottom));
   left: 50%;
   transform: translateX(-50%);
   z-index: 30;
@@ -1922,3 +1938,124 @@ html, body {
   pointer-events: none;
 }
 .net-badge i { width: 15px; height: 15px; }
+
+/* A class's `display` beats the UA `[hidden]{display:none}` rule, so these
+   floating overlays kept showing even with the `hidden` attribute set (the
+   action bar appeared on launch; the Offline badge hid behind it). Restore
+   `hidden` with a more specific guard. */
+.offline-select[hidden],
+.offline-actionbar[hidden],
+.net-badge[hidden] {
+  display: none !important;
+}
+
+/* Offline download: framing overlay (dim outside a centered box) + action bar. */
+.offline-select {
+  position: absolute;
+  inset: 0;
+  z-index: 25;
+  pointer-events: none;
+}
+.offline-select-box {
+  position: absolute;
+  top: 20%; left: 12%; right: 12%; bottom: 30%;
+  border: 3px solid #fff;
+  border-radius: 14px;
+  box-shadow: 0 0 0 9999px rgba(11, 22, 34, 0.55);
+  pointer-events: none;
+}
+/* Corner ticks make the selection read clearly as a frame. */
+.offline-select-box::before,
+.offline-select-box::after {
+  content: "";
+  position: absolute;
+  width: 24px; height: 24px;
+  border: 0 solid var(--bl-river-500, #2f93bd);
+  pointer-events: none;
+}
+.offline-select-box::before {
+  top: -3px; left: -3px;
+  border-top-width: 5px; border-left-width: 5px;
+  border-top-left-radius: 14px;
+}
+.offline-select-box::after {
+  right: -3px; bottom: -3px;
+  border-bottom-width: 5px; border-right-width: 5px;
+  border-bottom-right-radius: 14px;
+}
+.offline-select-tag {
+  position: absolute;
+  top: -13px; left: 50%;
+  transform: translateX(-50%);
+  background: var(--bl-river-700, #1d6a8a);
+  color: #fff;
+  font-size: 12px; font-weight: 700;
+  padding: 3px 12px;
+  border-radius: 999px;
+  white-space: nowrap;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+}
+.offline-actionbar {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: calc(96px + env(safe-area-inset-bottom));
+  z-index: 31;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 10px 8px 16px;
+  max-width: calc(100vw - 24px);
+  background: var(--bg-surface, #fff);
+  border-radius: 999px;
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.22);
+  pointer-events: auto;
+}
+.offline-actionbar-est {
+  font-size: 13px; font-weight: 600;
+  color: var(--bl-ink-700, #2c3947);
+  white-space: nowrap;
+}
+.offline-actionbar-btns { display: flex; gap: 8px; }
+.offline-actionbar-cancel,
+.offline-actionbar-go {
+  font: inherit; font-size: 13px; font-weight: 600;
+  padding: 7px 14px;
+  border-radius: 999px;
+  cursor: pointer;
+  border: 1px solid var(--bl-ink-200, #d7dde5);
+}
+.offline-actionbar-cancel { background: var(--bg-surface, #fff); color: var(--bl-ink-600, #46556a); }
+.offline-actionbar-go {
+  background: var(--bl-river-700, #1d6a8a);
+  color: #fff;
+  border-color: var(--bl-river-700, #1d6a8a);
+}
+.offline-actionbar-go:disabled { opacity: 0.5; cursor: default; }
+
+/* Stream-class filter chips (Filters pane → Stream network). The hidden
+   checkbox drives the chip state; an unchecked class reads as faded/dashed. */
+.class-filter {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+.class-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 11px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--bl-ink-700, #2c3947);
+  background: var(--bg-surface, #fff);
+  border: 1px solid var(--bl-ink-200, #d7dde5);
+  border-radius: 999px;
+  cursor: pointer;
+  user-select: none;
+}
+.class-chip input { position: absolute; opacity: 0; width: 0; height: 0; }
+.class-chip .class-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+.class-chip:has(input:not(:checked)) { opacity: 0.42; border-style: dashed; }
+.class-chip:has(input:focus-visible) { outline: 2px solid var(--bl-river-500, #2f93bd); outline-offset: 1px; }

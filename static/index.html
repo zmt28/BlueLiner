@@ -96,6 +96,21 @@
         <div class="net-badge" id="net-badge" role="status" hidden>
             <i data-lucide="wifi-off" aria-hidden="true"></i><span>Offline</span>
         </div>
+
+        <!-- Offline download: framing overlay + action bar (download mode). -->
+        <div class="offline-select" id="offline-select" hidden>
+            <div class="offline-select-box">
+                <span class="offline-select-tag">Save this area</span>
+            </div>
+        </div>
+        <div class="offline-actionbar" id="offline-actionbar" hidden>
+            <span class="offline-actionbar-est" id="offline-est">Frame the area to save</span>
+            <span class="offline-actionbar-btns">
+                <button type="button" id="offline-cancel" class="offline-actionbar-cancel">Cancel</button>
+                <button type="button" id="offline-go" class="offline-actionbar-go">Download</button>
+            </span>
+        </div>
+
         <div class="top-pills">
             <!-- State picker. The native <select id="state-select"> remains the
                  canonical value + accessibility target (visually hidden); the
@@ -171,8 +186,6 @@
             <button class="locate-btn" id="locate-btn" type="button" title="Locate me"
                     aria-label="Locate me"><i data-lucide="locate-fixed" aria-hidden="true"></i></button>
         </div>
-
-        <div class="map-attribution">&copy; OpenStreetMap &middot; CARTO &middot; USGS &middot; Esri</div>
     </div>
 
     <!-- Mobile bottom tab bar (hidden >= 760px). -->
@@ -293,26 +306,10 @@
                         </div>
                         <div class="bl-offline" id="offline-test" hidden>
                             <div class="bl-offline-label">Offline maps <span class="bl-offline-tag">beta</span></div>
-                            <button type="button" id="offline-download" class="bl-offline-btn">⤓ Download this area</button>
-                            <div id="offline-status" class="bl-offline-status">Save the current map view to use it without a signal.</div>
+                            <button type="button" id="offline-download" class="bl-offline-btn">⤓ Download an area</button>
+                            <div id="offline-status" class="bl-offline-status">Pick an area on the map to use it without a signal.</div>
                             <button type="button" id="offline-clear" class="bl-offline-clear" hidden>Remove downloads</button>
                         </div>
-                    </section>
-                    <section class="panel-section">
-                        <div class="panel-section-label">Trout filters</div>
-                        <label class="filter-row-toggle">
-                            <span class="filter-row-icon"><i data-lucide="fish" aria-hidden="true"></i></span>
-                            <span class="filter-row-label">Wild trout rivers</span>
-                            <input type="checkbox" id="filter-wild">
-                            <span class="filter-row-check"><i data-lucide="check" aria-hidden="true"></i></span>
-                        </label>
-                        <label class="filter-row-toggle">
-                            <span class="filter-row-icon"><i data-lucide="leaf" aria-hidden="true"></i></span>
-                            <span class="filter-row-label">Native trout rivers</span>
-                            <input type="checkbox" id="filter-native">
-                            <span class="filter-row-check"><i data-lucide="check" aria-hidden="true"></i></span>
-                        </label>
-                        <p class="panel-note">Streams are colored by quality tier (Gold / Class 1&ndash;3). These toggles narrow the network to wild-reproducing and/or native-species rivers.</p>
                     </section>
                 </div>
 
@@ -343,6 +340,29 @@
                             <input type="checkbox" id="stocked-only">
                             <span class="filter-row-check"><i data-lucide="check" aria-hidden="true"></i></span>
                         </label>
+                    </section>
+                    <section class="panel-section">
+                        <div class="panel-section-label">Stream network</div>
+                        <div class="class-filter" id="class-filter" role="group" aria-label="Filter streams by class">
+                            <label class="class-chip"><input type="checkbox" data-tier="gold" checked><span class="class-dot" style="background:#d4af37"></span>Gold</label>
+                            <label class="class-chip"><input type="checkbox" data-tier="class1" checked><span class="class-dot" style="background:#1e8449"></span>Class 1</label>
+                            <label class="class-chip"><input type="checkbox" data-tier="class2" checked><span class="class-dot" style="background:#2e86c1"></span>Class 2</label>
+                            <label class="class-chip"><input type="checkbox" data-tier="class3" checked><span class="class-dot" style="background:#7f8c9a"></span>Class 3</label>
+                            <label class="class-chip"><input type="checkbox" data-tier="unclassified" checked><span class="class-dot" style="background:#8a9bb0"></span>Unclassified</label>
+                        </div>
+                        <label class="filter-row-toggle">
+                            <span class="filter-row-icon"><i data-lucide="fish" aria-hidden="true"></i></span>
+                            <span class="filter-row-label">Wild trout rivers</span>
+                            <input type="checkbox" id="filter-wild">
+                            <span class="filter-row-check"><i data-lucide="check" aria-hidden="true"></i></span>
+                        </label>
+                        <label class="filter-row-toggle">
+                            <span class="filter-row-icon"><i data-lucide="leaf" aria-hidden="true"></i></span>
+                            <span class="filter-row-label">Native trout rivers</span>
+                            <input type="checkbox" id="filter-native">
+                            <span class="filter-row-check"><i data-lucide="check" aria-hidden="true"></i></span>
+                        </label>
+                        <p class="panel-note">Filter the clickable stream network by quality class, and narrow to wild-reproducing and/or native-species water.</p>
                     </section>
                     <button id="filter-reset" type="button" class="filter-reset">Reset filters</button>
                     <section class="panel-section">
@@ -420,6 +440,10 @@
                     <section class="panel-section">
                         <div class="panel-section-label">Verdict scoring</div>
                         <p class="panel-note">Each gauge icon is scored every 15&nbsp;minutes against its 30-year USGS median for that calendar day, then colored Good / Fair / Poor. When a river has several gauges, its overall verdict is the worst of them.</p>
+                    </section>
+                    <section class="panel-section">
+                        <div class="panel-section-label">Map data</div>
+                        <p class="panel-note">&copy; OpenStreetMap contributors &middot; CARTO &middot; USGS The National Map &middot; Esri (imagery). Stream &amp; trout data: NHDPlus + state agencies.</p>
                     </section>
                 </div>
 

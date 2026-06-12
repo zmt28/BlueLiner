@@ -21,7 +21,7 @@ so you can check conditions before you drive to the water.
 - **Historical flow context** -- current discharge vs. the historical median for today's date, powered by the USGS Statistics API
 - **Trout stream overlay** -- the clickable stream network is classified wild (green) vs stocked (blue) across 10 states spanning the East Coast trout belt -- Mid-Atlantic (MD/VA/PA), Northeast (NJ/VT/MA/NY), and southern Appalachians (WV/NC/GA) -- alongside a live designated-trout-water toggle (VA DWR / MD DNR, OBJECTID keyset-paginated for full coverage) and per-river spatial tagging
 - **Access points overlay** -- boat ramps, walk-in trails, fishing piers, parking, and wading-access spots as a toggleable layer. Type-coded markers; popup includes access tier (public / permit / fee), agency link, and freeform notes. Bundled baselines for MD / VA / WV / PA, with a documented contributor path to add more states + live state-DNR ArcGIS overlays
-- **Swappable base maps** -- Street (CARTO), Satellite (Esri World Imagery), and Topographic (USGS National Map) -- one segmented control in the Layers tab, choice persists across sessions via localStorage
+- **Swappable base maps** -- Street (CARTO), Satellite (Esri World Imagery), Topographic (USGS National Map), and a self-hosted **Vector** base (Protomaps tiles via PMTiles on R2) -- one segmented control in the Layers tab, choice persists across sessions via localStorage
 - **Public-lands overlay (PAD-US 4.0)** -- every parcel in USGS GAP's Protected Areas Database, tinted by access tier (Open / Restricted) and click-to-identify (unit name, managing agency, designation, access tier). Renders at zoom 8+; uncolored areas read as "either private or PAD-US doesn't know -- treat as private"
 - **Hatch guidance** -- "what's hatching now" per river, resolved to a sub-state hatch zone and the current month
 - **Stocking** -- well-known stocked / specially-managed waters (MD/VA/WV baseline + live VA DWR feed) surfaced in the river panel with species/season/agency link
@@ -33,7 +33,7 @@ so you can check conditions before you drive to the water.
 - **Accounts (optional)** -- passwordless magic-link sign-in (no passwords stored); anonymous use is fully supported, and on first sign-in you can claim the pins you saved on that device
 - **Catch log** -- signed-in anglers log a catch (species, length, fly, notes) from any river panel; private by default
 - **Auto-enrichment** -- each catch automatically captures the conditions at log time: USGS flow (vs. historical median) and water temperature, NOAA air temperature / barometric pressure / sky conditions, moon phase, and the active hatch window -- so patterns ("what produces fish") emerge over a season without manual entry
-- **Installable PWA** -- mobile + desktop, with an offline app shell (network-first for HTML/JS/CSS so deploys propagate instantly; stale-while-revalidate for `/api/rivers` so a returning visitor's map paints before the network answers)
+- **Installable PWA + offline maps** -- mobile + desktop, with an offline app shell (network-first for HTML/JS/CSS so deploys propagate instantly; stale-while-revalidate for `/api/rivers` so a returning visitor's map paints before the network answers). Plus **downloadable offline maps**: frame an area on the map and save its vector basemap + clickable streams for use with no signal -- an IndexedDB byte-range tile cache (header + directories + tiles, so an offline cold start works) plus service-worker-cached style/glyphs/sprite
 
 ## Tech Stack
 
@@ -260,11 +260,13 @@ Shipped:
 - Optional accounts (magic-link) with anonymous-pin claim
 - Private catch log with automatic condition enrichment
 - Design system: shape-coded condition markers (color + glyph), token-driven palette, verdict sentence, unified Layers/Filters/Legend controls panel
-- Frontend stack modernization: Vite + TypeScript module graph (in-flight; nine modules carved off `app.js`, one PR per domain)
+- Frontend stack modernization: Vite + TypeScript module graph (nine+ modules carved off `app.js`, one PR per domain)
+- **MapLibre GL JS** renderer (replaced Leaflet) + a self-hosted **vector basemap** (Protomaps tiles via PMTiles on R2) as a 4th base option
+- **Offline maps** -- frame and download an area (vector base + clickable streams + style/glyphs) for use with no signal, via an IndexedDB byte-range tile cache + service-worker-cached assets
 
 Planned:
 
-- **MapLibre GL JS** -- swap Leaflet for the GL renderer once the TS module split is complete; unlocks vector tiles, GPU-accelerated rendering at the marker counts TroutRoutes-parity will need, and a portable style JSON for an eventual Flutter mobile app
+- **Native app via Capacitor** -- once the web app is feature-complete, wrap it in a native iOS/Android shell for App Store / Play distribution, native storage + push, and full control of the device chrome (status-bar / home-indicator safe areas). High code reuse (same codebase runs in the shell). See [#141](https://github.com/zmt28/BlueLiner/issues/141)
 - **Privacy-preserving sharing** -- share a catch at river / watershed / county granularity (never an exact GPS spot), via direct links
 - **TroutRoutes-style depth** -- per-segment regulations layered on the existing stream network
 - Catch photos and a season summary view
