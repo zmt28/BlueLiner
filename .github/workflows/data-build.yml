@@ -141,18 +141,22 @@ jobs:
             exit 0
           fi
           git commit -m "data-build: refresh trout-source seeds [no ci]"
-          # The branch may have moved since checkout (e.g. a PR merge landing
-          # mid-build). Rebase + push with bounded retries; a lost race only
-          # costs this run's seed refresh (next successful build recaptures),
-          # so warn rather than fail the artifact/publish steps that follow.
+          # Push FIRST. The common case is the branch hasn't moved, so the push
+          # fast-forwards immediately; only if it's REJECTED (branch moved, e.g.
+          # a PR merge landed mid-build) do we rebase and retry. The old form
+          # `git pull --rebase && git push` was a BUG: on the detached-HEAD CI
+          # checkout the rebase step fails, the && short-circuits, and the push
+          # never runs -- seeds were committed but silently never pushed. A lost
+          # race only costs this run's refresh (next build recaptures), so warn
+          # rather than fail the artifact/publish steps that follow.
           for i in 1 2 3; do
-            if git pull --rebase origin "${GITHUB_REF_NAME}" \
-               && git push origin "HEAD:${GITHUB_REF_NAME}"; then
+            if git push origin "HEAD:${GITHUB_REF_NAME}"; then
               exit 0
             fi
-            git rebase --abort 2>/dev/null || true
-            echo "seed push attempt $i failed; retrying in $((i * 10))s"
-            sleep $((i * 10))
+            echo "seed push attempt $i rejected; rebasing on the branch tip"
+            git pull --rebase origin "${GITHUB_REF_NAME}" \
+              || git rebase --abort 2>/dev/null || true
+            sleep $((i * 5))
           done
           echo "::warning::seed refresh not pushed after 3 attempts (branch kept moving); seeds will refresh on the next successful build"
 
