@@ -16,3 +16,4 @@ bluelines.db*
 # Frontend tooling (PR A: typecheck only; PR B: Vite build)
 node_modules/
 static/dist/
+gis_verify_out/

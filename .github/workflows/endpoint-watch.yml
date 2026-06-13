@@ -1,0 +1,68 @@
+name: Endpoint watch
+
+# Standing watcher for the flaky third-party state-GIS endpoints we're waiting
+# on: the investigation entries in data/watch/watchlist.json plus the unverified
+# leads in data/{stocking,access_points}/candidates.json. Runs on a schedule
+# (the Claude Code sandbox can't reach most state GIS hosts -- this CI runner has
+# open egress, so it's the only place the probes actually fire). When a down
+# server recovers, the run captures what we need (field dumps / discovery /
+# verify verdicts) and surfaces it.
+#
+# The at-a-glance notification is the job step summary (written by the script).
+# The full detail (field dumps) is committed to the long-lived `endpoint-watch`
+# branch as gis_verify_out/WATCH.md, so it's retrievable without cluttering main.
+
+on:
+  schedule:
+    - cron: "0 */6 * * *"   # every 6 hours
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: endpoint-watch
+  cancel-in-progress: false
+
+jobs:
+  watch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install deps
+        run: pip install httpx
+      - name: Probe watched endpoints
+        run: python scripts/endpoint_watch.py
+      # Commit the full report onto a dedicated long-lived side branch
+      # (endpoint-watch). main stays clean; the field dumps stay retrievable.
+      # Push FIRST, rebase only if rejected -- the `git pull --rebase && git push`
+      # form silently drops the push on detached-HEAD CI checkouts.
+      - name: Publish report to endpoint-watch branch
+        if: always()
+        run: |
+          [ -f gis_verify_out/WATCH.md ] || exit 0
+          git config user.name "endpoint-watch-bot"
+          git config user.email "actions@users.noreply.github.com"
+          REPORT="$(mktemp)"
+          cp gis_verify_out/WATCH.md "$REPORT"
+          git fetch origin endpoint-watch || true
+          if git show-ref --verify --quiet refs/remotes/origin/endpoint-watch; then
+            git checkout -B endpoint-watch origin/endpoint-watch
+          else
+            git checkout --orphan endpoint-watch
+            git rm -rf --cached . >/dev/null 2>&1 || true
+            git clean -fdx -e gis_verify_out >/dev/null 2>&1 || true
+          fi
+          mkdir -p gis_verify_out
+          cp "$REPORT" gis_verify_out/WATCH.md
+          git add -f gis_verify_out/WATCH.md
+          git commit -m "endpoint-watch: report $(date -u +%FT%TZ) [no ci]" || exit 0
+          if ! git push origin HEAD:endpoint-watch; then
+            git fetch origin endpoint-watch
+            git rebase origin/endpoint-watch || git rebase --abort
+            git push origin HEAD:endpoint-watch
+          fi

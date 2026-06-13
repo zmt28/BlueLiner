@@ -105,6 +105,7 @@ Hosted on **Render** (free tier). GitHub Actions provide:
 - `refresh-precompute.yml` — POST `/internal/refresh` every 30 min (needs `BLUELINES_URL` + `REFRESH_TOKEN` secrets)
 - `keep-warm.yml` — GET `/healthz` every 10 min to prevent free-tier sleep
 - `data-build.yml` — Scheduled NHDPlus/PAD-US rebuilds
+- `endpoint-watch.yml` — Scheduled (every 6h) probe of the flaky state-GIS endpoints we're waiting on (`data/watch/watchlist.json` + both `candidates.json`); captures field dumps / discovery / verify verdicts when a server recovers. Step summary = at-a-glance status; full report (`gis_verify_out/WATCH.md`) committed to the long-lived `endpoint-watch` branch. Passing candidates flagged READY TO PROMOTE (never auto-edits `sources.json`)
 
 ## Claude Code sandbox limitations (read before network/CI work)
 
