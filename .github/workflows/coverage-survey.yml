@@ -1,0 +1,67 @@
+name: Coverage survey
+
+# Standing weekly "what's missing across the lower 48 and what did we find" pass.
+# Recomputes per-state trout/stocking/access coverage gaps from the three
+# data/*/sources.json registries and, for each FILLABLE gap, discovers candidate
+# state-agency ArcGIS layers (when the host is reachable). REPORT ONLY -- it
+# never edits any registry; the committed COVERAGE.md is the discovery worklist
+# that feeds the human candidate-promotion pipeline.
+#
+# Runs in Actions because the Claude Code sandbox egress blocks most state GIS
+# hosts. Complements gis-endpoint-verify (which re-verifies specific known
+# candidates); this is the broad, retrying survey.
+
+on:
+  schedule:
+    - cron: "0 7 * * 1"   # Mondays 07:00 UTC, weekly
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: coverage-survey
+  cancel-in-progress: false
+
+jobs:
+  survey:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install deps
+        run: pip install httpx
+      - name: Run coverage survey (-> step summary + COVERAGE.md)
+        run: python scripts/coverage_survey.py
+      - name: Commit COVERAGE.md to the endpoint-watch side branch
+        if: always()
+        env:
+          BRANCH: endpoint-watch
+        run: |
+          [ -f gis_verify_out/COVERAGE.md ] || exit 0
+          git config user.name "coverage-survey-bot"
+          git config user.email "actions@users.noreply.github.com"
+          # Move onto the long-lived side branch (create if absent), keeping the
+          # freshly generated report.
+          cp gis_verify_out/COVERAGE.md /tmp/COVERAGE.md
+          git fetch origin "$BRANCH" || true
+          if git rev-parse --verify "origin/$BRANCH" >/dev/null 2>&1; then
+            git checkout -B "$BRANCH" "origin/$BRANCH"
+          else
+            git checkout --orphan "$BRANCH"
+            git rm -rf --cached . >/dev/null 2>&1 || true
+          fi
+          mkdir -p gis_verify_out
+          cp /tmp/COVERAGE.md gis_verify_out/COVERAGE.md
+          git add -f gis_verify_out/COVERAGE.md
+          git commit -m "coverage-survey: weekly worklist [no ci]" || exit 0
+          # Push FIRST; only rebase-and-retry if the push is rejected (avoids the
+          # pull --rebase && push race the other side-branch jobs hit).
+          if ! git push origin "HEAD:$BRANCH"; then
+            git fetch origin "$BRANCH"
+            git rebase "origin/$BRANCH" || git rebase --abort
+            git push origin "HEAD:$BRANCH"
+          fi
