@@ -539,6 +539,99 @@ def test_metadata_failure_no_longer_silently_single_pages(monkeypatch):
         b.fetch_arcgis_features(QUERY_URL, page_size=100)
 
 
+# ───────────────────── coverage verdict (post-seed-write gate) ─────────────────────
+# The convergence fix: the build never exits early at preflight/fetch. It always
+# runs to completion, banks every reachable source's seed, and ONLY THEN computes
+# coverage (live-this-run OR a seed on disk). --require-trout gates on that.
+
+def test_coverage_counts_live_or_seed_as_covered(tmp_path):
+    sd = str(tmp_path)
+    live = dict(SRC, state="VA", label="VA live")
+    seeded = dict(SRC, state="MD", label="MD seeded")
+    bare = dict(SRC, state="CO", label="CO bare")
+    b.write_source_seed(seeded, {KEY: {1}}, seed_dir=sd)  # has a seed on disk
+    status = {"VA live": "ok", "MD seeded": "bundled-seed",
+              "CO bare": "unreachable"}
+
+    cov = b.compute_coverage([live, seeded, bare], status, seed_dir=sd)
+    assert cov["total"] == 3
+    # live OR seed => covered; bare (no live, no seed) => uncovered
+    assert cov["covered"] == ["VA live", "MD seeded"]
+    assert cov["uncovered"] == ["CO bare"]
+    assert cov["uncovered_ever_seeded"] == {"CO bare": False}
+
+
+def test_coverage_all_covered_via_mix_of_live_and_seed(tmp_path):
+    sd = str(tmp_path)
+    live = dict(SRC, state="VA", label="VA live")
+    seeded = dict(SRC, state="MD", label="MD seeded")
+    b.write_source_seed(seeded, {KEY: {1}}, seed_dir=sd)
+    cov = b.compute_coverage(
+        [live, seeded], {"VA live": "ok", "MD seeded": "bundled-seed"},
+        seed_dir=sd)
+    assert cov["uncovered"] == [] and len(cov["covered"]) == 2
+
+
+def test_coverage_labels_stay_in_registry_order(tmp_path):
+    # uncovered/covered lists follow source (registry) order so logs read stably
+    sd = str(tmp_path)
+    a = dict(SRC, state="AA", label="A bare")
+    c = dict(SRC, state="CC", label="C bare")
+    cov = b.compute_coverage([a, dict(SRC, state="BB", label="B live"), c],
+                             {"B live": "ok"}, seed_dir=sd)
+    assert cov["covered"] == ["B live"]
+    assert cov["uncovered"] == ["A bare", "C bare"]
+
+
+def test_seeds_banked_this_run_make_source_covered(tmp_path):
+    # Mirrors main()'s order: a source that fetched live this run writes its
+    # seed (Step 3), and the coverage check (Step 6) runs against the seed dir
+    # AS IT STANDS AFTER that write -- so the source is covered going forward
+    # even if the publish is blocked on some OTHER uncovered source. This is
+    # what makes re-running converge.
+    sd = str(tmp_path)
+    just_banked = dict(SRC, state="VA", label="VA just banked")
+    other_bare = dict(SRC, state="CO", label="CO bare")
+    # Step 3: live fetch this run banks VA's first-ever seed.
+    b.write_source_seed(just_banked, {KEY: {1, 2}}, seed_dir=sd)
+    # Step 6: even pretending VA's live status was lost, its on-disk seed covers
+    # it. The gate blocks only on CO (truly uncovered).
+    cov = b.compute_coverage([just_banked, other_bare], {}, seed_dir=sd)
+    assert cov["covered"] == ["VA just banked"]
+    assert cov["uncovered"] == ["CO bare"]
+
+
+def test_report_coverage_writes_step_summary(tmp_path, monkeypatch, capsys):
+    summary = tmp_path / "summary.md"
+    monkeypatch.setenv("GITHUB_STEP_SUMMARY", str(summary))
+    b.report_coverage({"covered": ["A", "B"], "uncovered": ["C"],
+                       "uncovered_ever_seeded": {"C": False}, "total": 3})
+    out = capsys.readouterr().out
+    assert "2/3 sources covered" in out and "C (never seeded)" in out
+    assert summary.read_text().strip() == "Seed coverage: 2/3; uncovered: C"
+
+    # all covered -> the publish-ready phrasing in both stdout and the summary
+    summary2 = tmp_path / "summary2.md"
+    monkeypatch.setenv("GITHUB_STEP_SUMMARY", str(summary2))
+    b.report_coverage({"covered": ["A"], "uncovered": [],
+                       "uncovered_ever_seeded": {}, "total": 1})
+    assert "ready to publish" in capsys.readouterr().out
+    assert summary2.read_text().strip() == \
+        "Seed coverage: 1/1; uncovered: none — ready to publish"
+
+
+def test_report_coverage_marks_stale_seed_among_uncovered(capsys):
+    # an uncovered source that DOES have a (stale) seed is annotated as such
+    # vs. one never seeded -- the requested "whether each uncovered source has
+    # ever been seeded" signal.
+    b.report_coverage({"covered": [], "uncovered": ["X stale", "Y new"],
+                       "uncovered_ever_seeded": {"X stale": True,
+                                                 "Y new": False}, "total": 2})
+    out = capsys.readouterr().out
+    assert "X stale (has a stale seed)" in out
+    assert "Y new (never seeded)" in out
+
+
 # ───────────────────────── seed-write atomicity ─────────────────────────
 
 def test_seed_write_replaces_corrupt_file_and_leaves_no_temp(tmp_path):
