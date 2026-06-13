@@ -620,6 +620,35 @@ def test_report_coverage_writes_step_summary(tmp_path, monkeypatch, capsys):
         "Seed coverage: 1/1; uncovered: none — ready to publish"
 
 
+def test_report_coverage_writes_coverage_out(tmp_path, monkeypatch, capsys):
+    # SEED_COVERAGE_OUT, when set, gets a markdown summary for the PR body.
+    out = tmp_path / "cov.md"
+    monkeypatch.setenv("SEED_COVERAGE_OUT", str(out))
+    monkeypatch.delenv("GITHUB_STEP_SUMMARY", raising=False)
+    b.report_coverage({"covered": ["A", "B"], "uncovered": ["C"],
+                       "uncovered_ever_seeded": {"C": False}, "total": 3})
+    capsys.readouterr()
+    text = out.read_text()
+    assert "2/3 sources covered" in text
+    assert "Uncovered (1):" in text and "- C" in text
+
+    # all-covered phrasing
+    out2 = tmp_path / "cov2.md"
+    monkeypatch.setenv("SEED_COVERAGE_OUT", str(out2))
+    b.report_coverage({"covered": ["A"], "uncovered": [],
+                       "uncovered_ever_seeded": {}, "total": 1})
+    assert "ready to publish" in out2.read_text()
+
+
+def test_report_coverage_no_coverage_out_when_unset(tmp_path, monkeypatch):
+    # No SEED_COVERAGE_OUT env -> no file written, no error.
+    monkeypatch.delenv("SEED_COVERAGE_OUT", raising=False)
+    monkeypatch.delenv("GITHUB_STEP_SUMMARY", raising=False)
+    b.report_coverage({"covered": ["A"], "uncovered": [],
+                       "uncovered_ever_seeded": {}, "total": 1})
+    assert not list(tmp_path.iterdir())
+
+
 def test_report_coverage_marks_stale_seed_among_uncovered(capsys):
     # an uncovered source that DOES have a (stale) seed is annotated as such
     # vs. one never seeded -- the requested "whether each uncovered source has

@@ -124,6 +124,16 @@ Hosted on **Render** (free tier). GitHub Actions provide:
   Production data updates require merge first, then a main dispatch with
   BOTH `r2_prefix` and `upload: true`, then a `DATA_BASE_URL` cutover on
   Render to the new prefix.
+- **Trout-source seeds accumulate on the `data-seeds` branch via an auto-PR,
+  not direct pushes** (`main` is branch-protected — the Actions bot CANNOT
+  push to it; that was the confirmed root cause of seeds never persisting).
+  `data-build.yml`'s daily cron (non-publish: `upload=false`) overlays the
+  `data-seeds` seeds, builds, re-banks captures, and uses
+  `peter-evans/create-pull-request` to keep ONE standing **`data-seeds → main`**
+  PR open. A human merges that PR (the review gate) once its coverage summary
+  reads "ready to publish"; only then does an `upload=true` publish from `main`
+  ship complete seeds. A cheap pre-build guard skips the build on scheduled runs
+  once every source has a seed on disk. Needs `pull-requests: write` permission.
 - **Anonymous GitHub API rate-limits fast** (60/hr shared) -- poll at >=120s
   intervals or use the authenticated GitHub MCP tools (whose list responses
   are huge: extract fields via the saved-output file, never read raw).

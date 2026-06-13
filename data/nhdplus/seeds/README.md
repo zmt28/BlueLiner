@@ -33,15 +33,30 @@ source produced, so seed-based tagging reproduces the live tagging exactly.
   full-region builds only (a `--regions` subset would clobber a national
   capture), and only when the content actually changed (`captured_at` is
   preserved otherwise).
-- **Persist**: `data-build.yml` commits changed seed files back to the
-  triggering branch after a successful build (`[no ci]`).
+- **Persist**: `data-build.yml` accumulates changed seed files on the
+  long-lived **`data-seeds`** branch via a `peter-evans/create-pull-request`
+  step (NOT a direct push — `main` is branch-protected and the Actions bot
+  cannot push to it, which is why earlier direct-to-main seed commits silently
+  vanished). One standing PR `data-seeds → main` is kept open and refreshed each
+  daily warming run; its body carries the build's seed-coverage summary. A human
+  MERGES that PR (the review gate) once coverage is complete; only then can the
+  seeds reach a production publish.
+- **Overlay**: a non-publish run (cron / `upload=false`) first overlays the
+  `data-seeds` branch's seeds on top of main's checkout, so the build's coverage
+  + fallback see the full accumulated set. Publish runs (`upload=true`) do NOT
+  overlay — they build only from the seeds merged into `main`.
 - **Read**: when a source's live fetch fails (after per-request backoff plus
   3 per-source attempts with 15s/45s waits), the build falls back to its seed
   and logs "tagging from a prior capture" with the capture date/staleness.
   The unreachable gate (`--require-trout`, exit 3) only fires for a source
   with NEITHER live data NOR a seed.
-- **Bootstrap**: this directory starts with no seeds; the first post-merge
-  full build populates it. Missing/empty seeds are handled gracefully (the
+- **Bootstrap**: this directory starts with no seeds; the first scheduled
+  warming run creates the `data-seeds` branch from scratch (the overlay no-ops
+  gracefully when the branch doesn't exist yet). The daily cron then converges
+  coverage hands-off — each source needs only one up-window ever — and a cheap
+  pre-build guard skips the ~55-min build once every source has a seed on disk.
+  Aging-seed refresh is operator-driven: a manual `upload=false` dispatch
+  always builds and re-banks live captures (no auto freshness logic). Missing/empty seeds are handled gracefully (the
   source is simply gate-relevant until its first capture). The legacy
   explicit `seed:` registry key (MD → `data/nhdplus/MD_designated_comids.json`)
   still works as a pre-seeded entry; an auto capture here takes precedence

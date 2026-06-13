@@ -16,19 +16,36 @@ name: Data build — clickable streams
 #   R2_ACCESS_KEY_ID    R2 access key id
 #   R2_SECRET_ACCESS_KEY  R2 secret access key
 #
-# Seed-warming convergence (the bootstrap story):
+# Seed-warming convergence via the `data-seeds` branch + auto-PR (main is
+# protected — the Actions bot CANNOT push to it, which is why earlier
+# direct-to-main seed commits silently vanished):
 #   The ~30 third-party state ArcGIS trout sources never all answer at the same
 #   instant (a different server flaps each run: CO, NY, WI...). Last-known-good
 #   seeds (data/nhdplus/seeds/) make the build immune to any one source being
-#   down, but a seed is only banked once its source is reachable. The build now
+#   down, but a seed is only banked once its source is reachable. The build
 #   banks EVERY reachable source's seed on EVERY run (even gated ones that
-#   exit 3), and the `schedule:` cron below runs SEED-WARMING dry runs every
-#   2h: each cron run uses the input DEFAULTS (upload=false), so it builds +
-#   banks seeds + commits them but never publishes. Coverage therefore
-#   accumulates automatically — each source needs only one up-window EVER.
-#   Watch the Job summary's "Seed coverage" line: once the warming runs stop
-#   reporting uncovered sources ("none — ready to publish"), trigger a manual
-#   `workflow_dispatch` with **upload: true** (and an `r2_prefix`) to publish.
+#   exit 3). The convergence loop is:
+#     1. A NON-publish run (scheduled cron, or any upload=false dispatch) first
+#        OVERLAYS the accumulated seeds from the long-lived `data-seeds` branch
+#        on top of main's checkout, so the build sees the full banked set.
+#     2. The build re-banks every reachable source's seed into the working tree.
+#     3. `peter-evans/create-pull-request` pushes the seed delta to the
+#        UNPROTECTED `data-seeds` branch (which the bot CAN push to) and keeps
+#        ONE standing PR `data-seeds` → `main` open, refreshing it each run.
+#   Coverage therefore accumulates hands-off on `data-seeds` — each source needs
+#   only one up-window EVER. The PR body carries the build's "Seed coverage"
+#   summary; once it reads "All sources covered — ready to publish", a human
+#   MERGES the data-seeds PR into main (the review gate). THEN a manual
+#   `workflow_dispatch` with **upload: true** publishes from main: publish runs
+#   deliberately do NOT overlay data-seeds, so production is built only from the
+#   seeds a human merged into main.
+#
+#   Cadence: the cron runs DAILY (not per-2h). A cheap pre-build guard skips the
+#   ~55-min build on scheduled runs once every source already has a seed on disk
+#   (post-overlay) — so once bootstrap is complete the daily cron is nearly free.
+#   Manual dispatches ALWAYS build. Aging-seed refresh is operator-driven: kick a
+#   manual upload=false dispatch to re-bank live captures (no auto freshness
+#   logic by design).
 
 on:
   workflow_dispatch:
@@ -45,16 +62,17 @@ on:
         description: "Publish artifacts to R2 (uncheck for a dry run)"
         type: boolean
         default: false
-  # Seed-warming: build + bank seeds every 2h, never publish (scheduled runs
-  # use the input DEFAULTS, so upload=false). Converges seed coverage hands-off
-  # until every source has been up at least once; see the header note above.
+  # Seed-warming: DAILY non-publish run (scheduled runs use the input DEFAULTS,
+  # so upload=false → overlay data-seeds, build, PR seeds back; never publish).
+  # The cheap-skip guard below short-circuits the build once seeds are complete.
   schedule:
-    - cron: "0 */2 * * *"
+    - cron: "0 6 * * *"
 
-# contents: write so the build can commit refreshed last-known-good trout
-# seeds (data/nhdplus/seeds/) back to the triggering branch.
+# contents: write so the build can read/write seeds; pull-requests: write so
+# create-pull-request can open/refresh the standing data-seeds → main PR.
 permissions:
   contents: write
+  pull-requests: write
 
 # Serialize runs: two concurrent builds would race each other's seed-refresh
 # commits (and double-publish to R2). Queue rather than cancel — a build is
@@ -88,10 +106,57 @@ jobs:
           make -C /tmp/tippecanoe -j"$(nproc)"
           sudo make -C /tmp/tippecanoe install
 
+      # Overlay the accumulated seeds from the long-lived data-seeds branch on
+      # top of main's checkout, so this build's coverage + seed-fallback see the
+      # FULL banked set (not just what main has merged). Gated to NON-publish
+      # runs (scheduled cron has inputs.upload == '' which is != 'true', so it
+      # overlays; an upload=false dispatch overlays too). Publish runs
+      # (upload=true) deliberately SKIP this and build only from main's
+      # committed seeds — merging the data-seeds PR into main is the human review
+      # gate before seeds can affect a production publish. The `|| true` /
+      # fallback echo make the first run (no data-seeds branch yet) graceful.
+      - name: Overlay accumulated seeds (data-seeds)
+        if: ${{ inputs.upload != 'true' }}
+        run: |
+          git fetch origin data-seeds || true
+          git checkout origin/data-seeds -- data/nhdplus/seeds/ 2>/dev/null \
+            || echo "no data-seeds branch yet (first run)"
+
+      # Cheap-skip: a scheduled run skips the ~55-min build once every trout
+      # source already has a seed on disk (evaluated AFTER the overlay above).
+      # Manual dispatches always build. Sets need_build=true if any source lacks
+      # a seed file, so warming continues only while seeds are still missing.
+      - name: Decide whether a build is needed
+        id: need
+        run: |
+          python - <<'PY' >> "$GITHUB_OUTPUT"
+          import json, os, re
+          # Self-contained (no geopandas import): mirrors seed_slug() +
+          # find_seed_file() in scripts/build_clickable_streams.py.
+          def slug(s):
+              raw = f"{s['state']} {s.get('label', '')}".lower()
+              return re.sub(r"[^a-z0-9]+", "-", raw).strip("-")
+          def has_seed(s):
+              auto = os.path.join("data/nhdplus/seeds", slug(s) + ".json")
+              if os.path.exists(auto):
+                  return True
+              legacy = s.get("seed")
+              return bool(legacy) and os.path.exists(legacy)
+          sources = json.load(open("data/trout/sources.json"))["sources"]
+          missing = [s.get("label", s.get("state", "?")) for s in sources
+                     if not has_seed(s)]
+          print(f"need_build={'true' if missing else 'false'}")
+          n = len(sources)
+          msg = ("missing: " + ", ".join(missing)) if missing else "all seeded"
+          print(f"::notice::seed coverage on disk: {n - len(missing)}/{n} ({msg})")
+          PY
+
       - name: Build clickable streams
+        if: ${{ steps.need.outputs.need_build == 'true' || github.event_name != 'schedule' }}
         env:
           REGIONS: ${{ inputs.regions }}
           UPLOAD: ${{ inputs.upload }}
+          SEED_COVERAGE_OUT: ${{ runner.temp }}/seed_coverage.md
         run: |
           args=(--manifest data/nhdplus/clickable_streams.manifest.json)
           if [ -n "$REGIONS" ]; then args+=(--regions "$REGIONS"); fi
@@ -101,6 +166,7 @@ jobs:
           python scripts/build_clickable_streams.py "${args[@]}"
 
       - name: Sanity gate
+        if: ${{ steps.need.outputs.need_build == 'true' || github.event_name != 'schedule' }}
         env:
           REGIONS: ${{ inputs.regions }}
         run: |
@@ -118,45 +184,56 @@ jobs:
               sys.exit(f"national build only {n} features — looks truncated")
           PY
 
+      # Read the build's coverage summary into an env var so the PR body below
+      # can quote it. The build wrote it via SEED_COVERAGE_OUT; absent (skipped
+      # build) we fall back to a generic line.
+      - name: Read seed-coverage summary
+        if: always()
+        id: cov
+        run: |
+          {
+            echo 'body<<COVEOF'
+            cov="${{ runner.temp }}/seed_coverage.md"
+            if [ -f "$cov" ]; then cat "$cov"; else echo "_No coverage summary produced this run._"; fi
+            echo COVEOF
+          } >> "$GITHUB_OUTPUT"
+
       # Persist the build's freshly-captured last-known-good seeds
-      # (data/nhdplus/seeds/, one JSON per trout source) so the NEXT build can
-      # tag a state from a prior capture when its ArcGIS server is down. The
-      # builder only writes seeds on full-region runs and skips byte-identical
-      # captures, so this commits nothing on partial/dry runs with no changes.
+      # (data/nhdplus/seeds/, one JSON per trout source) to the long-lived
+      # `data-seeds` branch via an auto-PR. main is PROTECTED so the bot can't
+      # push to it directly (the old direct-push step was silently rejected);
+      # create-pull-request pushes to the UNPROTECTED data-seeds branch and keeps
+      # ONE standing data-seeds → main PR open, refreshed each run. add-paths
+      # limits the commit to seeds (never the big geojson.gz / manifest). It
+      # no-ops when there's no seed diff.
       #
       # if: always() — seeds are banked even when the build step EXITED 3 on a
       # --require-trout coverage gate. That's the whole convergence mechanism:
-      # each gated upload-run still banks every reachable source's seed, so a
-      # later run finds that source covered. PMTiles + Publish below stay gated
-      # on build success (default step behaviour: they're skipped after exit 3),
-      # so an incomplete-coverage build never publishes.
-      - name: Commit refreshed trout seeds
+      # each gated run still banks every reachable source's seed, so a later run
+      # finds that source covered. (On a cheap-skipped scheduled run the working
+      # tree is unchanged, so this no-ops.)
+      - name: PR refreshed trout seeds to data-seeds
         if: always()
-        run: |
-          git config user.name "data-build-bot"
-          git config user.email "actions@users.noreply.github.com"
-          git add data/nhdplus/seeds
-          if git diff --cached --quiet; then
-            echo "seed captures unchanged; nothing to commit"
-            exit 0
-          fi
-          git commit -m "data-build: refresh trout-source seeds [no ci]"
-          # The branch may have moved since checkout (e.g. a PR merge landing
-          # mid-build). Rebase + push with bounded retries; a lost race only
-          # costs this run's seed refresh (next successful build recaptures),
-          # so warn rather than fail the artifact/publish steps that follow.
-          for i in 1 2 3; do
-            if git pull --rebase origin "${GITHUB_REF_NAME}" \
-               && git push origin "HEAD:${GITHUB_REF_NAME}"; then
-              exit 0
-            fi
-            git rebase --abort 2>/dev/null || true
-            echo "seed push attempt $i failed; retrying in $((i * 10))s"
-            sleep $((i * 10))
-          done
-          echo "::warning::seed refresh not pushed after 3 attempts (branch kept moving); seeds will refresh on the next successful build"
+        uses: peter-evans/create-pull-request@v6
+        with:
+          add-paths: data/nhdplus/seeds/**
+          branch: data-seeds
+          base: main
+          delete-branch: false
+          commit-message: "data-build: refresh trout-source seeds"
+          title: "data-build: refresh trout-source seeds"
+          author: "Claude <noreply@anthropic.com>"
+          committer: "Claude <noreply@anthropic.com>"
+          body: |
+            Automated trout-source seed accumulation from the daily data-build
+            warming run. Seeds accumulate on this `data-seeds` branch; merge into
+            `main` (the review gate) once coverage is complete, then publish with
+            a manual `upload: true` dispatch.
+
+            ${{ steps.cov.outputs.body }}
 
       - name: Build PMTiles
+        if: ${{ steps.need.outputs.need_build == 'true' || github.event_name != 'schedule' }}
         env:
           TMPDIR: ${{ runner.temp }}
         run: scripts/build_stream_tiles.sh
@@ -164,6 +241,7 @@ jobs:
       # Printed AFTER tippecanoe so it's near the end of the log (the build's own
       # stdout histogram gets buried behind tippecanoe's progress).
       - name: Tier calibration
+        if: ${{ steps.need.outputs.need_build == 'true' || github.event_name != 'schedule' }}
         run: |
           python - <<'PY'
           import json
@@ -196,6 +274,7 @@ jobs:
           echo "Published to $base"
 
       - name: Upload build artifacts
+        if: ${{ steps.need.outputs.need_build == 'true' || github.event_name != 'schedule' }}
         uses: actions/upload-artifact@v4
         with:
           name: clickable-streams
@@ -225,7 +304,7 @@ jobs:
               echo "_No manifest produced (build failed before emitting one)._"
             fi
             if [ "$IS_CRON" = "true" ]; then
-              echo "_Scheduled seed-warming run — builds + banks seeds, never publishes. See the **Seed coverage** line above; once it reads 'none — ready to publish', dispatch with **upload: true**._"
+              echo "_Scheduled seed-warming run — overlays \`data-seeds\`, builds + banks seeds, PRs them to the \`data-seeds\` branch; never publishes. (Skips the build entirely once every source has a seed on disk.) When the standing **data-seeds → main** PR shows 'All sources covered — ready to publish', MERGE it into main, then dispatch with **upload: true** to publish._"
             elif [ "$UPLOADED" = "true" ]; then
               echo "Published to R2 prefix \`$R2_PREFIX\`. To cut over:"
               echo "set \`VITE_STREAM_TILES_URL=<DATA_BASE_URL>/streams.pmtiles\` (and \`DATA_BASE_URL\` for the GeoJSON path) and redeploy."

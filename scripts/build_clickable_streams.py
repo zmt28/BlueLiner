@@ -921,10 +921,36 @@ def _append_step_summary(lines: list[str]) -> None:
         print(f"  (could not write step summary: {e})")
 
 
+def _write_coverage_out(coverage: dict) -> None:
+    """If SEED_COVERAGE_OUT is set, write a short markdown coverage summary to
+    that path (used by data-build.yml to populate the data-seeds PR body). A
+    no-op when the env var is unset (local / non-Actions runs)."""
+    path = os.environ.get("SEED_COVERAGE_OUT")
+    if not path:
+        return
+    total = coverage["total"]
+    n_covered = len(coverage["covered"])
+    uncovered = coverage["uncovered"]
+    lines = [f"Seed coverage: {n_covered}/{total} sources covered "
+             f"(live this run OR a seed on disk).", ""]
+    if uncovered:
+        lines.append(f"Uncovered ({len(uncovered)}):")
+        for label in uncovered:
+            lines.append(f"- {label}")
+    else:
+        lines.append("All sources covered — ready to publish.")
+    try:
+        with open(path, "w", encoding="utf-8") as f:
+            f.write("\n".join(lines) + "\n")
+    except Exception as e:
+        print(f"  (could not write coverage out: {e})")
+
+
 def report_coverage(coverage: dict) -> None:
     """Print the coverage verdict prominently to stdout AND, under Actions, the
     job step summary: covered count, uncovered names, and whether each
-    uncovered source has ever been seeded."""
+    uncovered source has ever been seeded. Also writes a markdown summary to
+    SEED_COVERAGE_OUT (if set) for the data-seeds PR body."""
     total = coverage["total"]
     n_covered = len(coverage["covered"])
     uncovered = coverage["uncovered"]
@@ -946,6 +972,7 @@ def report_coverage(coverage: dict) -> None:
            else "none — ready to publish")
     ]
     _append_step_summary(summary)
+    _write_coverage_out(coverage)
 
 
 def preflight_wait_for_no_data(no_data_sources: list[dict], wait_budget: float,
