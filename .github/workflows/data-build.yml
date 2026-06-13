@@ -15,6 +15,20 @@ name: Data build — clickable streams
 #   R2_ENDPOINT         https://<acct>.r2.cloudflarestorage.com
 #   R2_ACCESS_KEY_ID    R2 access key id
 #   R2_SECRET_ACCESS_KEY  R2 secret access key
+#
+# Seed-warming convergence (the bootstrap story):
+#   The ~30 third-party state ArcGIS trout sources never all answer at the same
+#   instant (a different server flaps each run: CO, NY, WI...). Last-known-good
+#   seeds (data/nhdplus/seeds/) make the build immune to any one source being
+#   down, but a seed is only banked once its source is reachable. The build now
+#   banks EVERY reachable source's seed on EVERY run (even gated ones that
+#   exit 3), and the `schedule:` cron below runs SEED-WARMING dry runs every
+#   2h: each cron run uses the input DEFAULTS (upload=false), so it builds +
+#   banks seeds + commits them but never publishes. Coverage therefore
+#   accumulates automatically — each source needs only one up-window EVER.
+#   Watch the Job summary's "Seed coverage" line: once the warming runs stop
+#   reporting uncovered sources ("none — ready to publish"), trigger a manual
+#   `workflow_dispatch` with **upload: true** (and an `r2_prefix`) to publish.
 
 on:
   workflow_dispatch:
@@ -31,6 +45,11 @@ on:
         description: "Publish artifacts to R2 (uncheck for a dry run)"
         type: boolean
         default: false
+  # Seed-warming: build + bank seeds every 2h, never publish (scheduled runs
+  # use the input DEFAULTS, so upload=false). Converges seed coverage hands-off
+  # until every source has been up at least once; see the header note above.
+  schedule:
+    - cron: "0 */2 * * *"
 
 # contents: write so the build can commit refreshed last-known-good trout
 # seeds (data/nhdplus/seeds/) back to the triggering branch.
@@ -104,7 +123,15 @@ jobs:
       # tag a state from a prior capture when its ArcGIS server is down. The
       # builder only writes seeds on full-region runs and skips byte-identical
       # captures, so this commits nothing on partial/dry runs with no changes.
+      #
+      # if: always() — seeds are banked even when the build step EXITED 3 on a
+      # --require-trout coverage gate. That's the whole convergence mechanism:
+      # each gated upload-run still banks every reachable source's seed, so a
+      # later run finds that source covered. PMTiles + Publish below stay gated
+      # on build success (default step behaviour: they're skipped after exit 3),
+      # so an incomplete-coverage build never publishes.
       - name: Commit refreshed trout seeds
+        if: always()
         run: |
           git config user.name "data-build-bot"
           git config user.email "actions@users.noreply.github.com"
@@ -177,17 +204,29 @@ jobs:
             data/nhdplus/clickable_streams.manifest.json
           if-no-files-found: error
 
+      # if: always() — runs even after the build step exits 3 on the coverage
+      # gate, so the summary still shows what was banked and what's still
+      # uncovered. (The build step itself already appended the "Seed coverage:"
+      # line to the step summary; this adds the manifest + publish guidance.)
       - name: Job summary
+        if: always()
         env:
           UPLOADED: ${{ inputs.upload }}
           R2_PREFIX: ${{ inputs.r2_prefix }}
+          IS_CRON: ${{ github.event_name == 'schedule' }}
         run: |
           {
             echo "### Clickable-streams build"
-            echo '```json'
-            cat data/nhdplus/clickable_streams.manifest.json
-            echo '```'
-            if [ "$UPLOADED" = "true" ]; then
+            if [ -f data/nhdplus/clickable_streams.manifest.json ]; then
+              echo '```json'
+              cat data/nhdplus/clickable_streams.manifest.json
+              echo '```'
+            else
+              echo "_No manifest produced (build failed before emitting one)._"
+            fi
+            if [ "$IS_CRON" = "true" ]; then
+              echo "_Scheduled seed-warming run — builds + banks seeds, never publishes. See the **Seed coverage** line above; once it reads 'none — ready to publish', dispatch with **upload: true**._"
+            elif [ "$UPLOADED" = "true" ]; then
               echo "Published to R2 prefix \`$R2_PREFIX\`. To cut over:"
               echo "set \`VITE_STREAM_TILES_URL=<DATA_BASE_URL>/streams.pmtiles\` (and \`DATA_BASE_URL\` for the GeoJSON path) and redeploy."
             else

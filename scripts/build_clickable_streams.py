@@ -871,6 +871,83 @@ def preflight_sources(sources: list[dict], seed_dir: str = SEEDS_DIR,
     return rows
 
 
+def compute_coverage(sources: list[dict], trout_status: dict[str, str],
+                     seed_dir: str = SEEDS_DIR) -> dict:
+    """Coverage verdict, computed AFTER this run's seeds are written.
+
+    A source is "covered" if it tagged from live data this run
+    (trout_status[label] == "ok") OR a seed file exists on disk for it now
+    (its own freshly-written capture, a prior run's, or the legacy `seed:`
+    file). "uncovered" means BOTH are absent -- no live this run AND no seed
+    ever banked -- which is the only thing that should block a --require-trout
+    publish.
+
+    The crucial difference from the old gate: it runs against the seed
+    directory as it stands after write_source_seed, so a source that fetched
+    live this run and banked its first seed is covered going forward even if
+    the publish is blocked on some OTHER still-uncovered source. Re-running
+    therefore converges -- each source needs exactly one up-window ever.
+
+    Returns {"covered": [labels], "uncovered": [labels],
+             "uncovered_ever_seeded": {label: bool}, "total": int}. Labels are
+    in registry order so logs read stably."""
+    covered: list[str] = []
+    uncovered: list[str] = []
+    ever_seeded: dict[str, bool] = {}
+    for source in sources:
+        label = source.get("label", source["state"])
+        live_ok = trout_status.get(label) == "ok"
+        has_seed = find_seed_file(source, seed_dir) is not None
+        if live_ok or has_seed:
+            covered.append(label)
+        else:
+            uncovered.append(label)
+            ever_seeded[label] = has_seed  # always False here, kept explicit
+    return {"covered": covered, "uncovered": uncovered,
+            "uncovered_ever_seeded": ever_seeded, "total": len(sources)}
+
+
+def _append_step_summary(lines: list[str]) -> None:
+    """Append lines to GITHUB_STEP_SUMMARY if running under Actions; no-op
+    locally. Each entry is written on its own line."""
+    path = os.environ.get("GITHUB_STEP_SUMMARY")
+    if not path:
+        return
+    try:
+        with open(path, "a", encoding="utf-8") as f:
+            for line in lines:
+                f.write(line + "\n")
+    except Exception as e:
+        print(f"  (could not write step summary: {e})")
+
+
+def report_coverage(coverage: dict) -> None:
+    """Print the coverage verdict prominently to stdout AND, under Actions, the
+    job step summary: covered count, uncovered names, and whether each
+    uncovered source has ever been seeded."""
+    total = coverage["total"]
+    n_covered = len(coverage["covered"])
+    uncovered = coverage["uncovered"]
+    print("\n── Trout-source seed coverage ──")
+    print(f"  {n_covered}/{total} sources covered "
+          f"(live this run OR a seed on disk)")
+    if uncovered:
+        ever = coverage["uncovered_ever_seeded"]
+        print(f"  UNCOVERED ({len(uncovered)}; no live data this run AND no "
+              f"seed ever banked):")
+        for label in uncovered:
+            note = "has a stale seed" if ever.get(label) else "never seeded"
+            print(f"    - {label} ({note})")
+    else:
+        print("  all sources covered — ready to publish")
+    summary = [
+        f"Seed coverage: {n_covered}/{total}; uncovered: "
+        + (", ".join(uncovered) if uncovered
+           else "none — ready to publish")
+    ]
+    _append_step_summary(summary)
+
+
 def preflight_wait_for_no_data(no_data_sources: list[dict], wait_budget: float,
                                interval: float = PREFLIGHT_REPROBE_INTERVAL,
                                probe=None, sleep=time.sleep,
@@ -1076,17 +1153,20 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
                         "Default is to delete (bounds peak disk to ~one region) "
                         "so a full lower-48 build fits a small CI runner.")
     p.add_argument("--require-trout", action="store_true",
-                   help="Fail (exit 3) if any state trout source has NEITHER "
-                        "live data NOR a last-known-good seed, instead of "
-                        "degrading to untagged geometry. Use for canonical/"
-                        "published release builds.")
+                   help="Fail (exit 3) AT THE END if any state trout source is "
+                        "uncovered -- neither tagged live this run NOR backed by "
+                        "a seed on disk -- instead of publishing an incomplete "
+                        "release. The build still runs to completion and banks "
+                        "every reachable source's seed first, so re-running "
+                        "converges. Use for canonical/published release builds.")
     p.add_argument("--preflight-wait", type=float,
                    default=PREFLIGHT_WAIT_DEFAULT, metavar="SECONDS",
-                   help="With --require-trout: when preflight finds NO-DATA "
-                        "sources (no live endpoint, no seed), re-probe just "
-                        "those every ~2 min for up to this many seconds before "
-                        "exiting 3 -- state GIS servers flap independently for "
-                        "minutes at a time. 0 disables the wait. "
+                   help="When preflight finds NO-DATA sources (no live endpoint, "
+                        "no seed), re-probe just those every ~2 min for up to "
+                        "this many seconds -- giving flapping state GIS servers a "
+                        "chance to come back before the NHDPlus downloads. The "
+                        "build proceeds regardless afterwards (it never exits "
+                        "early). 0 disables the wait. "
                         f"Default: {PREFLIGHT_WAIT_DEFAULT:.0f}s.")
     p.add_argument("--manifest", default="",
                    help="Also write a provenance manifest JSON (regions, "
@@ -1116,14 +1196,17 @@ def main(argv: list[str] | None = None) -> int:
 
     sources = trout_registry.load_sources()
 
-    # ── Step 0: Preflight (fail-before-heavy-work, with bounded patience) ──
-    # Cheap layer-metadata probes over all sources. Only a NO-DATA source (no
-    # live endpoint AND no seed) is a certain gate failure; before treating
-    # that as final, re-probe just the failing sources inside a bounded wait
-    # window (--preflight-wait) -- servers flap independently for minutes, so
-    # an instant exit 3 makes seed bootstrap nearly impossible. A flaky-but-
-    # probe-passing server still gets the full fetch + seed-fallback
-    # treatment below.
+    # ── Step 0: Preflight (probe + bounded patience; never exits) ──
+    # Cheap layer-metadata probes over all sources. A NO-DATA source (no live
+    # endpoint AND no seed) can't be tagged this run, so re-probe just those
+    # inside a bounded wait window (--preflight-wait) to give a flapping server
+    # a chance to come back BEFORE the expensive NHDPlus downloads -- but unlike
+    # the old code this never exits early. The build ALWAYS proceeds to
+    # fetch+join+write-seeds for every currently-reachable source, banking each
+    # one's seed; only AFTER seeds are persisted (Step 3) does --require-trout
+    # decide whether full coverage was reached. That makes seed capture
+    # CONVERGE across runs (each source needs one up-window ever) instead of
+    # requiring all ~30 servers up at the same instant.
     print("── Trout-source preflight ──")
     pf_rows = preflight_sources(sources)
     width = max(len(label) for label, _ in pf_rows)
@@ -1133,20 +1216,20 @@ def main(argv: list[str] | None = None) -> int:
     if no_data:
         print(f"\n⚠ preflight: no live endpoint AND no seed for: "
               f"{', '.join(no_data)}")
-        if args.require_trout and args.preflight_wait > 0:
-            print(f"  --require-trout: re-probing every "
-                  f"{PREFLIGHT_REPROBE_INTERVAL:.0f}s for up to "
-                  f"{args.preflight_wait:.0f}s before giving up ...")
+        if args.preflight_wait > 0:
+            print(f"  re-probing every {PREFLIGHT_REPROBE_INTERVAL:.0f}s for "
+                  f"up to {args.preflight_wait:.0f}s to give flapping servers a "
+                  f"chance before the NHDPlus downloads ...")
             by_label = {s.get("label", s["state"]): s for s in sources}
             recovered, no_data = preflight_wait_for_no_data(
                 [by_label[l] for l in no_data], args.preflight_wait)
             if recovered:
                 print(f"  recovered during preflight wait: "
                       f"{', '.join(recovered)}")
-        if no_data and args.require_trout:
-            print("--require-trout set; failing before NHDPlus downloads "
-                  f"(still NO DATA: {', '.join(no_data)}).", file=sys.stderr)
-            return 3
+        if no_data:
+            print(f"  still NO DATA after wait: {', '.join(no_data)} — "
+                  f"proceeding anyway; seeds for every reachable source still "
+                  f"get banked, and coverage is judged after they're written.")
 
     # ── Step 1: Fetch state trout GIS (small; held in memory once) ──
     # Third-party state ArcGIS servers occasionally go down. Each source gets
@@ -1177,11 +1260,9 @@ def main(argv: list[str] | None = None) -> int:
     if unreachable:
         print(f"\n⚠ trout sources unreachable (no live data, no seed): "
               f"{', '.join(unreachable)} — clickable geometry still builds, "
-              f"but those states are untagged.")
-        if args.require_trout:
-            print("--require-trout set; refusing to ship an incomplete release.",
-                  file=sys.stderr)
-            return 3
+              f"but those states are untagged. The --require-trout coverage "
+              f"gate fires (if at all) AFTER seeds are written below, so this "
+              f"run still banks every reachable source's seed first.")
 
     # ── Step 2: VPU-streaming build ──
     # One region at a time: download → join trout → emit clickable features →
@@ -1351,6 +1432,28 @@ def main(argv: list[str] | None = None) -> int:
                        n_feats, dict(by_class), trout_status, dict(by_tier),
                        native_count)
         print(f"[manifest] wrote {args.manifest}")
+
+    # ── Step 6: coverage verdict (AFTER seeds are written) ──
+    # A source is covered if it tagged live this run OR has a seed on disk now
+    # (including the one this run just banked). Only here -- after every
+    # reachable source's seed has been persisted -- does --require-trout decide
+    # whether to gate. Partial-region runs can't judge national coverage (they
+    # tag only a subset), so they skip the gate.
+    coverage = compute_coverage(sources, trout_status, SEEDS_DIR)
+    report_coverage(coverage)
+    if args.require_trout and coverage["uncovered"]:
+        if args.regions.strip():
+            print("\n[coverage] partial-region build; --require-trout coverage "
+                  "gate skipped (a region subset can't judge national "
+                  "coverage).")
+            return 0
+        names = ", ".join(coverage["uncovered"])
+        n_covered = len(coverage["covered"])
+        msg = (f"PUBLISH BLOCKED — re-run to bank seeds for: {names}; "
+               f"{n_covered}/{coverage['total']} sources covered")
+        print(f"\n{msg}", file=sys.stderr)
+        _append_step_summary([f"**{msg}**"])
+        return 3
     return 0
 
 
