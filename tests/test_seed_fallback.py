@@ -379,15 +379,19 @@ def test_seeded_failure_skips_final_retry(tmp_path):
 
 # ───────────────────── pagination truncation detection ─────────────────────
 
-def _arcgis_transport(total: int):
+def _arcgis_transport(total: int, seen=None):
     """MockTransport for an ArcGIS layer with `total` features, OBJECTID
-    1..total, honoring keyset pagination + resultRecordCount."""
+    1..total, honoring keyset pagination + resultRecordCount. When `seen` is
+    a list, every /query request's (path, params) is appended to it so tests
+    can assert exactly which query parameters went over the wire."""
     def handler(request):
         if not request.url.path.endswith("/query"):
             return httpx.Response(200, json={
                 "objectIdField": "OBJECTID",
                 "fields": [{"name": "OBJECTID"}]})
         params = dict(request.url.params)
+        if seen is not None:
+            seen.append((request.url.path, params))
         n = int(params.get("resultRecordCount", 1000))
         m = re.search(r"OBJECTID > (-?\d+)", params.get("where", ""))
         bound = max(int(m.group(1)), 0) if m else 0
@@ -399,10 +403,15 @@ def _arcgis_transport(total: int):
     return httpx.MockTransport(handler)
 
 
-def _mock_client(monkeypatch, transport):
+def _mock_client(monkeypatch, transport, client_kwargs=None):
     real = httpx.Client
-    monkeypatch.setattr(b.httpx, "Client",
-                        lambda **kw: real(transport=transport, **kw))
+
+    def make(**kw):
+        if client_kwargs is not None:
+            client_kwargs.append(kw)
+        return real(transport=transport, **kw)
+
+    monkeypatch.setattr(b.httpx, "Client", make)
 
 
 QUERY_URL = "https://example.test/arcgis/rest/services/X/MapServer/0/query?where=1%3D1"
@@ -424,6 +433,97 @@ def test_pagination_truncation_raises_instead_of_shipping_partial(monkeypatch):
     monkeypatch.setattr(b, "MAX_PAGES", 3)
     with pytest.raises(RuntimeError, match="truncated"):
         b.fetch_arcgis_features(QUERY_URL, page_size=100)
+
+
+def test_default_fetch_params_unchanged(monkeypatch):
+    # No tuning overrides -> exactly the historical wire format: 1000/page,
+    # NO maxAllowableOffset, default client timeout.
+    seen, clients = [], []
+    _mock_client(monkeypatch, _arcgis_transport(total=3, seen=seen), clients)
+    feats = b.fetch_arcgis_features(QUERY_URL)
+    assert len(feats) == 3
+    for _, params in seen:
+        assert params["resultRecordCount"] == "1000"
+        assert "maxAllowableOffset" not in params
+    assert all(kw["timeout"] == b.REQUEST_TIMEOUT for kw in clients)
+
+
+def test_page_size_and_max_offset_land_in_query_params(monkeypatch):
+    seen, clients = [], []
+    _mock_client(monkeypatch, _arcgis_transport(total=250, seen=seen), clients)
+    feats = b.fetch_arcgis_features(QUERY_URL, page_size=100,
+                                    max_offset=0.0001, timeout=60.0)
+    assert len(feats) == 250  # pagination still completes with tuning applied
+    assert len(seen) >= 3  # 100/page over 250 features really paginated
+    for _, params in seen:
+        assert params["resultRecordCount"] == "100"
+        assert params["maxAllowableOffset"] == "0.0001"
+    assert all(kw["timeout"] == 60.0 for kw in clients)
+
+
+# ─────────────── registry fetch tuning (page_size / max_offset) ───────────────
+
+def test_source_fetch_kwargs_resolution():
+    # untuned source -> empty (defaults preserved)
+    assert b._source_fetch_kwargs({"state": "VA"}) == {}
+    # source-level tuning; declaring page_size also raises the read timeout
+    src = {"state": "CO", "page_size": 100, "max_offset": 0.0001}
+    assert b._source_fetch_kwargs(src) == {
+        "page_size": 100, "max_offset": 0.0001,
+        "timeout": b.SLOW_SOURCE_TIMEOUT}
+    # multi_layer sublayer override wins over the source-level value
+    assert b._source_fetch_kwargs(src, {"id": 2, "page_size": 50}) == {
+        "page_size": 50, "max_offset": 0.0001,
+        "timeout": b.SLOW_SOURCE_TIMEOUT}
+    # sublayer can tune a source that declares nothing itself
+    assert b._source_fetch_kwargs({"state": "CO"}, {"id": 2}) == {}
+    assert b._source_fetch_kwargs(
+        {"state": "CO"}, {"id": 2, "max_offset": 0.0002}) == \
+        {"max_offset": 0.0002}
+
+
+def test_multi_layer_fetch_plumbs_registry_tuning(monkeypatch):
+    # End-to-end through fetch_trout_source: the CO-style registry entry's
+    # page_size/max_offset reach the wire for every sublayer, with a
+    # per-sublayer override honored.
+    seen, clients = [], []
+    _mock_client(monkeypatch, _arcgis_transport(total=5, seen=seen), clients)
+    src = {"state": "CO", "label": "CO Aquatic Management Waters",
+           "mode": "multi_layer", "page_size": 100, "max_offset": 0.0001,
+           "base": "https://example.test/arcgis/rest/services/X/FeatureServer",
+           "layers": [
+               {"id": 2, "class": "wild_reproduction", "tier": "class2",
+                "native": True, "label": "dense polygons"},
+               {"id": 3, "class": "stocked", "tier": "class3",
+                "label": "sublayer override", "page_size": 25}]}
+    out = b.fetch_trout_source(src)
+    assert [key for key, _ in out] == [
+        ("wild_reproduction", "class2", True), ("stocked", "class3", False)]
+    by_layer = {}
+    for path, params in seen:
+        by_layer.setdefault(path, []).append(params)
+    for params in by_layer["/arcgis/rest/services/X/FeatureServer/2/query"]:
+        assert params["resultRecordCount"] == "100"
+        assert params["maxAllowableOffset"] == "0.0001"
+    for params in by_layer["/arcgis/rest/services/X/FeatureServer/3/query"]:
+        assert params["resultRecordCount"] == "25"
+        assert params["maxAllowableOffset"] == "0.0001"
+    # declared page_size -> slow-source read timeout on every client
+    assert all(kw["timeout"] == b.SLOW_SOURCE_TIMEOUT for kw in clients)
+
+
+def test_co_registry_entry_declares_fetch_tuning():
+    # The real data/trout/sources.json CO entry carries the tuning that fixes
+    # the CPW bulk-pull timeout, and max_offset stays safely below the build's
+    # own downstream simplification + join buffer.
+    import trout_registry
+    co = next(s for s in trout_registry.load_sources()
+              if s.get("label") == "CO Aquatic Management Waters")
+    assert b._source_fetch_kwargs(co) == {
+        "page_size": 100, "max_offset": 0.0001,
+        "timeout": b.SLOW_SOURCE_TIMEOUT}
+    assert co["max_offset"] < b.SIMPLIFY_TOL
+    assert co["max_offset"] < b.SPATIAL_JOIN_BUFFER_DEG
 
 
 def test_metadata_failure_no_longer_silently_single_pages(monkeypatch):

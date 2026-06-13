@@ -343,10 +343,12 @@
       "url": "https://services.arcgis.com/ZzrwjTRez6FJiOq4/arcgis/rest/services/Blue_Ribbon_Fisheries_VIEW/FeatureServer/0/query?where=1%3D1"
     },
     {
-      "_comment": "CO Parks & Wildlife SB181 Aquatic Management Units (CPWSB181AquaticData). Native Species Conservation, Cutthroat Crucial Habitat, and Gold Medal (CO's premier quality tier) -> wild; Sportfish Management -> stocked. The features are polygons that are ~500-ft buffers around the actual reaches (BufferDist field; 1,779 native-conservation polygons), so the build's buffer+intersect join tags the corridor flowlines precisely -- tighter than the already-shipped VT catchment polygons. Gold Medal -> wild per the western-coverage carve-out (top quality tier = wild, as with WY/UT Blue Ribbon). Wild sublayers are listed before the stocked one so wild wins on any overlap.",
+      "_comment": "CO Parks & Wildlife SB181 Aquatic Management Units (CPWSB181AquaticData). Native Species Conservation, Cutthroat Crucial Habitat, and Gold Medal (CO's premier quality tier) -> wild; Sportfish Management -> stocked. The features are polygons that are ~500-ft buffers around the actual reaches (BufferDist field; 1,779 native-conservation polygons), so the build's buffer+intersect join tags the corridor flowlines precisely -- tighter than the already-shipped VT catchment polygons. Gold Medal -> wild per the western-coverage carve-out (top quality tier = wild, as with WY/UT Blue Ribbon). Wild sublayers are listed before the stocked one so wild wins on any overlap. Fetch tuning: CPW's republished service answers metadata probes but times out serializing bulk pages of these dense polygons (layer 2 at the default 1000/page failed every attempt), so page_size 100 keeps each response small (also raises the per-request read timeout -- see _source_fetch_kwargs). max_offset 0.0001 asks the server to generalize geometry to ~11 m; units are DEGREES because the fetch sends outSR=4326 and maxAllowableOffset is interpreted in outSR units. 0.0001 sits 3x below the build's own SIMPLIFY_TOL (0.0003 deg, ~33 m) and 10x below the 0.001-deg spatial-join buffer, so it is invisible downstream.",
       "state": "CO",
       "label": "CO Aquatic Management Waters",
       "mode": "multi_layer",
+      "page_size": 100,
+      "max_offset": 0.0001,
       "base": "https://services5.arcgis.com/ttNGmDvKQA7oeDQ3/arcgis/rest/services/CPWSB181AquaticData/FeatureServer",
       "layers": [
         {

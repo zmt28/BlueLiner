@@ -120,6 +120,11 @@ REGIONS = [
 
 USER_AGENT = "Blueliner/1.0 (+https://blueliner.app)"
 REQUEST_TIMEOUT = 20.0
+# Read timeout for sources that declare a registry `page_size` override: a
+# source only declares one because its server struggles to serialize bulk
+# pages (CPW's dense-polygon layers time out at the default 1000/page), so
+# give each -- now much smaller -- page extra time before httpx gives up.
+SLOW_SOURCE_TIMEOUT = 60.0
 # Per-pull pagination budget. fetch_arcgis_features now RAISES when this (or
 # MAX_PAGES) cuts a pull short rather than silently returning a partial layer
 # (a truncated capture used to ship -- and worse, could clobber a complete
@@ -353,8 +358,17 @@ def _strip_z(coords):
     return list(coords[:2])  # leaf position -> [x, y]
 
 
-def fetch_arcgis_features(query_url: str, page_size: int = 1000) -> list[dict]:
+def fetch_arcgis_features(query_url: str, page_size: int = 1000,
+                          max_offset: float | None = None,
+                          timeout: float = REQUEST_TIMEOUT) -> list[dict]:
     """Paginate an ArcGIS query endpoint via OBJECTID keyset.
+
+    `max_offset`, when set, is sent as ArcGIS `maxAllowableOffset` (server-side
+    geometry generalization). The fetch always requests outSR=4326, and per the
+    ArcGIS REST spec maxAllowableOffset is interpreted in the units of outSR
+    when one is given -- so the value is in DEGREES regardless of the layer's
+    native spatial reference. Callers must keep it comfortably below
+    SIMPLIFY_TOL (the build re-simplifies everything downstream anyway).
 
     Raises RuntimeError when the pull is cut short (TOTAL_BUDGET / MAX_PAGES
     exhausted mid-stream, or a full page from a layer that can't be keyset-
@@ -377,11 +391,13 @@ def fetch_arcgis_features(query_url: str, page_size: int = 1000) -> list[dict]:
         "outFields": src.get("outFields", "*"),
         "resultRecordCount": str(page_size),
     }
+    if max_offset is not None:
+        common["maxAllowableOffset"] = str(max_offset)
     features: list[dict] = []
     deadline = time.monotonic() + TOTAL_BUDGET
     complete = False
     truncation = None
-    with httpx.Client(timeout=REQUEST_TIMEOUT,
+    with httpx.Client(timeout=timeout,
                       headers={"User-Agent": USER_AGENT}) as client:
         oid = _discover_oid_field(client, layer_url, deadline)
         last: int | None = None
@@ -600,6 +616,41 @@ def write_source_seed(source: dict, groups: dict[tuple, set[int]],
 # ──────────────────────── Trout GIS ingestion ────────────────────────
 
 
+def _source_fetch_kwargs(source: dict, layer: dict | None = None) -> dict:
+    """Per-source fetch tuning from the registry -> fetch_arcgis_features
+    kwargs. Two optional registry keys, settable on the source and (for
+    multi_layer) overridable per sublayer:
+
+      page_size   resultRecordCount per page. Declare a small one for servers
+                  that time out serializing bulk pages of dense geometry
+                  (CPW's 1,779 buffer polygons at 1000/page). Declaring it
+                  also raises the per-request read timeout to
+                  SLOW_SOURCE_TIMEOUT -- a tuned source is by definition a
+                  slow server.
+      max_offset  ArcGIS maxAllowableOffset (server-side generalization), in
+                  DEGREES (the fetch sends outSR=4326, which fixes the units
+                  -- see fetch_arcgis_features). Keep it well below
+                  SIMPLIFY_TOL so it's invisible after the build's own
+                  downstream simplification.
+
+    Sources without these keys get an empty dict: the defaults (1000/page,
+    no generalization, REQUEST_TIMEOUT) are untouched."""
+    def pick(key):
+        if layer is not None and key in layer:
+            return layer[key]
+        return source.get(key)
+
+    kw: dict = {}
+    page_size = pick("page_size")
+    if page_size:
+        kw["page_size"] = int(page_size)
+        kw["timeout"] = SLOW_SOURCE_TIMEOUT
+    max_offset = pick("max_offset")
+    if max_offset is not None:
+        kw["max_offset"] = float(max_offset)
+    return kw
+
+
 def _split_by_value(gdf: gpd.GeoDataFrame,
                     source: dict) -> list[tuple[tuple, gpd.GeoDataFrame]]:
     """Tag each feature with its (trout_class, tier, native) via the registry,
@@ -631,7 +682,8 @@ def fetch_trout_source(source: dict) -> list[tuple[tuple, gpd.GeoDataFrame]]:
             url = f"{source['base']}/{layer['id']}/query?where=1%3D1"
             print(f"[trout] {source['state']} {layer['label']} "
                   f"(layer {layer['id']}) ...")
-            feats = fetch_arcgis_features(url)
+            feats = fetch_arcgis_features(url,
+                                          **_source_fetch_kwargs(source, layer))
             if not feats:
                 print(f"  WARNING: no features for layer {layer['id']}")
                 continue
@@ -643,7 +695,7 @@ def fetch_trout_source(source: dict) -> list[tuple[tuple, gpd.GeoDataFrame]]:
         return out
 
     print(f"[trout] {source['label']} ...")
-    feats = fetch_arcgis_features(source["url"])
+    feats = fetch_arcgis_features(source["url"], **_source_fetch_kwargs(source))
     if not feats:
         print("  WARNING: no features returned")
         return []
