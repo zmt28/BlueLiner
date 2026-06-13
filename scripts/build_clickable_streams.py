@@ -120,8 +120,13 @@ REGIONS = [
 
 USER_AGENT = "Blueliner/1.0 (+https://blueliner.app)"
 REQUEST_TIMEOUT = 20.0
-TOTAL_BUDGET = 120.0
-MAX_PAGES = 80
+# Per-pull pagination budget. fetch_arcgis_features now RAISES when this (or
+# MAX_PAGES) cuts a pull short rather than silently returning a partial layer
+# (a truncated capture used to ship -- and worse, could clobber a complete
+# seed). Sized generously so a slow-but-alive server finishes: the per-source
+# retry + seed fallback handle the genuinely dead ones.
+TOTAL_BUDGET = 300.0
+MAX_PAGES = 200
 MAX_RETRIES = 5  # per-request retries (transport errors + 5xx) before giving up
 SPATIAL_JOIN_BUFFER_DEG = 0.001  # ~100 m
 
@@ -138,6 +143,16 @@ SOURCE_FETCH_BACKOFF = (15, 45)
 # data-build.yml commits refreshed seeds back to the repo after a full build.
 SEEDS_DIR = os.path.join(ROOT, "data", "nhdplus", "seeds")
 PROBE_TIMEOUT = 15.0  # preflight layer-metadata probe
+
+# Preflight patience: a NO-DATA source (no live endpoint AND no seed) is a
+# certain --require-trout gate failure, but state GIS servers flap
+# independently for minutes at a time (NY tonight, CPW earlier). Instead of
+# exiting on the first probe, re-probe just the failing sources every
+# PREFLIGHT_REPROBE_INTERVAL seconds for up to --preflight-wait seconds, so
+# the seed-bootstrap condition is "each server up at some point in the
+# window", not "all ~30 up at the same instant".
+PREFLIGHT_REPROBE_INTERVAL = 120.0
+PREFLIGHT_WAIT_DEFAULT = 25 * 60.0  # seconds; keeps runner cost sane
 
 
 # ──────────────────────── NHDPlus download / parse ────────────────────────
@@ -209,7 +224,8 @@ def vaa_attrs(dbf_path: str) -> dict[int, dict]:
     return out
 
 
-def prepare_region(region: dict, cache_dir: str, skip_download: bool) -> tuple[str, str]:
+def prepare_region(region: dict, cache_dir: str,
+                   skip_download: bool) -> tuple[str, str, dict]:
     """Ensure one region's NHDFlowline shapefile + PlusFlowlineVAA.dbf are
     extracted under `cache_dir/<id>`, downloading the .7z archives unless a
     cached extract is already present (with --skip-download). Returns the
@@ -304,21 +320,24 @@ def _http_get_retry(client: httpx.Client, url: str, params: dict,
 
 def _discover_oid_field(client: httpx.Client, layer_url: str,
                         deadline: float) -> str | None:
-    """Find the OID field name from the layer metadata, checking actual fields."""
-    try:
-        r = _http_get_retry(client, layer_url, {"f": "json"}, deadline)
-        r.raise_for_status()
-        meta = r.json()
-        declared = meta.get("objectIdField")
-        if declared:
-            return declared
-        field_names = {f["name"] for f in meta.get("fields", [])}
-        for cand in ("OBJECTID", "OBJECTID_12", "FID", "ESRI_OID", "objectid"):
-            if cand in field_names:
-                return cand
-        return None
-    except Exception:
-        return None
+    """Find the OID field name from the layer metadata, checking actual fields.
+
+    Raises on transport/HTTP failure (after _http_get_retry's backoff): a
+    transient metadata error must NOT silently downgrade the pull to a single
+    unpaginated page -- that used to ship the first 1000 features as if they
+    were the whole layer. Returns None only when the metadata is readable but
+    exposes no recognizable OID field."""
+    r = _http_get_retry(client, layer_url, {"f": "json"}, deadline)
+    r.raise_for_status()
+    meta = r.json()
+    declared = meta.get("objectIdField")
+    if declared:
+        return declared
+    field_names = {f["name"] for f in meta.get("fields", [])}
+    for cand in ("OBJECTID", "OBJECTID_12", "FID", "ESRI_OID", "objectid"):
+        if cand in field_names:
+            return cand
+    return None
 
 
 def _strip_z(coords):
@@ -335,7 +354,14 @@ def _strip_z(coords):
 
 
 def fetch_arcgis_features(query_url: str, page_size: int = 1000) -> list[dict]:
-    """Paginate an ArcGIS query endpoint via OBJECTID keyset."""
+    """Paginate an ArcGIS query endpoint via OBJECTID keyset.
+
+    Raises RuntimeError when the pull is cut short (TOTAL_BUDGET / MAX_PAGES
+    exhausted mid-stream, or a full page from a layer that can't be keyset-
+    paginated) instead of returning a silently-partial layer: the per-source
+    retry wrapper and seed fallback are the right consumers of that failure,
+    and a partial capture must never be written out as a last-known-good
+    seed."""
     from urllib.parse import urlsplit, parse_qs
     split = urlsplit(query_url)
     base = f"{split.scheme}://{split.netloc}{split.path}"
@@ -353,12 +379,15 @@ def fetch_arcgis_features(query_url: str, page_size: int = 1000) -> list[dict]:
     }
     features: list[dict] = []
     deadline = time.monotonic() + TOTAL_BUDGET
+    complete = False
+    truncation = None
     with httpx.Client(timeout=REQUEST_TIMEOUT,
                       headers={"User-Agent": USER_AGENT}) as client:
         oid = _discover_oid_field(client, layer_url, deadline)
         last: int | None = None
         for _ in range(MAX_PAGES):
             if time.monotonic() > deadline:
+                truncation = f"time budget ({TOTAL_BUDGET:.0f}s) exhausted"
                 break
             params = dict(common)
             if oid:
@@ -371,9 +400,17 @@ def fetch_arcgis_features(query_url: str, page_size: int = 1000) -> list[dict]:
             resp.raise_for_status()
             batch = resp.json().get("features", [])
             if not batch:
+                complete = True
                 break
             if not oid:
+                # Unpaginatable layer (no OID field): a full first page means
+                # there may be more we can't reach -- refuse to guess.
+                if len(batch) >= page_size:
+                    raise RuntimeError(
+                        f"{base}: no OID field and a full first page "
+                        f"({len(batch)} features); cannot verify completeness")
                 features.extend(batch)
+                complete = True
                 break
             ids = []
             for f in batch:
@@ -384,15 +421,30 @@ def fetch_arcgis_features(query_url: str, page_size: int = 1000) -> list[dict]:
                 except (TypeError, ValueError):
                     pass
             if not ids:
+                # OID values unusable for keyset paging: same full-page rule.
+                if len(batch) >= page_size:
+                    raise RuntimeError(
+                        f"{base}: unparsable {oid} values on a full page "
+                        f"({len(batch)} features); cannot verify completeness")
                 features.extend(batch)
+                complete = True
                 break
             mx = max(ids)
             if last is not None and mx <= last:
+                complete = True
                 break
             features.extend(batch)
             last = mx
             if len(batch) < page_size:
+                complete = True
                 break
+        else:
+            truncation = f"page cap (MAX_PAGES={MAX_PAGES}) exhausted"
+    if not complete:
+        raise RuntimeError(
+            f"truncated fetch from {base}: "
+            f"{truncation or 'pagination stopped early'}; "
+            f"{len(features)} features pulled before cutoff")
     # Force 2D: some servers ignore returnZ and emit null Z ordinates that
     # break shapely. Safe no-op for already-2D geometry.
     for f in features:
@@ -534,9 +586,14 @@ def write_source_seed(source: dict, groups: dict[tuple, set[int]],
         "groups": glist,
     }
     os.makedirs(seed_dir, exist_ok=True)
-    with open(path, "w", encoding="utf-8") as f:
+    # Atomic replace: a crash mid-write must not leave a half-written seed --
+    # next run would log "unusable seed" and the source would silently regress
+    # to NO DATA (the exact gate failure seeds exist to prevent).
+    tmp = f"{path}.tmp"
+    with open(tmp, "w", encoding="utf-8") as f:
         json.dump(obj, f, separators=(",", ":"))
         f.write("\n")
+    os.replace(tmp, path)
     return path
 
 
@@ -631,23 +688,48 @@ def fetch_trout_source_with_retries(source: dict,
 
 
 def collect_trout_taggers(sources: list[dict], fetch=None,
-                          seed_dir: str = SEEDS_DIR):
+                          seed_dir: str = SEEDS_DIR,
+                          fetch_last: set | None = None):
     """Fetch every registry source (with per-source retries), falling back to
     its last-known-good seed when the live endpoint is down.
 
-    Returns (taggers, trout_status). Each tagger preserves registry order
-    (= precedence) and is either
+    `fetch_last` (labels): sources the preflight saw flapping are fetched
+    AFTER the healthy ones, buying them maximal extra recovery time. The
+    returned tagger list is ALWAYS in registry order (= precedence) no matter
+    the fetch order, so reordering never changes the output.
+
+    A fetch failure on a source with NO seed isn't final immediately: that
+    source gets one more full fetch attempt at the very end of the phase
+    (after every other source has been pulled), and only then becomes
+    "unreachable" -- a flapping server gets the whole fetch phase to recover
+    before it can trip the --require-trout gate.
+
+    Returns (taggers, trout_status). Each tagger is either
         {"slug", "label", "source", "live": True,
          "groups": [((class, tier, native), GeoDataFrame, bounds), ...]}
     or, seed-backed,
         {"slug", "label", "source", "live": False,
          "groups": [((class, tier, native), {COMIDs}), ...]}.
     trout_status[label] is "ok" | "bundled-seed" | "unreachable"; "unreachable"
-    now means NEITHER live data NOR a seed (the --require-trout gate)."""
+    means NEITHER live data NOR a seed (the --require-trout gate)."""
     fetch = fetch or fetch_trout_source_with_retries
-    taggers: list[dict] = []
+    results: dict[int, dict] = {}  # registry index -> tagger
     trout_status: dict[str, str] = {}
-    for source in sources:
+
+    def _live_tagger(source, label, result):
+        groups = [(key, g, tuple(g.total_bounds))
+                  for key, g in result if len(g)]
+        return {"slug": seed_slug(source), "label": label,
+                "source": source, "live": True, "groups": groups}
+
+    indexed = list(enumerate(sources))
+    if fetch_last:
+        # Stable partition: healthy sources first (registry order preserved
+        # within each partition), preflight-shaky ones last.
+        indexed.sort(key=lambda p: p[1].get("label", p[1]["state"]) in fetch_last)
+
+    no_seed_failures: list[tuple[int, dict, str]] = []
+    for idx, source in indexed:
         # `label` lets one state contribute multiple sources (e.g. CT's WTMA
         # wild layer + its general stocked-streams layer), each tracked
         # independently in trout_status; defaults to the state code.
@@ -659,19 +741,35 @@ def collect_trout_taggers(sources: list[dict], fetch=None,
         except Exception as e:  # transport/HTTP error after all retries
             print(f"  WARNING: {label} trout source unreachable: {e}")
         if result is not None:
-            groups = [(key, g, tuple(g.total_bounds))
-                      for key, g in result if len(g)]
-            taggers.append({"slug": seed_slug(source), "label": label,
-                            "source": source, "live": True, "groups": groups})
+            results[idx] = _live_tagger(source, label, result)
             continue
         seed_groups = load_source_seed(source, seed_dir)
         if seed_groups:
-            taggers.append({"slug": seed_slug(source), "label": label,
+            results[idx] = {"slug": seed_slug(source), "label": label,
                             "source": source, "live": False,
-                            "groups": seed_groups})
+                            "groups": seed_groups}
             trout_status[label] = "bundled-seed"
         else:
+            no_seed_failures.append((idx, source, label))
+
+    # Final verdict pass: a failed source WITH a seed already degraded
+    # gracefully above; a failed source WITHOUT one would fail the gate, so
+    # give each exactly one more full fetch attempt now that the rest of the
+    # phase has elapsed.
+    for idx, source, label in no_seed_failures:
+        print(f"  [final-retry] {label}: fetch failed and no seed exists; "
+              f"one last attempt before the verdict ...")
+        try:
+            result = fetch(source)
+        except Exception as e:
+            print(f"  WARNING: {label} still unreachable on final retry: {e}")
             trout_status[label] = "unreachable"
+            continue
+        print(f"  [final-retry] {label}: recovered")
+        trout_status[label] = "ok"
+        results[idx] = _live_tagger(source, label, result)
+
+    taggers = [results[i] for i in sorted(results)]  # back to registry order
     return taggers, trout_status
 
 
@@ -705,7 +803,8 @@ def preflight_sources(sources: list[dict], seed_dir: str = SEEDS_DIR,
     no guarantee the full paginated pull succeeds (CPW flaps exactly this way)
     -- the fetch stage still has its own seed fallback -- but a NO-DATA source
     (no live endpoint, no seed) is certain to fail the gate, so the build can
-    exit 3 immediately instead of after the NHDPlus downloads."""
+    bail before the NHDPlus downloads (after the bounded re-probe window of
+    preflight_wait_for_no_data)."""
     probe = probe or (lambda s: all(_probe_layer(u) for u in source_probe_urls(s)))
     rows: list[tuple[str, str]] = []
     for source in sources:
@@ -718,6 +817,50 @@ def preflight_sources(sources: list[dict], seed_dir: str = SEEDS_DIR,
             status = "NO DATA"
         rows.append((label, status))
     return rows
+
+
+def preflight_wait_for_no_data(no_data_sources: list[dict], wait_budget: float,
+                               interval: float = PREFLIGHT_REPROBE_INTERVAL,
+                               probe=None, sleep=time.sleep,
+                               clock=time.monotonic):
+    """Bounded recovery window for preflight NO-DATA sources: re-probe just
+    the failing ones every `interval` seconds until they all answer or
+    `wait_budget` seconds have elapsed (the final round is clipped so the
+    full budget is used). Servers flap independently for minutes at a time,
+    so until seeds exist this turns the bootstrap condition "every server up
+    at the same instant" into "each server up at some point in the window".
+
+    Returns (recovered_labels, still_no_data_labels). `probe`/`sleep`/`clock`
+    are injectable for tests."""
+    probe = probe or (lambda s: all(_probe_layer(u) for u in source_probe_urls(s)))
+    pending = list(no_data_sources)
+    recovered: list[str] = []
+    start = clock()
+    rnd = 0
+    while pending:
+        wait = min(interval, wait_budget - (clock() - start))
+        if wait <= 0:
+            break
+        rnd += 1
+        names = ", ".join(s.get("label", s["state"]) for s in pending)
+        print(f"  [preflight-wait] round {rnd}: sleeping {wait:.0f}s, then "
+              f"re-probing {len(pending)} source(s): {names}")
+        sleep(wait)
+        still: list[dict] = []
+        for source in pending:
+            label = source.get("label", source["state"])
+            if probe(source):
+                print(f"  [preflight-wait] {label} recovered "
+                      f"(after {clock() - start:.0f}s)")
+                recovered.append(label)
+            else:
+                still.append(source)
+        pending = still
+    still_labels = [s.get("label", s["state"]) for s in pending]
+    if still_labels:
+        print(f"  [preflight-wait] budget exhausted ({wait_budget:.0f}s); "
+              f"still NO DATA: {', '.join(still_labels)}")
+    return recovered, still_labels
 
 
 # ──────────────────────── Join trout to NHD COMIDs ────────────────────────
@@ -885,6 +1028,14 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
                         "live data NOR a last-known-good seed, instead of "
                         "degrading to untagged geometry. Use for canonical/"
                         "published release builds.")
+    p.add_argument("--preflight-wait", type=float,
+                   default=PREFLIGHT_WAIT_DEFAULT, metavar="SECONDS",
+                   help="With --require-trout: when preflight finds NO-DATA "
+                        "sources (no live endpoint, no seed), re-probe just "
+                        "those every ~2 min for up to this many seconds before "
+                        "exiting 3 -- state GIS servers flap independently for "
+                        "minutes at a time. 0 disables the wait. "
+                        f"Default: {PREFLIGHT_WAIT_DEFAULT:.0f}s.")
     p.add_argument("--manifest", default="",
                    help="Also write a provenance manifest JSON (regions, "
                         "resolved NHD archive vintages, feature count) here.")
@@ -913,11 +1064,14 @@ def main(argv: list[str] | None = None) -> int:
 
     sources = trout_registry.load_sources()
 
-    # ── Step 0: Preflight (fast-fail before any heavy work) ──
+    # ── Step 0: Preflight (fail-before-heavy-work, with bounded patience) ──
     # Cheap layer-metadata probes over all sources. Only a NO-DATA source (no
-    # live endpoint AND no seed) is a certain gate failure, so only that exits
-    # early; a flaky-but-probe-passing server still gets the full fetch +
-    # seed-fallback treatment below.
+    # live endpoint AND no seed) is a certain gate failure; before treating
+    # that as final, re-probe just the failing sources inside a bounded wait
+    # window (--preflight-wait) -- servers flap independently for minutes, so
+    # an instant exit 3 makes seed bootstrap nearly impossible. A flaky-but-
+    # probe-passing server still gets the full fetch + seed-fallback
+    # treatment below.
     print("── Trout-source preflight ──")
     pf_rows = preflight_sources(sources)
     width = max(len(label) for label, _ in pf_rows)
@@ -927,9 +1081,19 @@ def main(argv: list[str] | None = None) -> int:
     if no_data:
         print(f"\n⚠ preflight: no live endpoint AND no seed for: "
               f"{', '.join(no_data)}")
-        if args.require_trout:
-            print("--require-trout set; failing fast before NHDPlus downloads.",
-                  file=sys.stderr)
+        if args.require_trout and args.preflight_wait > 0:
+            print(f"  --require-trout: re-probing every "
+                  f"{PREFLIGHT_REPROBE_INTERVAL:.0f}s for up to "
+                  f"{args.preflight_wait:.0f}s before giving up ...")
+            by_label = {s.get("label", s["state"]): s for s in sources}
+            recovered, no_data = preflight_wait_for_no_data(
+                [by_label[l] for l in no_data], args.preflight_wait)
+            if recovered:
+                print(f"  recovered during preflight wait: "
+                      f"{', '.join(recovered)}")
+        if no_data and args.require_trout:
+            print("--require-trout set; failing before NHDPlus downloads "
+                  f"(still NO DATA: {', '.join(no_data)}).", file=sys.stderr)
             return 3
 
     # ── Step 1: Fetch state trout GIS (small; held in memory once) ──
@@ -943,9 +1107,15 @@ def main(argv: list[str] | None = None) -> int:
     # never gets published silently.
     #
     # Tagger order = registry order = precedence (first writer wins per COMID);
-    # states don't overlap, so order among them is immaterial.
+    # states don't overlap, so order among them is immaterial. FETCH order is
+    # different: sources the preflight saw flapping go last (max recovery
+    # time); collect_trout_taggers restores registry order in its output.
     print("\n── Trout-source fetch ──")
-    taggers, trout_status = collect_trout_taggers(sources)
+    shaky = {label for label, status in pf_rows if status != "reachable"}
+    if shaky:
+        print(f"  (fetching preflight-shaky sources last: "
+              f"{', '.join(sorted(shaky))})")
+    taggers, trout_status = collect_trout_taggers(sources, fetch_last=shaky)
 
     seeded = sorted(k for k, v in trout_status.items() if v == "bundled-seed")
     if seeded:
@@ -980,7 +1150,7 @@ def main(argv: list[str] | None = None) -> int:
     # last-known-good seeds after the loop (full builds only).
     captured: dict[str, dict[tuple, set[int]]] = \
         defaultdict(lambda: defaultdict(set))
-    by_class: dict[str, int] = defaultdict(int)
+    by_class: dict[str, int] = defaultdict(int)  # emitted reaches per class
     by_tier: dict[str, int] = defaultdict(int)   # post eastern-gold (calibration)
     native_count = 0                             # emitted reaches with is_native
     val_names = set(PA_WILD_TROUT_VALIDATION)
@@ -990,7 +1160,11 @@ def main(argv: list[str] | None = None) -> int:
     n_feats = 0
     raw_bytes = len('{"type":"FeatureCollection","features":[]}')
 
-    with gzip.open(OUT_PATH, "wt", encoding="utf-8") as out:
+    # Write to a sibling temp file and os.replace at the end: a crash mid-build
+    # must not leave a truncated-but-valid-looking .geojson.gz where a previous
+    # good artifact used to be.
+    tmp_out = OUT_PATH + ".tmp"
+    with gzip.open(tmp_out, "wt", encoding="utf-8") as out:
         out.write('{"type":"FeatureCollection","features":[')
         for region in regions:
             shp, vaa_dbf, archives = prepare_region(
@@ -1030,8 +1204,6 @@ def main(argv: list[str] | None = None) -> int:
                         region_trout.setdefault(c, (cls, tier))
                         if nat:
                             region_native.add(c)
-            for cls, _tier in region_trout.values():
-                by_class[cls] += 1
 
             seen: set[int] = set()  # dedup within region (COMIDs unique per VPU)
             emitted_here = 0
@@ -1056,9 +1228,15 @@ def main(argv: list[str] | None = None) -> int:
                 feat = build_feature(comid, row, gnis_col, attrs, trout, native)
                 if not feat:
                     continue
+                # Count classes/tiers from EMITTED features (not raw join
+                # hits) so the manifest's class and tier histograms describe
+                # the same population and stay mutually consistent.
                 ftier = feat["properties"]["tier"]
                 if ftier:
                     by_tier[ftier] += 1
+                fcls = feat["properties"]["trout_class"]
+                if fcls:
+                    by_class[fcls] += 1
                 if feat["properties"].get("is_native"):
                     native_count += 1
                 seg = ("," if n_feats else "") + json.dumps(
@@ -1079,6 +1257,7 @@ def main(argv: list[str] | None = None) -> int:
                 shutil.rmtree(os.path.join(args.cache_dir, region["id"]),
                               ignore_errors=True)
         out.write("]}")
+    os.replace(tmp_out, OUT_PATH)
 
     size = os.path.getsize(OUT_PATH)
     print(f"\n[done] {n_feats:,} flowlines -> {OUT_PATH} "

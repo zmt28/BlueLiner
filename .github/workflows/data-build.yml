@@ -37,6 +37,13 @@ on:
 permissions:
   contents: write
 
+# Serialize runs: two concurrent builds would race each other's seed-refresh
+# commits (and double-publish to R2). Queue rather than cancel — a build is
+# expensive and each run's seed capture is worth keeping.
+concurrency:
+  group: data-build
+  cancel-in-progress: false
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -107,8 +114,20 @@ jobs:
             exit 0
           fi
           git commit -m "data-build: refresh trout-source seeds [no ci]"
-          git pull --rebase origin "${GITHUB_REF_NAME}" || true
-          git push origin "HEAD:${GITHUB_REF_NAME}"
+          # The branch may have moved since checkout (e.g. a PR merge landing
+          # mid-build). Rebase + push with bounded retries; a lost race only
+          # costs this run's seed refresh (next successful build recaptures),
+          # so warn rather than fail the artifact/publish steps that follow.
+          for i in 1 2 3; do
+            if git pull --rebase origin "${GITHUB_REF_NAME}" \
+               && git push origin "HEAD:${GITHUB_REF_NAME}"; then
+              exit 0
+            fi
+            git rebase --abort 2>/dev/null || true
+            echo "seed push attempt $i failed; retrying in $((i * 10))s"
+            sleep $((i * 10))
+          done
+          echo "::warning::seed refresh not pushed after 3 attempts (branch kept moving); seeds will refresh on the next successful build"
 
       - name: Build PMTiles
         env:
