@@ -28,29 +28,33 @@ UI-simplification and trout-coverage plans.
 
 ### Dams — federal, public domain
 
-> **Verified 2026-06-14 (gis-endpoint-verify):** the BTS NTAD Dams MapServer
-> URL below (`maps.bts.dot.gov/.../NTAD/Dams/MapServer`) is **dead** — both an
-> explicit layer probe and a service enumeration returned nothing (`meta:
-> None`; root unreachable). That host/path is retired. **Pivot:** make NHD
-> FType 343 the primary dam geometry (it's bundled + free, no external host),
-> and rediscover the live NID/NTAD attribute service via ArcGIS Online search
-> (round-2 probe queued in `gis_verify_request.txt`) before relying on it.
+> **Verified 2026-06-14 (gis-endpoint-verify, two rounds):** the old BTS NTAD
+> Dams **MapServer** (`maps.bts.dot.gov/.../NTAD/Dams/MapServer`) is **dead**
+> (`meta: None`, empty enumeration). Round-2 AGOL search found its live
+> replacements — two authoritative, public-domain FeatureServers, both ~92k
+> points, both PASS:
+> - **NID_v1** (USACE NID, owner `Esri_US_Federal_Data`) —
+>   `https://services2.arcgis.com/FiaPA4ga0iQKduv3/arcgis/rest/services/NID_v1/FeatureServer/0`,
+>   92,469 pts. **Use this one** (richest attributes).
+> - **NTAD_Dams** (owner `USDOT_BTS`) —
+>   `https://services.arcgis.com/xOi1kZaI0eWDREZv/arcgis/rest/services/NTAD_Dams/FeatureServer/0`,
+>   92,628 pts (BTS's AGOL successor; fallback).
 
-- **Primary geometry (free, bundled, no host):** NHD **FType 343 (Dam/Weir)**
-  features (FCode 34300/34305/34306) ship inside the same `NHDSnapshot.7z` the
-  clickable-streams build already downloads. They live in `NHDPoint.shp` /
-  `NHDArea.shp`, which the build does **not** currently extract — today
-  `build_clickable_streams.py:255` extracts only `NHDFlowline.shp`. Adding those
-  two layers to the extract list yields dam points **already snapped to the NHD
-  network** (carries `GNIS_NAME` where named + the parent `COMID`/reach), so we
-  can key dams to the river the user tapped. No new download, no new host, no
-  reachability risk. This alone is enough for a v1 dams layer.
-- **Attribute enrichment (optional, later):** USACE **National Inventory of
-  Dams (NID)** adds the rich fields (dam name, river, purpose, height, max
-  storage) but the BTS re-serve is gone — the round-2 probe uses the prober's
-  AGOL `search:` mode to find the *current* hosted NID/NTAD feature service and
-  capture its real schema. Join those attributes onto the NHD-343 points by
-  proximity once the working endpoint is confirmed. Federal public domain.
+- **Primary layer (NID_v1, confirmed live):** snapshot the NID_v1 FeatureServer
+  at build time into an **R2-hosted national static layer** (mirror
+  `scripts/build_public_lands.py` — page through `/query` → normalize → GeoJSON.gz
+  + PMTiles → R2), not a live per-request feed (~92k points, annual refresh).
+  Confirmed fields: `NAME`, `OTHER_NAMES`, `RIVER_OR_STREAM`, `OWNER_TYPES`,
+  `PRIMARY_OWNER_TYPE`, `STATE`, `CITY`, `NIDID`, `LATITUDE`/`LONGITUDE` (+ more
+  past the 30-field probe cap: height / purpose / storage / year — pull the full
+  `?f=json` field list when wiring the normalizer). Federal public domain.
+- **Free on-network supplement:** NHD **FType 343 (Dam/Weir)** features
+  (FCode 34300/34305/34306) ship inside the same `NHDSnapshot.7z` the
+  clickable-streams build already downloads, in `NHDPoint.shp` / `NHDArea.shp`
+  (not currently extracted — `build_clickable_streams.py:255` takes only
+  `NHDFlowline.shp`). Adding them yields dam points **already snapped to the NHD
+  network** (parent `COMID`), so a river popup can say "2 dams upstream" by
+  COMID without a spatial query. Optional enrichment over the NID_v1 layer.
 
 ### River trails — USGS National Map, public domain
 
@@ -139,15 +143,14 @@ each access type toggles independently; persistence survives reload; legend
 mirrors filters.
 
 ### Phase 2 — Dams
-Primary path is now NHD FType 343 (the BTS NTAD service is dead — see the
-verification note above). Extend `build_clickable_streams.py:255` extract list
-with `NHDPoint.shp`/`NHDArea.shp`, filter FType 343 (FCode 34300/34305/34306),
-emit dam points carrying `GNIS_NAME` + parent COMID → R2 alongside the streams
-artifact. Frontend: dams point layer in `map-layers.ts` (`makePoiElement("dam")`),
-`#lyr-dams` toggle in the **Water features** section. NID attribute enrichment
-(height/purpose) waits on the round-2 AGOL discovery confirming a live service
-(`scripts/build_dams.py` mirror of `build_public_lands.py`). Verify: dams render;
-river popup counts upstream dams.
+`scripts/build_dams.py` (mirror `build_public_lands.py`): page through the
+confirmed **NID_v1 FeatureServer** (`.../FiaPA4ga0iQKduv3/.../NID_v1/FeatureServer/0`,
+92k pts) → normalize `NAME`/`RIVER_OR_STREAM`/owner/height/purpose → GeoJSON.gz +
+PMTiles → R2 under the data prefix. Optionally extend
+`build_clickable_streams.py:255` extract with `NHDPoint.shp`/`NHDArea.shp`, filter
+FType 343, attach parent COMID for the "dams upstream" popup. Frontend: dams point
+layer in `map-layers.ts` (`makePoiElement("dam")`), `#lyr-dams` toggle in the
+**Water features** section. Verify: dams render; popup shows name + river.
 
 ### Phase 3 — River trails
 `scripts/build_trails.py`: fetch USGS National Digital Trails → spatial-join to
@@ -170,19 +173,11 @@ and read the committed `gis_verify_out/REPORT.txt`. The prober speaks ArcGIS
 (it appends `?f=json` + `/query` itself), so request lines are bare layer URLs
 or `svc:`/`search:` directives — not full query strings.
 
-**Round 1 (done, 2026-06-14):** trails layer confirmed = `/37 'Trails'`; BTS
-NTAD Dams MapServer dead. **Round 2 (queued):** discover the live NID/NTAD dam
-service via AGOL search + capture the trail layer's coded domains:
-
-```
-# Dams — let AGOL search find the current hosted NID/NTAD service (the
-# hardcoded BTS MapServer is retired); the prober verifies each hit.
-search: US|National Inventory of Dams
-search: US|NTAD dams national
-# Trails — full field dump on the confirmed layer (coded domains for the
-# trailtype / surface / use-flag normalizer).
-US|https://carto.nationalmap.gov/arcgis/rest/services/transportation/MapServer/37
-```
+**Round 1 (done):** trails layer confirmed = `/37 'Trails'`; BTS NTAD Dams
+MapServer dead. **Round 2 (done):** AGOL search found the live dam services —
+**NID_v1** FeatureServer (92,469 pts, use this) and **NTAD_Dams** FeatureServer
+(92,628, BTS fallback), both PASS, both public domain. Both endpoint
+verification rounds are complete; no blocked-host unknowns remain for Phases 2–3.
 
 RIDB (recreation.gov) is a **keyed REST API, not ArcGIS**, so this prober can't
 exercise it — it's verified separately when the federal-land access supplement
