@@ -43,27 +43,49 @@ function renderTiers(): void {
   host.innerHTML = rows.join("");
 }
 
-// POI rows mirror the map markers (makePoiElement) at legend size.
-// Saved pins keep their copper-teardrop swatch (.legend-dot--pin) --
-// distinct, user-owned, not a poi-icons disc.
-const POINT_ROWS: Array<[type: string, label: string]> = [
-  ["boat_ramp", "Boat ramp"],
-  ["walk_in", "Walk-in access"],
-  ["wading_access", "Wading access"],
-  ["pier", "Pier"],
-  ["parking", "Parking"],
-  ["stocked", "Stocked water"],
-  ["gauge", "USGS gauge"],
+// POI rows mirror the map markers (makePoiElement) at legend size, grouped
+// under the same labels as the Map Layers "Show on map" sections so the two
+// panes read identically. Saved pins keep their copper-teardrop swatch
+// (.legend-dot--pin) -- distinct, user-owned, not a poi-icons disc -- and
+// render in their own "My pins" group below.
+const POINT_GROUPS: Array<[section: string, rows: Array<[type: string, label: string]>]> = [
+  [
+    "Access & facilities",
+    [
+      ["boat_ramp", "Boat ramp"],
+      ["walk_in", "Walk-in access"],
+      ["wading_access", "Wading access"],
+      ["pier", "Pier"],
+      ["parking", "Parking"],
+    ],
+  ],
+  [
+    "Water features",
+    [
+      ["stocked", "Stocked water"],
+      ["gauge", "USGS gauge"],
+    ],
+  ],
 ];
 
 function renderPoints(): void {
   const host = document.getElementById("legend-points");
   if (!host) return;
+  const groups = POINT_GROUPS.map(
+    ([section, rows]) =>
+      `<section class="panel-section">` +
+      `<div class="panel-section-label">${section}</div>` +
+      rows
+        .map(([t, label]) => `<div class="legend-item">${poiIconHtml(t, 18)} ${label}</div>`)
+        .join("") +
+      `</section>`,
+  ).join("");
   host.innerHTML =
-    POINT_ROWS.map(
-      ([t, label]) => `<div class="legend-item">${poiIconHtml(t, 18)} ${label}</div>`,
-    ).join("") +
-    `<div class="legend-item"><div class="legend-dot legend-dot--pin"></div> Saved pin</div>`;
+    groups +
+    `<section class="panel-section">` +
+    `<div class="panel-section-label">My pins</div>` +
+    `<div class="legend-item"><div class="legend-dot legend-dot--pin"></div> Saved pin</div>` +
+    `</section>`;
 }
 
 /** Filters-pane rows marked data-poi get the same glyph disc as the

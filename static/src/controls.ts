@@ -44,7 +44,8 @@ import {
 import {
   ensureAccess,
   resetAccessLoadedState,
-  setAccessVisible,
+  setAccessTypeVisible,
+  anyAccessVisible,
   setStockedVisible,
   refreshStockedForState,
   setPublicLandsVisible,
@@ -136,7 +137,7 @@ document.getElementById("cond-chip-clear")?.addEventListener("click", () => {
   // shown (read the checkbox; the MapLibre layers always exist, only
   // their visibility toggles).
   resetAccessLoadedState();
-  if ((document.getElementById("lyr-access") as HTMLInputElement).checked) ensureAccess(s);
+  if (anyAccessVisible()) ensureAccess(s);
   // Stocked markers reload for the new state if they're showing (toggle or
   // the Stocked map style); refreshStockedForState owns that decision.
   refreshStockedForState(s);
@@ -488,11 +489,18 @@ function wireLayerToggle(
 
 wireLayerToggle("lyr-fishable", setStreamsVisible, loadClickableStreams);
 wireLayerToggle("lyr-usgs", setHydroVisible);
-// The access ensure-loader reads the CURRENT state at show time via
-// getCurrentSt() (state may have changed since module-init).
-wireLayerToggle("lyr-access", setAccessVisible, () =>
-  ensureAccess(window.getCurrentSt()),
-);
+// Access is split into per-type toggles (boat ramp / walk-in / wading /
+// pier / parking); each shares the one lazy per-state loader, which reads
+// the CURRENT state at show time via getCurrentSt() (state may have changed
+// since module-init). The markers are fetched once and bucketed by type, so
+// flipping a second type doesn't refetch.
+for (const t of ["boat_ramp", "walk_in", "wading_access", "pier", "parking"]) {
+  wireLayerToggle(
+    `lyr-access-${t}`,
+    (on) => setAccessTypeVisible(t, on),
+    () => ensureAccess(window.getCurrentSt()),
+  );
+}
 // setStockedVisible already triggers the lazy load via its visibility apply,
 // so no onShow callback is needed here.
 wireLayerToggle("lyr-stocked", setStockedVisible);
