@@ -1,0 +1,140 @@
+name: Data build — river trails
+
+# Builds the river-trails artifact (USGS National Digital Trails, filtered to
+# segments alongside the stream network) and its PMTiles, optionally
+# publishing both to R2. Manually triggered: trails are static reference data,
+# rebuilt on a data release, not per-PR.
+#
+# The stream network is the join target, so the job pulls the already-published
+# clickable_streams.geojson.gz for the chosen R2 prefix (no need to rebuild the
+# expensive streams artifact here).
+#
+# Required repo/org secrets (R2, S3-compatible): R2_BUCKET, R2_ENDPOINT,
+# R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY.
+
+on:
+  workflow_dispatch:
+    inputs:
+      r2_prefix:
+        description: "R2 version prefix (streams source + publish target, e.g. v4)"
+        required: false
+        default: "v4"
+      buffer_m:
+        description: "Keep trails within this many metres of a reach"
+        required: false
+        default: "150"
+      foot_only:
+        description: "Restrict to hiker/pedestrian trails"
+        type: boolean
+        default: false
+      upload:
+        description: "Publish artifacts to R2 (uncheck for a dry run)"
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: trails-build
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    env:
+      AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+      R2_ENDPOINT: ${{ secrets.R2_ENDPOINT }}
+      R2_BUCKET: ${{ secrets.R2_BUCKET }}
+      R2_PREFIX: ${{ inputs.r2_prefix }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install build dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install httpx geopandas shapely
+
+      - name: Install tippecanoe
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential libsqlite3-dev zlib1g-dev
+          git clone --depth 1 https://github.com/felt/tippecanoe.git /tmp/tippecanoe
+          make -C /tmp/tippecanoe -j"$(nproc)"
+          sudo make -C /tmp/tippecanoe install
+
+      - name: Fetch the published stream network (join target)
+        run: |
+          mkdir -p data/nhdplus
+          aws s3 cp "s3://$R2_BUCKET/$R2_PREFIX/clickable_streams.geojson.gz" \
+            data/nhdplus/clickable_streams.geojson.gz --endpoint-url "$R2_ENDPOINT"
+
+      - name: Build river trails
+        env:
+          BUFFER_M: ${{ inputs.buffer_m }}
+          FOOT_ONLY: ${{ inputs.foot_only }}
+        run: |
+          args=(--buffer-m "$BUFFER_M")
+          if [ "$FOOT_ONLY" = "true" ]; then args+=(--foot-only); fi
+          python scripts/build_trails.py "${args[@]}"
+
+      - name: Sanity gate
+        run: |
+          python - <<'PY'
+          import gzip, json, os, sys
+          path = "data/trails/trails.geojson.gz"
+          with gzip.open(path, "rt") as f:
+              n = len(json.load(f)["features"])
+          size = os.path.getsize(path) / 1e6
+          print(f"features={n:,} size={size:.1f}MB")
+          if n < 1000:
+              sys.exit(f"only {n} trail features -- build looks broken")
+          PY
+
+      - name: Build PMTiles
+        env:
+          TMPDIR: ${{ runner.temp }}
+        run: scripts/build_trail_tiles.sh
+
+      - name: Publish to R2
+        if: ${{ inputs.upload }}
+        env:
+          PMTILES: ${{ runner.temp }}/trails.pmtiles
+        run: |
+          base="s3://$R2_BUCKET/$R2_PREFIX"
+          aws s3 cp data/trails/trails.geojson.gz "$base/trails.geojson.gz" \
+            --endpoint-url "$R2_ENDPOINT"
+          aws s3 cp "$PMTILES" "$base/trails.pmtiles" \
+            --endpoint-url "$R2_ENDPOINT" --content-type application/octet-stream
+          echo "Published to $base"
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: river-trails
+          path: data/trails/trails.geojson.gz
+          if-no-files-found: error
+
+      - name: Job summary
+        if: always()
+        env:
+          UPLOADED: ${{ inputs.upload }}
+        run: |
+          {
+            echo "### River-trails build"
+            if [ -f data/trails/trails.geojson.gz ]; then
+              echo "Artifact built. \`$(du -h data/trails/trails.geojson.gz | cut -f1)\` gz."
+            else
+              echo "_No artifact produced (build failed)._"
+            fi
+            if [ "$UPLOADED" = "true" ]; then
+              echo "Published to R2 prefix \`$R2_PREFIX\`. Set \`VITE_TRAILS_TILES_URL=<DATA_BASE_URL>/trails.pmtiles\` and redeploy."
+            else
+              echo "_Dry run -- nothing published. Re-run with **upload** checked._"
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
