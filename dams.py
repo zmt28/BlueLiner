@@ -20,6 +20,7 @@ from shapely.geometry import shape
 
 from arcgis import fetch_geojson_features
 from cache import LruTtl
+from states import STATES
 
 logger = logging.getLogger("blueliner.dams")
 
@@ -52,10 +53,15 @@ _EMPTY = (None, "", "None")
 
 
 def _pick(props: dict, fields: tuple[str, ...]) -> str | None:
+    # NID string columns are fixed-width and arrive space-padded
+    # ("Rockbound Creek               "), so strip and re-test for empty.
     for f in fields:
         v = props.get(f)
-        if v not in _EMPTY:
-            return str(v)
+        if v in _EMPTY:
+            continue
+        s = str(v).strip()
+        if s and s != "None":
+            return s
     return None
 
 
@@ -105,9 +111,13 @@ def load_dams(state: str) -> list[dict]:
     retries (there's no baseline to fall back to)."""
     if state in _dams_cache and _dams_cache[state] is not None:
         return _dams_cache[state]
-    # The NID STATE column carries the 2-letter postal code; the arcgis
-    # helper parses this `where` out of the URL and re-sends it encoded.
-    url = f"{NID_QUERY_URL}?where=STATE='{state}'&outFields=*"
+    # NID_v1's STATE column carries the FULL state name ("Maryland"), not the
+    # 2-letter code -- confirmed via gis-endpoint-verify. The arcgis helper
+    # parses this `where` out of the URL and re-sends it encoded.
+    name = (STATES.get(state) or {}).get("name")
+    if not name:
+        return []
+    url = f"{NID_QUERY_URL}?where=STATE='{name}'&outFields=*"
     features = fetch_geojson_features(url)
     if features is None:
         logger.info("dams live feed unreachable for %s; not caching", state)

@@ -63,6 +63,22 @@ def test_missing_name_falls_back():
     assert p["river"] == "Foo Creek"
 
 
+def test_space_padded_values_stripped():
+    # NID's fixed-width string columns arrive space-padded.
+    (p,) = dams._features_to_points([_feat({
+        "NAME": "Liberty Dam        ",
+        "RIVER_OR_STREAM": "Patapsco River     ",
+        "CITY": "   ",  # whitespace-only -> empty
+    })])
+    assert p["name"] == "Liberty Dam"
+    assert p["river"] == "Patapsco River"
+    assert p["city"] is None
+
+
+def test_load_dams_unknown_state_returns_empty():
+    assert dams.load_dams("ZZ") == []
+
+
 def test_non_numeric_height_is_dropped():
     (p,) = dams._features_to_points([_feat({"NAME": "D", "DAM_HEIGHT": "n/a"})])
     assert p["height_ft"] is None
