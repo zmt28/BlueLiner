@@ -20,15 +20,15 @@ name: Data build — clickable streams
 #   The ~30 third-party state ArcGIS trout sources never all answer at the same
 #   instant (a different server flaps each run: CO, NY, WI...). Last-known-good
 #   seeds (data/nhdplus/seeds/) make the build immune to any one source being
-#   down, but a seed is only banked once its source is reachable. The build now
-#   banks EVERY reachable source's seed on EVERY run (even gated ones that
-#   exit 3), and the `schedule:` cron below runs SEED-WARMING dry runs every
-#   2h: each cron run uses the input DEFAULTS (upload=false), so it builds +
-#   banks seeds + commits them but never publishes. Coverage therefore
-#   accumulates automatically — each source needs only one up-window EVER.
-#   Watch the Job summary's "Seed coverage" line: once the warming runs stop
-#   reporting uncovered sources ("none — ready to publish"), trigger a manual
-#   `workflow_dispatch` with **upload: true** (and an `r2_prefix`) to publish.
+#   down; the build banks EVERY reachable source's seed on EVERY run and pushes
+#   them straight to `main` (unprotected). The `schedule:` cron below runs a
+#   DAILY seed-warming dry run (input defaults -> upload=false). It is cheap:
+#   scripts/seed_status.py checks the seed cache first and the heavy build is
+#   SKIPPED unless a source is missing a seed or a seed has aged past
+#   SEED_MAX_AGE_DAYS (so once bootstrapped, the daily cron is a no-op until a
+#   source is added or seeds drift). To publish, dispatch a manual
+#   `workflow_dispatch` with **upload: true** + an `r2_prefix` (manual runs
+#   always build, with the full coverage gate); then cut `DATA_BASE_URL` over.
 
 on:
   workflow_dispatch:
@@ -45,11 +45,11 @@ on:
         description: "Publish artifacts to R2 (uncheck for a dry run)"
         type: boolean
         default: false
-  # Seed-warming: build + bank seeds every 2h, never publish (scheduled runs
-  # use the input DEFAULTS, so upload=false). Converges seed coverage hands-off
-  # until every source has been up at least once; see the header note above.
+  # Seed-warming: daily, never publishes (scheduled runs use the input
+  # DEFAULTS, so upload=false). The cheap-skip step below no-ops it once every
+  # source has a fresh seed; see the header note above.
   schedule:
-    - cron: "0 */2 * * *"
+    - cron: "0 6 * * *"
 
 # contents: write so the build can commit refreshed last-known-good trout
 # seeds (data/nhdplus/seeds/) back to the triggering branch.
@@ -74,13 +74,23 @@ jobs:
         with:
           python-version: "3.11"
 
+      # Cheap-skip for the daily cron: stdlib-only, runs before any install.
+      # Sets need_build=false when every trout source already has a fresh seed,
+      # so a scheduled run skips the ~30-min build (the gated steps below).
+      # Manual dispatches ignore this and always build.
+      - name: Check seed cache (scheduled cheap-skip)
+        id: need
+        run: python scripts/seed_status.py
+
       - name: Install build dependencies
+        if: ${{ success() && (github.event_name != 'schedule' || steps.need.outputs.need_build == 'true') }}
         run: |
           python -m pip install --upgrade pip
           # geopandas pulls shapely + pyogrio with bundled GDAL wheels — no apt GDAL needed.
           pip install dbfread py7zr httpx geopandas shapely
 
       - name: Install tippecanoe
+        if: ${{ success() && (github.event_name != 'schedule' || steps.need.outputs.need_build == 'true') }}
         run: |
           sudo apt-get update
           sudo apt-get install -y build-essential libsqlite3-dev zlib1g-dev
@@ -89,6 +99,7 @@ jobs:
           sudo make -C /tmp/tippecanoe install
 
       - name: Build clickable streams
+        if: ${{ success() && (github.event_name != 'schedule' || steps.need.outputs.need_build == 'true') }}
         env:
           REGIONS: ${{ inputs.regions }}
           UPLOAD: ${{ inputs.upload }}
@@ -101,6 +112,7 @@ jobs:
           python scripts/build_clickable_streams.py "${args[@]}"
 
       - name: Sanity gate
+        if: ${{ success() && (github.event_name != 'schedule' || steps.need.outputs.need_build == 'true') }}
         env:
           REGIONS: ${{ inputs.regions }}
         run: |
@@ -131,7 +143,10 @@ jobs:
       # on build success (default step behaviour: they're skipped after exit 3),
       # so an incomplete-coverage build never publishes.
       - name: Commit refreshed trout seeds
-        if: always()
+        # always() so a --require-trout build that EXITED 3 still banks its
+        # seeds (the convergence mechanism); the rest gates out the scheduled
+        # cheap-skip case (no build ran -> nothing to commit).
+        if: ${{ always() && (github.event_name != 'schedule' || steps.need.outputs.need_build == 'true') }}
         run: |
           git config user.name "data-build-bot"
           git config user.email "actions@users.noreply.github.com"
@@ -161,6 +176,7 @@ jobs:
           echo "::warning::seed refresh not pushed after 3 attempts (branch kept moving); seeds will refresh on the next successful build"
 
       - name: Build PMTiles
+        if: ${{ success() && (github.event_name != 'schedule' || steps.need.outputs.need_build == 'true') }}
         env:
           TMPDIR: ${{ runner.temp }}
         run: scripts/build_stream_tiles.sh
@@ -168,6 +184,7 @@ jobs:
       # Printed AFTER tippecanoe so it's near the end of the log (the build's own
       # stdout histogram gets buried behind tippecanoe's progress).
       - name: Tier calibration
+        if: ${{ success() && (github.event_name != 'schedule' || steps.need.outputs.need_build == 'true') }}
         run: |
           python - <<'PY'
           import json
@@ -200,6 +217,7 @@ jobs:
           echo "Published to $base"
 
       - name: Upload build artifacts
+        if: ${{ success() && (github.event_name != 'schedule' || steps.need.outputs.need_build == 'true') }}
         uses: actions/upload-artifact@v4
         with:
           name: clickable-streams
@@ -218,10 +236,13 @@ jobs:
           UPLOADED: ${{ inputs.upload }}
           R2_PREFIX: ${{ inputs.r2_prefix }}
           IS_CRON: ${{ github.event_name == 'schedule' }}
+          NEED_BUILD: ${{ steps.need.outputs.need_build }}
         run: |
           {
             echo "### Clickable-streams build"
-            if [ -f data/nhdplus/clickable_streams.manifest.json ]; then
+            if [ "$IS_CRON" = "true" ] && [ "$NEED_BUILD" != "true" ]; then
+              echo "_Scheduled cheap-skip — every trout source already has a fresh seed, so the build was skipped. See the **seed status** line above._"
+            elif [ -f data/nhdplus/clickable_streams.manifest.json ]; then
               echo '```json'
               cat data/nhdplus/clickable_streams.manifest.json
               echo '```'
@@ -229,7 +250,7 @@ jobs:
               echo "_No manifest produced (build failed before emitting one)._"
             fi
             if [ "$IS_CRON" = "true" ]; then
-              echo "_Scheduled seed-warming run — builds + banks seeds, never publishes. See the **Seed coverage** line above; once it reads 'none — ready to publish', dispatch with **upload: true**._"
+              echo "_Scheduled seed-warming run — builds + banks seeds when a source is missing a seed or one has aged out; never publishes. To publish, dispatch with **upload: true**._"
             elif [ "$UPLOADED" = "true" ]; then
               echo "Published to R2 prefix \`$R2_PREFIX\`. To cut over:"
               echo "set \`VITE_STREAM_TILES_URL=<DATA_BASE_URL>/streams.pmtiles\` (and \`DATA_BASE_URL\` for the GeoJSON path) and redeploy."
