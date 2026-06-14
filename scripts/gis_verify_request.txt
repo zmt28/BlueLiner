@@ -1,3 +1,27 @@
-# Find NDOW's republished Lahontan cutthroat occupied-streams service
-# (LCT_Occupied_Streams_NV now returns 'layer not found' for all ids).
-states: NV
+# POI Phase 2/3 endpoint verification.
+#
+# (The earlier NV Lahontan-cutthroat successor hunt moved to the standing
+#  endpoint-watch watchlist -- data/watch/watchlist.json: nv-lct-successor --
+#  so this scratchpad is now the dams + river-trails probe.)
+#
+# Confirms the live layer id, feature count, geometry, and field NAMES for
+# the two new national POI sources, so the Phase 2 (dams) and Phase 3
+# (river trails) build normalizers can be wired against the real schemas.
+# The sandbox egress allowlist blocks BTS; TNM is reachable but CI is the
+# one verification path that always works. Each `svc:` line enumerates and
+# quick-verifies EVERY layer in the service (so we don't have to guess the
+# id); the bare `US|.../<id>` line under it does a FULL field dump on the
+# expected layer (a wrong guess just FAILs -- the svc line still reveals the
+# right id).
+#
+# RIDB (recreation.gov facilities) is intentionally NOT here: it's a keyed
+# REST API, not an ArcGIS layer, so this ArcGIS prober can't exercise it --
+# it's verified separately when the federal-land access supplement is built.
+
+# --- Dams: USACE National Inventory of Dams, re-served by BTS as NTAD ---
+svc: US|https://maps.bts.dot.gov/services/rest/services/NTAD/Dams/MapServer
+US|https://maps.bts.dot.gov/services/rest/services/NTAD/Dams/MapServer/0
+
+# --- River trails: USGS National Map National Digital Trails ---
+svc: US|https://carto.nationalmap.gov/arcgis/rest/services/transportation/MapServer
+US|https://carto.nationalmap.gov/arcgis/rest/services/transportation/MapServer/8
