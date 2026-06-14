@@ -289,6 +289,15 @@ interface DamFeatureProps {
   [key: string]: unknown;
 }
 
+/** Trails PMTiles feature properties (USGS National Digital Trails). */
+interface TrailProps {
+  name?: string;
+  trail_type?: string;
+  surface?: string;
+  length_mi?: number;
+  [key: string]: unknown;
+}
+
 /** /api/public_lands feature properties. */
 type PublicAccessTier = "OA" | "RA" | "XA" | "UK";
 
