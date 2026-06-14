@@ -1,11 +1,61 @@
-# Endpoint watch
+# Coverage survey & endpoint watch
 
-A standing watcher for the flaky third-party state-GIS endpoints we're waiting
-on. State government ArcGIS servers go down for minutes-to-hours and recover; the
-watcher probes them on a schedule and, the moment one is reachable, captures what
-we need and surfaces it in a report.
+This directory backs BlueLiner's standing "what GIS data are we still missing"
+tooling. The data app classifies trout streams and shows stocking / access
+points from ~per-state agency ArcGIS layers declared in
+`data/{trout,stocking,access_points}/sources.json`. Coverage across the lower 48
+is uneven and the ~30 state GIS servers flap, so discovery has to be a standing,
+retrying activity rather than a one-shot.
 
-## What it watches
+Two complementary passes run on their own schedules and both commit reports to
+the long-lived **`endpoint-watch`** side branch (keeping `main` clean):
+
+- **Coverage survey** (weekly, broad) — recompute the gaps across the lower 48
+  and go find fresh candidate layers.
+- **Endpoint watch** (6-hourly, narrow) — re-probe the specific endpoints we're
+  already waiting on and capture data the instant a flaky server recovers.
+
+Together: the survey tells you what's still uncovered and surfaces fresh leads;
+the watch tells you when a known flaky endpoint recovered and grabs what we need.
+
+## Coverage survey (`scripts/coverage_survey.py`, weekly)
+
+Purpose: the broad, weekly **"what's missing across the lower 48 and what did we
+find"** pass.
+
+- Recomputes per-state coverage gaps for trout / stocking / access directly from
+  the three `sources.json` registries (a state with a source entry is covered;
+  computed in code, never hardcoded).
+- For each **fillable** gap it discovers candidate state-agency ArcGIS layers:
+  walking the state's known agency host root(s) (consolidated from
+  `gis_endpoint_verify.SERVER_ROOTS`/`ORG_CATALOGS` + `discovery.catalogs`) and
+  ArcGIS-Online search with datatype keywords, keyword-filtered, then a **light**
+  metadata + count probe (not a full verify) of the top ~5.
+- Trout/stocking gaps in states with negligible coldwater trout (a curated
+  `TROUT_STATES` set; e.g. FL/LA/MS and largely KS/NE/OK/SD/IL/IN/ND/AL) are
+  marked **"expected none"**, not "to discover" -- the survey wastes no probes
+  there. Access gaps apply to all states (boat ramps / fishing access exist
+  everywhere). Western trout states (ID/MT/OR/WA/NM/NV) already get baseline
+  wild-trout coverage from the range-wide NATIVE overlays
+  (WCT/BULL/RBT/YCT/BCT/RGCT/GILA), so a state trout source there only **adds**
+  management tiers; the report flags this.
+- Cadence: `schedule` weekly (Mondays 07:00 UTC) + manual dispatch, via
+  `.github/workflows/coverage-survey.yml`.
+- Output: `gis_verify_out/COVERAGE.md` (coverage matrix + per-gap discovered
+  candidates + a one-line summary), committed to the long-lived `endpoint-watch`
+  side branch, plus the matrix to the Actions step summary. Always exits 0.
+
+**Report-only.** The survey never edits any `sources.json` / `candidates.json` --
+picking the right layer and designing its `field_map` / `species_flags` /
+`type_flags` needs human judgment. COVERAGE.md is the discovery worklist that
+**feeds** the candidate-promotion pipeline.
+
+## Endpoint watch (`scripts/endpoint_watch.py`, 6-hourly)
+
+Purpose: the narrow, frequent pass that captures what we need the moment a
+specific flaky/retired server we're waiting on comes back.
+
+### What it watches
 
 1. **`watchlist.json`** (this dir) -- INVESTIGATION endpoints. These are *not*
    candidate feeds; they're one-time captures we want when a retired/down server
@@ -37,7 +87,7 @@ we need and surfaces it in a report.
    **READY TO PROMOTE** -- the watcher never edits `sources.json`; promotion
    stays human-reviewed.
 
-## Flow
+### Flow
 
 `scripts/endpoint_watch.py` loads the watchlist + both candidate files, probes
 each entry (bounded timeout, a couple retries for flap tolerance), and writes a
@@ -48,7 +98,7 @@ The report leads with a status table (`id | state | kind | UP/DOWN | captured`)
 so a recovery is obvious at a glance, then per-entry detail for the reachable
 ones.
 
-## Where the report lands
+### Where the report lands
 
 `.github/workflows/endpoint-watch.yml` runs the watcher on a 6-hour cron (plus
 `workflow_dispatch`):
@@ -59,5 +109,6 @@ ones.
   cluttering `main`.
 
 > The Claude Code sandbox's egress allowlist blocks most state GIS hosts, so a
-> **local** run of `endpoint_watch.py` shows most entries DOWN. That's expected;
-> the scheduled Actions runner has open egress and is where the probes fire.
+> **local** run of `endpoint_watch.py` (or `coverage_survey.py`) shows most
+> entries DOWN. That's expected; the scheduled Actions runner has open egress
+> and is where the probes fire.
