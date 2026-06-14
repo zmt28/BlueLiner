@@ -1,29 +1,12 @@
-# POI Phase 2/3 endpoint verification -- ROUND 2.
+# POI Phase 2 -- NID dam layer FULL field dump.
 #
-# Round 1 (committed in gis_verify_out/REPORT.txt) established:
-#   * River trails: USGS National Map transportation/MapServer LAYER 37
-#     'Trails' (548,437 polylines) is the National Digital Trails geometry
-#     -- NOT layer 8 (that's 'Roads 10M-Scale'). Schema confirmed.
-#   * Dams: the BTS NTAD Dams MapServer
-#     (maps.bts.dot.gov/.../NTAD/Dams/MapServer) is DEAD -- explicit layer
-#     probe returned meta:None and the service enumeration was empty. That
-#     host/path is retired.
-#
-# Round 2 goals:
-#   1. Rediscover the live USACE National Inventory of Dams / NTAD hosted
-#      feature service via ArcGIS Online search (search: mode hits
-#      www.arcgis.com, reachable from CI) and auto-verify each hit, so we
-#      learn the CURRENT url + real field names instead of guessing.
-#   2. Full field dump on the confirmed trails layer (37) to capture coded
-#      domains (trailtype / trailsurface / use-flag codes) for the normalizer.
-#
-# (RIDB is intentionally absent: keyed REST API, not ArcGIS -- can't be
-#  exercised by this prober; verified separately with the access supplement.)
+# Rounds 1-2 confirmed the live dam source is the NID_v1 hosted FeatureServer
+# (services2.arcgis.com/FiaPA4ga0iQKduv3/.../NID_v1/FeatureServer/0, 92,469
+# pts, public domain). The search-mode probe only printed the first 30 fields
+# (NAME / RIVER_OR_STREAM / OWNER_TYPES / PRIMARY_OWNER_TYPE / STATE / NIDID
+# confirmed). This explicit line does a FULL field dump (all fields + types +
+# coded domains + 3 full samples) so the build_dams normalizer can wire the
+# height / purpose / storage / year fields by their REAL names instead of
+# guessing.
 
-# --- Dams: discover the current hosted NID / NTAD dam service ---
-search: US|National Inventory of Dams
-search: US|NTAD dams national
-search: US|USACE national inventory dams
-
-# --- River trails: full field dump on the confirmed layer (coded domains) ---
-US|https://carto.nationalmap.gov/arcgis/rest/services/transportation/MapServer/37
+US|https://services2.arcgis.com/FiaPA4ga0iQKduv3/arcgis/rest/services/NID_v1/FeatureServer/0
