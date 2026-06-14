@@ -123,8 +123,10 @@ def fetch_trail_pages(where: str):
             if mx <= last:        # server ignored the keyset -> stop
                 return
             last = mx
-            if len(feats) < PAGE_SIZE:
-                return
+            # NB: do NOT stop on len(feats) < PAGE_SIZE -- TNM caps a page at
+            # its own maxRecordCount (often 1000), which can be below
+            # PAGE_SIZE; that would truncate the fetch. The keyset advances
+            # until a request past the last id returns an empty page.
 
 
 def load_stream_index(streams_path: str):
