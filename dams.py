@@ -31,6 +31,15 @@ NID_QUERY_URL = ("https://services2.arcgis.com/FiaPA4ga0iQKduv3/arcgis/rest/"
                  "services/NID_v1/FeatureServer/0/query")
 NID_AGENCY_URL = "https://nid.sec.usace.army.mil/"
 
+# Request ONLY the columns we surface, not outFields=* (~80 fields). A big
+# state (TX ~7k dams) otherwise pulls a large response that's held in memory
+# while it's fetched + parsed -- a transient spike the Render free tier (512 MB)
+# can't spare. These are the confirmed NID_v1 field names (gis-endpoint-verify
+# full dump); OBJECTID is required for the arcgis helper's keyset paging.
+_NID_OUT_FIELDS = ("OBJECTID,NAME,OTHER_NAMES,RIVER_OR_STREAM,PRIMARY_OWNER_TYPE,"
+                   "OWNER_TYPES,CITY,PRIMARY_PURPOSE,PURPOSES,NID_HEIGHT,"
+                   "DAM_HEIGHT,YEAR_COMPLETED,NIDID")
+
 # Dams are static reference data (NID refreshes ~annually), so a long TTL is
 # fine; the per-state result is small (tens-to-low-thousands of points).
 _dams_cache: LruTtl = LruTtl(maxsize=64, ttl=24 * 3600)
@@ -117,7 +126,7 @@ def load_dams(state: str) -> list[dict]:
     name = (STATES.get(state) or {}).get("name")
     if not name:
         return []
-    url = f"{NID_QUERY_URL}?where=STATE='{name}'&outFields=*"
+    url = f"{NID_QUERY_URL}?where=STATE='{name}'&outFields={_NID_OUT_FIELDS}"
     features = fetch_geojson_features(url)
     if features is None:
         logger.info("dams live feed unreachable for %s; not caching", state)
