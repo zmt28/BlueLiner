@@ -1,277 +1,89 @@
 
 ======== US explicit ========
-  LAYER https://carto.nationalmap.gov/arcgis/rest/services/transportation/MapServer/37
-    PASS name='Trails' geom=esriGeometryPolyline count=548437 geojson_ok=True in_state=True
+  LAYER https://services2.arcgis.com/FiaPA4ga0iQKduv3/arcgis/rest/services/NID_v1/FeatureServer/0
+    PASS name='Dams' geom=esriGeometryPoint count=92469 geojson_ok=True in_state=True
     fields:
-      ohvisorunder50inches | String | 'Four Wheel Drive Vehicle <=50 Inches' coded[Y->Yes; N->No]
-      osvm | String | 'Motorized Over Snow' coded[Y->Yes; N->No]
-      icewatercraft | String | 'ICE Watercraft' coded[Y->Yes; N->No]
-      ebike | String | 'Electric Bicycle' coded[Y->Yes; N->No]
-      electricwatercraft | String | 'Electric Watercraft' coded[Y->Yes; N->No]
-      livestock | String | 'Livestock' coded[Y->Yes; N->No]
-      maplabel | String | 'Map Label'
-      pets | String | 'Pets' coded[Y->Yes; N->No]
-      publisheddate | Date | 'Source Published Date'
-      routetype | String | 'Route Type' coded[Road->Road; Trail->Trail; Road and Trail->Road/Trail]
-      seasonopen | String | 'Season Open'
-      sourceeditdate | Date | 'Source Edit Date'
-      trailsurface | String | 'Trail Surface' coded[Paved->Paved; Snow->Snow; Unknown->Unknown; Water->Water; Unpaved Improved->Unpaved - Improved; Unpaved Native->Unpaved - Native]
-      objectid | OID | 'Object ID'
-      permanentidentifier | String | 'Permanent Identifier'
-      name | String | 'Trail Name'
-      namealternate | String | 'Alternate Trail Name'
-      trailnumber | String | 'Trail Number'
-      trailnumberalternate | String | 'Alternate Trail Number'
-      sourcefeatureid | String | 'Source Feature ID'
-      sourcedatasetid | String | 'Source Dataset ID'
-      sourcedatadecscription | String | 'Source Dataset Description'
-      sourceoriginator | String | 'Source Originator'
-      loaddate | Date | 'Load Date'
-      trailtype | String | 'Trail Type' coded[Water Trail->Water Trail; Snow Trail->Snow Trail; Terra Trail->Standard/Terra Trail]
-      hikerpedestrian | String | 'Hiker/Pedestrian' coded[Y->Yes; N->No]
-      bicycle | String | 'Bicycle' coded[Y->Yes; N->No]
-      packsaddle | String | 'Pack and Saddle' coded[Y->Yes; N->No]
-      motorcycle | String | 'Motorcycle' coded[Y->Yes; N->No]
-      ohvover50inches | String | 'Four Wheel Drive Vehicle >50 Inches' coded[Y->Yes; N->No]
-      snowshoe | String | 'Snowshoe' coded[Y->Yes; N->No]
-      crosscountryski | String | 'Cross Country Ski' coded[Y->Yes; N->No]
-      dogsled | String | 'Dog Sled' coded[Y->Yes; N->No]
-      nonmotorizedwatercraft | String | 'Non-Motorized Watercraft' coded[Y->Yes; N->No]
-      primarytrailmaintainer | String | 'Primary Trail Maintainer' coded[BIA->Bureau of Indian Affairs; BLM->Bureau of Land Management; BOR->Bureau of Reclamation; Commercial User->Commercial User; DOD->Department of Defense; DOE->Department of Energy; FAA->Federal Aviation Administration; FS->US Forest Service; FWS->US Fish and Wildlife Service; NPS->National Park Service; Private->Private; State->State]
-      nationaltraildesignation | String | 'National Trail Designation' coded[NRT - National Recreation Trail->National Recreation Trail; NMT - National Millennium Trail->National Millennium Trail; MLT - Millennium Legacy Trail->Millennium Legacy Trail; Other - Other National Designation->Other National Designation; NST - Appalachian->Appalachian National Scenic Trail; NST - Arizona->Arizona National Scenic Trail; NST - Continental Divide->Continental Divide National Scenic Trail; NST - Florida->Florida National Scenic Trail; NST - Ice Age->Ice Age National Scenic Trail; NST - New England->New England National Scenic Trail; NST - North Country->North Country National Scenic Trail; NST - Pacific Crest->Pacific Crest National Scenic Trail]
-      lengthmiles | Double | 'Length Miles'
-      networklength | Double | 'Network Length'
-      globalid | GlobalID | 'Global ID'
-      shape | Geometry | 'Shape'
-      shape_Length | Double | 'shape_Length'
-    sample={"ohvisorunder50inches": null, "osvm": null, "icewatercraft": null, "ebike": null, "electricwatercraft": null, "livestock": null, "maplabel": "Collier Seminole State Park Trail", "pets": null, "publisheddate": null, "routetype": null, "seasonopen": null, "sourceeditdate": null, "trailsurface": null, "objectid": 1475056, "permanentidentifier": "6e3f6cf6-09b8-49ee-87cc-c42cadf941d9", "name": "Collier Seminole State Park Trail", "namealternate": null, "trailnumber": null, "trailnumberalternate": null, "sourcefeatureid": "FDEP DIVISION OF RECREATION AND PARKS", "sourcedatasetid": "{2293C3DF-F95B-4C1E-B914-1978D2516933}", "sourcedatadecscription": "Florida State Trails", "sourceoriginator": "Florida Department of Environmental Protection", "loaddate": 1590497552000, "trailtype": "Terra Trail", "hikerpedestrian": null, "bicycle": null, "packsaddle": null, "motorcycle": null, "ohvover50inches": null, "snowshoe": null, "crosscountryski": null, "dogsled": null, "nonmotorizedwatercraft": null, "primarytrailmaintainer": "State", "nationaltraildesignation": null, "lengthmiles": 2.8288617400000002, "networklength": 7.30673767, "globalid": "{A81BB3AF-2649-4A02-8CC1-016846C96079}", "shape_Length": 5070.785548041869}
-    sample={"ohvisorunder50inches": "N", "osvm": null, "icewatercraft": null, "ebike": null, "electricwatercraft": null, "livestock": null, "maplabel": "Black Creek Trail", "pets": null, "publisheddate": null, "routetype": null, "seasonopen": null, "sourceeditdate": null, "trailsurface": null, "objectid": 1475075, "permanentidentifier": "5338183a-7fa4-46b9-be26-2af9c1918dea", "name": "Black Creek Trail", "namealternate": null, "trailnumber": "0205", "trailnumberalternate": null, "sourcefeatureid": "5013.006251", "sourcedatasetid": "{70B6B5B2-58F2-4895-8A60-13A57C4C5B8B}", "sourcedatadecscription": "USFS Trails 10/2019", "sourceoriginator": "U.S. Forest Service", "loaddate": 1629704692000, "trailtype": "Terra Trail", "hikerpedestrian": "Y", "bicycle": "N", "packsaddle": "Y", "motorcycle": "N", "ohvover50inches": "N", "snowshoe": null, "crosscountryski": null, "dogsled": null, "nonmotorizedwatercraft": null, "primarytrailmaintainer": "FS", "nationaltraildesignation": "NRT - National Recreation Trail", "lengthmiles": 0.01062008, "networklength": 37.51043891, "globalid": "{4F89F2BE-0193-431D-B620-8962CBA55C44}", "shape_Length": 19.957359687078966}
-    sample={"ohvisorunder50inches": "N", "osvm": null, "icewatercraft": null, "ebike": null, "electricwatercraft": null, "livestock": null, "maplabel": "Black Creek Trail", "pets": null, "publisheddate": null, "routetype": null, "seasonopen": null, "sourceeditdate": null, "trailsurface": null, "objectid": 1475083, "permanentidentifier": "669c8a83-6d09-42a1-ae9e-53a320e31abb", "name": "Black Creek Trail", "namealternate": null, "trailnumber": "0205", "trailnumberalternate": null, "sourcefeatureid": "5013.006251", "sourcedatasetid": "{70B6B5B2-58F2-4895-8A60-13A57C4C5B8B}", "sourcedatadecscription": "USFS Trails 10/2019", "sourceoriginator": "U.S. Forest Service", "loaddate": 1629704692000, "trailtype": "Terra Trail", "hikerpedestrian": "Y", "bicycle": "N", "packsaddle": "Y", "motorcycle": "N", "ohvover50inches": "N", "snowshoe": null, "crosscountryski": null, "dogsled": null, "nonmotorizedwatercraft": null, "primarytrailmaintainer": "FS", "nationaltraildesignation": "NRT - National Recreation Trail", "lengthmiles": 4.023113400000001, "networklength": 37.51043891, "globalid": "{9E915322-0D2A-4DA2-97FD-3EA43DB476DE}", "shape_Length": 7569.6132677415835}
-
-==== SEARCH US 'National Inventory of Dams' ====
-  ITEM 'National Inventory of Dams' owner=Esri_US_Federal_Data -> https://services2.arcgis.com/FiaPA4ga0iQKduv3/arcgis/rest/services/NID_v1/FeatureServer
-  -- 'Dams'
-  LAYER https://services2.arcgis.com/FiaPA4ga0iQKduv3/arcgis/rest/services/NID_v1/FeatureServer/0
-    PASS name='Dams' geom=esriGeometryPoint count=92469 geojson_ok=True in_state=True
-    fields=['OBJECTID', 'NIDID', 'OTHER_STRUCTURE_ID', 'FEDERAL_ID', 'DATA_UPDATED', 'NAME', 'OTHER_NAMES', 'OWNER_TYPES', 'PRIMARY_OWNER_TYPE', 'STATE_FED_AGENCY', 'NUMBER_ASSOCIATED_STRUCTURES', 'DESIGNER_NAMES', 'NON_FED_ON_FED', 'STATE_REGULATED', 'STATE_JURISDICTION', 'STATE_REGULATORY_AGENCY', 'STATE_PERMITTING', 'STATE_INSPECTION', 'STATE_ENFORCEMENT', 'PRIMARY_SOURCE_AGENCY', 'LATITUDE', 'LONGITUDE', 'STATE', 'COUNTYSTATE', 'CITY', 'DISTANCE', 'RIVER_OR_STREAM', 'CONGDIST', 'CONG_REPRESNTATIVE', 'FED_AGENCY_OWNERS']
-    sample={"OBJECTID": "1", "NIDID": "CA00821", "OTHER_STRUCTURE_ID": "S001", "FEDERAL_ID": "CA00821S001", "DATA_UPDATED": "1745928000000", "NAME": "Buck Island Auxiliary", "OTHER_NAMES": "None", "OWNER_TYPES": "Public Utility", "PRIMARY_OWNER_TYPE": "Public Utility", "STATE_FED_AGENCY": "02101-03-02", "NUMBER_ASSOCIATED_STRUCTURES": "1", "DESIGNER_NAMES": "Bechtel", "NON_FED_ON_FED": "No", "STATE_REGULATED": "None", "STATE_JURISDICTION": "No", "STATE_REGULATORY_AGENCY": "None", "STATE_PERMITTING": "No", "STATE_INSPECTION": "No"}
-    sample={"OBJECTID": "2", "NIDID": "AL01415", "OTHER_STRUCTURE_ID": "S001", "FEDERAL_ID": "AL01415S001", "DATA_UPDATED": "1681300800000", "NAME": "Weiss - Spillway Diversion Dam                  ...", "OTHER_NAMES": "None", "OWNER_TYPES": "Public Utility", "PRIMARY_OWNER_TYPE": "Public Utility", "STATE_FED_AGENCY": "02146-05-02", "NUMBER_ASSOCIATED_STRUCTURES": "5", "DESIGNER_NAMES": "SOUTHERN COMPANY SERVICES", "NON_FED_ON_FED": "No", "STATE_REGULATED": "No", "STATE_JURISDICTION": "No", "STATE_REGULATORY_AGENCY": "None", "STATE_PERMITTING": "No", "STATE_INSPECTION": "No"}
-  ITEM 'National Inventory of Dams USACE Transboundary' owner=IJC_Authoritative -> https://services2.arcgis.com/FOAjZu7OcdPEtbC0/arcgis/rest/services/National_Inventory_of_Dams_USACE_Transboundary/FeatureServer
-  -- 'NID_Transboundary_10102025'
-  LAYER https://services2.arcgis.com/FOAjZu7OcdPEtbC0/arcgis/rest/services/National_Inventory_of_Dams_USACE_Transboundary/FeatureServer/0
-    PASS name='NID_Transboundary_10102025' geom=esriGeometryPoint count=7034 geojson_ok=True in_state=True
-    fields=['OBJECTID', 'NIDID', 'OTHER_STRUCTURE_ID', 'FEDERAL_ID', 'DATA_UPDATED', 'NAME', 'OTHER_NAMES', 'OWNER_TYPES', 'PRIMARY_OWNER_TYPE', 'STATE_FED_AGENCY', 'NUMBER_ASSOCIATED_STRUCTURES', 'DESIGNER_NAMES', 'NON_FED_ON_FED', 'STATE_REGULATED', 'STATE_JURISDICTION', 'STATE_REGULATORY_AGENCY', 'STATE_PERMITTING', 'STATE_INSPECTION', 'STATE_ENFORCEMENT', 'PRIMARY_SOURCE_AGENCY', 'LATITUDE', 'LONGITUDE', 'STATE', 'COUNTYSTATE', 'CITY', 'DISTANCE', 'RIVER_OR_STREAM', 'CONGDIST', 'CONG_REPRESNTATIVE', 'FED_AGENCY_OWNERS']
-    sample={"OBJECTID": "1", "NIDID": "ND00531", "OTHER_STRUCTURE_ID": "None", "FEDERAL_ID": "ND00531", "DATA_UPDATED": "1676548800000", "NAME": "Prescott Dam 2", "OTHER_NAMES": "None", "OWNER_TYPES": "Local Government", "PRIMARY_OWNER_TYPE": "Local Government", "STATE_FED_AGENCY": "None", "NUMBER_ASSOCIATED_STRUCTURES": "0", "DESIGNER_NAMES": "WPA", "NON_FED_ON_FED": "No", "STATE_REGULATED": "Yes", "STATE_JURISDICTION": "Yes", "STATE_REGULATORY_AGENCY": "ND DWR", "STATE_PERMITTING": "Yes", "STATE_INSPECTION": "Yes"}
-    sample={"OBJECTID": "2", "NIDID": "ND01004", "OTHER_STRUCTURE_ID": "None", "FEDERAL_ID": "ND01004", "DATA_UPDATED": "1676548800000", "NAME": "None", "OTHER_NAMES": "None", "OWNER_TYPES": "Local Government", "PRIMARY_OWNER_TYPE": "Local Government", "STATE_FED_AGENCY": "None", "NUMBER_ASSOCIATED_STRUCTURES": "0", "DESIGNER_NAMES": "Interstate", "NON_FED_ON_FED": "None", "STATE_REGULATED": "Yes", "STATE_JURISDICTION": "Yes", "STATE_REGULATORY_AGENCY": "ND DWR", "STATE_PERMITTING": "Yes", "STATE_INSPECTION": "Yes"}
-  ITEM 'National Inventory of Dams' owner=BRADD_Admin -> https://services2.arcgis.com/FiaPA4ga0iQKduv3/arcgis/rest/services/NID_v1/FeatureServer
-  -- 'Dams'
-  LAYER https://services2.arcgis.com/FiaPA4ga0iQKduv3/arcgis/rest/services/NID_v1/FeatureServer/0
-    PASS name='Dams' geom=esriGeometryPoint count=92469 geojson_ok=True in_state=True
-    fields=['OBJECTID', 'NIDID', 'OTHER_STRUCTURE_ID', 'FEDERAL_ID', 'DATA_UPDATED', 'NAME', 'OTHER_NAMES', 'OWNER_TYPES', 'PRIMARY_OWNER_TYPE', 'STATE_FED_AGENCY', 'NUMBER_ASSOCIATED_STRUCTURES', 'DESIGNER_NAMES', 'NON_FED_ON_FED', 'STATE_REGULATED', 'STATE_JURISDICTION', 'STATE_REGULATORY_AGENCY', 'STATE_PERMITTING', 'STATE_INSPECTION', 'STATE_ENFORCEMENT', 'PRIMARY_SOURCE_AGENCY', 'LATITUDE', 'LONGITUDE', 'STATE', 'COUNTYSTATE', 'CITY', 'DISTANCE', 'RIVER_OR_STREAM', 'CONGDIST', 'CONG_REPRESNTATIVE', 'FED_AGENCY_OWNERS']
-    sample={"OBJECTID": "1", "NIDID": "CA00821", "OTHER_STRUCTURE_ID": "S001", "FEDERAL_ID": "CA00821S001", "DATA_UPDATED": "1745928000000", "NAME": "Buck Island Auxiliary", "OTHER_NAMES": "None", "OWNER_TYPES": "Public Utility", "PRIMARY_OWNER_TYPE": "Public Utility", "STATE_FED_AGENCY": "02101-03-02", "NUMBER_ASSOCIATED_STRUCTURES": "1", "DESIGNER_NAMES": "Bechtel", "NON_FED_ON_FED": "No", "STATE_REGULATED": "None", "STATE_JURISDICTION": "No", "STATE_REGULATORY_AGENCY": "None", "STATE_PERMITTING": "No", "STATE_INSPECTION": "No"}
-    sample={"OBJECTID": "2", "NIDID": "AL01415", "OTHER_STRUCTURE_ID": "S001", "FEDERAL_ID": "AL01415S001", "DATA_UPDATED": "1681300800000", "NAME": "Weiss - Spillway Diversion Dam                  ...", "OTHER_NAMES": "None", "OWNER_TYPES": "Public Utility", "PRIMARY_OWNER_TYPE": "Public Utility", "STATE_FED_AGENCY": "02146-05-02", "NUMBER_ASSOCIATED_STRUCTURES": "5", "DESIGNER_NAMES": "SOUTHERN COMPANY SERVICES", "NON_FED_ON_FED": "No", "STATE_REGULATED": "No", "STATE_JURISDICTION": "No", "STATE_REGULATORY_AGENCY": "None", "STATE_PERMITTING": "No", "STATE_INSPECTION": "No"}
-  ITEM 'Florida Dams' owner=FDEPOpenDataPortal -> https://ca.dep.state.fl.us/arcgis/rest/services/OpenData/WRM_UIC_PUBLIC/MapServer/7
-  -- ''
-  LAYER https://ca.dep.state.fl.us/arcgis/rest/services/OpenData/WRM_UIC_PUBLIC/MapServer/7
-    PASS name='Florida Dams' geom=esriGeometryPoint count=1077 geojson_ok=True in_state=True
-    fields=['DAM_NAME', 'LONGITUDE', 'LATITUDE', 'COUNTY', 'CITY', 'FOUNDATION', 'PURPOSES', 'YEAR_COMPLETED', 'INSPECTION_FREQUENCY', 'SPILLWAY_TYPE', 'NUMBER_OF_LOCKS', 'SOURCE_AGENCY', 'STATE', 'SHAPE', 'OBJECTID', 'OTHER_NAMES', 'FORMER_NAMES', 'NID_ID', 'OTHER_STRUCTURE_ID', 'FEDERAL_ID', 'OWNER_NAMES', 'OWNER_TYPES', 'PRIMARY_OWNER_TYPE', 'STATE_OR_FEDERAL_AGENCY_ID', 'NUMBER_OF_ASSOCIATED_STRUCTURE', 'DESIGNER_NAMES', 'NON_FEDERAL_DAM_ON_FEDERAL_PRO', 'STATE_REGULATED_DAM', 'STATE_JURISDICTIONAL_DAM', 'STATE_REGULATORY_AGENCY']
-    sample={"DAM_NAME": "Fl Walton CO Noname 3", "LONGITUDE": "-86.900002", "LATITUDE": "30.740000000000002", "COUNTY": "Santa Rosa", "CITY": "DEFUNIAK SPRINGS/KOERBER", "FOUNDATION": "None", "PURPOSES": "Recreation", "YEAR_COMPLETED": "1970", "INSPECTION_FREQUENCY": "0", "SPILLWAY_TYPE": "None", "NUMBER_OF_LOCKS": "0", "SOURCE_AGENCY": "Florida", "STATE": "Florida", "OBJECTID": "1", "OTHER_NAMES": "None", "FORMER_NAMES": "None", "NID_ID": "FL00600", "OTHER_STRUCTURE_ID": "None"}
-    sample={"DAM_NAME": "Little River Farms", "LONGITUDE": "-84.5309", "LATITUDE": "30.522000000000002", "COUNTY": "Gadsden", "CITY": "NONE", "FOUNDATION": "None", "PURPOSES": "Fire Protection, Stock, Or Small Fish Pond", "YEAR_COMPLETED": "1970", "INSPECTION_FREQUENCY": "0", "SPILLWAY_TYPE": "None", "NUMBER_OF_LOCKS": "0", "SOURCE_AGENCY": "Florida", "STATE": "Florida", "OBJECTID": "2", "OTHER_NAMES": "None", "FORMER_NAMES": "Fl Gadsden CO Noname 1", "NID_ID": "FL00587", "OTHER_STRUCTURE_ID": "None"}
-  ITEM 'Selected CWIFP_Dams' owner=jep_mvp -> https://services6.arcgis.com/ym4vv2kwBujSjhwm/arcgis/rest/services/Selected_CWIFP_Dams/FeatureServer
-  -- 'SelectedCWIFP_Dams'
-  LAYER https://services6.arcgis.com/ym4vv2kwBujSjhwm/arcgis/rest/services/Selected_CWIFP_Dams/FeatureServer/0
-    PASS name='SelectedCWIFP_Dams' geom=esriGeometryPoint count=112 geojson_ok=True in_state=True
-    fields=['OBJECTID', 'NIDID', 'OTHER_STRUCTURE_ID', 'FEDERAL_ID', 'DATA_UPDATED', 'NAME', 'OTHER_NAMES', 'OWNER_TYPES', 'PRIMARY_OWNER_TYPE', 'STATE_FED_AGENCY', 'NUMBER_ASSOCIATED_STRUCTURES', 'DESIGNER_NAMES', 'NON_FED_ON_FED', 'STATE_REGULATED', 'STATE_JURISDICTION', 'STATE_REGULATORY_AGENCY', 'STATE_PERMITTING', 'STATE_INSPECTION', 'STATE_ENFORCEMENT', 'PRIMARY_SOURCE_AGENCY', 'LATITUDE', 'LONGITUDE', 'STATE', 'COUNTYSTATE', 'CITY', 'DISTANCE', 'RIVER_OR_STREAM', 'USACEDISTRICT', 'CONGDIST', 'CONG_REPRESNTATIVE']
-    sample={"OBJECTID": "1", "NIDID": "CA00037", "OTHER_STRUCTURE_ID": "None", "FEDERAL_ID": "CA00037", "DATA_UPDATED": "1617969600000", "NAME": "Antelope", "OTHER_NAMES": "Antelope Lake", "OWNER_TYPES": "State", "PRIMARY_OWNER_TYPE": "State", "STATE_FED_AGENCY": "1.050", "NUMBER_ASSOCIATED_STRUCTURES": "0", "DESIGNER_NAMES": "None", "NON_FED_ON_FED": "None", "STATE_REGULATED": "Yes", "STATE_JURISDICTION": "Yes", "STATE_REGULATORY_AGENCY": "DWR, Safety of Dams", "STATE_PERMITTING": "Yes", "STATE_INSPECTION": "Yes"}
-    sample={"OBJECTID": "2", "NIDID": "CA00289", "OTHER_STRUCTURE_ID": "None", "FEDERAL_ID": "CA00289", "DATA_UPDATED": "1617969600000", "NAME": "Almaden", "OTHER_NAMES": "Almaden Reservoir", "OWNER_TYPES": "Public Utility", "PRIMARY_OWNER_TYPE": "Public Utility", "STATE_FED_AGENCY": "72.004", "NUMBER_ASSOCIATED_STRUCTURES": "0", "DESIGNER_NAMES": "None", "NON_FED_ON_FED": "None", "STATE_REGULATED": "Yes", "STATE_JURISDICTION": "Yes", "STATE_REGULATORY_AGENCY": "DWR, Safety of Dams", "STATE_PERMITTING": "Yes", "STATE_INSPECTION": "Yes"}
-  ITEM 'USACE_Dams_Willamette_Basin' owner=weyandtal_CDMSmith -> https://services1.arcgis.com/VVapzOPgBae5joyC/arcgis/rest/services/USACE_Dams_Willamette_Basin/FeatureServer
-  -- 'USACE_Dams_Willamette_Basin'
-  LAYER https://services1.arcgis.com/VVapzOPgBae5joyC/arcgis/rest/services/USACE_Dams_Willamette_Basin/FeatureServer/0
-    PASS name='USACE_Dams_Willamette_Basin' geom=esriGeometryPoint count=15 geojson_ok=True in_state=True
-    fields=['OBJECTID', 'RECORDID', 'DAM_NAME', 'OTHER_DAM_NAME', 'STATEID', 'NIDID', 'LONGITUDE', 'LATITUDE', 'SECTION_', 'COUNTY', 'RIVER', 'CITY', 'OWNER_NAME', 'OWNER_TYPE', 'DAM_DESIGNER', 'DAM_TYPE', 'PURPOSES', 'YEAR_COMPLETED', 'SURFACE_AREA', 'DRAINAGE_AREA', 'STATE_REG_DAM', 'FED_DESIGN', 'FED_CONSTRUCTION', 'FED_OPERATION', 'FED_OWNER', 'FED_OTHER', 'SOURCE_AGENCY', 'STATE', 'URL_ADDRESS', 'PROJECTID']
-    sample={"OBJECTID": "1", "RECORDID": "932313", "DAM_NAME": "Dexter", "OTHER_DAM_NAME": "DEXTER LAKE", "STATEID": "79008", "NIDID": "OR00006", "LONGITUDE": "-122.81330000000001", "LATITUDE": "43.921669", "SECTION_": "S15, T19S, R1W", "COUNTY": "LANE", "RIVER": "MIDDLE FORK WILLAMETTE RIVER", "CITY": "EUGENE", "OWNER_NAME": "CENWP", "OWNER_TYPE": "F", "DAM_DESIGNER": "U. S. Army Corps of Engineers, Portland District", "DAM_TYPE": "RE", "PURPOSES": "HFR", "YEAR_COMPLETED": "1955"}
-    sample={"OBJECTID": "4", "RECORDID": "932429", "DAM_NAME": "Foster", "OTHER_DAM_NAME": "FOSTER LAKE", "STATEID": "68002", "NIDID": "OR00012", "LONGITUDE": "-122.6633", "LATITUDE": "44.413329999999995", "SECTION_": "S27, T13S, R1E", "COUNTY": "LINN", "RIVER": "SOUTH SANTIAM RIVER", "CITY": "SWEETHOME", "OWNER_NAME": "CENWP", "OWNER_TYPE": "F", "DAM_DESIGNER": "U. S. Army Corps of Engineers, Portland District", "DAM_TYPE": "ER", "PURPOSES": "CHIFSR", "YEAR_COMPLETED": "1967"}
-  ITEM 'Lifelines - Safety & Security - Live - Point - National Inventory of Dams (USACE)' owner=FEMA_Region_6_GIS -> https://services2.arcgis.com/FiaPA4ga0iQKduv3/arcgis/rest/services/NID_v1/FeatureServer
-  -- 'Dams'
-  LAYER https://services2.arcgis.com/FiaPA4ga0iQKduv3/arcgis/rest/services/NID_v1/FeatureServer/0
-    PASS name='Dams' geom=esriGeometryPoint count=92469 geojson_ok=True in_state=True
-    fields=['OBJECTID', 'NIDID', 'OTHER_STRUCTURE_ID', 'FEDERAL_ID', 'DATA_UPDATED', 'NAME', 'OTHER_NAMES', 'OWNER_TYPES', 'PRIMARY_OWNER_TYPE', 'STATE_FED_AGENCY', 'NUMBER_ASSOCIATED_STRUCTURES', 'DESIGNER_NAMES', 'NON_FED_ON_FED', 'STATE_REGULATED', 'STATE_JURISDICTION', 'STATE_REGULATORY_AGENCY', 'STATE_PERMITTING', 'STATE_INSPECTION', 'STATE_ENFORCEMENT', 'PRIMARY_SOURCE_AGENCY', 'LATITUDE', 'LONGITUDE', 'STATE', 'COUNTYSTATE', 'CITY', 'DISTANCE', 'RIVER_OR_STREAM', 'CONGDIST', 'CONG_REPRESNTATIVE', 'FED_AGENCY_OWNERS']
-    sample={"OBJECTID": "1", "NIDID": "CA00821", "OTHER_STRUCTURE_ID": "S001", "FEDERAL_ID": "CA00821S001", "DATA_UPDATED": "1745928000000", "NAME": "Buck Island Auxiliary", "OTHER_NAMES": "None", "OWNER_TYPES": "Public Utility", "PRIMARY_OWNER_TYPE": "Public Utility", "STATE_FED_AGENCY": "02101-03-02", "NUMBER_ASSOCIATED_STRUCTURES": "1", "DESIGNER_NAMES": "Bechtel", "NON_FED_ON_FED": "No", "STATE_REGULATED": "None", "STATE_JURISDICTION": "No", "STATE_REGULATORY_AGENCY": "None", "STATE_PERMITTING": "No", "STATE_INSPECTION": "No"}
-    sample={"OBJECTID": "2", "NIDID": "AL01415", "OTHER_STRUCTURE_ID": "S001", "FEDERAL_ID": "AL01415S001", "DATA_UPDATED": "1681300800000", "NAME": "Weiss - Spillway Diversion Dam                  ...", "OTHER_NAMES": "None", "OWNER_TYPES": "Public Utility", "PRIMARY_OWNER_TYPE": "Public Utility", "STATE_FED_AGENCY": "02146-05-02", "NUMBER_ASSOCIATED_STRUCTURES": "5", "DESIGNER_NAMES": "SOUTHERN COMPANY SERVICES", "NON_FED_ON_FED": "No", "STATE_REGULATED": "No", "STATE_JURISDICTION": "No", "STATE_REGULATORY_AGENCY": "None", "STATE_PERMITTING": "No", "STATE_INSPECTION": "No"}
-  ITEM 'Reclamation Dams' owner=Reclamation_Public -> https://services1.arcgis.com/ixD30sld6F8MQ7V5/arcgis/rest/services/ReclamationDams/FeatureServer
-  -- 'Reclamation Dams'
-  LAYER https://services1.arcgis.com/ixD30sld6F8MQ7V5/arcgis/rest/services/ReclamationDams/FeatureServer/0
-    PASS name='Reclamation Dams' geom=esriGeometryPoint count=577 geojson_ok=True in_state=True
-    fields=['OBJECTID', 'assetname', 'assettype', 'operatingentity1', 'usbrregion', 'areaoffice', 'usbrproject', 'constructionyear', 'guid', 'GlobalID']
-    sample={"OBJECTID": "1", "assetname": "Agate Dam", "assettype": "Embankment", "operatingentity1": "Rogue River Valley Irrigation District", "usbrregion": "CPN", "areaoffice": "CPN-CCAO", "usbrproject": "0415", "constructionyear": "-126266400000", "guid": "848022c4-62da-43fe-899a-9b9db1fd9a5c", "GlobalID": "858b6728-d239-4644-b2a8-486eb4dc2bd1"}
-    sample={"OBJECTID": "2", "assetname": "Agency Valley Dam", "assettype": "Embankment", "operatingentity1": "Vale Oregon Irrigation District", "usbrregion": "CPN", "areaoffice": "CPN-SRAO", "usbrproject": "0126", "constructionyear": "-1104573600000", "guid": "f8023fa2-a66b-42bb-9a55-d842aa125f88", "GlobalID": "8922f281-8068-4758-8d23-f0cb5aeeab55"}
-  ITEM 'INF - National Inventory of Dams (USACE 2020)' owner=EPA_GEO -> https://services.arcgis.com/cJ9YHowT8TU7DUyn/arcgis/rest/services/INF___National_Inventory_of_Dams__USACE_2021_/FeatureServer
-  -- 'INF - National Inventory of Dams (USACE 2021)'
-  LAYER https://services.arcgis.com/cJ9YHowT8TU7DUyn/arcgis/rest/services/INF___National_Inventory_of_Dams__USACE_2021_/FeatureServer/0
-    PASS name='INF - National Inventory of Dams (USACE 2021)' geom=esriGeometryPoint count=91213 geojson_ok=True in_state=True
-    fields=['OBJECTID', 'RECORDID', 'NIDID', 'STATEID', 'DAM_NAME', 'OTHER_DAM_NAME', 'DAM_FORMER_NAME', 'DAM_TYPE', 'PRIVATE_DAM', 'HAZARD', 'RIVER', 'COUNTY', 'CITY', 'STATE', 'SECTION', 'DISTANCE', 'OWNER_NAME', 'OWNER_TYPE', 'DAM_DESIGNER', 'CORE', 'FOUNDATION', 'PURPOSES', 'YEAR_COMPLETED', 'YEAR_MODIFIED', 'DAM_LENGTH', 'DAM_HEIGHT', 'STRUCTURAL_HEIGHT', 'HYDRAULIC_HEIGHT', 'NID_HEIGHT', 'MAX_DISCHARGE']
-    sample={"OBJECTID": "1", "RECORDID": "1", "NIDID": "AK00001", "STATEID": "", "DAM_NAME": "COOPER LAKE", "OTHER_DAM_NAME": "", "DAM_FORMER_NAME": "", "DAM_TYPE": "RE", "PRIVATE_DAM": "Y", "HAZARD": "H", "RIVER": "COOPER CREEK, KENAI RIVER", "COUNTY": "KENAI PENINSULA", "CITY": "COOPER LANDING", "STATE": "AK", "SECTION": "N/A", "DISTANCE": "6", "OWNER_NAME": "CHUGACH ELECTRIC ASSOCIATION, INC.", "OWNER_TYPE": "P"}
-    sample={"OBJECTID": "2", "RECORDID": "2", "NIDID": "AK00002", "STATEID": "", "DAM_NAME": "BLUE LAKE", "OTHER_DAM_NAME": "", "DAM_FORMER_NAME": "", "DAM_TYPE": "VA", "PRIVATE_DAM": "N", "HAZARD": "H", "RIVER": "SAWMILL CREEK", "COUNTY": "SITKA", "CITY": "NONE", "STATE": "AK", "SECTION": "T55S, R64E, S35", "DISTANCE": "0", "OWNER_NAME": "CITY AND BOROUGH OF SITKA", "OWNER_TYPE": "L"}
-  ITEM 'National Inventory of Dams' owner=agcooke_UW -> https://services2.arcgis.com/FiaPA4ga0iQKduv3/arcgis/rest/services/NID_v1/FeatureServer
-  -- 'Dams'
-  LAYER https://services2.arcgis.com/FiaPA4ga0iQKduv3/arcgis/rest/services/NID_v1/FeatureServer/0
-    PASS name='Dams' geom=esriGeometryPoint count=92469 geojson_ok=True in_state=True
-    fields=['OBJECTID', 'NIDID', 'OTHER_STRUCTURE_ID', 'FEDERAL_ID', 'DATA_UPDATED', 'NAME', 'OTHER_NAMES', 'OWNER_TYPES', 'PRIMARY_OWNER_TYPE', 'STATE_FED_AGENCY', 'NUMBER_ASSOCIATED_STRUCTURES', 'DESIGNER_NAMES', 'NON_FED_ON_FED', 'STATE_REGULATED', 'STATE_JURISDICTION', 'STATE_REGULATORY_AGENCY', 'STATE_PERMITTING', 'STATE_INSPECTION', 'STATE_ENFORCEMENT', 'PRIMARY_SOURCE_AGENCY', 'LATITUDE', 'LONGITUDE', 'STATE', 'COUNTYSTATE', 'CITY', 'DISTANCE', 'RIVER_OR_STREAM', 'CONGDIST', 'CONG_REPRESNTATIVE', 'FED_AGENCY_OWNERS']
-    sample={"OBJECTID": "1", "NIDID": "CA00821", "OTHER_STRUCTURE_ID": "S001", "FEDERAL_ID": "CA00821S001", "DATA_UPDATED": "1745928000000", "NAME": "Buck Island Auxiliary", "OTHER_NAMES": "None", "OWNER_TYPES": "Public Utility", "PRIMARY_OWNER_TYPE": "Public Utility", "STATE_FED_AGENCY": "02101-03-02", "NUMBER_ASSOCIATED_STRUCTURES": "1", "DESIGNER_NAMES": "Bechtel", "NON_FED_ON_FED": "No", "STATE_REGULATED": "None", "STATE_JURISDICTION": "No", "STATE_REGULATORY_AGENCY": "None", "STATE_PERMITTING": "No", "STATE_INSPECTION": "No"}
-    sample={"OBJECTID": "2", "NIDID": "AL01415", "OTHER_STRUCTURE_ID": "S001", "FEDERAL_ID": "AL01415S001", "DATA_UPDATED": "1681300800000", "NAME": "Weiss - Spillway Diversion Dam                  ...", "OTHER_NAMES": "None", "OWNER_TYPES": "Public Utility", "PRIMARY_OWNER_TYPE": "Public Utility", "STATE_FED_AGENCY": "02146-05-02", "NUMBER_ASSOCIATED_STRUCTURES": "5", "DESIGNER_NAMES": "SOUTHERN COMPANY SERVICES", "NON_FED_ON_FED": "No", "STATE_REGULATED": "No", "STATE_JURISDICTION": "No", "STATE_REGULATORY_AGENCY": "None", "STATE_PERMITTING": "No", "STATE_INSPECTION": "No"}
-  ITEM 'Dams_on_tribal_land' owner=crockwell -> https://services1.arcgis.com/AhXvNWFdL7hH4TjJ/arcgis/rest/services/Dams_on_tribal_land/FeatureServer
-  ITEM 'National Inventory of Dams - Arizona (2018)' owner=mapgeohub -> https://services3.arcgis.com/0OPQIK59PJJqLK0A/arcgis/rest/services/National_Inventory_of_Dams_Arizona_2018/FeatureServer
-  ITEM 'Dams' owner=USDOT_BTS -> https://services.arcgis.com/xOi1kZaI0eWDREZv/arcgis/rest/services/NTAD_Dams/FeatureServer
-  ITEM 'NACC Dams - National Aquatic Barrier Inventory June 2024' owner=kathleen_hoenke@fws.gov_fws -> https://services.arcgis.com/QVENGdaPbd4LUkLV/arcgis/rest/services/Dams_National_Aquatic_Barrier_Inventory_Dec_2023/FeatureServer
-  ITEM 'National Inventory of Dams' owner=KansasGIS -> https://services.arcgis.com/xOi1kZaI0eWDREZv/arcgis/rest/services/NTAD_Dams/FeatureServer
-
-==== SEARCH US 'NTAD dams national' ====
-  ITEM 'Dams' owner=USDOT_BTS -> https://services.arcgis.com/xOi1kZaI0eWDREZv/arcgis/rest/services/NTAD_Dams/FeatureServer
-  -- 'Dams'
-  LAYER https://services.arcgis.com/xOi1kZaI0eWDREZv/arcgis/rest/services/NTAD_Dams/FeatureServer/0
-    PASS name='Dams' geom=esriGeometryPoint count=92628 geojson_ok=True in_state=True
-    fields=['OBJECTID', 'id', 'federalId', 'name', 'latitude', 'longitude', 'publicHazardId', 'formerNames', 'ownerNames', 'primaryPurposeId', 'nidHeight', 'eapId', 'nidId', 'ownerTypeIds', 'primaryOwnerTypeId', 'separateStructuresCount', 'isAssociatedStructureId', 'designerNames', 'nonFederalDamOnFederalId', 'purposeIds', 'sourceAgency', 'state', 'county', 'countyState', 'city', 'distance', 'riverName', 'congDist', 'stateRegulatedId', 'fedRegulatedId']
-    sample={"OBJECTID": "1", "id": "526816", "federalId": "OK20998", "name": "Dod Usa 4", "latitude": "35.67191196", "longitude": "-95.18729125", "publicHazardId": "2", "formerNames": "Dod Usa", "ownerNames": "DEPT. OF DEFENSE/US ARMY RESERVE CENTER", "primaryPurposeId": "5", "nidHeight": "15", "eapId": "3", "nidId": "OK20998", "ownerTypeIds": "3", "primaryOwnerTypeId": "3", "separateStructuresCount": "0", "isAssociatedStructureId": "0", "designerNames": "N/A"}
-    sample={"OBJECTID": "2", "id": "526812", "federalId": "OK20994", "name": "Dod Usa 2", "latitude": "35.70340894", "longitude": "-95.13637547", "publicHazardId": "2", "formerNames": "Dod Usa", "ownerNames": "DEPT. OF DEFENSE/US ARMY RESERVE CENTER", "primaryPurposeId": "5", "nidHeight": "18", "eapId": "3", "nidId": "OK20994", "ownerTypeIds": "3", "primaryOwnerTypeId": "3", "separateStructuresCount": "0", "isAssociatedStructureId": "0", "designerNames": "N/A"}
-  ITEM 'Dams_Projected' owner=BERK_MapMaker -> https://services.arcgis.com/tsh3MgS57Cs86wmq/arcgis/rest/services/Dams_Projected/FeatureServer
-  -- 'Dams_Projected'
-  LAYER https://services.arcgis.com/tsh3MgS57Cs86wmq/arcgis/rest/services/Dams_Projected/FeatureServer/222
-    PASS name='Dams_Projected' geom=esriGeometryPoint count=31 geojson_ok=True in_state=True
-    fields=['OBJECTID', 'id', 'federalId', 'name', 'latitude', 'longitude', 'hazardId', 'ownerNames', 'primaryPur', 'nidHeight', 'eapId', 'otherStruc', 'otherNames', 'formerName', 'nidId', 'ownerTypeI', 'primaryOwn', 'separateSt', 'isAssociat', 'designerNa', 'nonFederal', 'purposeIds', 'sourceAgen', 'stateFedId', 'state', 'county', 'countyStat', 'city', 'distance', 'riverName']
-    sample={"OBJECTID": "1", "id": "542174", "federalId": "WA00396", "name": "Newman Lake Flood Control Dam", "latitude": "47.7706724363", "longitude": "-117.080774913", "hazardId": "4", "ownerNames": "Newman Lake Flood Control Zone District", "primaryPur": "9", "nidHeight": "13", "eapId": "1", "otherStruc": "None", "otherNames": "None", "formerName": "None", "nidId": "WA00396", "ownerTypeI": "5", "primaryOwn": "5", "separateSt": "0"}
-    sample={"OBJECTID": "2", "id": "542836", "federalId": "WA00050", "name": "Reflection Lake South Dam", "latitude": "47.993042", "longitude": "-117.287564", "hazardId": "4", "ownerNames": "Reflection Lake Community Association", "primaryPur": "5", "nidHeight": "28", "eapId": "1", "otherStruc": "None", "otherNames": "None", "formerName": "None", "nidId": "WA00050", "ownerTypeI": "1", "primaryOwn": "1", "separateSt": "0"}
-  ITEM 'National Inventory of Dams' owner=KansasGIS -> https://services.arcgis.com/xOi1kZaI0eWDREZv/arcgis/rest/services/NTAD_Dams/FeatureServer
-  -- 'Dams'
-  LAYER https://services.arcgis.com/xOi1kZaI0eWDREZv/arcgis/rest/services/NTAD_Dams/FeatureServer/0
-    PASS name='Dams' geom=esriGeometryPoint count=92628 geojson_ok=True in_state=True
-    fields=['OBJECTID', 'id', 'federalId', 'name', 'latitude', 'longitude', 'publicHazardId', 'formerNames', 'ownerNames', 'primaryPurposeId', 'nidHeight', 'eapId', 'nidId', 'ownerTypeIds', 'primaryOwnerTypeId', 'separateStructuresCount', 'isAssociatedStructureId', 'designerNames', 'nonFederalDamOnFederalId', 'purposeIds', 'sourceAgency', 'state', 'county', 'countyState', 'city', 'distance', 'riverName', 'congDist', 'stateRegulatedId', 'fedRegulatedId']
-    sample={"OBJECTID": "1", "id": "526816", "federalId": "OK20998", "name": "Dod Usa 4", "latitude": "35.67191196", "longitude": "-95.18729125", "publicHazardId": "2", "formerNames": "Dod Usa", "ownerNames": "DEPT. OF DEFENSE/US ARMY RESERVE CENTER", "primaryPurposeId": "5", "nidHeight": "15", "eapId": "3", "nidId": "OK20998", "ownerTypeIds": "3", "primaryOwnerTypeId": "3", "separateStructuresCount": "0", "isAssociatedStructureId": "0", "designerNames": "N/A"}
-    sample={"OBJECTID": "2", "id": "526812", "federalId": "OK20994", "name": "Dod Usa 2", "latitude": "35.70340894", "longitude": "-95.13637547", "publicHazardId": "2", "formerNames": "Dod Usa", "ownerNames": "DEPT. OF DEFENSE/US ARMY RESERVE CENTER", "primaryPurposeId": "5", "nidHeight": "18", "eapId": "3", "nidId": "OK20994", "ownerTypeIds": "3", "primaryOwnerTypeId": "3", "separateStructuresCount": "0", "isAssociatedStructureId": "0", "designerNames": "N/A"}
-  ITEM 'BD NBI_AlleghenyCountyPA_Condition_and_Exposure' owner=bdewitt_DSUGIT -> https://services6.arcgis.com/AZvnIky2AKQNH37M/arcgis/rest/services/NBI_AlleghenyCountyPA_Condition_and_Exposure/FeatureServer
-  -- 'NBI_AlleghenyCountyPA_Condition_and_Exposure'
-  LAYER https://services6.arcgis.com/AZvnIky2AKQNH37M/arcgis/rest/services/NBI_AlleghenyCountyPA_Condition_and_Exposure/FeatureServer/0
-    PASS name='NBI_AlleghenyCountyPA_Condition_and_Exposure' geom=esriGeometryPoint count=1289 geojson_ok=True in_state=True
-    fields=['FID', 'STATE_CODE', 'STRUCTURE_', 'RECORD_TYP', 'ROUTE_PREF', 'SERVICE_LE', 'ROUTE_NUMB', 'DIRECTION_', 'HIGHWAY_DI', 'COUNTY_COD', 'PLACE_CODE', 'FEATURES_D', 'CRITICAL_F', 'FACILITY_C', 'LOCATION_0', 'MIN_VERT_C', 'KILOPOINT_', 'BASE_HWY_N', 'LRS_INV_RO', 'SUBROUTE_N', 'LAT_016', 'LONG_017', 'DETOUR_KIL', 'TOLL_020', 'MAINTENANC', 'OWNER_022', 'FUNCTIONAL', 'YEAR_BUILT', 'TRAFFIC_LA', 'TRAFFIC__1']
-    sample={"FID": "1", "STATE_CODE": "42", "STRUCTURE_": "000000000000488", "RECORD_TYP": "1", "ROUTE_PREF": "3", "SERVICE_LE": "4", "ROUTE_NUMB": "00008", "DIRECTION_": "0", "HIGHWAY_DI": "11", "COUNTY_COD": "003", "PLACE_CODE": "61000", "FEATURES_D": "N&S RR  S.MAIN ST. RIVER", "CRITICAL_F": " ", "FACILITY_C": "62nd Street Bridge", "LOCATION_0": "62nd Street Bridge", "MIN_VERT_C": "5.77", "KILOPOINT_": "10.874", "BASE_HWY_N": "1"}
-    sample={"FID": "2", "STATE_CODE": "42", "STRUCTURE_": "000000000000491", "RECORD_TYP": "1", "ROUTE_PREF": "3", "SERVICE_LE": "1", "ROUTE_NUMB": "00008", "DIRECTION_": "1", "HIGHWAY_DI": "11", "COUNTY_COD": "003", "PLACE_CODE": "24160", "FEATURES_D": "RT.28 RAILROAD LOCAL ST.", "CRITICAL_F": " ", "FACILITY_C": "SR 8 NB", "LOCATION_0": "62nd Street Bridge", "MIN_VERT_C": "5.45", "KILOPOINT_": "11.48", "BASE_HWY_N": "1"}
-  ITEM 'River way Locks and Dams' owner=salad046_UMN -> https://maps.bts.dot.gov/services/rest/services/NTAD/Locks/MapServer/0
-  -- ''
-  LAYER https://maps.bts.dot.gov/services/rest/services/NTAD/Locks/MapServer/0
-    FAIL meta: None
-  ITEM 'Dams removed over 45 feet' owner=krpete27_asu -> https://services3.arcgis.com/0OPQIK59PJJqLK0A/arcgis/rest/services/Dams_removed_over_45_feet/FeatureServer
-  -- 'Dams Removed over 45 feet Lower 48'
-  LAYER https://services3.arcgis.com/0OPQIK59PJJqLK0A/arcgis/rest/services/Dams_removed_over_45_feet/FeatureServer/0
-    PASS name='Dams Removed over 45 feet Lower 48' geom=esriGeometryPoint count=51 geojson_ok=True in_state=True
-    fields=['OBJECTID1', 'OBJECTID', 'AR_ID', 'NID_ID', 'Dam_Name', 'Year_Removed', 'Latitude', 'Longitude', 'City_County', 'River', 'HUC8', 'State', 'Dam_Height_ft', 'Dam_Length_ft', 'Year_Built', 'Owner', 'Original_Use', 'Type_Material', 'Miles_Restored_US', 'Miles_Restored_DS', 'River_Miles_Reported', 'Field21', 'Field22', 'Field23', 'Field24', 'Field25', 'Field26', 'Field27', 'Field28', 'Field29']
-    sample={"OBJECTID1": "1", "OBJECTID": "1715", "AR_ID": "TN-016", "NID_ID": "None", "Dam_Name": "Occidental Chem Pond Dam D", "Year_Removed": "1995", "Latitude": "35.70613", "Longitude": "-87.225", "City_County": "Williamsport", "River": "Duck Creek", "HUC8": "Lower Duck", "State": "TN", "Dam_Height_ft": "160", "Dam_Length_ft": "None", "Year_Built": "None", "Owner": "None", "Original_Use": "None", "Type_Material": "None"}
-    sample={"OBJECTID1": "2", "OBJECTID": "241", "AR_ID": "CO-026", "NID_ID": "CO01146", "Dam_Name": "Cucharas #5 Dam", "Year_Removed": "2019", "Latitude": "37.75", "Longitude": "-104.6", "City_County": "Walsenburg/Huerfano", "River": "Cucharas River", "HUC8": "Huerfano", "State": "CO", "Dam_Height_ft": "135", "Dam_Length_ft": "530", "Year_Built": "1913", "Owner": "Two Rivers Farming and Irrigation", "Original_Use": "Irrigation", "Type_Material": "Concrete face/rock fill"}
-  -- 'Dams over 45 feet Lower 48'
-  LAYER https://services3.arcgis.com/0OPQIK59PJJqLK0A/arcgis/rest/services/Dams_removed_over_45_feet/FeatureServer/1
-    PASS name='Dams over 45 feet Lower 48' geom=esriGeometryPoint count=6912 geojson_ok=True in_state=True
-    fields=['OBJECTID1', 'OBJECTID', 'FID', 'id', 'federalId', 'name', 'latitude', 'longitude', 'hazardId', 'ownerNames', 'primaryPur', 'nidHeight', 'eapId', 'otherStruc', 'otherNames', 'formerName', 'nidId', 'ownerTypeI', 'primaryOwn', 'separateSt', 'isAssociat', 'designerNa', 'nonFederal', 'purposeIds', 'sourceAgen', 'stateFedId', 'state', 'county', 'countyStat', 'city']
-    sample={"OBJECTID1": "1", "OBJECTID": "83263", "FID": "23245", "id": "503609", "federalId": "MT00019", "name": "West Fork Bitterroot (Painted Rocks)", "latitude": "45.7174", "longitude": "-114.2814", "hazardId": "4", "ownerNames": "STATE WATER PROJECTS", "primaryPur": "2", "nidHeight": "143", "eapId": "1", "otherStruc": "None", "otherNames": "Painted Rocks", "formerName": "None", "nidId": "MT00019", "ownerTypeI": "4"}
-    sample={"OBJECTID1": "2", "OBJECTID": "3886", "FID": "63064", "id": "547867", "federalId": "WV03932", "name": "Campbells Creek Slurry Impoundment", "latitude": "38.30361", "longitude": "-80.52556", "hazardId": "4", "ownerNames": "CATENARY COAL COMPANY", "primaryPur": "1", "nidHeight": "355", "eapId": "2", "otherStruc": "None", "otherNames": "Pointlick Impoundment", "formerName": "None", "nidId": "WV03932", "ownerTypeI": "1"}
-  -- 'Dams Removed Lower 48'
-  LAYER https://services3.arcgis.com/0OPQIK59PJJqLK0A/arcgis/rest/services/Dams_removed_over_45_feet/FeatureServer/2
-    PASS name='Dams Removed Lower 48' geom=esriGeometryPoint count=1861 geojson_ok=True in_state=True
-    fields=['OBJECTID1', 'OBJECTID', 'AR_ID', 'NID_ID', 'Dam_Name', 'Year_Removed', 'Latitude', 'Longitude', 'City_County', 'River', 'HUC8', 'State', 'Dam_Height_ft', 'Dam_Length_ft', 'Year_Built', 'Owner', 'Original_Use', 'Type_Material', 'Miles_Restored_US', 'Miles_Restored_DS', 'River_Miles_Reported', 'Field21', 'Field22', 'Field23', 'Field24', 'Field25', 'Field26', 'Field27', 'Field28', 'Field29']
-    sample={"OBJECTID1": "1", "OBJECTID": "1083", "AR_ID": "OH-001", "NID_ID": "None", "Dam_Name": "Silver Creek Dam", "Year_Removed": "None", "Latitude": "41.46205", "Longitude": "-81.3263", "City_County": "Novelty", "River": "Silver Creek", "HUC8": "Ashtabula-Chagrin", "State": "OH", "Dam_Height_ft": "None", "Dam_Length_ft": "None", "Year_Built": "None", "Owner": "None", "Original_Use": "None", "Type_Material": "None"}
-    sample={"OBJECTID1": "2", "OBJECTID": "1938", "AR_ID": "WI-032", "NID_ID": "None", "Dam_Name": "Oslo Dam", "Year_Removed": "1991", "Latitude": "44.0991", "Longitude": "-87.823", "City_County": "Reedsville", "River": "Manitowoc River", "HUC8": "Manitowoc-Sheboygan", "State": "WI", "Dam_Height_ft": "None", "Dam_Length_ft": "None", "Year_Built": "None", "Owner": "None", "Original_Use": "None", "Type_Material": "None"}
-  -- 'Dams Lower 48'
-  LAYER https://services3.arcgis.com/0OPQIK59PJJqLK0A/arcgis/rest/services/Dams_removed_over_45_feet/FeatureServer/3
-    PASS name='Dams Lower 48' geom=esriGeometryPoint count=91759 geojson_ok=True in_state=True
-    fields=['OBJECTID', 'FID', 'id', 'federalId', 'name', 'latitude', 'longitude', 'hazardId', 'ownerNames', 'primaryPur', 'nidHeight', 'eapId', 'otherStruc', 'otherNames', 'formerName', 'nidId', 'ownerTypeI', 'primaryOwn', 'separateSt', 'isAssociat', 'designerNa', 'nonFederal', 'purposeIds', 'sourceAgen', 'stateFedId', 'state', 'county', 'countyStat', 'city', 'distance']
-    sample={"OBJECTID": "1", "FID": "74010", "id": "467699", "federalId": "GA00962", "name": "Lake Jabekit Dam", "latitude": "34.030278", "longitude": "-83.409139", "hazardId": "2", "ownerNames": "Eberhardt, Kenneth G.", "primaryPur": "5", "nidHeight": "35", "eapId": "3", "otherStruc": "None", "otherNames": "None", "formerName": "None", "nidId": "GA00962", "ownerTypeI": "1", "primaryOwn": "1"}
-    sample={"OBJECTID": "2", "FID": "75970", "id": "524393", "federalId": "OK02082", "name": "Oknoname 089018", "latitude": "33.73007835", "longitude": "-94.62508674", "hazardId": "2", "ownerNames": "US FOREST SERVICE", "primaryPur": "2", "nidHeight": "20", "eapId": "3", "otherStruc": "None", "otherNames": "None", "formerName": "Oknoname 089018", "nidId": "OK02082", "ownerTypeI": "3", "primaryOwn": "3"}
-  -- 'Dams'
-  LAYER https://services3.arcgis.com/0OPQIK59PJJqLK0A/arcgis/rest/services/Dams_removed_over_45_feet/FeatureServer/4
-    PASS name='Dams' geom=esriGeometryPoint count=92392 geojson_ok=True in_state=True
-    fields=['FID', 'id', 'federalId', 'name', 'latitude', 'longitude', 'hazardId', 'ownerNames', 'primaryPur', 'nidHeight', 'eapId', 'otherStruc', 'otherNames', 'formerName', 'nidId', 'ownerTypeI', 'primaryOwn', 'separateSt', 'isAssociat', 'designerNa', 'nonFederal', 'purposeIds', 'sourceAgen', 'stateFedId', 'state', 'county', 'countyStat', 'city', 'distance', 'riverName']
-    sample={"FID": "1", "id": "487153", "federalId": "KY00728", "name": "Aichi Forge Usa Dam", "latitude": "38.28828", "longitude": "-84.55619", "hazardId": "2", "ownerNames": "AICHI", "primaryPur": "12", "nidHeight": "15", "eapId": "3", "otherStruc": "None", "otherNames": "Aichi Forge Usa Lake", "formerName": "None", "nidId": "KY00728", "ownerTypeI": "1", "primaryOwn": "1", "separateSt": "0"}
-    sample={"FID": "2", "id": "551373", "federalId": "ND01160", "name": "Oxy Usa Retention Pond", "latitude": "47.156385", "longitude": "-102.770612", "hazardId": "2", "ownerNames": "OXY USA Inc.", "primaryPur": "12", "nidHeight": "29", "eapId": "3", "otherStruc": "None", "otherNames": "None", "formerName": "None", "nidId": "ND01160", "ownerTypeI": "1", "primaryOwn": "1", "separateSt": "0"}
-  ITEM 'Dams (DOT)' owner=HSEMA_PPD -> https://geo.dot.gov/server/rest/services/Hosted/Dams_DS/FeatureServer/0
-  ITEM 'Map of Dams over 45 feet tall_WFL1' owner=krpete27_asu -> https://services3.arcgis.com/0OPQIK59PJJqLK0A/arcgis/rest/services/Map_of_Dams_over_45_feet_tall_WFL1/FeatureServer
-  ITEM 'jmbarne9_Project2_beaver_WFL1' owner=jmbarne9_NCSU -> https://services1.arcgis.com/aT1T0pU1ZdpuDk1t/arcgis/rest/services/jmbarne9_Project2_beaver_WFL1/FeatureServer
-  ITEM 'Waterway' owner=ThriveRegionalPartnership -> https://services3.arcgis.com/xpR2E2r2KmCE5hF3/arcgis/rest/services/Waterway/FeatureServer
-  ITEM 'Port Facilities - Ports - copy' owner=elisabeth.kruger@wwfus.org_panda -> https://geo.dot.gov/server/rest/services/Hosted/Ports_DS/FeatureServer
-  ITEM 'Port Facilities' owner=clibby007 -> https://services5.arcgis.com/HDRa0B57OVrv2E1q/arcgis/rest/services/Port_Facilities/FeatureServer
-  ITEM '(NonDOT) NTAD Metadata Collection Tool' owner=mitchell.ogden.ctr_usdot -> https://services.arcgis.com/xOi1kZaI0eWDREZv/arcgis/rest/services/service_36997dfa96c945c692c8873771869f8b/FeatureServer
-  ITEM 'NYC Bridges and Dams Ranking_WFL1' owner=kande_CU -> https://services2.arcgis.com/LNyGjxxQBXWW0vo0/arcgis/rest/services/NYC_Bridges_and_Dams_Ranking_WFL1/FeatureServer
-  ITEM 'TRIP Map Data 2024' owner=ThriveRegionalPartnership -> https://services3.arcgis.com/xpR2E2r2KmCE5hF3/arcgis/rest/services/TRIP2024_WFL1/FeatureServer
-
-==== SEARCH US 'USACE national inventory dams' ====
-  ITEM 'National Inventory of Dams' owner=Esri_US_Federal_Data -> https://services2.arcgis.com/FiaPA4ga0iQKduv3/arcgis/rest/services/NID_v1/FeatureServer
-  -- 'Dams'
-  LAYER https://services2.arcgis.com/FiaPA4ga0iQKduv3/arcgis/rest/services/NID_v1/FeatureServer/0
-    PASS name='Dams' geom=esriGeometryPoint count=92469 geojson_ok=True in_state=True
-    fields=['OBJECTID', 'NIDID', 'OTHER_STRUCTURE_ID', 'FEDERAL_ID', 'DATA_UPDATED', 'NAME', 'OTHER_NAMES', 'OWNER_TYPES', 'PRIMARY_OWNER_TYPE', 'STATE_FED_AGENCY', 'NUMBER_ASSOCIATED_STRUCTURES', 'DESIGNER_NAMES', 'NON_FED_ON_FED', 'STATE_REGULATED', 'STATE_JURISDICTION', 'STATE_REGULATORY_AGENCY', 'STATE_PERMITTING', 'STATE_INSPECTION', 'STATE_ENFORCEMENT', 'PRIMARY_SOURCE_AGENCY', 'LATITUDE', 'LONGITUDE', 'STATE', 'COUNTYSTATE', 'CITY', 'DISTANCE', 'RIVER_OR_STREAM', 'CONGDIST', 'CONG_REPRESNTATIVE', 'FED_AGENCY_OWNERS']
-    sample={"OBJECTID": "1", "NIDID": "CA00821", "OTHER_STRUCTURE_ID": "S001", "FEDERAL_ID": "CA00821S001", "DATA_UPDATED": "1745928000000", "NAME": "Buck Island Auxiliary", "OTHER_NAMES": "None", "OWNER_TYPES": "Public Utility", "PRIMARY_OWNER_TYPE": "Public Utility", "STATE_FED_AGENCY": "02101-03-02", "NUMBER_ASSOCIATED_STRUCTURES": "1", "DESIGNER_NAMES": "Bechtel", "NON_FED_ON_FED": "No", "STATE_REGULATED": "None", "STATE_JURISDICTION": "No", "STATE_REGULATORY_AGENCY": "None", "STATE_PERMITTING": "No", "STATE_INSPECTION": "No"}
-    sample={"OBJECTID": "2", "NIDID": "AL01415", "OTHER_STRUCTURE_ID": "S001", "FEDERAL_ID": "AL01415S001", "DATA_UPDATED": "1681300800000", "NAME": "Weiss - Spillway Diversion Dam                  ...", "OTHER_NAMES": "None", "OWNER_TYPES": "Public Utility", "PRIMARY_OWNER_TYPE": "Public Utility", "STATE_FED_AGENCY": "02146-05-02", "NUMBER_ASSOCIATED_STRUCTURES": "5", "DESIGNER_NAMES": "SOUTHERN COMPANY SERVICES", "NON_FED_ON_FED": "No", "STATE_REGULATED": "No", "STATE_JURISDICTION": "No", "STATE_REGULATORY_AGENCY": "None", "STATE_PERMITTING": "No", "STATE_INSPECTION": "No"}
-  ITEM 'National Inventory of Dams USACE Transboundary' owner=IJC_Authoritative -> https://services2.arcgis.com/FOAjZu7OcdPEtbC0/arcgis/rest/services/National_Inventory_of_Dams_USACE_Transboundary/FeatureServer
-  -- 'NID_Transboundary_10102025'
-  LAYER https://services2.arcgis.com/FOAjZu7OcdPEtbC0/arcgis/rest/services/National_Inventory_of_Dams_USACE_Transboundary/FeatureServer/0
-    PASS name='NID_Transboundary_10102025' geom=esriGeometryPoint count=7034 geojson_ok=True in_state=True
-    fields=['OBJECTID', 'NIDID', 'OTHER_STRUCTURE_ID', 'FEDERAL_ID', 'DATA_UPDATED', 'NAME', 'OTHER_NAMES', 'OWNER_TYPES', 'PRIMARY_OWNER_TYPE', 'STATE_FED_AGENCY', 'NUMBER_ASSOCIATED_STRUCTURES', 'DESIGNER_NAMES', 'NON_FED_ON_FED', 'STATE_REGULATED', 'STATE_JURISDICTION', 'STATE_REGULATORY_AGENCY', 'STATE_PERMITTING', 'STATE_INSPECTION', 'STATE_ENFORCEMENT', 'PRIMARY_SOURCE_AGENCY', 'LATITUDE', 'LONGITUDE', 'STATE', 'COUNTYSTATE', 'CITY', 'DISTANCE', 'RIVER_OR_STREAM', 'CONGDIST', 'CONG_REPRESNTATIVE', 'FED_AGENCY_OWNERS']
-    sample={"OBJECTID": "1", "NIDID": "ND00531", "OTHER_STRUCTURE_ID": "None", "FEDERAL_ID": "ND00531", "DATA_UPDATED": "1676548800000", "NAME": "Prescott Dam 2", "OTHER_NAMES": "None", "OWNER_TYPES": "Local Government", "PRIMARY_OWNER_TYPE": "Local Government", "STATE_FED_AGENCY": "None", "NUMBER_ASSOCIATED_STRUCTURES": "0", "DESIGNER_NAMES": "WPA", "NON_FED_ON_FED": "No", "STATE_REGULATED": "Yes", "STATE_JURISDICTION": "Yes", "STATE_REGULATORY_AGENCY": "ND DWR", "STATE_PERMITTING": "Yes", "STATE_INSPECTION": "Yes"}
-    sample={"OBJECTID": "2", "NIDID": "ND01004", "OTHER_STRUCTURE_ID": "None", "FEDERAL_ID": "ND01004", "DATA_UPDATED": "1676548800000", "NAME": "None", "OTHER_NAMES": "None", "OWNER_TYPES": "Local Government", "PRIMARY_OWNER_TYPE": "Local Government", "STATE_FED_AGENCY": "None", "NUMBER_ASSOCIATED_STRUCTURES": "0", "DESIGNER_NAMES": "Interstate", "NON_FED_ON_FED": "None", "STATE_REGULATED": "Yes", "STATE_JURISDICTION": "Yes", "STATE_REGULATORY_AGENCY": "ND DWR", "STATE_PERMITTING": "Yes", "STATE_INSPECTION": "Yes"}
-  ITEM 'INF - National Inventory of Dams (USACE 2020)' owner=EPA_GEO -> https://services.arcgis.com/cJ9YHowT8TU7DUyn/arcgis/rest/services/INF___National_Inventory_of_Dams__USACE_2021_/FeatureServer
-  -- 'INF - National Inventory of Dams (USACE 2021)'
-  LAYER https://services.arcgis.com/cJ9YHowT8TU7DUyn/arcgis/rest/services/INF___National_Inventory_of_Dams__USACE_2021_/FeatureServer/0
-    PASS name='INF - National Inventory of Dams (USACE 2021)' geom=esriGeometryPoint count=91213 geojson_ok=True in_state=True
-    fields=['OBJECTID', 'RECORDID', 'NIDID', 'STATEID', 'DAM_NAME', 'OTHER_DAM_NAME', 'DAM_FORMER_NAME', 'DAM_TYPE', 'PRIVATE_DAM', 'HAZARD', 'RIVER', 'COUNTY', 'CITY', 'STATE', 'SECTION', 'DISTANCE', 'OWNER_NAME', 'OWNER_TYPE', 'DAM_DESIGNER', 'CORE', 'FOUNDATION', 'PURPOSES', 'YEAR_COMPLETED', 'YEAR_MODIFIED', 'DAM_LENGTH', 'DAM_HEIGHT', 'STRUCTURAL_HEIGHT', 'HYDRAULIC_HEIGHT', 'NID_HEIGHT', 'MAX_DISCHARGE']
-    sample={"OBJECTID": "1", "RECORDID": "1", "NIDID": "AK00001", "STATEID": "", "DAM_NAME": "COOPER LAKE", "OTHER_DAM_NAME": "", "DAM_FORMER_NAME": "", "DAM_TYPE": "RE", "PRIVATE_DAM": "Y", "HAZARD": "H", "RIVER": "COOPER CREEK, KENAI RIVER", "COUNTY": "KENAI PENINSULA", "CITY": "COOPER LANDING", "STATE": "AK", "SECTION": "N/A", "DISTANCE": "6", "OWNER_NAME": "CHUGACH ELECTRIC ASSOCIATION, INC.", "OWNER_TYPE": "P"}
-    sample={"OBJECTID": "2", "RECORDID": "2", "NIDID": "AK00002", "STATEID": "", "DAM_NAME": "BLUE LAKE", "OTHER_DAM_NAME": "", "DAM_FORMER_NAME": "", "DAM_TYPE": "VA", "PRIVATE_DAM": "N", "HAZARD": "H", "RIVER": "SAWMILL CREEK", "COUNTY": "SITKA", "CITY": "NONE", "STATE": "AK", "SECTION": "T55S, R64E, S35", "DISTANCE": "0", "OWNER_NAME": "CITY AND BOROUGH OF SITKA", "OWNER_TYPE": "L"}
-  ITEM 'Lifelines - Safety & Security - Live - Point - National Inventory of Dams (USACE)' owner=FEMA_Region_6_GIS -> https://services2.arcgis.com/FiaPA4ga0iQKduv3/arcgis/rest/services/NID_v1/FeatureServer
-  -- 'Dams'
-  LAYER https://services2.arcgis.com/FiaPA4ga0iQKduv3/arcgis/rest/services/NID_v1/FeatureServer/0
-    PASS name='Dams' geom=esriGeometryPoint count=92469 geojson_ok=True in_state=True
-    fields=['OBJECTID', 'NIDID', 'OTHER_STRUCTURE_ID', 'FEDERAL_ID', 'DATA_UPDATED', 'NAME', 'OTHER_NAMES', 'OWNER_TYPES', 'PRIMARY_OWNER_TYPE', 'STATE_FED_AGENCY', 'NUMBER_ASSOCIATED_STRUCTURES', 'DESIGNER_NAMES', 'NON_FED_ON_FED', 'STATE_REGULATED', 'STATE_JURISDICTION', 'STATE_REGULATORY_AGENCY', 'STATE_PERMITTING', 'STATE_INSPECTION', 'STATE_ENFORCEMENT', 'PRIMARY_SOURCE_AGENCY', 'LATITUDE', 'LONGITUDE', 'STATE', 'COUNTYSTATE', 'CITY', 'DISTANCE', 'RIVER_OR_STREAM', 'CONGDIST', 'CONG_REPRESNTATIVE', 'FED_AGENCY_OWNERS']
-    sample={"OBJECTID": "1", "NIDID": "CA00821", "OTHER_STRUCTURE_ID": "S001", "FEDERAL_ID": "CA00821S001", "DATA_UPDATED": "1745928000000", "NAME": "Buck Island Auxiliary", "OTHER_NAMES": "None", "OWNER_TYPES": "Public Utility", "PRIMARY_OWNER_TYPE": "Public Utility", "STATE_FED_AGENCY": "02101-03-02", "NUMBER_ASSOCIATED_STRUCTURES": "1", "DESIGNER_NAMES": "Bechtel", "NON_FED_ON_FED": "No", "STATE_REGULATED": "None", "STATE_JURISDICTION": "No", "STATE_REGULATORY_AGENCY": "None", "STATE_PERMITTING": "No", "STATE_INSPECTION": "No"}
-    sample={"OBJECTID": "2", "NIDID": "AL01415", "OTHER_STRUCTURE_ID": "S001", "FEDERAL_ID": "AL01415S001", "DATA_UPDATED": "1681300800000", "NAME": "Weiss - Spillway Diversion Dam                  ...", "OTHER_NAMES": "None", "OWNER_TYPES": "Public Utility", "PRIMARY_OWNER_TYPE": "Public Utility", "STATE_FED_AGENCY": "02146-05-02", "NUMBER_ASSOCIATED_STRUCTURES": "5", "DESIGNER_NAMES": "SOUTHERN COMPANY SERVICES", "NON_FED_ON_FED": "No", "STATE_REGULATED": "No", "STATE_JURISDICTION": "No", "STATE_REGULATORY_AGENCY": "None", "STATE_PERMITTING": "No", "STATE_INSPECTION": "No"}
-  ITEM 'Selected CWIFP_Dams' owner=jep_mvp -> https://services6.arcgis.com/ym4vv2kwBujSjhwm/arcgis/rest/services/Selected_CWIFP_Dams/FeatureServer
-  -- 'SelectedCWIFP_Dams'
-  LAYER https://services6.arcgis.com/ym4vv2kwBujSjhwm/arcgis/rest/services/Selected_CWIFP_Dams/FeatureServer/0
-    PASS name='SelectedCWIFP_Dams' geom=esriGeometryPoint count=112 geojson_ok=True in_state=True
-    fields=['OBJECTID', 'NIDID', 'OTHER_STRUCTURE_ID', 'FEDERAL_ID', 'DATA_UPDATED', 'NAME', 'OTHER_NAMES', 'OWNER_TYPES', 'PRIMARY_OWNER_TYPE', 'STATE_FED_AGENCY', 'NUMBER_ASSOCIATED_STRUCTURES', 'DESIGNER_NAMES', 'NON_FED_ON_FED', 'STATE_REGULATED', 'STATE_JURISDICTION', 'STATE_REGULATORY_AGENCY', 'STATE_PERMITTING', 'STATE_INSPECTION', 'STATE_ENFORCEMENT', 'PRIMARY_SOURCE_AGENCY', 'LATITUDE', 'LONGITUDE', 'STATE', 'COUNTYSTATE', 'CITY', 'DISTANCE', 'RIVER_OR_STREAM', 'USACEDISTRICT', 'CONGDIST', 'CONG_REPRESNTATIVE']
-    sample={"OBJECTID": "1", "NIDID": "CA00037", "OTHER_STRUCTURE_ID": "None", "FEDERAL_ID": "CA00037", "DATA_UPDATED": "1617969600000", "NAME": "Antelope", "OTHER_NAMES": "Antelope Lake", "OWNER_TYPES": "State", "PRIMARY_OWNER_TYPE": "State", "STATE_FED_AGENCY": "1.050", "NUMBER_ASSOCIATED_STRUCTURES": "0", "DESIGNER_NAMES": "None", "NON_FED_ON_FED": "None", "STATE_REGULATED": "Yes", "STATE_JURISDICTION": "Yes", "STATE_REGULATORY_AGENCY": "DWR, Safety of Dams", "STATE_PERMITTING": "Yes", "STATE_INSPECTION": "Yes"}
-    sample={"OBJECTID": "2", "NIDID": "CA00289", "OTHER_STRUCTURE_ID": "None", "FEDERAL_ID": "CA00289", "DATA_UPDATED": "1617969600000", "NAME": "Almaden", "OTHER_NAMES": "Almaden Reservoir", "OWNER_TYPES": "Public Utility", "PRIMARY_OWNER_TYPE": "Public Utility", "STATE_FED_AGENCY": "72.004", "NUMBER_ASSOCIATED_STRUCTURES": "0", "DESIGNER_NAMES": "None", "NON_FED_ON_FED": "None", "STATE_REGULATED": "Yes", "STATE_JURISDICTION": "Yes", "STATE_REGULATORY_AGENCY": "DWR, Safety of Dams", "STATE_PERMITTING": "Yes", "STATE_INSPECTION": "Yes"}
-  ITEM 'Dams' owner=USDOT_BTS -> https://services.arcgis.com/xOi1kZaI0eWDREZv/arcgis/rest/services/NTAD_Dams/FeatureServer
-  -- 'Dams'
-  LAYER https://services.arcgis.com/xOi1kZaI0eWDREZv/arcgis/rest/services/NTAD_Dams/FeatureServer/0
-    PASS name='Dams' geom=esriGeometryPoint count=92628 geojson_ok=True in_state=True
-    fields=['OBJECTID', 'id', 'federalId', 'name', 'latitude', 'longitude', 'publicHazardId', 'formerNames', 'ownerNames', 'primaryPurposeId', 'nidHeight', 'eapId', 'nidId', 'ownerTypeIds', 'primaryOwnerTypeId', 'separateStructuresCount', 'isAssociatedStructureId', 'designerNames', 'nonFederalDamOnFederalId', 'purposeIds', 'sourceAgency', 'state', 'county', 'countyState', 'city', 'distance', 'riverName', 'congDist', 'stateRegulatedId', 'fedRegulatedId']
-    sample={"OBJECTID": "1", "id": "526816", "federalId": "OK20998", "name": "Dod Usa 4", "latitude": "35.67191196", "longitude": "-95.18729125", "publicHazardId": "2", "formerNames": "Dod Usa", "ownerNames": "DEPT. OF DEFENSE/US ARMY RESERVE CENTER", "primaryPurposeId": "5", "nidHeight": "15", "eapId": "3", "nidId": "OK20998", "ownerTypeIds": "3", "primaryOwnerTypeId": "3", "separateStructuresCount": "0", "isAssociatedStructureId": "0", "designerNames": "N/A"}
-    sample={"OBJECTID": "2", "id": "526812", "federalId": "OK20994", "name": "Dod Usa 2", "latitude": "35.70340894", "longitude": "-95.13637547", "publicHazardId": "2", "formerNames": "Dod Usa", "ownerNames": "DEPT. OF DEFENSE/US ARMY RESERVE CENTER", "primaryPurposeId": "5", "nidHeight": "18", "eapId": "3", "nidId": "OK20994", "ownerTypeIds": "3", "primaryOwnerTypeId": "3", "separateStructuresCount": "0", "isAssociatedStructureId": "0", "designerNames": "N/A"}
-  ITEM 'USACE_Dams_Willamette_Basin' owner=weyandtal_CDMSmith -> https://services1.arcgis.com/VVapzOPgBae5joyC/arcgis/rest/services/USACE_Dams_Willamette_Basin/FeatureServer
-  -- 'USACE_Dams_Willamette_Basin'
-  LAYER https://services1.arcgis.com/VVapzOPgBae5joyC/arcgis/rest/services/USACE_Dams_Willamette_Basin/FeatureServer/0
-    PASS name='USACE_Dams_Willamette_Basin' geom=esriGeometryPoint count=15 geojson_ok=True in_state=True
-    fields=['OBJECTID', 'RECORDID', 'DAM_NAME', 'OTHER_DAM_NAME', 'STATEID', 'NIDID', 'LONGITUDE', 'LATITUDE', 'SECTION_', 'COUNTY', 'RIVER', 'CITY', 'OWNER_NAME', 'OWNER_TYPE', 'DAM_DESIGNER', 'DAM_TYPE', 'PURPOSES', 'YEAR_COMPLETED', 'SURFACE_AREA', 'DRAINAGE_AREA', 'STATE_REG_DAM', 'FED_DESIGN', 'FED_CONSTRUCTION', 'FED_OPERATION', 'FED_OWNER', 'FED_OTHER', 'SOURCE_AGENCY', 'STATE', 'URL_ADDRESS', 'PROJECTID']
-    sample={"OBJECTID": "1", "RECORDID": "932313", "DAM_NAME": "Dexter", "OTHER_DAM_NAME": "DEXTER LAKE", "STATEID": "79008", "NIDID": "OR00006", "LONGITUDE": "-122.81330000000001", "LATITUDE": "43.921669", "SECTION_": "S15, T19S, R1W", "COUNTY": "LANE", "RIVER": "MIDDLE FORK WILLAMETTE RIVER", "CITY": "EUGENE", "OWNER_NAME": "CENWP", "OWNER_TYPE": "F", "DAM_DESIGNER": "U. S. Army Corps of Engineers, Portland District", "DAM_TYPE": "RE", "PURPOSES": "HFR", "YEAR_COMPLETED": "1955"}
-    sample={"OBJECTID": "4", "RECORDID": "932429", "DAM_NAME": "Foster", "OTHER_DAM_NAME": "FOSTER LAKE", "STATEID": "68002", "NIDID": "OR00012", "LONGITUDE": "-122.6633", "LATITUDE": "44.413329999999995", "SECTION_": "S27, T13S, R1E", "COUNTY": "LINN", "RIVER": "SOUTH SANTIAM RIVER", "CITY": "SWEETHOME", "OWNER_NAME": "CENWP", "OWNER_TYPE": "F", "DAM_DESIGNER": "U. S. Army Corps of Engineers, Portland District", "DAM_TYPE": "ER", "PURPOSES": "CHIFSR", "YEAR_COMPLETED": "1967"}
-  ITEM 'USACE Dams' owner=GIS.Data_MOCO -> https://services1.arcgis.com/PRoAPGnMSUqvTrzq/arcgis/rest/services/USACE_NID/FeatureServer
-  -- 'National Inventory of Dams'
-  LAYER https://services1.arcgis.com/PRoAPGnMSUqvTrzq/arcgis/rest/services/USACE_NID/FeatureServer/0
-    PASS name='National Inventory of Dams' geom=esriGeometryPoint count=88 geojson_ok=True in_state=True
-    fields=['OBJECTID', 'SOURCEAGENCY', 'STFEDAGENCYID', 'LATITUDE', 'LONGITUDE', 'STATE', 'COUNTY', 'CITY', 'DISTNRCTYMI', 'RVRSTRMNAME', 'CONGDIST', 'STRLOCATION', 'STREGULATED', 'STJURIS', 'STREGAGENCY', 'STPERMITAUTH', 'STINSPAUTH', 'STENFAUTH', 'FEDAGOWN', 'FEDAGFUND', 'FEDAGDES', 'FEDAGCONST', 'FEDAGREG', 'FEDAGINSP', 'FEDAGOP', 'FEDAGOTH', 'PDAMTYPE', 'DAMTYPES', 'CORETYPES', 'FOUNDATION']
-    sample={"OBJECTID": "1", "SOURCEAGENCY": "Texas", "STFEDAGENCYID": "TX00120", "LATITUDE": "30.425885", "LONGITUDE": "-95.516949", "STATE": "Texas", "COUNTY": "Montgomery", "CITY": "None", "DISTNRCTYMI": "None", "RVRSTRMNAME": "TR-LEWIS CREEK", "CONGDIST": "Congressional District 08, Texas", "STRLOCATION": "None", "STREGULATED": "Yes", "STJURIS": "Yes", "STREGAGENCY": "TCEQ", "STPERMITAUTH": "Yes", "STINSPAUTH": "Yes", "STENFAUTH": "Yes"}
-    sample={"OBJECTID": "2", "SOURCEAGENCY": "Texas", "STFEDAGENCYID": "TX07540", "LATITUDE": "30.336514", "LONGITUDE": "-95.226662", "STATE": "Texas", "COUNTY": "Montgomery", "CITY": "None", "DISTNRCTYMI": "None", "RVRSTRMNAME": "None", "CONGDIST": "Congressional District 08, Texas", "STRLOCATION": "None", "STREGULATED": "Yes", "STJURIS": "Yes", "STREGAGENCY": "TCEQ", "STPERMITAUTH": "Yes", "STINSPAUTH": "Yes", "STENFAUTH": "Yes"}
-  ITEM 'National Inventory of Dams' owner=BRADD_Admin -> https://services2.arcgis.com/FiaPA4ga0iQKduv3/arcgis/rest/services/NID_v1/FeatureServer
-  -- 'Dams'
-  LAYER https://services2.arcgis.com/FiaPA4ga0iQKduv3/arcgis/rest/services/NID_v1/FeatureServer/0
-    PASS name='Dams' geom=esriGeometryPoint count=92469 geojson_ok=True in_state=True
-    fields=['OBJECTID', 'NIDID', 'OTHER_STRUCTURE_ID', 'FEDERAL_ID', 'DATA_UPDATED', 'NAME', 'OTHER_NAMES', 'OWNER_TYPES', 'PRIMARY_OWNER_TYPE', 'STATE_FED_AGENCY', 'NUMBER_ASSOCIATED_STRUCTURES', 'DESIGNER_NAMES', 'NON_FED_ON_FED', 'STATE_REGULATED', 'STATE_JURISDICTION', 'STATE_REGULATORY_AGENCY', 'STATE_PERMITTING', 'STATE_INSPECTION', 'STATE_ENFORCEMENT', 'PRIMARY_SOURCE_AGENCY', 'LATITUDE', 'LONGITUDE', 'STATE', 'COUNTYSTATE', 'CITY', 'DISTANCE', 'RIVER_OR_STREAM', 'CONGDIST', 'CONG_REPRESNTATIVE', 'FED_AGENCY_OWNERS']
-    sample={"OBJECTID": "1", "NIDID": "CA00821", "OTHER_STRUCTURE_ID": "S001", "FEDERAL_ID": "CA00821S001", "DATA_UPDATED": "1745928000000", "NAME": "Buck Island Auxiliary", "OTHER_NAMES": "None", "OWNER_TYPES": "Public Utility", "PRIMARY_OWNER_TYPE": "Public Utility", "STATE_FED_AGENCY": "02101-03-02", "NUMBER_ASSOCIATED_STRUCTURES": "1", "DESIGNER_NAMES": "Bechtel", "NON_FED_ON_FED": "No", "STATE_REGULATED": "None", "STATE_JURISDICTION": "No", "STATE_REGULATORY_AGENCY": "None", "STATE_PERMITTING": "No", "STATE_INSPECTION": "No"}
-    sample={"OBJECTID": "2", "NIDID": "AL01415", "OTHER_STRUCTURE_ID": "S001", "FEDERAL_ID": "AL01415S001", "DATA_UPDATED": "1681300800000", "NAME": "Weiss - Spillway Diversion Dam                  ...", "OTHER_NAMES": "None", "OWNER_TYPES": "Public Utility", "PRIMARY_OWNER_TYPE": "Public Utility", "STATE_FED_AGENCY": "02146-05-02", "NUMBER_ASSOCIATED_STRUCTURES": "5", "DESIGNER_NAMES": "SOUTHERN COMPANY SERVICES", "NON_FED_ON_FED": "No", "STATE_REGULATED": "No", "STATE_JURISDICTION": "No", "STATE_REGULATORY_AGENCY": "None", "STATE_PERMITTING": "No", "STATE_INSPECTION": "No"}
-  ITEM 'National Inventory of Dams' owner=KansasGIS -> https://services.arcgis.com/xOi1kZaI0eWDREZv/arcgis/rest/services/NTAD_Dams/FeatureServer
-  -- 'Dams'
-  LAYER https://services.arcgis.com/xOi1kZaI0eWDREZv/arcgis/rest/services/NTAD_Dams/FeatureServer/0
-    PASS name='Dams' geom=esriGeometryPoint count=92628 geojson_ok=True in_state=True
-    fields=['OBJECTID', 'id', 'federalId', 'name', 'latitude', 'longitude', 'publicHazardId', 'formerNames', 'ownerNames', 'primaryPurposeId', 'nidHeight', 'eapId', 'nidId', 'ownerTypeIds', 'primaryOwnerTypeId', 'separateStructuresCount', 'isAssociatedStructureId', 'designerNames', 'nonFederalDamOnFederalId', 'purposeIds', 'sourceAgency', 'state', 'county', 'countyState', 'city', 'distance', 'riverName', 'congDist', 'stateRegulatedId', 'fedRegulatedId']
-    sample={"OBJECTID": "1", "id": "526816", "federalId": "OK20998", "name": "Dod Usa 4", "latitude": "35.67191196", "longitude": "-95.18729125", "publicHazardId": "2", "formerNames": "Dod Usa", "ownerNames": "DEPT. OF DEFENSE/US ARMY RESERVE CENTER", "primaryPurposeId": "5", "nidHeight": "15", "eapId": "3", "nidId": "OK20998", "ownerTypeIds": "3", "primaryOwnerTypeId": "3", "separateStructuresCount": "0", "isAssociatedStructureId": "0", "designerNames": "N/A"}
-    sample={"OBJECTID": "2", "id": "526812", "federalId": "OK20994", "name": "Dod Usa 2", "latitude": "35.70340894", "longitude": "-95.13637547", "publicHazardId": "2", "formerNames": "Dod Usa", "ownerNames": "DEPT. OF DEFENSE/US ARMY RESERVE CENTER", "primaryPurposeId": "5", "nidHeight": "18", "eapId": "3", "nidId": "OK20994", "ownerTypeIds": "3", "primaryOwnerTypeId": "3", "separateStructuresCount": "0", "isAssociatedStructureId": "0", "designerNames": "N/A"}
-  ITEM 'Dams_Projected' owner=BERK_MapMaker -> https://services.arcgis.com/tsh3MgS57Cs86wmq/arcgis/rest/services/Dams_Projected/FeatureServer
-  ITEM 'National Inventory of Dams' owner=agcooke_UW -> https://services2.arcgis.com/FiaPA4ga0iQKduv3/arcgis/rest/services/NID_v1/FeatureServer
-  ITEM 'USA Dam Inventory' owner=EsriTrainingSvc -> https://services.arcgis.com/ue9rwulIoeLEI9bj/arcgis/rest/services/USA_Dam_Inventory/FeatureServer
-  ITEM 'Florida Dams' owner=FDEPOpenDataPortal -> https://ca.dep.state.fl.us/arcgis/rest/services/OpenData/WRM_UIC_PUBLIC/MapServer/7
-  ITEM 'usace_dams_2019_Bradford_Co_Point' owner=ryant@CHW -> https://services2.arcgis.com/lJl62a3TsyGTVvxk/arcgis/rest/services/usace_dams_2019_Bradford_Co_Point/FeatureServer
+      OBJECTID | OID | 'Object ID'
+      NIDID | String | 'National Inventory of Dams ID (NID ID)'
+      OTHER_STRUCTURE_ID | String | 'Other Structure ID'
+      FEDERAL_ID | String | 'Federal ID'
+      DATA_UPDATED | Date | 'Data Last Updated'
+      NAME | String | 'Dam Name'
+      OTHER_NAMES | String | 'Other Names'
+      OWNER_TYPES | String | 'Owner Types'
+      PRIMARY_OWNER_TYPE | String | 'Primary Owner Type'
+      STATE_FED_AGENCY | String | 'State or Federal Agency ID'
+      NUMBER_ASSOCIATED_STRUCTURES | Integer | 'Number of Associated Structures'
+      DESIGNER_NAMES | String | 'Designer Names'
+      NON_FED_ON_FED | String | 'Non-Federal Dam on Federal Property'
+      STATE_REGULATED | String | 'State Regulated Dam'
+      STATE_JURISDICTION | String | 'State Jurisdictional Dam'
+      STATE_REGULATORY_AGENCY | String | 'State Regulatory Agency'
+      STATE_PERMITTING | String | 'State Permitting Authority'
+      STATE_INSPECTION | String | 'State Inspection Authority'
+      STATE_ENFORCEMENT | String | 'State Enforcement Authority'
+      PRIMARY_SOURCE_AGENCY | String | 'Source Agency'
+      LATITUDE | Double | 'Latitude (North–South)'
+      LONGITUDE | Double | 'Longitude (East–West)'
+      STATE | String | 'State or Territory'
+      COUNTYSTATE | String | 'County and State'
+      CITY | String | 'Nearest City or Town'
+      DISTANCE | Double | 'Distance to Nearest City/Town (Miles)'
+      RIVER_OR_STREAM | String | 'River or Stream'
+      CONGDIST | String | 'Congressional Representative District'
+      CONG_REPRESNTATIVE | String | 'Congressional Representative'
+      FED_AGENCY_OWNERS | String | 'Federal Agency Owner'
+      FED_AGENCY_FUNDINGS | String | 'Federal Agency Involvement in Funding'
+      FED_AGENCY_DESIGNERS | String | 'Federal Agency Involvement in Design'
+      FED_AGENCY_CONSTRUCTIONS | String | 'Federal Agency Involvement in Construction'
+      FED_AGENCY_REGULATORIES | String | 'Federal Agency Involvement in Regulatory'
+      FED_AGENCY_INSPECTIONS | String | 'Federal Agency Involvement in Inspection'
+      FED_AGENCY_OPERATIONS | String | 'Federal Agency Involvement in Operation'
+      FED_AGENCY_OTHERS | String | 'Federal Agency Involvement – Other'
+      PRIMARY_PURPOSE | String | 'Primary Purpose'
+      PURPOSES | String | 'Purposes'
+      PRIMARY_DAM_TYPE | String | 'Primary Dam Type'
+      DAM_TYPES | String | 'Dam Types'
+      CORE_TYPES | String | 'Core Types'
+      FOUNDATIONS | String | 'The material upon which dam is founded'
+      DAM_HEIGHT | Double | 'Dam Height (feet)'
+      HYDRAULIC_HEIGHT | Double | 'Hydraulic Height (feet)'
+      STRUCTURAL_HEIGHT | Double | 'Structural Height (feet)'
+      NID_HEIGHT | Integer | 'National Inventory of Dams (NID) Height'
+      DAM_LENGTH | Double | 'Dam Length (feet)'
+      DAM_VOLUME | Integer | 'Dam Volume (cubic yards)'
+      YEAR_COMPLETED | Integer | 'Year Completed'
+      NID_STORAGE | Double | 'National Inventory of Dams (NID) Storage'
+      MAX_STORAGE | Double | 'Maximum Storage'
+      NORMAL_STORAGE | Double | 'Normal Storage (acre feet)'
+      SURFACE_AREA | Double | 'Surface Area (acres)'
+      DRAINAGE_AREA | Double | 'Drainage Area (Square Miles)'
+      MAX_DISCHARGE | Double | 'Maximum Discharge'
+      SPILLWAY_TYPE | String | 'Spillway Type'
+      SPILLWAY_WIDTH | Integer | 'Spillway Width (feet)'
+      NUMBER_OF_LOCKS | Integer | 'Number of Locks'
+      LENGTH_OF_LOCKS | Double | 'Length of Locks (feet)'
+      WIDTH_OF_LOCKS | Double | 'Lock Width (feet)'
+      YEARS_MODIFIED | String | 'Year Modified'
+      OUTLET_GATES | String | 'Outlet Gates'
+      ASSOCIATED_STRUCTURES | String | 'Number of Associated Structures'
+      LAST_INSPECTION_DATE | Date | 'Last Inspection Date'
+      INSPECTION_FREQUENCY | Integer | 'Inspection Frequency'
+      HAZARD_POTENTIAL | String | 'Hazard Potential Classification'
+      CONDITION_ASSESSMENT | String | 'Dam Condition Assessment'
+      CONDITION_ASSESS_DATE | Date | 'Recent Dam Assessment Date'
+      EAP_PREPARED | String | 'Emergency Action Plan (EAP) Prepared'
+      EAP_LAST_REV_DATE | Date | 'Emergency Action Plan (EAP) Last Reviewed Date'
+      SE_ANNO_CAD_DATA | Blob | 'SE_ANNO_CAD_DATA'
+      FORMER_NAMES | String | 'Former Names'
+      IS_ASSOCIATED_STRUCTURE | String | 'Is Associated Structure?'
+      AIANNH | String | 'American Indian/Alaska Native/Native Hawaiian'
+      FEDERALLY_REGULATED_DAM | String | 'Federally Regulated Dam'
+      BUILT_UNDER_SEC_OF_AG_AUTH | String | 'Built Under the Authority of the Secretary of Agriculture'
+      NRCS_WATERSHED_DAM_AUTH | String | 'Natural Resources Conservation Service (NRCS) Watershed Dam Authorization'
+      OPERATIONAL_STATUS | String | 'Operational Status'
+      OPERATIONAL_STATUS_DATE | Date | 'Operational Status Date'
+      WEBSITE_URL | String | 'Website URL'
+    sample={"OBJECTID": 1, "NIDID": "CA00821", "OTHER_STRUCTURE_ID": "S001", "FEDERAL_ID": "CA00821S001", "DATA_UPDATED": 1745928000000, "NAME": "Buck Island Auxiliary", "OTHER_NAMES": null, "OWNER_TYPES": "Public Utility", "PRIMARY_OWNER_TYPE": "Public Utility", "STATE_FED_AGENCY": "02101-03-02", "NUMBER_ASSOCIATED_STRUCTURES": 1, "DESIGNER_NAMES": "Bechtel", "NON_FED_ON_FED": "No", "STATE_REGULATED": null, "STATE_JURISDICTION": "No", "STATE_REGULATORY_AGENCY": null, "STATE_PERMITTING": "No", "STATE_INSPECTION": "No", "STATE_ENFORCEMENT": "No", "PRIMARY_SOURCE_AGENCY": "FERC", "LATITUDE": 39.005, "LONGITUDE": -120.25580000000001, "STATE": "California", "COUNTYSTATE": "El Dorado, California", "CITY": "Coloma                                            ", "DISTANCE": 45, "RIVER_OR_STREAM": "Rockbound Creek               ", "CONGDIST": "Congressional District 03, California", "CONG_REPRESNTATIVE": "Tom McClintock (R)", "FED_AGENCY_OWNERS": null, "FED_AGENCY_FUNDINGS": null, "FED_AGENCY_DESIGNERS": null, "FED_AGENCY_CONSTRUCTIONS": null, "FED_AGENCY_REGULATORIES": "Federal Energy Regulatory Commission", "FED_AGENCY_INSPECTIONS": "Federal Energy Regulatory Commission", "FED_AGENCY_OPERATIONS": null, "FED_AGENCY_OTHERS": null, "PRIMARY_PURPOSE": "Hydroelectric", "PURPOSES": "Hydroelectric, Recreation", "PRIMARY_DAM_TYPE": "Concrete", "DAM_TYPES": "Concrete, Gravity", "CORE_TYPES": null, "FOUNDA
+    sample={"OBJECTID": 2, "NIDID": "AL01415", "OTHER_STRUCTURE_ID": "S001", "FEDERAL_ID": "AL01415S001", "DATA_UPDATED": 1681300800000, "NAME": "Weiss - Spillway Diversion Dam                                   ", "OTHER_NAMES": null, "OWNER_TYPES": "Public Utility", "PRIMARY_OWNER_TYPE": "Public Utility", "STATE_FED_AGENCY": "02146-05-02", "NUMBER_ASSOCIATED_STRUCTURES": 5, "DESIGNER_NAMES": "SOUTHERN COMPANY SERVICES", "NON_FED_ON_FED": "No", "STATE_REGULATED": "No", "STATE_JURISDICTION": "No", "STATE_REGULATORY_AGENCY": null, "STATE_PERMITTING": "No", "STATE_INSPECTION": "No", "STATE_ENFORCEMENT": "No", "PRIMARY_SOURCE_AGENCY": "FERC", "LATITUDE": 34.171994999999995, "LONGITUDE": -85.753935, "STATE": "Alabama", "COUNTYSTATE": "Cherokee, Alabama", "CITY": "Centre                                            ", "DISTANCE": 2, "RIVER_OR_STREAM": "Coosa                         ", "CONGDIST": "Congressional District 03, Alabama", "CONG_REPRESNTATIVE": "Mike Rogers (R)", "FED_AGENCY_OWNERS": null, "FED_AGENCY_FUNDINGS": null, "FED_AGENCY_DESIGNERS": null, "FED_AGENCY_CONSTRUCTIONS": null, "FED_AGENCY_REGULATORIES": "Federal Energy Regulatory Commission", "FED_AGENCY_INSPECTIONS": "Federal Energy Regulatory Commission", "FED_AGENCY_OPERATIONS": null, "FED_AGENCY_OTHERS": null, "PRIMARY_PURPOSE": "Hydroelectric", "PURPOSES": "Hydroelectric, Recreation", "PRIMARY_DAM_TYPE": "Earth", "DAM_TYPES": 
+    sample={"OBJECTID": 3, "NIDID": "CA00245", "OTHER_STRUCTURE_ID": "S001", "FEDERAL_ID": "CA00245S001", "DATA_UPDATED": 1745928000000, "NAME": "Bowman Arch", "OTHER_NAMES": null, "OWNER_TYPES": "Public Utility", "PRIMARY_OWNER_TYPE": "Public Utility", "STATE_FED_AGENCY": "02266-02-02", "NUMBER_ASSOCIATED_STRUCTURES": 1, "DESIGNER_NAMES": "Fred Tibbits, State Engineer", "NON_FED_ON_FED": "No", "STATE_REGULATED": null, "STATE_JURISDICTION": "No", "STATE_REGULATORY_AGENCY": null, "STATE_PERMITTING": "No", "STATE_INSPECTION": "No", "STATE_ENFORCEMENT": "No", "PRIMARY_SOURCE_AGENCY": "FERC", "LATITUDE": 39.4436, "LONGITUDE": -120.65400000000001, "STATE": "California", "COUNTYSTATE": "Nevada, California", "CITY": "Washington", "DISTANCE": 10, "RIVER_OR_STREAM": "Canyon Creek                  ", "CONGDIST": "Congressional District 03, California", "CONG_REPRESNTATIVE": "Doug LaMalfa (R)", "FED_AGENCY_OWNERS": null, "FED_AGENCY_FUNDINGS": null, "FED_AGENCY_DESIGNERS": null, "FED_AGENCY_CONSTRUCTIONS": null, "FED_AGENCY_REGULATORIES": "Federal Energy Regulatory Commission", "FED_AGENCY_INSPECTIONS": "Federal Energy Regulatory Commission", "FED_AGENCY_OPERATIONS": null, "FED_AGENCY_OTHERS": null, "PRIMARY_PURPOSE": "Irrigation", "PURPOSES": "Hydroelectric, Irrigation, Recreation, Water Supply", "PRIMARY_DAM_TYPE": "Arch", "DAM_TYPES": "Arch, Concrete", "CORE_TYPES": "Multi-Arch", "FOUNDATIONS": "
