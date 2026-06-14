@@ -1,27 +1,29 @@
-# POI Phase 2/3 endpoint verification.
+# POI Phase 2/3 endpoint verification -- ROUND 2.
 #
-# (The earlier NV Lahontan-cutthroat successor hunt moved to the standing
-#  endpoint-watch watchlist -- data/watch/watchlist.json: nv-lct-successor --
-#  so this scratchpad is now the dams + river-trails probe.)
+# Round 1 (committed in gis_verify_out/REPORT.txt) established:
+#   * River trails: USGS National Map transportation/MapServer LAYER 37
+#     'Trails' (548,437 polylines) is the National Digital Trails geometry
+#     -- NOT layer 8 (that's 'Roads 10M-Scale'). Schema confirmed.
+#   * Dams: the BTS NTAD Dams MapServer
+#     (maps.bts.dot.gov/.../NTAD/Dams/MapServer) is DEAD -- explicit layer
+#     probe returned meta:None and the service enumeration was empty. That
+#     host/path is retired.
 #
-# Confirms the live layer id, feature count, geometry, and field NAMES for
-# the two new national POI sources, so the Phase 2 (dams) and Phase 3
-# (river trails) build normalizers can be wired against the real schemas.
-# The sandbox egress allowlist blocks BTS; TNM is reachable but CI is the
-# one verification path that always works. Each `svc:` line enumerates and
-# quick-verifies EVERY layer in the service (so we don't have to guess the
-# id); the bare `US|.../<id>` line under it does a FULL field dump on the
-# expected layer (a wrong guess just FAILs -- the svc line still reveals the
-# right id).
+# Round 2 goals:
+#   1. Rediscover the live USACE National Inventory of Dams / NTAD hosted
+#      feature service via ArcGIS Online search (search: mode hits
+#      www.arcgis.com, reachable from CI) and auto-verify each hit, so we
+#      learn the CURRENT url + real field names instead of guessing.
+#   2. Full field dump on the confirmed trails layer (37) to capture coded
+#      domains (trailtype / trailsurface / use-flag codes) for the normalizer.
 #
-# RIDB (recreation.gov facilities) is intentionally NOT here: it's a keyed
-# REST API, not an ArcGIS layer, so this ArcGIS prober can't exercise it --
-# it's verified separately when the federal-land access supplement is built.
+# (RIDB is intentionally absent: keyed REST API, not ArcGIS -- can't be
+#  exercised by this prober; verified separately with the access supplement.)
 
-# --- Dams: USACE National Inventory of Dams, re-served by BTS as NTAD ---
-svc: US|https://maps.bts.dot.gov/services/rest/services/NTAD/Dams/MapServer
-US|https://maps.bts.dot.gov/services/rest/services/NTAD/Dams/MapServer/0
+# --- Dams: discover the current hosted NID / NTAD dam service ---
+search: US|National Inventory of Dams
+search: US|NTAD dams national
+search: US|USACE national inventory dams
 
-# --- River trails: USGS National Map National Digital Trails ---
-svc: US|https://carto.nationalmap.gov/arcgis/rest/services/transportation/MapServer
-US|https://carto.nationalmap.gov/arcgis/rest/services/transportation/MapServer/8
+# --- River trails: full field dump on the confirmed layer (coded domains) ---
+US|https://carto.nationalmap.gov/arcgis/rest/services/transportation/MapServer/37
