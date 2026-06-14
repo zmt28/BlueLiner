@@ -49,6 +49,9 @@ import {
   setStockedVisible,
   refreshStockedForState,
   setPublicLandsVisible,
+  ensureDams,
+  resetDamsLoadedState,
+  setDamsVisible,
 } from "./map-layers";
 import {
   loadClickableStreams,
@@ -138,6 +141,9 @@ document.getElementById("cond-chip-clear")?.addEventListener("click", () => {
   // their visibility toggles).
   resetAccessLoadedState();
   if (anyAccessVisible()) ensureAccess(s);
+  // Dams reload for the new state only if the layer is currently shown.
+  resetDamsLoadedState();
+  if ((document.getElementById("lyr-dams") as HTMLInputElement).checked) ensureDams(s);
   // Stocked markers reload for the new state if they're showing (toggle or
   // the Stocked map style); refreshStockedForState owns that decision.
   refreshStockedForState(s);
@@ -504,6 +510,10 @@ for (const t of ["boat_ramp", "walk_in", "wading_access", "pier", "parking"]) {
 // setStockedVisible already triggers the lazy load via its visibility apply,
 // so no onShow callback is needed here.
 wireLayerToggle("lyr-stocked", setStockedVisible);
+// Dams: single national source, lazy-loaded per state on first show.
+wireLayerToggle("lyr-dams", setDamsVisible, () =>
+  ensureDams(window.getCurrentSt()),
+);
 wireLayerToggle("lyr-public-lands", setPublicLandsVisible);
 wireLayerToggle("lyr-pins", setPinsVisible);
 

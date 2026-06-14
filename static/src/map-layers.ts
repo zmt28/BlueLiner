@@ -284,6 +284,109 @@ export async function ensureStocked(state: string): Promise<void> {
   }
 }
 
+// -- Dams (NID) ---------------------------------------------------------
+// USACE National Inventory of Dams, one brand-blue disc with the dam glyph.
+// A single national source queried per state via /api/dams; some states
+// carry thousands of dams, so it uses the same zoom/count perf gate as the
+// access layer (hidden below the gate until the user zooms in).
+
+let _damsVisible = false;
+let damMarkers: Marker[] = [];
+let damsLoadedState: string | null = null;
+let damsLoading = false;
+let _damsShown = false;
+const DAMS_GATE_ZOOM = 10;
+const DAMS_GATE_COUNT = 300;
+
+export function damPopupHtml(p: DamFeatureProps): string {
+  const meta = [
+    p.river ? `on ${esc(p.river)}` : "",
+    p.owner ? esc(p.owner) : "",
+    p.year ? esc(p.year) : "",
+    p.height_ft ? `${p.height_ft} ft` : "",
+  ]
+    .filter(Boolean)
+    .join(" &middot; ");
+  const purposes = p.purposes
+    ? `<div class="ap-notes">${esc(p.purposes)}</div>`
+    : "";
+  const link = p.agency_url
+    ? `<div class="ap-link"><a href="${esc(p.agency_url)}" target="_blank" ` +
+      `rel="noopener noreferrer">NID record &rarr;</a></div>`
+    : "";
+  return (
+    `<div class="ap-popup">` +
+    `<div class="ap-name">${esc(p.name || "Dam")}</div>` +
+    (meta ? `<div class="ap-meta">${meta}</div>` : "") +
+    purposes +
+    link +
+    `</div>`
+  );
+}
+
+function _damsShouldShow(): boolean {
+  return (
+    _damsVisible &&
+    (damMarkers.length <= DAMS_GATE_COUNT || map.getZoom() >= DAMS_GATE_ZOOM)
+  );
+}
+
+function _applyDamsVisibility(): void {
+  const on = _damsShouldShow();
+  if (on === _damsShown) return;
+  for (const m of damMarkers) {
+    if (on) m.addTo(map);
+    else m.remove();
+  }
+  _damsShown = on;
+}
+
+export function setDamsVisible(on: boolean): void {
+  _damsVisible = on;
+  _applyDamsVisibility();
+}
+
+map.on("zoomend", _applyDamsVisibility);
+
+export async function ensureDams(state: string): Promise<void> {
+  if (damsLoadedState === state || damsLoading) return;
+  damsLoading = true;
+  try {
+    const fc: GeoJsonFeatureCollection<DamFeatureProps> = await fetch(
+      `/api/dams?state=${state}`,
+    ).then((r) => r.json());
+    for (const m of damMarkers) m.remove();
+    damMarkers = [];
+    _damsShown = false;
+    for (const f of fc.features || []) {
+      const c =
+        f.geometry && "coordinates" in f.geometry
+          ? (f.geometry.coordinates as [number, number])
+          : null;
+      const p = f.properties || ({} as DamFeatureProps);
+      if (!c || c.length < 2) continue;
+      const el = makePoiElement("dam");
+      el.addEventListener("click", () =>
+        document.dispatchEvent(new Event("bl:poi-open")),
+      );
+      const m = new maplibregl.Marker({ element: el, anchor: "center" })
+        .setLngLat([c[0], c[1]])
+        .setPopup(makePopup().setHTML(damPopupHtml(p)));
+      damMarkers.push(m);
+    }
+    _applyDamsVisibility(); // adds them only if visible + zoom-gate passes
+    damsLoadedState = state;
+  } catch (_) {
+    /* leave empty; user can re-toggle to retry */
+  } finally {
+    damsLoading = false;
+  }
+}
+
+export function resetDamsLoadedState(): void {
+  damsLoadedState = null;
+}
+
 // -- Public lands (PAD-US) ----------------------------------------------
 // Tier-keyed styling via `match` expressions on the public_access prop:
 // OA = open access (green), RA = restricted (dashed yellow), XA/UK hidden.

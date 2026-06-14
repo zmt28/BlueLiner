@@ -31,6 +31,7 @@ import db
 import enrichment
 import data_source
 import access_points
+import dams
 import reach_trout
 
 
@@ -1487,6 +1488,29 @@ async def api_stocking(request: Request,
                       separators=(",", ":"))
     # Baseline is in-memory + stable; the live overlay changes slowly. Same
     # long browser + day-long CDN cache as /api/access.
+    return _cached_response(request, body, max_age=3600, s_max_age=86400)
+
+
+@app.get("/api/dams")
+async def api_dams(request: Request,
+                   state: str = Query(default="MD",
+                                      description="Two-letter state code.")):
+    """Dams on rivers (USACE National Inventory of Dams) as GeoJSON points
+    for the state. Single national public-domain source queried per state;
+    each point carries dam name, river, owner, purpose, height and year. The
+    live NID fetch can block, so it runs in a thread."""
+    states_to_load = _resolve_states(state)
+    if states_to_load is None:
+        raise HTTPException(status_code=400, detail=f"Unsupported state: {state}")
+    fcs = await asyncio.to_thread(
+        lambda: [dams.dams_geojson(st) for st in states_to_load])
+    features: list[dict] = []
+    for fc in fcs:
+        features.extend(fc.get("features", []))
+    body = json.dumps({"type": "FeatureCollection", "features": features},
+                      separators=(",", ":"))
+    # NID refreshes ~annually; long browser + day-long CDN cache like the
+    # other reference overlays.
     return _cached_response(request, body, max_age=3600, s_max_age=86400)
 
 

@@ -63,6 +63,7 @@ const POINT_GROUPS: Array<[section: string, rows: Array<[type: string, label: st
     "Water features",
     [
       ["stocked", "Stocked water"],
+      ["dam", "Dam"],
       ["gauge", "USGS gauge"],
     ],
   ],
