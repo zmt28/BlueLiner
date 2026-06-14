@@ -49,6 +49,7 @@ import {
   setStockedVisible,
   refreshStockedForState,
   setPublicLandsVisible,
+  setTrailsVisible,
   ensureDams,
   resetDamsLoadedState,
   setDamsVisible,
@@ -515,6 +516,10 @@ wireLayerToggle("lyr-dams", setDamsVisible, () =>
   ensureDams(window.getCurrentSt()),
 );
 wireLayerToggle("lyr-public-lands", setPublicLandsVisible);
+// Trails are a static PMTiles line layer (no per-state fetch); the layer is
+// only added when VITE_TRAILS_TILES_URL is configured, so the toggle just
+// flips visibility.
+wireLayerToggle("lyr-trails", setTrailsVisible);
 wireLayerToggle("lyr-pins", setPinsVisible);
 
 // -- Base-map segmented control ------------------------------------

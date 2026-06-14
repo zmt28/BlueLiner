@@ -23,6 +23,15 @@ export const PUBLIC_LANDS_TILES_URL: string = (_env.VITE_PUBLIC_LANDS_TILES_URL 
 export const PUBLIC_LANDS_TILES_ENABLED: boolean = PUBLIC_LANDS_TILES_URL.length > 0;
 export const PUBLIC_LANDS_SOURCE_LAYER = "public_lands";
 
+// River trails (USGS National Map National Digital Trails, filtered at build
+// time to segments running alongside the stream network). Same static-PMTiles
+// pattern as streams/public-lands: unset URL => the layer isn't added. Built
+// by scripts/build_trails.py + scripts/build_trail_tiles.sh.
+export const TRAILS_TILES_URL: string = (_env.VITE_TRAILS_TILES_URL || "").trim();
+export const TRAILS_TILES_ENABLED: boolean = TRAILS_TILES_URL.length > 0;
+/** MVT layer name baked by tippecanoe (must match --layer in the build). */
+export const TRAILS_SOURCE_LAYER = "trails";
+
 // Self-hosted vector basemap (offline-ready basemap, Phase 0). Points at
 // `basemap.pmtiles` built + published by scripts/build_basemap_tiles.sh. The
 // companion style/glyphs/sprite live under the same versioned prefix, next to

@@ -31,6 +31,9 @@ import {
   PUBLIC_LANDS_TILES_ENABLED,
   PUBLIC_LANDS_TILES_URL,
   PUBLIC_LANDS_SOURCE_LAYER,
+  TRAILS_TILES_ENABLED,
+  TRAILS_TILES_URL,
+  TRAILS_SOURCE_LAYER,
 } from "./config";
 import { ensurePmtilesProtocol } from "./tiles";
 import { makePoiElement } from "./poi-icons";
@@ -38,6 +41,7 @@ import { makePoiElement } from "./poi-icons";
 // Desired visibility (matches the HTML checkbox defaults; controls.ts
 // overrides from saved prefs before the map `load` fires).
 let _publicLandsVisible = false;
+let _trailsVisible = false;
 
 function vis(on: boolean): "visible" | "none" {
   return on ? "visible" : "none";
@@ -485,5 +489,70 @@ export function setPublicLandsVisible(on: boolean): void {
   _publicLandsVisible = on;
   for (const id of ["public-lands-fill", "public-lands-line"]) {
     if (map.getLayer(id)) map.setLayoutProperty(id, "visibility", vis(on));
+  }
+}
+
+// -- River trails (USGS National Digital Trails) -------------------------
+// A static PMTiles LINE layer (built-time filtered to trails running
+// alongside the stream network), same pattern as public-lands. Dashed
+// amber so it reads as a footpath distinct from the tier-colored streams.
+
+const TRAILS_SRC_LAYER = { "source-layer": TRAILS_SOURCE_LAYER };
+
+export function trailPopupHtml(p: TrailProps): string {
+  const meta = [
+    p.trail_type ? esc(p.trail_type) : "",
+    p.surface ? esc(p.surface) : "",
+    p.length_mi ? `${p.length_mi} mi` : "",
+  ]
+    .filter(Boolean)
+    .join(" &middot; ");
+  return (
+    `<div class="ap-popup">` +
+    `<div class="ap-name">${esc(p.name || "Trail")}</div>` +
+    (meta ? `<div class="ap-meta">${meta}</div>` : "") +
+    `</div>`
+  );
+}
+
+onMapReady(() => {
+  if (!TRAILS_TILES_ENABLED) return;
+  ensurePmtilesProtocol();
+  map.addSource("trails", {
+    type: "vector",
+    url: `pmtiles://${TRAILS_TILES_URL}`,
+  });
+  map.addLayer({
+    id: "trails-line",
+    type: "line",
+    source: "trails",
+    ...TRAILS_SRC_LAYER,
+    layout: {
+      visibility: vis(_trailsVisible),
+      "line-cap": "round",
+      "line-join": "round",
+    },
+    paint: {
+      "line-color": "#b45309",
+      "line-width": ["interpolate", ["linear"], ["zoom"], 9, 0.8, 14, 2.4],
+      "line-opacity": 0.85,
+      "line-dasharray": [2, 1.5],
+    },
+  } as LayerSpecification);
+  const popup = makePopup();
+  map.on("click", "trails-line", (e) => {
+    const f = e.features && e.features[0];
+    if (!f) return;
+    popup
+      .setLngLat(e.lngLat)
+      .setHTML(trailPopupHtml((f.properties || {}) as TrailProps))
+      .addTo(map);
+  });
+});
+
+export function setTrailsVisible(on: boolean): void {
+  _trailsVisible = on;
+  if (map.getLayer("trails-line")) {
+    map.setLayoutProperty("trails-line", "visibility", vis(on));
   }
 }
