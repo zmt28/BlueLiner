@@ -105,6 +105,7 @@ Hosted on **Render** (free tier). GitHub Actions provide:
 - `refresh-precompute.yml` — POST `/internal/refresh` every 30 min (needs `BLUELINES_URL` + `REFRESH_TOKEN` secrets)
 - `keep-warm.yml` — GET `/healthz` every 10 min to prevent free-tier sleep
 - `data-build.yml` — Scheduled NHDPlus/PAD-US rebuilds
+- `endpoint-watch.yml` — Scheduled (every 6h) probe of the flaky state-GIS endpoints we're waiting on (`data/watch/watchlist.json` + both `candidates.json`); captures field dumps / discovery / verify verdicts when a server recovers. Step summary = at-a-glance status; full report (`gis_verify_out/WATCH.md`) committed to the long-lived `endpoint-watch` branch. Passing candidates flagged READY TO PROMOTE (never auto-edits `sources.json`)
 - `coverage-survey.yml` — Weekly standing survey (`scripts/coverage_survey.py`): recomputes per-state trout/stocking/access gaps from the `sources.json` registries, discovers candidate ArcGIS layers for each fillable gap, and commits a report-only worklist (`gis_verify_out/COVERAGE.md`) to the `endpoint-watch` branch. See `data/watch/README.md`. Feeds the candidate-promotion pipeline; never auto-edits registries
 
 ## Claude Code sandbox limitations (read before network/CI work)

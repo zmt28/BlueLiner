@@ -7,6 +7,17 @@ points from ~per-state agency ArcGIS layers declared in
 is uneven and the ~30 state GIS servers flap, so discovery has to be a standing,
 retrying activity rather than a one-shot.
 
+Two complementary passes run on their own schedules and both commit reports to
+the long-lived **`endpoint-watch`** side branch (keeping `main` clean):
+
+- **Coverage survey** (weekly, broad) — recompute the gaps across the lower 48
+  and go find fresh candidate layers.
+- **Endpoint watch** (6-hourly, narrow) — re-probe the specific endpoints we're
+  already waiting on and capture data the instant a flaky server recovers.
+
+Together: the survey tells you what's still uncovered and surfaces fresh leads;
+the watch tells you when a known flaky endpoint recovered and grabs what we need.
+
 ## Coverage survey (`scripts/coverage_survey.py`, weekly)
 
 Purpose: the broad, weekly **"what's missing across the lower 48 and what did we
@@ -39,10 +50,65 @@ picking the right layer and designing its `field_map` / `species_flags` /
 `type_flags` needs human judgment. COVERAGE.md is the discovery worklist that
 **feeds** the candidate-promotion pipeline.
 
-## Relationship to the endpoint watch
+## Endpoint watch (`scripts/endpoint_watch.py`, 6-hourly)
 
-The (narrow) 6h endpoint-watch re-verifies already-known specific candidates on
-the same `endpoint-watch` side branch. The coverage survey is the complementary
-broad, weekly recompute-the-gaps-and-go-find-something pass. Together: the watch
-tells you when a known flaky endpoint recovered; the survey tells you what's
-still uncovered and surfaces fresh leads to promote.
+Purpose: the narrow, frequent pass that captures what we need the moment a
+specific flaky/retired server we're waiting on comes back.
+
+### What it watches
+
+1. **`watchlist.json`** (this dir) -- INVESTIGATION endpoints. These are *not*
+   candidate feeds; they're one-time captures we want when a retired/down server
+   recovers. Each entry:
+
+   ```json
+   {
+     "id": "stable-slug",
+     "kind": "field_dump | discover | verify",
+     "state": "MD",
+     "url": "https://.../MapServer/0",
+     "field": null,
+     "note": "what we're after and why"
+   }
+   ```
+
+   - **`field_dump`** -- probe a layer; if up, capture `name`/`geometry`/`fields`
+     + 3 sample features. If `field` is set, also dump that field's distinct
+     values. `field: null` means "dump everything so a human can identify the
+     field," then set `field` for the next run.
+   - **`discover`** -- if up, enumerate the folder's services / search the AGOL
+     org and list trout/fish-named layers with record counts.
+   - **`verify`** -- run the candidate 4-check (meta, count, f=geojson sample,
+     in-state bbox) on a URL.
+
+2. **`data/stocking/candidates.json`** + **`data/access_points/candidates.json`**
+   -- the unverified feed leads. The watcher folds these in automatically as
+   `verify`-kind entries. A candidate that PASSES the 4-check is flagged
+   **READY TO PROMOTE** -- the watcher never edits `sources.json`; promotion
+   stays human-reviewed.
+
+### Flow
+
+`scripts/endpoint_watch.py` loads the watchlist + both candidate files, probes
+each entry (bounded timeout, a couple retries for flap tolerance), and writes a
+markdown report. A DOWN host is reported as down, never an error -- the script
+always exits 0 (it's a watcher, not a gate).
+
+The report leads with a status table (`id | state | kind | UP/DOWN | captured`)
+so a recovery is obvious at a glance, then per-entry detail for the reachable
+ones.
+
+### Where the report lands
+
+`.github/workflows/endpoint-watch.yml` runs the watcher on a 6-hour cron (plus
+`workflow_dispatch`):
+
+- The **job step summary** (Actions tab) is the at-a-glance notification.
+- The full report, including field dumps, is committed to the long-lived
+  **`endpoint-watch`** branch as `gis_verify_out/WATCH.md` -- retrievable without
+  cluttering `main`.
+
+> The Claude Code sandbox's egress allowlist blocks most state GIS hosts, so a
+> **local** run of `endpoint_watch.py` (or `coverage_survey.py`) shows most
+> entries DOWN. That's expected; the scheduled Actions runner has open egress
+> and is where the probes fire.
