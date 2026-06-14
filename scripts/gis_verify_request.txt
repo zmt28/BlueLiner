@@ -1,3 +1,12 @@
-# Find NDOW's republished Lahontan cutthroat occupied-streams service
-# (LCT_Occupied_Streams_NV now returns 'layer not found' for all ids).
-states: NV
+# POI Phase 2 -- NID dam layer FULL field dump.
+#
+# Rounds 1-2 confirmed the live dam source is the NID_v1 hosted FeatureServer
+# (services2.arcgis.com/FiaPA4ga0iQKduv3/.../NID_v1/FeatureServer/0, 92,469
+# pts, public domain). The search-mode probe only printed the first 30 fields
+# (NAME / RIVER_OR_STREAM / OWNER_TYPES / PRIMARY_OWNER_TYPE / STATE / NIDID
+# confirmed). This explicit line does a FULL field dump (all fields + types +
+# coded domains + 3 full samples) so the build_dams normalizer can wire the
+# height / purpose / storage / year fields by their REAL names instead of
+# guessing.
+
+US|https://services2.arcgis.com/FiaPA4ga0iQKduv3/arcgis/rest/services/NID_v1/FeatureServer/0

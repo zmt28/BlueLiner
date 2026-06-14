@@ -44,10 +44,14 @@ import {
 import {
   ensureAccess,
   resetAccessLoadedState,
-  setAccessVisible,
+  setAccessTypeVisible,
+  anyAccessVisible,
   setStockedVisible,
   refreshStockedForState,
   setPublicLandsVisible,
+  ensureDams,
+  resetDamsLoadedState,
+  setDamsVisible,
 } from "./map-layers";
 import {
   loadClickableStreams,
@@ -136,7 +140,10 @@ document.getElementById("cond-chip-clear")?.addEventListener("click", () => {
   // shown (read the checkbox; the MapLibre layers always exist, only
   // their visibility toggles).
   resetAccessLoadedState();
-  if ((document.getElementById("lyr-access") as HTMLInputElement).checked) ensureAccess(s);
+  if (anyAccessVisible()) ensureAccess(s);
+  // Dams reload for the new state only if the layer is currently shown.
+  resetDamsLoadedState();
+  if ((document.getElementById("lyr-dams") as HTMLInputElement).checked) ensureDams(s);
   // Stocked markers reload for the new state if they're showing (toggle or
   // the Stocked map style); refreshStockedForState owns that decision.
   refreshStockedForState(s);
@@ -488,14 +495,25 @@ function wireLayerToggle(
 
 wireLayerToggle("lyr-fishable", setStreamsVisible, loadClickableStreams);
 wireLayerToggle("lyr-usgs", setHydroVisible);
-// The access ensure-loader reads the CURRENT state at show time via
-// getCurrentSt() (state may have changed since module-init).
-wireLayerToggle("lyr-access", setAccessVisible, () =>
-  ensureAccess(window.getCurrentSt()),
-);
+// Access is split into per-type toggles (boat ramp / walk-in / wading /
+// pier / parking); each shares the one lazy per-state loader, which reads
+// the CURRENT state at show time via getCurrentSt() (state may have changed
+// since module-init). The markers are fetched once and bucketed by type, so
+// flipping a second type doesn't refetch.
+for (const t of ["boat_ramp", "walk_in", "wading_access", "pier", "parking"]) {
+  wireLayerToggle(
+    `lyr-access-${t}`,
+    (on) => setAccessTypeVisible(t, on),
+    () => ensureAccess(window.getCurrentSt()),
+  );
+}
 // setStockedVisible already triggers the lazy load via its visibility apply,
 // so no onShow callback is needed here.
 wireLayerToggle("lyr-stocked", setStockedVisible);
+// Dams: single national source, lazy-loaded per state on first show.
+wireLayerToggle("lyr-dams", setDamsVisible, () =>
+  ensureDams(window.getCurrentSt()),
+);
 wireLayerToggle("lyr-public-lands", setPublicLandsVisible);
 wireLayerToggle("lyr-pins", setPinsVisible);
 

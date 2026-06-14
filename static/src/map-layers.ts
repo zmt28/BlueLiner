@@ -3,13 +3,15 @@
  * GL JS (PR B2). Replaces the Leaflet layer-group version.
  *
  * Owns:
- *   - access           glyph-coded access-point HTML markers (lazy per-state)
+ *   - access           glyph-coded access-point HTML markers (lazy per-state),
+ *                       toggled PER TYPE (boat ramp / walk-in / wading / pier /
+ *                       parking) -- one bucket per type, independent visibility
  *   - stocked          stocked-water HTML markers (lazy per-state); shown
  *                       when the toggle is on OR the Stocked map style is active
  *   - public-lands     PAD-US parcels (GeoJSON source + fill/line layers,
  *                       bbox-bound viewport fetch)
- *   - visibility setters + lazy-load fns: setAccessVisible / ensureAccess,
- *     setStockedVisible / setStockedStyleActive / ensureStocked,
+ *   - visibility setters + lazy-load fns: setAccessTypeVisible / anyAccessVisible
+ *     / ensureAccess, setStockedVisible / setStockedStyleActive / ensureStocked,
  *     setPublicLandsVisible
  *   - the popup-html helpers (accessPopupHtml, stockedPopupHtml,
  *     publicLandsPopupHtml) and the marker element factories
@@ -36,7 +38,6 @@ import { makePoiElement } from "./poi-icons";
 // Desired visibility (matches the HTML checkbox defaults; controls.ts
 // overrides from saved prefs before the map `load` fires).
 let _publicLandsVisible = false;
-let _accessVisible = false;
 
 function vis(on: boolean): "visible" | "none" {
   return on ? "visible" : "none";
@@ -44,7 +45,35 @@ function vis(on: boolean): "visible" | "none" {
 
 // -- Access points ------------------------------------------------------
 // Markers are makePoiElement discs -- the access TYPE is the glyph
-// (sailboat / footprints / waves / dock / P), one brand-blue disc for all.
+// (sailboat / footprints / waves / dock / P). Each type is an independent
+// toggle (lyr-access-<type>), so we bucket markers by type and show only
+// the enabled buckets. A feature whose type isn't one of the five buckets
+// falls into walk_in (matching the glyph fallback in makePoiElement).
+
+const ACCESS_TYPES = [
+  "boat_ramp",
+  "walk_in",
+  "wading_access",
+  "pier",
+  "parking",
+] as const;
+type AccessType = (typeof ACCESS_TYPES)[number];
+
+function _accessBucket(type: string | undefined): AccessType {
+  return (ACCESS_TYPES as readonly string[]).includes(type || "")
+    ? (type as AccessType)
+    : "walk_in";
+}
+
+// Per-type desired visibility (controls.ts overrides from saved prefs
+// before `load`). All off by default -- access is opt-in.
+const _accessTypeVisible: Record<AccessType, boolean> = {
+  boat_ramp: false,
+  walk_in: false,
+  wading_access: false,
+  pier: false,
+  parking: false,
+};
 
 export function accessPopupHtml(p: AccessFeatureProps): string {
   const accessChip = p.access
@@ -66,37 +95,52 @@ export function accessPopupHtml(p: AccessFeatureProps): string {
   );
 }
 
-let accessMarkers: Marker[] = [];
+interface AccessMarker {
+  marker: Marker;
+  type: AccessType;
+  shown: boolean; // currently added to the map
+}
+let accessMarkers: AccessMarker[] = [];
 let accessLoadedState: string | null = null;
 let accessLoading = false;
-let _accessShown = false; // markers currently added to the map
 
 // Perf guard: live DNR feeds can deliver 1000+ access points per state.
 // Above this count the markers stay hidden until the user zooms in --
 // at state zoom that many HTML markers are decoration that janks panning.
+// The gate counts only markers whose type is currently enabled, so turning
+// on a single sparse type (e.g. boat ramps) isn't blocked by a dense one.
 const ACCESS_GATE_ZOOM = 10;
 const ACCESS_GATE_COUNT = 300;
 
-function _accessShouldShow(): boolean {
-  return (
-    _accessVisible &&
-    (accessMarkers.length <= ACCESS_GATE_COUNT ||
-      map.getZoom() >= ACCESS_GATE_ZOOM)
-  );
+/** True if any access type is toggled on -- gates the lazy per-state load. */
+export function anyAccessVisible(): boolean {
+  return ACCESS_TYPES.some((t) => _accessTypeVisible[t]);
+}
+
+function _enabledAccessCount(): number {
+  let n = 0;
+  for (const am of accessMarkers) if (_accessTypeVisible[am.type]) n++;
+  return n;
 }
 
 function _applyAccessVisibility(): void {
-  const on = _accessShouldShow();
-  if (on === _accessShown) return;
-  for (const m of accessMarkers) {
-    if (on) m.addTo(map);
-    else m.remove();
+  // One zoom gate for the whole enabled set: below it, a too-dense set stays
+  // hidden until the user zooms in.
+  const gatePass =
+    _enabledAccessCount() <= ACCESS_GATE_COUNT || map.getZoom() >= ACCESS_GATE_ZOOM;
+  for (const am of accessMarkers) {
+    const should = gatePass && _accessTypeVisible[am.type];
+    if (should === am.shown) continue;
+    if (should) am.marker.addTo(map);
+    else am.marker.remove();
+    am.shown = should;
   }
-  _accessShown = on;
 }
 
-export function setAccessVisible(on: boolean): void {
-  _accessVisible = on;
+/** Wired to each per-type lyr-access-<type> checkbox. */
+export function setAccessTypeVisible(type: string, on: boolean): void {
+  const bucket = _accessBucket(type);
+  _accessTypeVisible[bucket] = on;
   _applyAccessVisibility();
 }
 
@@ -110,9 +154,8 @@ export async function ensureAccess(state: string): Promise<void> {
     const fc: GeoJsonFeatureCollection<AccessFeatureProps> = await fetch(
       `/api/access?state=${state}`,
     ).then((r) => r.json());
-    for (const m of accessMarkers) m.remove();
+    for (const am of accessMarkers) am.marker.remove();
     accessMarkers = [];
-    _accessShown = false;
     for (const f of fc.features || []) {
       const c =
         f.geometry && "coordinates" in f.geometry
@@ -120,7 +163,8 @@ export async function ensureAccess(state: string): Promise<void> {
           : null;
       const p = f.properties || ({} as AccessFeatureProps);
       if (!c || c.length < 2) continue;
-      const el = makePoiElement(p.type || "walk_in");
+      const bucket = _accessBucket(p.type);
+      const el = makePoiElement(bucket);
       // Selecting an access point is a POI click -> close the rail panel.
       el.addEventListener("click", () =>
         document.dispatchEvent(new Event("bl:poi-open")),
@@ -128,9 +172,9 @@ export async function ensureAccess(state: string): Promise<void> {
       const m = new maplibregl.Marker({ element: el, anchor: "center" })
         .setLngLat([c[0], c[1]]) // GeoJSON is already [lng, lat]
         .setPopup(makePopup().setHTML(accessPopupHtml(p)));
-      accessMarkers.push(m);
+      accessMarkers.push({ marker: m, type: bucket, shown: false });
     }
-    _applyAccessVisibility(); // adds them only if visible + zoom-gate passes
+    _applyAccessVisibility(); // adds enabled buckets if the zoom-gate passes
     accessLoadedState = state;
   } catch (_) {
     /* leave empty; user can re-toggle to retry */
@@ -238,6 +282,109 @@ export async function ensureStocked(state: string): Promise<void> {
   } finally {
     stockedLoading = false;
   }
+}
+
+// -- Dams (NID) ---------------------------------------------------------
+// USACE National Inventory of Dams, one brand-blue disc with the dam glyph.
+// A single national source queried per state via /api/dams; some states
+// carry thousands of dams, so it uses the same zoom/count perf gate as the
+// access layer (hidden below the gate until the user zooms in).
+
+let _damsVisible = false;
+let damMarkers: Marker[] = [];
+let damsLoadedState: string | null = null;
+let damsLoading = false;
+let _damsShown = false;
+const DAMS_GATE_ZOOM = 10;
+const DAMS_GATE_COUNT = 300;
+
+export function damPopupHtml(p: DamFeatureProps): string {
+  const meta = [
+    p.river ? `on ${esc(p.river)}` : "",
+    p.owner ? esc(p.owner) : "",
+    p.year ? esc(p.year) : "",
+    p.height_ft ? `${p.height_ft} ft` : "",
+  ]
+    .filter(Boolean)
+    .join(" &middot; ");
+  const purposes = p.purposes
+    ? `<div class="ap-notes">${esc(p.purposes)}</div>`
+    : "";
+  const link = p.agency_url
+    ? `<div class="ap-link"><a href="${esc(p.agency_url)}" target="_blank" ` +
+      `rel="noopener noreferrer">NID record &rarr;</a></div>`
+    : "";
+  return (
+    `<div class="ap-popup">` +
+    `<div class="ap-name">${esc(p.name || "Dam")}</div>` +
+    (meta ? `<div class="ap-meta">${meta}</div>` : "") +
+    purposes +
+    link +
+    `</div>`
+  );
+}
+
+function _damsShouldShow(): boolean {
+  return (
+    _damsVisible &&
+    (damMarkers.length <= DAMS_GATE_COUNT || map.getZoom() >= DAMS_GATE_ZOOM)
+  );
+}
+
+function _applyDamsVisibility(): void {
+  const on = _damsShouldShow();
+  if (on === _damsShown) return;
+  for (const m of damMarkers) {
+    if (on) m.addTo(map);
+    else m.remove();
+  }
+  _damsShown = on;
+}
+
+export function setDamsVisible(on: boolean): void {
+  _damsVisible = on;
+  _applyDamsVisibility();
+}
+
+map.on("zoomend", _applyDamsVisibility);
+
+export async function ensureDams(state: string): Promise<void> {
+  if (damsLoadedState === state || damsLoading) return;
+  damsLoading = true;
+  try {
+    const fc: GeoJsonFeatureCollection<DamFeatureProps> = await fetch(
+      `/api/dams?state=${state}`,
+    ).then((r) => r.json());
+    for (const m of damMarkers) m.remove();
+    damMarkers = [];
+    _damsShown = false;
+    for (const f of fc.features || []) {
+      const c =
+        f.geometry && "coordinates" in f.geometry
+          ? (f.geometry.coordinates as [number, number])
+          : null;
+      const p = f.properties || ({} as DamFeatureProps);
+      if (!c || c.length < 2) continue;
+      const el = makePoiElement("dam");
+      el.addEventListener("click", () =>
+        document.dispatchEvent(new Event("bl:poi-open")),
+      );
+      const m = new maplibregl.Marker({ element: el, anchor: "center" })
+        .setLngLat([c[0], c[1]])
+        .setPopup(makePopup().setHTML(damPopupHtml(p)));
+      damMarkers.push(m);
+    }
+    _applyDamsVisibility(); // adds them only if visible + zoom-gate passes
+    damsLoadedState = state;
+  } catch (_) {
+    /* leave empty; user can re-toggle to retry */
+  } finally {
+    damsLoading = false;
+  }
+}
+
+export function resetDamsLoadedState(): void {
+  damsLoadedState = null;
 }
 
 // -- Public lands (PAD-US) ----------------------------------------------

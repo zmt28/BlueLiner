@@ -365,8 +365,14 @@
                         <p class="panel-note">Filter the clickable stream network by quality class, and narrow to wild-reproducing and/or native-species water.</p>
                     </section>
                     <button id="filter-reset" type="button" class="filter-reset">Reset filters</button>
+                    <!-- "Show on map" is grouped into labeled sections so the
+                         overlay list scales as POI types are added. data-poi
+                         rows get the matching poi-icons.ts marker disc stamped
+                         in by legend.ts, so panel rows match the map markers +
+                         legend. Line/fill layers (streams, waterways, public
+                         lands) keep Lucide. -->
                     <section class="panel-section">
-                        <div class="panel-section-label">Show on map</div>
+                        <div class="panel-section-label">Streams</div>
                         <label class="filter-row-toggle">
                             <span class="filter-row-icon"><i data-lucide="waves" aria-hidden="true"></i></span>
                             <span class="filter-row-label">Fishable streams</span>
@@ -379,16 +385,42 @@
                             <input type="checkbox" id="lyr-usgs" checked>
                             <span class="filter-row-check"><i data-lucide="check" aria-hidden="true"></i></span>
                         </label>
-                        <!-- data-poi rows get the matching poi-icons.ts marker
-                             disc stamped in by legend.ts, so panel rows match
-                             the map markers + legend. Line/fill layers
-                             (streams, waterways, public lands) keep Lucide. -->
+                    </section>
+                    <section class="panel-section">
+                        <div class="panel-section-label">Access &amp; facilities</div>
                         <label class="filter-row-toggle">
-                            <span class="filter-row-icon" data-poi="walk_in"></span>
-                            <span class="filter-row-label">Access points</span>
-                            <input type="checkbox" id="lyr-access">
+                            <span class="filter-row-icon" data-poi="boat_ramp"></span>
+                            <span class="filter-row-label">Boat ramps</span>
+                            <input type="checkbox" id="lyr-access-boat_ramp">
                             <span class="filter-row-check"><i data-lucide="check" aria-hidden="true"></i></span>
                         </label>
+                        <label class="filter-row-toggle">
+                            <span class="filter-row-icon" data-poi="walk_in"></span>
+                            <span class="filter-row-label">Walk-in access</span>
+                            <input type="checkbox" id="lyr-access-walk_in">
+                            <span class="filter-row-check"><i data-lucide="check" aria-hidden="true"></i></span>
+                        </label>
+                        <label class="filter-row-toggle">
+                            <span class="filter-row-icon" data-poi="wading_access"></span>
+                            <span class="filter-row-label">Wading access</span>
+                            <input type="checkbox" id="lyr-access-wading_access">
+                            <span class="filter-row-check"><i data-lucide="check" aria-hidden="true"></i></span>
+                        </label>
+                        <label class="filter-row-toggle">
+                            <span class="filter-row-icon" data-poi="pier"></span>
+                            <span class="filter-row-label">Piers</span>
+                            <input type="checkbox" id="lyr-access-pier">
+                            <span class="filter-row-check"><i data-lucide="check" aria-hidden="true"></i></span>
+                        </label>
+                        <label class="filter-row-toggle">
+                            <span class="filter-row-icon" data-poi="parking"></span>
+                            <span class="filter-row-label">Parking</span>
+                            <input type="checkbox" id="lyr-access-parking">
+                            <span class="filter-row-check"><i data-lucide="check" aria-hidden="true"></i></span>
+                        </label>
+                    </section>
+                    <section class="panel-section">
+                        <div class="panel-section-label">Water features</div>
                         <label class="filter-row-toggle">
                             <span class="filter-row-icon" data-poi="stocked"></span>
                             <span class="filter-row-label">Stocked waters</span>
@@ -396,11 +428,23 @@
                             <span class="filter-row-check"><i data-lucide="check" aria-hidden="true"></i></span>
                         </label>
                         <label class="filter-row-toggle">
+                            <span class="filter-row-icon" data-poi="dam"></span>
+                            <span class="filter-row-label">Dams</span>
+                            <input type="checkbox" id="lyr-dams">
+                            <span class="filter-row-check"><i data-lucide="check" aria-hidden="true"></i></span>
+                        </label>
+                    </section>
+                    <section class="panel-section">
+                        <div class="panel-section-label">Land &amp; trails</div>
+                        <label class="filter-row-toggle">
                             <span class="filter-row-icon"><i data-lucide="trees" aria-hidden="true"></i></span>
                             <span class="filter-row-label">Public lands</span>
                             <input type="checkbox" id="lyr-public-lands">
                             <span class="filter-row-check"><i data-lucide="check" aria-hidden="true"></i></span>
                         </label>
+                    </section>
+                    <section class="panel-section">
+                        <div class="panel-section-label">My pins</div>
                         <label class="filter-row-toggle">
                             <span class="filter-row-icon" data-poi="pin"></span>
                             <span class="filter-row-label">Saved pins</span>
@@ -427,10 +471,10 @@
                         <div class="legend-item"><div class="legend-dot legend-dot--poor"></div> Poor &mdash; fish stress; avoid wading</div>
                         <div class="legend-item"><div class="legend-dot legend-dot--none"></div> No data &mdash; no live reading in range</div>
                     </section>
-                    <section class="panel-section">
-                        <div class="panel-section-label">Points</div>
-                        <div id="legend-points"></div>
-                    </section>
+                    <!-- Point legend rows are generated by legend.ts in the
+                         same labeled groups as the Map Layers "Show on map"
+                         sections, so the two panes read identically. -->
+                    <div id="legend-points"></div>
                     <section class="panel-section">
                         <div class="panel-section-label">Public lands (PAD-US)</div>
                         <div class="legend-item"><div class="legend-dot" style="background:var(--bl-publand)"></div> Open access &mdash; walk in</div>

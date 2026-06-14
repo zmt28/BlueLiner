@@ -1,187 +1,89 @@
 
-======== NV ========
-  CAND[catalog] fish? https://services.arcgis.com/RyxlXSfFi87rAosq/arcgis/rest/services/NDOW_Fishable_Streams_WFL1/FeatureServer   (NDOW_Fishable_Streams_WFL1)
-  CAND[catalog] stocking? https://services.arcgis.com/RyxlXSfFi87rAosq/arcgis/rest/services/NDOW_Hatchery_Locations_WFL1/FeatureServer   (NDOW_Hatchery_Locations_WFL1)
-  CAND[catalog] fish? https://services.arcgis.com/RyxlXSfFi87rAosq/arcgis/rest/services/NDOWFishableWaters/FeatureServer   (NDOWFishableWaters)
-  CAND[catalog] stocking? https://services.arcgis.com/RyxlXSfFi87rAosq/arcgis/rest/services/Nevada_Department_of_Wildlife_Fish_Hatchery_Locations/FeatureServer   (Nevada_Department_of_Wildlife_Fish_Hatchery_Locations)
-  CAND[catalog] fish? https://services.arcgis.com/RyxlXSfFi87rAosq/arcgis/rest/services/Red_Banded_Trout_Distributions/FeatureServer   (Red_Banded_Trout_Distributions)
-  AGOL[Nevada fish stocking locatio] CWPP Feature Layers owner=dudek_calabasas
-      -> https://services3.arcgis.com/SpdLoVK6cxWCmNhU/arcgis/rest/services/Service_CWPP_Feature_Layers/FeatureServer
-  CAND[agol] fish? https://services3.arcgis.com/SpdLoVK6cxWCmNhU/arcgis/rest/services/Service_CWPP_Feature_Layers/FeatureServer   (CWPP Feature Layers owner=dudek_calabasas)
-  AGOL[Nevada fishing access sites] Mule Deer Migration Corridors - Downieville-Nevada City - 2018-2020 [ds2973] owner=BIOS_Admin
-      -> https://services2.arcgis.com/Uq9r85Potqm3MfRV/arcgis/rest/services/biosds2973_fpu/FeatureServer
-  CAND[agol] fish? https://services2.arcgis.com/Uq9r85Potqm3MfRV/arcgis/rest/services/biosds2973_fpu/FeatureServer   (Mule Deer Migration Corridors - Downieville-Nevada City - 2018-2020 [ds2973] owner=BIOS_Ad)
-  AGOL[Nevada fishing access sites] Fish - High Mountain Lakes [ds102] owner=BIOS_Admin
-      -> https://services2.arcgis.com/Uq9r85Potqm3MfRV/arcgis/rest/services/biosds102_fmu/FeatureServer
-  CAND[agol] fish? https://services2.arcgis.com/Uq9r85Potqm3MfRV/arcgis/rest/services/biosds102_fmu/FeatureServer   (Fish - High Mountain Lakes [ds102] owner=BIOS_Admin)
-  AGOL[Nevada fishing access sites] PAD in the Yampa White Green Basin owner=Yampawhitegreen
-      -> https://services2.arcgis.com/1mNWwa3BbvpUjy0N/arcgis/rest/services/PAD_in_the_Yampa_White_Green_Basin/FeatureServer
-  CAND[agol] fish? https://services2.arcgis.com/1mNWwa3BbvpUjy0N/arcgis/rest/services/PAD_in_the_Yampa_White_Green_Basin/FeatureServer   (PAD in the Yampa White Green Basin owner=Yampawhitegreen)
-  AGOL[Nevada fishing access sites] PADUS_Elk owner=rgeorge_caltrout
-      -> https://services3.arcgis.com/6GmrBMeBBW4YPl5U/arcgis/rest/services/PADUS_Elk/FeatureServer
-  CAND[agol] fish? https://services3.arcgis.com/6GmrBMeBBW4YPl5U/arcgis/rest/services/PADUS_Elk/FeatureServer   (PADUS_Elk owner=rgeorge_caltrout)
-  AGOL[Nevada fishing access sites] PADUS4_JVStates owner=Kathryn.Bernard@audubon.org_audubon
-      -> https://services1.arcgis.com/lDFzr3JyGEn5Eymu/arcgis/rest/services/PADUS4_JVStates/FeatureServer
-  CAND[agol] fish? https://services1.arcgis.com/lDFzr3JyGEn5Eymu/arcgis/rest/services/PADUS4_JVStates/FeatureServer   (PADUS4_JVStates owner=Kathryn.Bernard@audubon.org_audubon)
-  AGOL[Nevada fishing access sites] PADUS_Combined_LLLT owner=bgn313_igtlab
-      -> https://services.arcgis.com/UnTXoPXBYERF0OH6/arcgis/rest/services/PADUS_Combined_LLLT/FeatureServer
-  CAND[agol] fish? https://services.arcgis.com/UnTXoPXBYERF0OH6/arcgis/rest/services/PADUS_Combined_LLLT/FeatureServer   (PADUS_Combined_LLLT owner=bgn313_igtlab)
-  AGOL[Nevada fishing access sites] PADUS_Public_LLLT owner=bgn313_igtlab
-      -> https://services.arcgis.com/UnTXoPXBYERF0OH6/arcgis/rest/services/PADUS_Public_LLLT/FeatureServer
-  CAND[agol] fish? https://services.arcgis.com/UnTXoPXBYERF0OH6/arcgis/rest/services/PADUS_Public_LLLT/FeatureServer   (PADUS_Public_LLLT owner=bgn313_igtlab)
-  AGOL[Nevada fishing access sites] PADUS_Private_LLLT owner=bgn313_igtlab
-      -> https://services.arcgis.com/UnTXoPXBYERF0OH6/arcgis/rest/services/PADUS_Private_LLLT/FeatureServer
-  CAND[agol] fish? https://services.arcgis.com/UnTXoPXBYERF0OH6/arcgis/rest/services/PADUS_Private_LLLT/FeatureServer   (PADUS_Private_LLLT owner=bgn313_igtlab)
-  AGOL[Nevada fishing access sites] Department of Energy owner=Laphatrada_Richards
-      -> https://services7.arcgis.com/Bq5yvxFKGREICK7t/arcgis/rest/services/Department_of_Energy/FeatureServer
-  CAND[agol] fish? https://services7.arcgis.com/Bq5yvxFKGREICK7t/arcgis/rest/services/Department_of_Energy/FeatureServer   (Department of Energy owner=Laphatrada_Richards)
-  AGOL[Nevada fishing access sites] Land_to_Build owner=f0071pb_Dartmouth
-      -> https://services1.arcgis.com/ajkPMiuiqxF9xEgP/arcgis/rest/services/Land_to_Build/FeatureServer
-  CAND[agol] fish? https://services1.arcgis.com/ajkPMiuiqxF9xEgP/arcgis/rest/services/Land_to_Build/FeatureServer   (Land_to_Build owner=f0071pb_Dartmouth)
-  AGOL[Nevada fishing access sites] PADUS4OpenToPublic owner=deronzierer
-      -> https://services.arcgis.com/9Dz5quHPmab2pMtb/arcgis/rest/services/PADUS4OpenToPublic/FeatureServer
-  CAND[agol] fish? https://services.arcgis.com/9Dz5quHPmab2pMtb/arcgis/rest/services/PADUS4OpenToPublic/FeatureServer   (PADUS4OpenToPublic owner=deronzierer)
-  AGOL[Nevada fishing access sites] Amphibian Restoration - High Mountain Lakes [ds103] owner=BIOS_Admin
-      -> https://services2.arcgis.com/Uq9r85Potqm3MfRV/arcgis/rest/services/biosds103_fmu/FeatureServer
-  CAND[agol] fish? https://services2.arcgis.com/Uq9r85Potqm3MfRV/arcgis/rest/services/biosds103_fmu/FeatureServer   (Amphibian Restoration - High Mountain Lakes [ds103] owner=BIOS_Admin)
-  AGOL[Nevada fishing access sites] PADUS_Near_LLLT owner=bgn313_igtlab
-      -> https://services.arcgis.com/UnTXoPXBYERF0OH6/arcgis/rest/services/PADUS_Near_LLLT/FeatureServer
-  CAND[agol] fish? https://services.arcgis.com/UnTXoPXBYERF0OH6/arcgis/rest/services/PADUS_Near_LLLT/FeatureServer   (PADUS_Near_LLLT owner=bgn313_igtlab)
-  AGOL[Nevada fishing access sites] PADUS4_BBA_OARA_26 owner=rghatfield
-      -> https://services5.arcgis.com/blOLLDKGIKLkf1Bv/arcgis/rest/services/PADUS4_BBA_OARA_26/FeatureServer
-  CAND[agol] fish? https://services5.arcgis.com/blOLLDKGIKLkf1Bv/arcgis/rest/services/PADUS4_BBA_OARA_26/FeatureServer   (PADUS4_BBA_OARA_26 owner=rghatfield)
-  AGOL[Nevada fishing access sites] AZNMTX_Own owner=esi@batcon.org
-      -> https://services.arcgis.com/3CJkbPLWuK5pHsQU/arcgis/rest/services/AZNMTX_Own/FeatureServer
-  CAND[agol] fish? https://services.arcgis.com/3CJkbPLWuK5pHsQU/arcgis/rest/services/AZNMTX_Own/FeatureServer   (AZNMTX_Own owner=esi@batcon.org)
-  AGOL[Nevada boating access boat r] Tahoe Boating Feature Layers (Hosted) owner=amydalayna
-      -> https://services5.arcgis.com/fXXSUzHD5JjcOt1v/arcgis/rest/services/TahoeBoating/FeatureServer
-  CAND[agol] access? https://services5.arcgis.com/fXXSUzHD5JjcOt1v/arcgis/rest/services/TahoeBoating/FeatureServer   (Tahoe Boating Feature Layers (Hosted) owner=amydalayna)
-  AGOL[Nevada boating access boat r] Limnology Characterization Hg/MeHg, Lahontan Reservoir, 2012, USGS owner=Region9_EPA
-      -> https://services.arcgis.com/cJ9YHowT8TU7DUyn/arcgis/rest/services/LimnologyHgandMeHg_Lahontan_2012_USGS/FeatureServer
-  CAND[agol] fish? https://services.arcgis.com/cJ9YHowT8TU7DUyn/arcgis/rest/services/LimnologyHgandMeHg_Lahontan_2012_USGS/FeatureServer   (Limnology Characterization Hg/MeHg, Lahontan Reservoir, 2012, USGS owner=Region9_EPA)
-  AGOL[Nevada boating access boat r] TBC_Adopted_Areas_Map_DRAFT_V2_WFL1 owner=keeptahoeblue
-      -> https://services.arcgis.com/D185ZRnjyHiHoq7r/arcgis/rest/services/TBC_Adopted_Areas_Map_DRAFT_V2_WFL1/FeatureServer
-  CAND[agol] fish? https://services.arcgis.com/D185ZRnjyHiHoq7r/arcgis/rest/services/TBC_Adopted_Areas_Map_DRAFT_V2_WFL1/FeatureServer   (TBC_Adopted_Areas_Map_DRAFT_V2_WFL1 owner=keeptahoeblue)
-  AGOL[Nevada boating access boat r] TBC_Adopted_Areas_Map_DRAFT_WFL1 owner=keeptahoeblue
-      -> https://services.arcgis.com/D185ZRnjyHiHoq7r/arcgis/rest/services/TBC_Adopted_Areas_Map_DRAFT_WFL1/FeatureServer
-  CAND[agol] fish? https://services.arcgis.com/D185ZRnjyHiHoq7r/arcgis/rest/services/TBC_Adopted_Areas_Map_DRAFT_WFL1/FeatureServer   (TBC_Adopted_Areas_Map_DRAFT_WFL1 owner=keeptahoeblue)
-  AGOL[Nevada boating access boat r] Web App Activity Centers_Base Map Layers_WFL1 owner=dssadmin
-      -> https://services5.arcgis.com/jZ5BrzylRcCMNevR/arcgis/rest/services/Web_App_Activity_Centers_Base_Map_Layers_WFL1/FeatureServer
-  CAND[agol] fish? https://services5.arcgis.com/jZ5BrzylRcCMNevR/arcgis/rest/services/Web_App_Activity_Centers_Base_Map_Layers_WFL1/FeatureServer   (Web App Activity Centers_Base Map Layers_WFL1 owner=dssadmin)
-  AGOL[NDOW fishable waters] Fishing Locations owner=friedlandere_cityofreno
-      -> https://services5.arcgis.com/RjM4BJrv5ZkqP4XC/arcgis/rest/services/Fishing_Locations/FeatureServer
-  CAND[agol] fish? https://services5.arcgis.com/RjM4BJrv5ZkqP4XC/arcgis/rest/services/Fishing_Locations/FeatureServer   (Fishing Locations owner=friedlandere_cityofreno)
-  AGOL[NDOW fishable waters] NDOW Fishable Waters owner=riley.dunavent_NDOW
-      -> https://services.arcgis.com/RyxlXSfFi87rAosq/arcgis/rest/services/NDOWFishableWaters/FeatureServer
-  -- verify rank=8 [catalog] guess=stocking? (Nevada_Department_of_Wildlife_Fish_Hatchery_Locations :: ndow_hatcheries)
-  LAYER https://services.arcgis.com/RyxlXSfFi87rAosq/arcgis/rest/services/Nevada_Department_of_Wildlife_Fish_Hatchery_Locations/FeatureServer/0
-    PASS name='ndow_hatcheries' geom=esriGeometryPoint count=4 geojson_ok=True in_state=True
-    fields=['OBJECTID', 'name', 'address', 'lat', 'long', 'X', 'Y']
-    sample={"OBJECTID": "1", "name": "Gallagher Hatchery", "address": "HC 60, Box 870, Ruby Valley, NV. 89833", "lat": "40.1846083333333", "long": "-115.4922", "X": "628361", "Y": "4449337"}
-    sample={"OBJECTID": "2", "name": "Mason Valley Hatcher", "address": "50 Hatchery Way, Yerington, NV. 89447", "lat": "39.0774222222222", "long": "-119.119038888889", "X": "316700", "Y": "4327506"}
-  -- verify rank=7 [catalog] guess=stocking? (NDOW_Hatchery_Locations_WFL1 :: Hatchery Locations)
-  LAYER https://services.arcgis.com/RyxlXSfFi87rAosq/arcgis/rest/services/NDOW_Hatchery_Locations_WFL1/FeatureServer/0
-    PASS name='Hatchery Locations' geom=esriGeometryPoint count=4 geojson_ok=True in_state=True
-    fields=['OBJECTID', 'NAME', 'ADDRESS', 'CITY', 'STATE', 'ZIPCODE', 'MATCH_ADDR', 'X', 'Y', 'CODE', 'EFF_DATE', 'PHONE', 'FAX', 'NOTES', 'TYPE', 'VERIFIED']
-    sample={"OBJECTID": "1", "NAME": "Spring Creek Rearing Station", "ADDRESS": "HC 64 Box 64900", "CITY": "Baker", "STATE": "NV", "ZIPCODE": "89311", "MATCH_ADDR": "Baker, Nevada", "X": "-114.12359", "Y": "39.01206", "CODE": "BA0005", "EFF_DATE": "02/06/2003", "PHONE": "(775) 234-7319", "FAX": "", "NOTES": "Pretty confident I located the physical location...", "TYPE": "Hatchery", "VERIFIED": "Uncertain"}
-    sample={"OBJECTID": "3", "NAME": "Lake Mead Hatchery", "ADDRESS": "245 Lakeshore Rd", "CITY": "Boulder City", "STATE": "NV", "ZIPCODE": "89005", "MATCH_ADDR": "245 Lakeshore Rd, Boulder City, Nevada, 89005", "X": "-114.819707076", "Y": "36.0719216021", "CODE": "BC0010", "EFF_DATE": "02/06/2003", "PHONE": "(702) 486-6889/6738", "FAX": "(702) 486-6888", "NOTES": "Verified through Google Maps", "TYPE": "Hatchery", "VERIFIED": "Yes"}
-  -- verify rank=7 [catalog] guess=stocking? (NDOW_Hatchery_Locations_WFL1 :: Counties)
-  LAYER https://services.arcgis.com/RyxlXSfFi87rAosq/arcgis/rest/services/NDOW_Hatchery_Locations_WFL1/FeatureServer/1
-    PASS name='Counties' geom=esriGeometryPolygon count=17 geojson_ok=True in_state=True
-    fields=['FID', 'ST', 'CNTYNAME', 'COV_NAME', 'STATEPLANE', 'STATEPLA_1', 'Acres', 'Shape__Area', 'Shape__Length']
-    sample={"FID": "1", "ST": "NV", "CNTYNAME": "Washoe", "COV_NAME": "WASHOE", "STATEPLANE": "4651", "STATEPLA_1": "West Zone", "Acres": "4194693.93898", "Shape__Area": "29528303360.535156", "Shape__Length": "1045369.5175203739"}
-    sample={"FID": "2", "ST": "NV", "CNTYNAME": "Elko", "COV_NAME": "ELKO", "STATEPLANE": "4601", "STATEPLA_1": "East Zone", "Acres": "11007534.2868", "Shape__Area": "78655956344.08203", "Shape__Length": "1200856.4727061363"}
-  -- verify rank=5 [catalog] guess=fish? (Red_Banded_Trout_Distributions :: Redband trout Distributions)
-  LAYER https://services.arcgis.com/RyxlXSfFi87rAosq/arcgis/rest/services/Red_Banded_Trout_Distributions/FeatureServer/0
-    PASS name='Redband trout Distributions' geom=esriGeometryPolyline count=20 geojson_ok=True in_state=True
-    fields=['OBJECTID', 'type', 'WBDHU10', 'Shape__Length']
-    sample={"OBJECTID": "1", "type": "historic", "WBDHU10": "Bruneau River", "Shape__Length": "2.823562527232305"}
-    sample={"OBJECTID": "2", "type": "historic", "WBDHU10": "East Fork Bruneau River", "Shape__Length": "0.8001525897081087"}
-  -- verify rank=4 [catalog] guess=fish? (NDOW_Fishable_Streams_WFL1 :: NDOW Fishable Streams)
-  LAYER https://services.arcgis.com/RyxlXSfFi87rAosq/arcgis/rest/services/NDOW_Fishable_Streams_WFL1/FeatureServer/0
-    PASS name='NDOW Fishable Streams' geom=esriGeometryPolyline count=421 geojson_ok=True in_state=True
-    fields=['OBJECTID', 'NAME', 'MAP_LABEL', 'TOWNSHIP', 'RANGE', 'COUNTY_NAM', 'FISH1', 'FISH2', 'FISH3', 'FISH4_', 'FISH5', 'FISH6', 'FISH7', 'FISH8', 'FISH9', 'FISH10', 'FISHREGMP', 'FISH11', 'Name2', 'Label', 'County', 'F11', 'F2', 'F3', 'F4', 'F5', 'F6', 'F7', 'F8', 'F9']
-    sample={"OBJECTID": "1", "NAME": "Pinto Creek", "MAP_LABEL": "WP-38", "TOWNSHIP": "19N", "RANGE": "54E", "COUNTY_NAM": "White Pine", "FISH1": "RB", "FISH2": " ", "FISH3": " ", "FISH4_": " ", "FISH5": " ", "FISH6": " ", "FISH7": " ", "FISH8": " ", "FISH9": " ", "FISH10": " ", "FISHREGMP": " ", "FISH11": "None"}
-    sample={"OBJECTID": "2", "NAME": "Burns Creek", "MAP_LABEL": "EL-17", "TOWNSHIP": "40N", "RANGE": "53E", "COUNTY_NAM": "Elko", "FISH1": "BK", "FISH2": "RB", "FISH3": " ", "FISH4_": " ", "FISH5": " ", "FISH6": " ", "FISH7": " ", "FISH8": " ", "FISH9": " ", "FISH10": " ", "FISHREGMP": " ", "FISH11": "None"}
-  -- verify rank=4 [catalog] guess=fish? (NDOW_Fishable_Streams_WFL1 :: Counties)
-  LAYER https://services.arcgis.com/RyxlXSfFi87rAosq/arcgis/rest/services/NDOW_Fishable_Streams_WFL1/FeatureServer/1
-    PASS name='Counties' geom=esriGeometryPolygon count=17 geojson_ok=True in_state=True
-    fields=['FID', 'ST', 'CNTYNAME', 'COV_NAME', 'STATEPLANE', 'STATEPLA_1', 'Acres', 'Shape__Area', 'Shape__Length']
-    sample={"FID": "1", "ST": "NV", "CNTYNAME": "Washoe", "COV_NAME": "WASHOE", "STATEPLANE": "4651", "STATEPLA_1": "West Zone", "Acres": "4194693.93898", "Shape__Area": "29528303360.535156", "Shape__Length": "1045369.5175203739"}
-    sample={"FID": "2", "ST": "NV", "CNTYNAME": "Elko", "COV_NAME": "ELKO", "STATEPLANE": "4601", "STATEPLA_1": "East Zone", "Acres": "11007534.2868", "Shape__Area": "78655956344.08203", "Shape__Length": "1200856.4727061363"}
-  -- verify rank=4 [catalog] guess=fish? (NDOWFishableWaters :: Fishable Rivers & Streams)
-  LAYER https://services.arcgis.com/RyxlXSfFi87rAosq/arcgis/rest/services/NDOWFishableWaters/FeatureServer/0
-    PASS name='Fishable Rivers & Streams' geom=esriGeometryPolyline count=434 geojson_ok=True in_state=True
-    fields=['OBJECTID', 'NAME', 'MAP_LABEL', 'LOCATED', 'LOCATION_N', 'TOWNSHIP', 'RANGE', 'DESCRIPTIO', 'COUNTY_NAM', 'FISH1', 'FISH2', 'FISH3', 'FISH4_', 'FISH5', 'FISH6', 'FISH7', 'FISH8', 'FISH9', 'STOCK_2010', 'STOCK_2011', 'FISH10', 'FISHREGMP', 'Shape__Length']
-    sample={"OBJECTID": "1", "NAME": "PINTO CREEK", "MAP_LABEL": "WP-38", "LOCATED": "Yes", "LOCATION_N": "Pinto Creek", "TOWNSHIP": "19N", "RANGE": "54E", "DESCRIPTIO": "Streams", "COUNTY_NAM": "White Pine", "FISH1": "RB", "FISH2": " ", "FISH3": " ", "FISH4_": " ", "FISH5": " ", "FISH6": " ", "FISH7": " ", "FISH8": " ", "FISH9": " "}
-    sample={"OBJECTID": "2", "NAME": "BURNS CREEK", "MAP_LABEL": "EL-17", "LOCATED": "Yes", "LOCATION_N": "Burns Creek", "TOWNSHIP": "40N", "RANGE": "53E", "DESCRIPTIO": "Streams", "COUNTY_NAM": "Elko", "FISH1": "BK", "FISH2": "RB", "FISH3": " ", "FISH4_": " ", "FISH5": " ", "FISH6": " ", "FISH7": " ", "FISH8": " ", "FISH9": " "}
-  -- verify rank=4 [catalog] guess=fish? (NDOWFishableWaters :: Fishable Lakes & Reservoirs)
-  LAYER https://services.arcgis.com/RyxlXSfFi87rAosq/arcgis/rest/services/NDOWFishableWaters/FeatureServer/1
-    PASS name='Fishable Lakes & Reservoirs' geom=esriGeometryPolygon count=129 geojson_ok=True in_state=True
-    fields=['OBJECTID', 'NAME', 'TYPE', 'TYPE_CODE', 'MAP_LABEL', 'TOWNSHIP', 'RANGE', 'COUNTY_NAM', 'FISH1', 'FISH2', 'FISH3', 'FISH4_', 'FISH5', 'FISH6', 'FISH7', 'FISH8', 'FISH9', 'STOCK_2010', 'STOCK_2011', 'FISH10', 'FISH11', 'FISHREGMP', 'Shape__Area', 'Shape__Length']
-    sample={"OBJECTID": "1", "NAME": "Bowman Reservoir", "TYPE": "Minor Reservoir", "TYPE_CODE": "12", "MAP_LABEL": "CL-4", "TOWNSHIP": "15S", "RANGE": "67E", "COUNTY_NAM": "Clark", "FISH1": "BB", "FISH2": "LMB", "FISH3": " ", "FISH4_": " ", "FISH5": " ", "FISH6": " ", "FISH7": " ", "FISH8": " ", "FISH9": " ", "STOCK_2010": " "}
-    sample={"OBJECTID": "2", "NAME": "Echo Canyon Reservoir", "TYPE": "Minor Reservoir", "TYPE_CODE": "12", "MAP_LABEL": "LI-5", "TOWNSHIP": "1N", "RANGE": "69E", "COUNTY_NAM": "Lincoln", "FISH1": "RB", "FISH2": "LMB", "FISH3": "WCR", "FISH4_": " ", "FISH5": " ", "FISH6": " ", "FISH7": " ", "FISH8": " ", "FISH9": " ", "STOCK_2010": "YES"}
-  -- verify rank=4 [agol] guess=fish? (Fish - High Mountain Lakes [ds102] owner=BIOS_Admin :: Fish _ High Mountain Lakes _ ds102)
-  LAYER https://services2.arcgis.com/Uq9r85Potqm3MfRV/arcgis/rest/services/biosds102_fmu/FeatureServer/0
-    FAIL name='Fish _ High Mountain Lakes _ ds102' geom=esriGeometryPoint count=13221 geojson_ok=True in_state=False
-    fields=['OBJECTID', 'ScientificName', 'SpeciesName', 'SurveyDate', 'SpeciesID', 'FishCount', 'AveWeight', 'MinWeight', 'MaxWeight', 'AveLength', 'MinLength', 'MaxLength', 'FishSurveyMethod', 'SurveyTypeDesc', 'CaLakesID', 'LakeName', 'HML_ID', 'FishNotPresent', 'AreaHectares', 'LatLong_X', 'LatLong_Y']
-    sample={"OBJECTID": "1", "ScientificName": "Ameiurus melas", "SpeciesName": "Black bullhead", "SurveyDate": "2004-07-15", "SpeciesID": "BLB", "FishCount": "22", "AveWeight": "None", "MinWeight": "None", "MaxWeight": "None", "AveLength": "144.6818182", "MinLength": "102", "MaxLength": "166", "FishSurveyMethod": "gill net", "SurveyTypeDesc": "BaseLine", "CaLakesID": "12464", "LakeName": "Catfish Lake", "HML_ID": "12464", "FishNotPresent": "N"}
-    sample={"OBJECTID": "2", "ScientificName": "Archoplites intterruptus", "SpeciesName": "Sacramento perch", "SurveyDate": "2013-08-07", "SpeciesID": "SP", "FishCount": "20", "AveWeight": "None", "MinWeight": "None", "MaxWeight": "None", "AveLength": "39.7", "MinLength": "32", "MaxLength": "52", "FishSurveyMethod": "electrofish", "SurveyTypeDesc": "Monitoring", "CaLakesID": "1116", "LakeName": "Almanor, Lake", "HML_ID": "1116", "FishNotPresent": "N"}
-  -- verify rank=4 [agol] guess=access? (Tahoe Boating Feature Layers (Hosted) owner=amydalayna :: Beaches)
-  LAYER https://services5.arcgis.com/fXXSUzHD5JjcOt1v/arcgis/rest/services/TahoeBoating/FeatureServer/0
-    FAIL name='Beaches' geom=esriGeometryPoint count=42 geojson_ok=True in_state=False
-    fields=['OBJECTID', 'Name', 'Access', 'Amenities', 'Description', 'Restrooms', 'sURL']
-    sample={"OBJECTID": "1", "Name": "64-Acres Park & Bell's Landing", "Access": "Hwy. 89, south of Tahoe City", "Amenities": "Bike trail access. Handicap accessible. Restroom...", "Description": "Access is at Hwy. 89, south of Tahoe City\r\nAmeni...", "Restrooms": "Yes", "sURL": "None"}
-    sample={"OBJECTID": "2", "Name": "Baldwin Beach", "Access": "Hwy. 89", "Amenities": "Bike trail access. Restrooms. Beach. Picnic tabl...", "Description": "Access is at Hwy. 89\r\nAmenities: Bike trail acce...", "Restrooms": "Yes", "sURL": "https://gis.trpa.org/tahoeboating/images/beaches..."}
-  -- verify rank=4 [agol] guess=access? (Tahoe Boating Feature Layers (Hosted) owner=amydalayna :: BoatRamps)
-  LAYER https://services5.arcgis.com/fXXSUzHD5JjcOt1v/arcgis/rest/services/TahoeBoating/FeatureServer/1
-    FAIL name='BoatRamps' geom=esriGeometryPoint count=15 geojson_ok=True in_state=False
-    fields=['OBJECTID', 'NAME', 'Status']
-    sample={"OBJECTID": "3", "NAME": "OBEXERS", "Status": "Open"}
-    sample={"OBJECTID": "4", "NAME": "LAKESIDE MARINA", "Status": "Open"}
-  -- verify rank=4 [agol] guess=access? (Tahoe Boating Feature Layers (Hosted) owner=amydalayna :: Fueling_Locations)
-  LAYER https://services5.arcgis.com/fXXSUzHD5JjcOt1v/arcgis/rest/services/TahoeBoating/FeatureServer/2
-    FAIL name='Fueling_Locations' geom=esriGeometryPoint count=9 geojson_ok=True in_state=False
-    fields=['OBJECTID', 'NAME', 'TYPE']
-    sample={"OBJECTID": "1", "NAME": "Camp Richardson Marina", "TYPE": " "}
-    sample={"OBJECTID": "2", "NAME": "Obexers Boat Company", "TYPE": " "}
-  -- verify rank=4 [agol] guess=access? (Tahoe Boating Feature Layers (Hosted) owner=amydalayna :: Marinas)
-  LAYER https://services5.arcgis.com/fXXSUzHD5JjcOt1v/arcgis/rest/services/TahoeBoating/FeatureServer/3
-    FAIL name='Marinas' geom=esriGeometryPoint count=13 geojson_ok=True in_state=False
-    fields=['OBJECTID', 'NAME', 'PrivPub', 'Slips', 'Buoys', 'Lifts', 'Fueling', 'RampYN', 'BoatWash', 'Restrooms', 'Notes', 'URL', 'Disclaimer', 'Website', 'Phone', 'Address', 'MapLink']
-    sample={"OBJECTID": "2", "NAME": "Camp Richardson Marina", "PrivPub": "Private, Open to public", "Slips": "12", "Buoys": "110", "Lifts": "", "Fueling": "Yes", "RampYN": "No", "BoatWash": " ", "Restrooms": "Yes", "Notes": "Marina facilities and water levels are subject t...", "URL": "https://gis.trpa.org/tahoeboating/images/marinas...", "Disclaimer": "Marina facilities and water levels are subject t...", "Website": "https://action-watersports.com/camp-richardson-m...", "Phone": "(530)542-6570", "Address": "1900 Jameson Beach Rd, South Lake Tahoe, CA 9615...", "MapLink": "https://goo.gl/maps/wMw7XG9dKWZFkijA9"}
-    sample={"OBJECTID": "3", "NAME": "Obexers Boat Company", "PrivPub": "Private, Open to public", "Slips": "39", "Buoys": "16", "Lifts": "2 forklifts, 1 travelift, 1 gantry", "Fueling": "Yes", "RampYN": "Yes", "BoatWash": " ", "Restrooms": " ", "Notes": "Marina facilities and water levels are subject t...", "URL": "https://gis.trpa.org/tahoeboating/images/marinas...", "Disclaimer": "Marina facilities and water levels are subject t...", "Website": "https://obexersboat.com/index.html", "Phone": "(530)525-7962", "Address": "5300 W Lake Blvd, Homewood, CA 96141", "MapLink": "https://goo.gl/maps/UkiK8k499SatN6tu7"}
-  -- verify rank=4 [agol] guess=access? (Tahoe Boating Feature Layers (Hosted) owner=amydalayna :: NonMotorized_Launch_Sites)
-  LAYER https://services5.arcgis.com/fXXSUzHD5JjcOt1v/arcgis/rest/services/TahoeBoating/FeatureServer/4
-    FAIL name='NonMotorized_Launch_Sites' geom=esriGeometryPoint count=51 geojson_ok=True in_state=False
-    fields=['OBJECTID', 'Name']
-    sample={"OBJECTID": "1", "Name": "Sandy Beach"}
-    sample={"OBJECTID": "2", "Name": "Sand Harbor (Boat Bay)"}
-  -- verify rank=4 [agol] guess=access? (Tahoe Boating Feature Layers (Hosted) owner=amydalayna :: NoWakeZones)
-  LAYER https://services5.arcgis.com/fXXSUzHD5JjcOt1v/arcgis/rest/services/TahoeBoating/FeatureServer/5
-    FAIL name='NoWakeZones' geom=esriGeometryPolygon count=8 geojson_ok=True in_state=False
-    fields=['OBJECTID', 'Description', 'LayerName', 'Shape__Area', 'Shape__Length']
-    sample={"OBJECTID": "3", "Description": "Boaters must maintain a safe distance from shore...", "LayerName": "600ft No Wake Zone", "Shape__Area": "44429292.15234375", "Shape__Length": "302580.946068679"}
-    sample={"OBJECTID": "4", "Description": "Restoration work in the area, go slow and stay a...", "LayerName": "Tahoe Keys Offshore restoration work", "Shape__Area": "767983.17578125", "Shape__Length": "4525.362188217816"}
-  -- verify rank=4 [agol] guess=access? (Tahoe Boating Feature Layers (Hosted) owner=amydalayna :: Points_of_Interest)
-  LAYER https://services5.arcgis.com/fXXSUzHD5JjcOt1v/arcgis/rest/services/TahoeBoating/FeatureServer/6
-    PASS name='Points_of_Interest' geom=esriGeometryPoint count=25 geojson_ok=True in_state=True
-    fields=['OBJECTID', 'POINT_NAME', 'Notes', 'Website', 'URL']
-    sample={"OBJECTID": "1", "POINT_NAME": "Deepest point in Lake Tahoe\r\n", "Notes": "A maximum depth of 1,645 feet in Crystal Bay mak...", "Website": "", "URL": "None"}
-    sample={"OBJECTID": "2", "POINT_NAME": "Cave Rock", "Notes": "Cave Rock was created over 3 million years ago a...", "Website": "https://www.tahoesouth.com/explore/hiking/cave-r...", "URL": "https://gis.trpa.org/tahoeboating/images/pointso..."}
-  [skipped rank=4 https://services5.arcgis.com/fXXSUzHD5JjcOt1v/arcgis/rest/services/TahoeBoating/FeatureServer/7 (Tahoe Boating Feature Layers (Hosted) owner=amydalayna :: Sewage_Pumpo)]
-  [skipped rank=4 https://services5.arcgis.com/fXXSUzHD5JjcOt1v/arcgis/rest/services/TahoeBoating/FeatureServer/8 (Tahoe Boating Feature Layers (Hosted) owner=amydalayna :: ShallowAreas)]
-  [skipped rank=4 https://services5.arcgis.com/fXXSUzHD5JjcOt1v/arcgis/rest/services/TahoeBoating/FeatureServer/9 (Tahoe Boating Feature Layers (Hosted) owner=amydalayna :: MountainPeak)]
-  [skipped rank=4 https://services5.arcgis.com/fXXSUzHD5JjcOt1v/arcgis/rest/services/TahoeBoating/FeatureServer/10 (Tahoe Boating Feature Layers (Hosted) owner=amydalayna :: Bathrooms)]
-  [skipped rank=4 https://services5.arcgis.com/fXXSUzHD5JjcOt1v/arcgis/rest/services/TahoeBoating/FeatureServer/11 (Tahoe Boating Feature Layers (Hosted) owner=amydalayna :: No_Boat_Beac)]
-  [skipped rank=4 https://services.arcgis.com/D185ZRnjyHiHoq7r/arcgis/rest/services/TBC_Adopted_Areas_Map_DRAFT_V2_WFL1/FeatureServer/29 (TBC_Adopted_Areas_Map_DRAFT_V2_WFL1 owner=keeptahoeblue :: El Dorado B)]
-  [skipped rank=4 https://services.arcgis.com/D185ZRnjyHiHoq7r/arcgis/rest/services/TBC_Adopted_Areas_Map_DRAFT_V2_WFL1/FeatureServer/53 (TBC_Adopted_Areas_Map_DRAFT_V2_WFL1 owner=keeptahoeblue :: BoatParking)]
-  [skipped rank=4 https://services.arcgis.com/D185ZRnjyHiHoq7r/arcgis/rest/services/TBC_Adopted_Areas_Map_DRAFT_WFL1/FeatureServer/21 (TBC_Adopted_Areas_Map_DRAFT_WFL1 owner=keeptahoeblue :: El Dorado Boat)]
-  [skipped rank=4 https://services.arcgis.com/D185ZRnjyHiHoq7r/arcgis/rest/services/TBC_Adopted_Areas_Map_DRAFT_WFL1/FeatureServer/45 (TBC_Adopted_Areas_Map_DRAFT_WFL1 owner=keeptahoeblue :: BoatParking)]
-  [skipped rank=2 https://services.arcgis.com/D185ZRnjyHiHoq7r/arcgis/rest/services/TBC_Adopted_Areas_Map_DRAFT_V2_WFL1/FeatureServer/1 (TBC_Adopted_Areas_Map_DRAFT_V2_WFL1 owner=keeptahoeblue :: Trout Creek)]
-  [skipped rank=1 https://services5.arcgis.com/RjM4BJrv5ZkqP4XC/arcgis/rest/services/Fishing_Locations/FeatureServer/109 (Fishing Locations owner=friedlandere_cityofreno :: NDOW Designated Fis)]
-  [skipped rank=1 https://services5.arcgis.com/RjM4BJrv5ZkqP4XC/arcgis/rest/services/Fishing_Locations/FeatureServer/108 (Fishing Locations owner=friedlandere_cityofreno :: NDOW Designated Fis)]
-  [skipped rank=1 https://services5.arcgis.com/RjM4BJrv5ZkqP4XC/arcgis/rest/services/Fishing_Locations/FeatureServer/84 (Fishing Locations owner=friedlandere_cityofreno :: Creeks)]
-  [skipped rank=1 https://services5.arcgis.com/RjM4BJrv5ZkqP4XC/arcgis/rest/services/Fishing_Locations/FeatureServer/88 (Fishing Locations owner=friedlandere_cityofreno :: Truckee River (Line)]
-  [skipped rank=1 https://services5.arcgis.com/RjM4BJrv5ZkqP4XC/arcgis/rest/services/Fishing_Locations/FeatureServer/89 (Fishing Locations owner=friedlandere_cityofreno :: Truckee River (Poly)]
-  [skipped rank=1 https://services5.arcgis.com/RjM4BJrv5ZkqP4XC/arcgis/rest/services/Fishing_Locations/FeatureServer/93 (Fishing Locations owner=friedlandere_cityofreno :: Lakes)]
+======== US explicit ========
+  LAYER https://services2.arcgis.com/FiaPA4ga0iQKduv3/arcgis/rest/services/NID_v1/FeatureServer/0
+    PASS name='Dams' geom=esriGeometryPoint count=92469 geojson_ok=True in_state=True
+    fields:
+      OBJECTID | OID | 'Object ID'
+      NIDID | String | 'National Inventory of Dams ID (NID ID)'
+      OTHER_STRUCTURE_ID | String | 'Other Structure ID'
+      FEDERAL_ID | String | 'Federal ID'
+      DATA_UPDATED | Date | 'Data Last Updated'
+      NAME | String | 'Dam Name'
+      OTHER_NAMES | String | 'Other Names'
+      OWNER_TYPES | String | 'Owner Types'
+      PRIMARY_OWNER_TYPE | String | 'Primary Owner Type'
+      STATE_FED_AGENCY | String | 'State or Federal Agency ID'
+      NUMBER_ASSOCIATED_STRUCTURES | Integer | 'Number of Associated Structures'
+      DESIGNER_NAMES | String | 'Designer Names'
+      NON_FED_ON_FED | String | 'Non-Federal Dam on Federal Property'
+      STATE_REGULATED | String | 'State Regulated Dam'
+      STATE_JURISDICTION | String | 'State Jurisdictional Dam'
+      STATE_REGULATORY_AGENCY | String | 'State Regulatory Agency'
+      STATE_PERMITTING | String | 'State Permitting Authority'
+      STATE_INSPECTION | String | 'State Inspection Authority'
+      STATE_ENFORCEMENT | String | 'State Enforcement Authority'
+      PRIMARY_SOURCE_AGENCY | String | 'Source Agency'
+      LATITUDE | Double | 'Latitude (North–South)'
+      LONGITUDE | Double | 'Longitude (East–West)'
+      STATE | String | 'State or Territory'
+      COUNTYSTATE | String | 'County and State'
+      CITY | String | 'Nearest City or Town'
+      DISTANCE | Double | 'Distance to Nearest City/Town (Miles)'
+      RIVER_OR_STREAM | String | 'River or Stream'
+      CONGDIST | String | 'Congressional Representative District'
+      CONG_REPRESNTATIVE | String | 'Congressional Representative'
+      FED_AGENCY_OWNERS | String | 'Federal Agency Owner'
+      FED_AGENCY_FUNDINGS | String | 'Federal Agency Involvement in Funding'
+      FED_AGENCY_DESIGNERS | String | 'Federal Agency Involvement in Design'
+      FED_AGENCY_CONSTRUCTIONS | String | 'Federal Agency Involvement in Construction'
+      FED_AGENCY_REGULATORIES | String | 'Federal Agency Involvement in Regulatory'
+      FED_AGENCY_INSPECTIONS | String | 'Federal Agency Involvement in Inspection'
+      FED_AGENCY_OPERATIONS | String | 'Federal Agency Involvement in Operation'
+      FED_AGENCY_OTHERS | String | 'Federal Agency Involvement – Other'
+      PRIMARY_PURPOSE | String | 'Primary Purpose'
+      PURPOSES | String | 'Purposes'
+      PRIMARY_DAM_TYPE | String | 'Primary Dam Type'
+      DAM_TYPES | String | 'Dam Types'
+      CORE_TYPES | String | 'Core Types'
+      FOUNDATIONS | String | 'The material upon which dam is founded'
+      DAM_HEIGHT | Double | 'Dam Height (feet)'
+      HYDRAULIC_HEIGHT | Double | 'Hydraulic Height (feet)'
+      STRUCTURAL_HEIGHT | Double | 'Structural Height (feet)'
+      NID_HEIGHT | Integer | 'National Inventory of Dams (NID) Height'
+      DAM_LENGTH | Double | 'Dam Length (feet)'
+      DAM_VOLUME | Integer | 'Dam Volume (cubic yards)'
+      YEAR_COMPLETED | Integer | 'Year Completed'
+      NID_STORAGE | Double | 'National Inventory of Dams (NID) Storage'
+      MAX_STORAGE | Double | 'Maximum Storage'
+      NORMAL_STORAGE | Double | 'Normal Storage (acre feet)'
+      SURFACE_AREA | Double | 'Surface Area (acres)'
+      DRAINAGE_AREA | Double | 'Drainage Area (Square Miles)'
+      MAX_DISCHARGE | Double | 'Maximum Discharge'
+      SPILLWAY_TYPE | String | 'Spillway Type'
+      SPILLWAY_WIDTH | Integer | 'Spillway Width (feet)'
+      NUMBER_OF_LOCKS | Integer | 'Number of Locks'
+      LENGTH_OF_LOCKS | Double | 'Length of Locks (feet)'
+      WIDTH_OF_LOCKS | Double | 'Lock Width (feet)'
+      YEARS_MODIFIED | String | 'Year Modified'
+      OUTLET_GATES | String | 'Outlet Gates'
+      ASSOCIATED_STRUCTURES | String | 'Number of Associated Structures'
+      LAST_INSPECTION_DATE | Date | 'Last Inspection Date'
+      INSPECTION_FREQUENCY | Integer | 'Inspection Frequency'
+      HAZARD_POTENTIAL | String | 'Hazard Potential Classification'
+      CONDITION_ASSESSMENT | String | 'Dam Condition Assessment'
+      CONDITION_ASSESS_DATE | Date | 'Recent Dam Assessment Date'
+      EAP_PREPARED | String | 'Emergency Action Plan (EAP) Prepared'
+      EAP_LAST_REV_DATE | Date | 'Emergency Action Plan (EAP) Last Reviewed Date'
+      SE_ANNO_CAD_DATA | Blob | 'SE_ANNO_CAD_DATA'
+      FORMER_NAMES | String | 'Former Names'
+      IS_ASSOCIATED_STRUCTURE | String | 'Is Associated Structure?'
+      AIANNH | String | 'American Indian/Alaska Native/Native Hawaiian'
+      FEDERALLY_REGULATED_DAM | String | 'Federally Regulated Dam'
+      BUILT_UNDER_SEC_OF_AG_AUTH | String | 'Built Under the Authority of the Secretary of Agriculture'
+      NRCS_WATERSHED_DAM_AUTH | String | 'Natural Resources Conservation Service (NRCS) Watershed Dam Authorization'
+      OPERATIONAL_STATUS | String | 'Operational Status'
+      OPERATIONAL_STATUS_DATE | Date | 'Operational Status Date'
+      WEBSITE_URL | String | 'Website URL'
+    sample={"OBJECTID": 1, "NIDID": "CA00821", "OTHER_STRUCTURE_ID": "S001", "FEDERAL_ID": "CA00821S001", "DATA_UPDATED": 1745928000000, "NAME": "Buck Island Auxiliary", "OTHER_NAMES": null, "OWNER_TYPES": "Public Utility", "PRIMARY_OWNER_TYPE": "Public Utility", "STATE_FED_AGENCY": "02101-03-02", "NUMBER_ASSOCIATED_STRUCTURES": 1, "DESIGNER_NAMES": "Bechtel", "NON_FED_ON_FED": "No", "STATE_REGULATED": null, "STATE_JURISDICTION": "No", "STATE_REGULATORY_AGENCY": null, "STATE_PERMITTING": "No", "STATE_INSPECTION": "No", "STATE_ENFORCEMENT": "No", "PRIMARY_SOURCE_AGENCY": "FERC", "LATITUDE": 39.005, "LONGITUDE": -120.25580000000001, "STATE": "California", "COUNTYSTATE": "El Dorado, California", "CITY": "Coloma                                            ", "DISTANCE": 45, "RIVER_OR_STREAM": "Rockbound Creek               ", "CONGDIST": "Congressional District 03, California", "CONG_REPRESNTATIVE": "Tom McClintock (R)", "FED_AGENCY_OWNERS": null, "FED_AGENCY_FUNDINGS": null, "FED_AGENCY_DESIGNERS": null, "FED_AGENCY_CONSTRUCTIONS": null, "FED_AGENCY_REGULATORIES": "Federal Energy Regulatory Commission", "FED_AGENCY_INSPECTIONS": "Federal Energy Regulatory Commission", "FED_AGENCY_OPERATIONS": null, "FED_AGENCY_OTHERS": null, "PRIMARY_PURPOSE": "Hydroelectric", "PURPOSES": "Hydroelectric, Recreation", "PRIMARY_DAM_TYPE": "Concrete", "DAM_TYPES": "Concrete, Gravity", "CORE_TYPES": null, "FOUNDA
+    sample={"OBJECTID": 2, "NIDID": "AL01415", "OTHER_STRUCTURE_ID": "S001", "FEDERAL_ID": "AL01415S001", "DATA_UPDATED": 1681300800000, "NAME": "Weiss - Spillway Diversion Dam                                   ", "OTHER_NAMES": null, "OWNER_TYPES": "Public Utility", "PRIMARY_OWNER_TYPE": "Public Utility", "STATE_FED_AGENCY": "02146-05-02", "NUMBER_ASSOCIATED_STRUCTURES": 5, "DESIGNER_NAMES": "SOUTHERN COMPANY SERVICES", "NON_FED_ON_FED": "No", "STATE_REGULATED": "No", "STATE_JURISDICTION": "No", "STATE_REGULATORY_AGENCY": null, "STATE_PERMITTING": "No", "STATE_INSPECTION": "No", "STATE_ENFORCEMENT": "No", "PRIMARY_SOURCE_AGENCY": "FERC", "LATITUDE": 34.171994999999995, "LONGITUDE": -85.753935, "STATE": "Alabama", "COUNTYSTATE": "Cherokee, Alabama", "CITY": "Centre                                            ", "DISTANCE": 2, "RIVER_OR_STREAM": "Coosa                         ", "CONGDIST": "Congressional District 03, Alabama", "CONG_REPRESNTATIVE": "Mike Rogers (R)", "FED_AGENCY_OWNERS": null, "FED_AGENCY_FUNDINGS": null, "FED_AGENCY_DESIGNERS": null, "FED_AGENCY_CONSTRUCTIONS": null, "FED_AGENCY_REGULATORIES": "Federal Energy Regulatory Commission", "FED_AGENCY_INSPECTIONS": "Federal Energy Regulatory Commission", "FED_AGENCY_OPERATIONS": null, "FED_AGENCY_OTHERS": null, "PRIMARY_PURPOSE": "Hydroelectric", "PURPOSES": "Hydroelectric, Recreation", "PRIMARY_DAM_TYPE": "Earth", "DAM_TYPES": 
+    sample={"OBJECTID": 3, "NIDID": "CA00245", "OTHER_STRUCTURE_ID": "S001", "FEDERAL_ID": "CA00245S001", "DATA_UPDATED": 1745928000000, "NAME": "Bowman Arch", "OTHER_NAMES": null, "OWNER_TYPES": "Public Utility", "PRIMARY_OWNER_TYPE": "Public Utility", "STATE_FED_AGENCY": "02266-02-02", "NUMBER_ASSOCIATED_STRUCTURES": 1, "DESIGNER_NAMES": "Fred Tibbits, State Engineer", "NON_FED_ON_FED": "No", "STATE_REGULATED": null, "STATE_JURISDICTION": "No", "STATE_REGULATORY_AGENCY": null, "STATE_PERMITTING": "No", "STATE_INSPECTION": "No", "STATE_ENFORCEMENT": "No", "PRIMARY_SOURCE_AGENCY": "FERC", "LATITUDE": 39.4436, "LONGITUDE": -120.65400000000001, "STATE": "California", "COUNTYSTATE": "Nevada, California", "CITY": "Washington", "DISTANCE": 10, "RIVER_OR_STREAM": "Canyon Creek                  ", "CONGDIST": "Congressional District 03, California", "CONG_REPRESNTATIVE": "Doug LaMalfa (R)", "FED_AGENCY_OWNERS": null, "FED_AGENCY_FUNDINGS": null, "FED_AGENCY_DESIGNERS": null, "FED_AGENCY_CONSTRUCTIONS": null, "FED_AGENCY_REGULATORIES": "Federal Energy Regulatory Commission", "FED_AGENCY_INSPECTIONS": "Federal Energy Regulatory Commission", "FED_AGENCY_OPERATIONS": null, "FED_AGENCY_OTHERS": null, "PRIMARY_PURPOSE": "Irrigation", "PURPOSES": "Hydroelectric, Irrigation, Recreation, Water Supply", "PRIMARY_DAM_TYPE": "Arch", "DAM_TYPES": "Arch, Concrete", "CORE_TYPES": "Multi-Arch", "FOUNDATIONS": "

@@ -275,6 +275,20 @@ interface AccessFeatureProps {
   [key: string]: unknown;
 }
 
+/** /api/dams feature properties (USACE National Inventory of Dams). */
+interface DamFeatureProps {
+  name?: string;
+  river?: string | null;
+  owner?: string | null;
+  city?: string | null;
+  purposes?: string | null;
+  height_ft?: number | null;
+  year?: string | null;
+  nid_id?: string | null;
+  agency_url?: string | null;
+  [key: string]: unknown;
+}
+
 /** /api/public_lands feature properties. */
 type PublicAccessTier = "OA" | "RA" | "XA" | "UK";
 

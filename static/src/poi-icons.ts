@@ -7,9 +7,9 @@
  *
  * Glyph path artwork is copied from Lucide (https://lucide.dev, ISC
  * license) and inlined -- markers are built in tight per-feature loops
- * and must render offline, so no data-lucide hydration here. `pier` is
- * hand-drawn in the same 24x24 / stroke-2 style (Lucide has no
- * pier/dock icon).
+ * and must render offline, so no data-lucide hydration here. `pier` and
+ * `dam` are hand-drawn in the same 24x24 / stroke-2 style (Lucide has no
+ * pier/dock or dam icon).
  */
 
 export type PoiType =
@@ -19,6 +19,7 @@ export type PoiType =
   | "pier"
   | "parking"
   | "stocked"
+  | "dam"
   | "gauge"
   | "pin";
 
@@ -58,6 +59,14 @@ const GLYPH_PATHS: Record<PoiType, string> = {
     '<path d="M7 10.67C7 8 5.58 5.97 2.73 5.5c-1 1.5-1 5 .23 6.5-1.24 1.5-1.24 5-.23 6.5C5.58 18.03 7 16 7 13.33"/>' +
     '<path d="M10.46 7.26C10.2 5.88 9.17 4.24 8 3h5.8a2 2 0 0 1 1.98 1.67l.23 1.4"/>' +
     '<path d="m16.01 17.93-.23 1.4A2 2 0 0 1 13.8 21H9.5a5.96 5.96 0 0 0 1.49-3.98"/>',
+  // Hand-drawn dam cross-section: impounded water (two short waves) at
+  // left, a sloped wall down to a wider base at right (Lucide stroke style).
+  dam:
+    '<path d="M3 9c1.2 1 2.4 1 3.6 0s2.4-1 3.6 0"/>' +
+    '<path d="M3 13c1.2 1 2.4 1 3.6 0s2.4-1 3.6 0"/>' +
+    '<path d="M12 5v14"/>' +
+    '<path d="M12 5l5 14"/>' +
+    '<path d="M10 19h9"/>',
   // Lucide "droplet"
   gauge:
     '<path d="M12 22a7 7 0 0 0 7-7c0-2-1-3.9-3-5.5s-3.5-4-4-6.5c-.5 2.5-2 4.9-4 6.5C6 11.1 5 13 5 15a7 7 0 0 0 7 7z"/>',
