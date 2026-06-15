@@ -655,22 +655,26 @@ def _ranking_summary_html(river: dict) -> str:
     return f'<div class="panel-verdict{variant}">{label} &mdash; {sentence}.</div>'
 
 
-def _directions_btn_html(river: dict) -> str:
-    """A Directions button placeholder for the river card. The href is set on
-    the client by directions.hydrateDirections() -- only the browser knows
-    whether to deep-link Apple Maps (iOS) or Google Maps -- via the
-    data-dir-lat / data-dir-lon attributes. Empty when coords are absent."""
+def _directions_row_html(river: dict) -> str:
+    """Directions row on the river card: offers BOTH Apple Maps and Google
+    Maps and lets the user pick (no platform guessing). Each link routes to
+    the river's coordinate with the device's current location as the origin.
+    Empty when coords are absent."""
     lat, lon = river.get("lat"), river.get("lon")
     if lat is None or lon is None:
         return ""
-    nav = ('<svg width="14" height="14" viewBox="0 0 24 24" fill="none" '
+    apple = f"https://maps.apple.com/?daddr={lat},{lon}&dirflg=d"
+    google = f"https://www.google.com/maps/dir/?api=1&destination={lat},{lon}"
+    nav = ('<svg width="13" height="13" viewBox="0 0 24 24" fill="none" '
            'stroke="currentColor" stroke-width="2" stroke-linecap="round" '
            'stroke-linejoin="round" aria-hidden="true">'
            '<polygon points="3 11 22 2 13 21 11 13 3 11"/></svg>')
-    return (f'<a class="bl-dir-btn" data-dir-lat="{lat}" data-dir-lon="{lon}" '
-            f'target="_blank" rel="noopener noreferrer" '
-            f'aria-label="Directions" title="Directions">{nav}'
-            f'<span>Directions</span></a>')
+    a = 'target="_blank" rel="noopener noreferrer"'
+    return (f'<div class="bl-dir-row">'
+            f'<span class="bl-dir-label">{nav} Directions</span>'
+            f'<a class="bl-dir-link" href="{apple}" {a}>Apple Maps</a>'
+            f'<a class="bl-dir-link" href="{google}" {a}>Google Maps</a>'
+            f'</div>')
 
 
 def _panel_header_html(river: dict) -> str:
@@ -726,8 +730,8 @@ def _panel_header_html(river: dict) -> str:
         <div class="bl-card-head">
             <div class="panel-title-row">
                 <div class="bl-title">{river["name"]}</div>
-                {_directions_btn_html(river)}
             </div>
+            {_directions_row_html(river)}
             {pills_row}
             {_ranking_summary_html(river)}
             {stats_html}

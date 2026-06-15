@@ -39,7 +39,6 @@ import { refreshIcons } from "./util";
 import { sparkline, wireSparkHover } from "./sparkline";
 import { wireSnapSheet } from "./snap-sheet";
 import { map } from "./map-setup";
-import { hydrateDirections } from "./directions";
 
 // -- Panel state (module-private) --------------------------------------
 
@@ -82,10 +81,6 @@ export function commitRiverPanelOpen(
   snapMode: "auto" | "open" = "auto",
 ): void {
   body.scrollTop = 0;
-  // Set the platform-appropriate href on the server-rendered Directions
-  // button (covers both the gauged river card and the ungauged reach card,
-  // since both funnel through here).
-  hydrateDirections(body);
   panel.hidden = false;
   panel.classList.remove("peek", "full");
   requestAnimationFrame(() => {
