@@ -56,7 +56,14 @@ _VAA_BUNDLED_PATH = os.path.join(os.path.dirname(__file__), "data",
 # were the runtime memory growth behind the 512MB OOM. Both are also
 # persisted in Postgres (db.river_stats / db.gauge_meta) so this is just
 # the fast L1 in front of a durable, cross-restart store.
-_stats_cache: LruTtl = LruTtl(maxsize=6000)
+# Each entry is a full year of daily medians (~366 (month,day)->cfs pairs,
+# tens of KB), so this is the single largest in-process consumer. At 6000 it
+# could hold ~150-200MB -- enough to push the 512MB free tier into OOM as
+# distinct gauges accumulate between restarts (entries have no TTL, so the
+# set only ever climbs toward the cap). 2000 covers the active gauges a
+# session realistically touches; evicted medians are still in Postgres
+# (db.river_stats), so a miss costs one local DB read, never a USGS call.
+_stats_cache: LruTtl = LruTtl(maxsize=2000)
 # site_no -> {"comid", "gnis_name", "levelpathid"} (the authoritative NHD
 # identity). Immutable per site -- DB is the durable store; this is L1. TTL'd
 # so transient NLDI failures retry; successful meta is also in Postgres.
@@ -1949,6 +1956,10 @@ def _rate_limit_auth(request: Request) -> None:
     enumeration attempts."""
     ip = (request.client.host if request.client else "unknown") or "unknown"
     now = time.time()
+    if len(_auth_hits) > 5000:  # bound memory: drop windows with no live hits
+        for k, ts in list(_auth_hits.items()):
+            if all(now - t >= _AUTH_RATE_WINDOW for t in ts):
+                _auth_hits.pop(k, None)
     bucket = [t for t in _auth_hits.get(ip, []) if now - t < _AUTH_RATE_WINDOW]
     if len(bucket) >= _AUTH_RATE_MAX:
         raise HTTPException(status_code=429, detail="Too many requests")
