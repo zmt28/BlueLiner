@@ -1187,6 +1187,29 @@ html, body {
     letter-spacing: var(--tracking-tight);
     color: var(--fg-1);
 }
+/* "Directions" button on the river card title row + the matching link in
+   map popups. The river-card button's href is set on the client by
+   directions.hydrateDirections() (Apple Maps on iOS, Google Maps else). */
+.bl-dir-btn {
+    flex: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 5px 12px;
+    border-radius: 999px;
+    background: var(--bl-river-50);
+    border: 1px solid var(--bl-river-100);
+    color: var(--fg-link);
+    font-size: var(--fs-meta);
+    font-weight: var(--fw-semibold);
+    text-decoration: none;
+    white-space: nowrap;
+    cursor: pointer;
+}
+.bl-dir-btn:hover { background: var(--bl-river-100); }
+.bl-dir-btn svg { flex: none; }
+.ap-dir a { display: inline-flex; align-items: center; gap: 4px; }
+.pin-popup .ap-dir { margin: 0 0 8px; }
 /* Verdict callout: a colored box with the one-line plain-English read
    on the river's condition. Tone modifiers (is-fair / is-poor /
    is-none) tint the box to reinforce the headline badge color. */

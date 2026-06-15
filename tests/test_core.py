@@ -494,6 +494,18 @@ def test_build_river_popup_html():
     # Verify it still exists and sits inside its own labeled panel.
     assert 'data-tab="catch"' in html
     assert "bl-catch-cta" in html
+    # Directions button placeholder (href set on the client by
+    # directions.hydrateDirections); carries the river's coords as data attrs.
+    assert 'class="bl-dir-btn"' in html
+    assert 'data-dir-lat="39.6"' in html and 'data-dir-lon="-76.7"' in html
+
+
+def test_directions_btn_html_requires_coords():
+    base = {"lat": 39.6, "lon": -76.7}
+    assert "bl-dir-btn" in main._directions_btn_html(base)
+    # Missing/None coords -> no button (no broken link to nowhere).
+    assert main._directions_btn_html({"lat": None, "lon": None}) == ""
+    assert main._directions_btn_html({}) == ""
 
 
 def test_build_reach_popup_html_unified():

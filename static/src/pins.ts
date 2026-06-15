@@ -13,6 +13,7 @@ import { map } from "./map-setup";
 import { makePopup } from "./popups";
 import { esc } from "./util";
 import { DEVICE_HEADER } from "./state";
+import { directionsLinkHtml } from "./directions";
 
 interface PinEntry {
   id: number;
@@ -38,6 +39,7 @@ export function addPinMarker(p: Pin): void {
   const popup = makePopup().setHTML(
     `<div class="pin-popup"><div class="pin-note">${esc(p.note || "(no note)")}</div>` +
       `<div class="pin-meta">${esc(p.created_at)}</div>` +
+      directionsLinkHtml(p.lat, p.lon) +
       `<button class="pin-del" type="button">Delete</button></div>`,
   );
   // Selecting a pin is a POI click -> close the rail panel.

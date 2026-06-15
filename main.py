@@ -655,6 +655,24 @@ def _ranking_summary_html(river: dict) -> str:
     return f'<div class="panel-verdict{variant}">{label} &mdash; {sentence}.</div>'
 
 
+def _directions_btn_html(river: dict) -> str:
+    """A Directions button placeholder for the river card. The href is set on
+    the client by directions.hydrateDirections() -- only the browser knows
+    whether to deep-link Apple Maps (iOS) or Google Maps -- via the
+    data-dir-lat / data-dir-lon attributes. Empty when coords are absent."""
+    lat, lon = river.get("lat"), river.get("lon")
+    if lat is None or lon is None:
+        return ""
+    nav = ('<svg width="14" height="14" viewBox="0 0 24 24" fill="none" '
+           'stroke="currentColor" stroke-width="2" stroke-linecap="round" '
+           'stroke-linejoin="round" aria-hidden="true">'
+           '<polygon points="3 11 22 2 13 21 11 13 3 11"/></svg>')
+    return (f'<a class="bl-dir-btn" data-dir-lat="{lat}" data-dir-lon="{lon}" '
+            f'target="_blank" rel="noopener noreferrer" '
+            f'aria-label="Directions" title="Directions">{nav}'
+            f'<span>Directions</span></a>')
+
+
 def _panel_header_html(river: dict) -> str:
     """Top of the river panel: name on the title row, feature pills,
     verdict callout, stat grid. This block fits in the mobile snap-
@@ -708,6 +726,7 @@ def _panel_header_html(river: dict) -> str:
         <div class="bl-card-head">
             <div class="panel-title-row">
                 <div class="bl-title">{river["name"]}</div>
+                {_directions_btn_html(river)}
             </div>
             {pills_row}
             {_ranking_summary_html(river)}
