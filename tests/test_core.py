@@ -801,7 +801,7 @@ def test_precompute_refresh_state_persists(tmp_path, monkeypatch):
     async def no_medians(nos):
         return None
 
-    async def no_backfill(rivers):
+    async def no_backfill(site_nos):
         return None
 
     monkeypatch.setattr(main, "_usgs_iv", fake_iv)
@@ -1180,13 +1180,20 @@ def test_resolve_data_file_downloads_when_configured(tmp_path, monkeypatch):
     assert out != missing and open(out, "rb").read() == b"remote-bytes"
 
 
-# -- lower-48 scale: cache sizing --
+# -- free-tier memory: cache sizing --
 
-def test_caches_sized_for_lower_48_fanout():
-    """48-state lazy fanout: caches must hold the full national working
-    set without thrashing. Regression-protect the maxsize bumps."""
-    assert main._state_rivers_cache.maxsize >= 48
-    assert main._stats_cache.maxsize >= 6000
+def test_caches_sized_for_free_tier_memory():
+    """Caches must fit the 512MB free tier, not just the national working
+    set. A _stats_cache entry is a full year of daily medians (~39KB each),
+    so its maxsize sets the single largest in-process consumer: 6000 was
+    ~230MB (the OOM driver), 2000 is ~77MB. Postgres (db.river_stats) is the
+    durable L2, so a smaller cap costs extra local DB reads under wide fanout,
+    never USGS calls. Guard the bound both ways -- big enough to stay useful,
+    small enough to leave headroom under the 512MB ceiling."""
+    assert 1000 <= main._stats_cache.maxsize <= 3000
+    # _state_rivers_cache is TTL'd (120s), so it can't accumulate all 51
+    # states in steady state; the cap is just a burst guard.
+    assert main._state_rivers_cache.maxsize <= 64
 
 
 # -- NLDI backoff on 429/503 throttling --

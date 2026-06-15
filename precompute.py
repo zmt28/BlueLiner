@@ -45,15 +45,17 @@ def focused_states() -> list[str]:
     return [s for s in _DEFAULT_FOCUSED if s in STATES]
 
 
-async def _backfill_gauge_meta(rivers: list[dict]) -> None:
+async def _backfill_gauge_meta(site_nos: list[str]) -> None:
     """Persist authoritative NHD identity (gauge_meta: gnis_name +
     levelpathid) for this state's gauges so `_assemble_rivers` groups
     rivers by NHD identity and the client can match a clicked reach by
     levelpath. Immutable per site, so once is enough; subsequent cycles
-    short-circuit on the DB."""
+    short-circuit on the DB.
+
+    Takes site numbers (not the full rivers lists) so callers can release
+    the heavy assembled-rivers objects before the slow NLDI backfill pass."""
     import main
 
-    site_nos = [r["site_no"] for r in rivers if r.get("site_no")]
     if not site_nos:
         return
     try:
@@ -101,7 +103,8 @@ async def refresh_state(st: str, *, backfill: bool = True) -> list[dict]:
     await asyncio.to_thread(db.put_river_snapshot, st, rivers)
     main._state_rivers_cache[st] = rivers  # warm L1 so next request is instant
     if backfill:
-        await _backfill_gauge_meta(rivers)
+        site_nos = [r["site_no"] for r in rivers if r.get("site_no")]
+        await _backfill_gauge_meta(site_nos)
     logger.info("refresh %s: persisted %d rivers", st, len(rivers))
     return rivers
 
@@ -123,17 +126,24 @@ async def refresh_focused() -> None:
         return
     _refresh_running = True
     try:
-        persisted: dict[str, list[dict]] = {}
+        # Retain only the site numbers each state needs for the gauge_meta
+        # pass, not the full assembled-rivers lists -- holding all focused
+        # states' rivers at once was a recurring memory spike on the 512MB
+        # free tier. The rivers themselves are released after each
+        # refresh_state (the 120s-TTL L1 cache is their only remaining ref).
+        persisted_sites: dict[str, list[str]] = {}
         for st in focused_states():
             try:
                 rivers = await refresh_state(st, backfill=False)
                 if rivers:
-                    persisted[st] = rivers
+                    persisted_sites[st] = [
+                        r["site_no"] for r in rivers if r.get("site_no")
+                    ]
             except Exception as exc:
                 logger.warning("refresh_focused: %s data failed: %s", st, exc)
-        for st, rivers in persisted.items():
+        for st, site_nos in persisted_sites.items():
             try:
-                await _backfill_gauge_meta(rivers)
+                await _backfill_gauge_meta(site_nos)
             except Exception as exc:
                 logger.warning("refresh_focused: %s gauge_meta failed: %s",
                                st, exc)
