@@ -1,6 +1,6 @@
 # Endpoint watch
 
-_Run: 2026-06-15 17:08 UTC -- 9/11 reachable, **7 READY TO PROMOTE**._
+_Run: 2026-06-15 20:52 UTC -- 8/11 reachable, **6 READY TO PROMOTE**._
 
 | id | state | kind | status | captured |
 |----|-------|------|--------|----------|
@@ -8,7 +8,7 @@ _Run: 2026-06-15 17:08 UTC -- 9/11 reachable, **7 READY TO PROMOTE**._
 | md-fisheries-folder | MD | discover | UP | yes |
 | nv-lct-successor | NV | discover | UP | yes |
 | cand-stocking-ma-massgis-dfg-trout-stocking--official-item | MA | verify | DOWN | - |
-| cand-access_points-de-dnrec-public-fishing-ponds | DE | verify | UP | PROMOTE |
+| cand-access_points-de-dnrec-public-fishing-ponds | DE | verify | DOWN | - |
 | cand-access_points-ca-cdfw-fishing-guide-boating-facilities | CA | verify | UP | PROMOTE |
 | cand-access_points-ut-ut-dwr-community-fisheries | UT | verify | UP | PROMOTE |
 | cand-access_points-tx-tx-public-water-access---boat-ramps--owner-uncon | TX | verify | UP | PROMOTE |
@@ -35,13 +35,6 @@ _Run: 2026-06-15 17:08 UTC -- 9/11 reachable, **7 READY TO PROMOTE**._
   - `Nevada_Department_of_Wildlife_Fish_Hatchery_Locations` (FeatureServer)
   - `Red_Banded_Trout_Distributions` (FeatureServer)
   - `Mule_Deer_Trout_Creek_Herd_All` (FeatureServer)
-
-### cand-access_points-de-dnrec-public-fishing-ponds (DE / verify)
-> [access_points candidate] DNREC Public Fishing Ponds
-
-- :rotating_light: **READY TO PROMOTE** -- candidate passes the 4-check. Review + add to sources.json (human-gated; the watcher does not auto-edit).
-- **verdict:** PASS  (`Depths`, geom `esriGeometryPoint`, count `51`)
-- **fields:** `["OBJECTID", "DEPTH", "POND", "SHAPE"]`
 
 ### cand-access_points-ca-cdfw-fishing-guide-boating-facilities (CA / verify)
 > [access_points candidate] CDFW Fishing Guide Boating Facilities
