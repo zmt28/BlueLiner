@@ -37,6 +37,7 @@ import {
 } from "./config";
 import { ensurePmtilesProtocol } from "./tiles";
 import { makePoiElement } from "./poi-icons";
+import { directionsLinkHtml } from "./directions";
 
 // Desired visibility (matches the HTML checkbox defaults; controls.ts
 // overrides from saved prefs before the map `load` fires).
@@ -79,7 +80,10 @@ const _accessTypeVisible: Record<AccessType, boolean> = {
   parking: false,
 };
 
-export function accessPopupHtml(p: AccessFeatureProps): string {
+export function accessPopupHtml(
+  p: AccessFeatureProps,
+  lngLat?: [number, number],
+): string {
   const accessChip = p.access
     ? `<span class="ap-chip ap-chip-${esc(p.access)}">${esc(p.access)}</span>`
     : "";
@@ -89,12 +93,14 @@ export function accessPopupHtml(p: AccessFeatureProps): string {
     ? `<div class="ap-link"><a href="${esc(p.agency_url)}" target="_blank" ` +
       `rel="noopener noreferrer">Agency info &rarr;</a></div>`
     : "";
+  const dir = lngLat ? directionsLinkHtml(lngLat[1], lngLat[0]) : "";
   return (
     `<div class="ap-popup">` +
     `<div class="ap-name">${esc(p.name || "Access point")}</div>` +
     `<div class="ap-meta">${esc(typeLabel)}${accessChip}</div>` +
     notes +
     link +
+    dir +
     `</div>`
   );
 }
@@ -175,7 +181,7 @@ export async function ensureAccess(state: string): Promise<void> {
       );
       const m = new maplibregl.Marker({ element: el, anchor: "center" })
         .setLngLat([c[0], c[1]]) // GeoJSON is already [lng, lat]
-        .setPopup(makePopup().setHTML(accessPopupHtml(p)));
+        .setPopup(makePopup().setHTML(accessPopupHtml(p, [c[0], c[1]])));
       accessMarkers.push({ marker: m, type: bucket, shown: false });
     }
     _applyAccessVisibility(); // adds enabled buckets if the zoom-gate passes
@@ -202,7 +208,10 @@ let stockedLoading = false;
 let _stockedToggle = false; // the lyr-stocked checkbox
 let _stockedStyleActive = false; // the Stocked map style
 
-export function stockedPopupHtml(p: StockedFeatureProps): string {
+export function stockedPopupHtml(
+  p: StockedFeatureProps,
+  lngLat?: [number, number],
+): string {
   const species = (p.species || []).join(", ");
   const meta = [species, p.category ? esc(p.category) : "",
                 p.season ? esc(p.season) : ""].filter(Boolean).join(" &middot; ");
@@ -210,11 +219,13 @@ export function stockedPopupHtml(p: StockedFeatureProps): string {
     ? `<div class="ap-link"><a href="${esc(p.agency_url)}" target="_blank" ` +
       `rel="noopener noreferrer">Stocking schedule &rarr;</a></div>`
     : "";
+  const dir = lngLat ? directionsLinkHtml(lngLat[1], lngLat[0]) : "";
   return (
     `<div class="ap-popup">` +
     `<div class="ap-name">${esc(p.water || "Stocked water")}</div>` +
     (meta ? `<div class="ap-meta">${meta}</div>` : "") +
     link +
+    dir +
     `</div>`
   );
 }
@@ -276,7 +287,7 @@ export async function ensureStocked(state: string): Promise<void> {
       );
       const m = new maplibregl.Marker({ element: el, anchor: "center" })
         .setLngLat([c[0], c[1]])
-        .setPopup(makePopup().setHTML(stockedPopupHtml(p)));
+        .setPopup(makePopup().setHTML(stockedPopupHtml(p, [c[0], c[1]])));
       stockedMarkers.push(m);
       if (show) m.addTo(map);
     }
@@ -302,7 +313,10 @@ let _damsShown = false;
 const DAMS_GATE_ZOOM = 10;
 const DAMS_GATE_COUNT = 300;
 
-export function damPopupHtml(p: DamFeatureProps): string {
+export function damPopupHtml(
+  p: DamFeatureProps,
+  lngLat?: [number, number],
+): string {
   const meta = [
     p.river ? `on ${esc(p.river)}` : "",
     p.owner ? esc(p.owner) : "",
@@ -318,12 +332,14 @@ export function damPopupHtml(p: DamFeatureProps): string {
     ? `<div class="ap-link"><a href="${esc(p.agency_url)}" target="_blank" ` +
       `rel="noopener noreferrer">NID record &rarr;</a></div>`
     : "";
+  const dir = lngLat ? directionsLinkHtml(lngLat[1], lngLat[0]) : "";
   return (
     `<div class="ap-popup">` +
     `<div class="ap-name">${esc(p.name || "Dam")}</div>` +
     (meta ? `<div class="ap-meta">${meta}</div>` : "") +
     purposes +
     link +
+    dir +
     `</div>`
   );
 }
@@ -375,7 +391,7 @@ export async function ensureDams(state: string): Promise<void> {
       );
       const m = new maplibregl.Marker({ element: el, anchor: "center" })
         .setLngLat([c[0], c[1]])
-        .setPopup(makePopup().setHTML(damPopupHtml(p)));
+        .setPopup(makePopup().setHTML(damPopupHtml(p, [c[0], c[1]])));
       damMarkers.push(m);
     }
     _applyDamsVisibility(); // adds them only if visible + zoom-gate passes
@@ -402,7 +418,10 @@ const PA_ACCESS_LABEL: Record<PublicAccessTier, string> = {
   UK: "Unknown",
 };
 
-export function publicLandsPopupHtml(p: PublicLandsProps): string {
+export function publicLandsPopupHtml(
+  p: PublicLandsProps,
+  lngLat?: [number, number],
+): string {
   const tierCode = (p.public_access as PublicAccessTier) || "UK";
   const tierLabel = PA_ACCESS_LABEL[tierCode] || PA_ACCESS_LABEL.UK;
   const tierChip = `<span class="ap-chip pa-chip-${esc(tierCode)}">${esc(tierLabel)}</span>`;
@@ -417,6 +436,7 @@ export function publicLandsPopupHtml(p: PublicLandsProps): string {
   lines.push(`<div class="ap-meta" style="margin-top:6px">${tierChip}</div>`);
   const stateNm = (p as { state_nm?: string }).state_nm;
   if (stateNm) lines.push(`<div class="ap-notes">${esc(stateNm)}</div>`);
+  if (lngLat) lines.push(directionsLinkHtml(lngLat[1], lngLat[0]));
   return `<div class="ap-popup">${lines.join("")}</div>`;
 }
 
@@ -480,7 +500,12 @@ onMapReady(() => {
     if (!f) return;
     popup
       .setLngLat(e.lngLat)
-      .setHTML(publicLandsPopupHtml((f.properties || {}) as PublicLandsProps))
+      .setHTML(
+        publicLandsPopupHtml((f.properties || {}) as PublicLandsProps, [
+          e.lngLat.lng,
+          e.lngLat.lat,
+        ]),
+      )
       .addTo(map);
   });
 });
@@ -499,7 +524,10 @@ export function setPublicLandsVisible(on: boolean): void {
 
 const TRAILS_SRC_LAYER = { "source-layer": TRAILS_SOURCE_LAYER };
 
-export function trailPopupHtml(p: TrailProps): string {
+export function trailPopupHtml(
+  p: TrailProps,
+  lngLat?: [number, number],
+): string {
   const meta = [
     p.trail_type ? esc(p.trail_type) : "",
     p.surface ? esc(p.surface) : "",
@@ -507,10 +535,12 @@ export function trailPopupHtml(p: TrailProps): string {
   ]
     .filter(Boolean)
     .join(" &middot; ");
+  const dir = lngLat ? directionsLinkHtml(lngLat[1], lngLat[0]) : "";
   return (
     `<div class="ap-popup">` +
     `<div class="ap-name">${esc(p.name || "Trail")}</div>` +
     (meta ? `<div class="ap-meta">${meta}</div>` : "") +
+    dir +
     `</div>`
   );
 }
@@ -545,7 +575,12 @@ onMapReady(() => {
     if (!f) return;
     popup
       .setLngLat(e.lngLat)
-      .setHTML(trailPopupHtml((f.properties || {}) as TrailProps))
+      .setHTML(
+        trailPopupHtml((f.properties || {}) as TrailProps, [
+          e.lngLat.lng,
+          e.lngLat.lat,
+        ]),
+      )
       .addTo(map);
   });
 });

@@ -494,6 +494,19 @@ def test_build_river_popup_html():
     # Verify it still exists and sits inside its own labeled panel.
     assert 'data-tab="catch"' in html
     assert "bl-catch-cta" in html
+    # Directions row: both map apps offered, each routed to the river's coords.
+    assert 'class="bl-dir-row"' in html
+    assert "maps.apple.com/?daddr=39.6,-76.7" in html        # Apple Maps
+    assert "google.com/maps/dir/?api=1&destination=39.6,-76.7" in html  # Google
+
+
+def test_directions_row_html_requires_coords():
+    row = main._directions_row_html({"lat": 39.6, "lon": -76.7})
+    assert "Apple Maps" in row and "Google Maps" in row
+    assert "maps.apple.com" in row and "google.com/maps/dir" in row
+    # Missing/None coords -> no row (no broken link to nowhere).
+    assert main._directions_row_html({"lat": None, "lon": None}) == ""
+    assert main._directions_row_html({}) == ""
 
 
 def test_build_reach_popup_html_unified():
