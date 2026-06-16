@@ -48,6 +48,22 @@
       "url": "https://services.wvgis.wvu.edu/arcgis/rest/services",
       "field": null,
       "note": "WV trout = all-stocked (dnrRec_fishing layer 4 Stocked Trout Streams); wild brook trout currently come ONLY from the range-wide EBTJV native overlay. Ruled out in dnrRec_fishing: 'Special Regulation Areas' layers 13/14 are 'Zero Possession Non-Game Fish' (not trout) and layer 5 is warmwater. Enumerate WVGIS / WV DNR services + AGOL for a wild / native brook trout / catch-and-release trout layer to add a WV-specific wild source on top of EBTJV."
+    },
+    {
+      "id": "ca-trout-only-stocked-discover",
+      "kind": "discover",
+      "state": "CA",
+      "url": "https://services2.arcgis.com/Uq9r85Potqm3MfRV/arcgis/rest/services",
+      "field": null,
+      "note": "CA = wild-only (Heritage & Wild Trout, biosds1356). Seeking a TROUT-ONLY stocked layer to add a stocked dimension (NJ/VA wild-first pattern). CDFW 'Recent Stocked Waters' [biosds778_fpu, 536 polygons] is the only stocked layer found but is ALL-SPECIES (fields are just StockingWaterID/DFGWATERID/Counties/last_yr_stkd -- no species/taxa), so whole-layer use would mislabel warmwater reservoirs as stocked trout. Re-scan the CDFW org + AGOL for a catchable-TROUT planting / hatchery trout allotment layer carrying a species field; if none surfaces, revisit ds778 with a coldwater/elevation or NHD-COMID filter."
+    },
+    {
+      "id": "ut-trout-streams-beyond-blueribbon",
+      "kind": "discover",
+      "state": "UT",
+      "url": "https://services.arcgis.com/ZzrwjTRez6FJiOq4/arcgis/rest/services",
+      "field": null,
+      "note": "UT = Blue Ribbon premier rivers only (gold) + native cutthroat (UTCT overlay). No comprehensive UT trout-STREAM classification found in the UDWR org (services/ZzrwjTRez6FJiOq4); the UDWR_Fish_Stocking_Events VIEW is LAKES (polygons), not streams. Re-scan for a statewide sportfish-management / trout-stream classification, or a stocked-trout STREAM layer, to add tiers + a stocked dimension beyond the ~17 Blue Ribbon segments."
     }
   ]
 }
