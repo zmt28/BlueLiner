@@ -359,13 +359,24 @@
       "default": "stocked"
     },
     {
-      "_comment": "WY Game & Fish Blue Ribbon Streams (services6.arcgis.com/cWzdqIyxbijuhPLw Blue_Ribbon_Streams). WGFD's top trout-stream tier -- >600 lb trout/mile, 'national importance', the top 3-5% of WY streams; these are de-facto self-sustaining wild trout fisheries. Per the nationwide principle's western-coverage carve-out: a quality/biomass tier with no reproduction field -> treat the top Blue Ribbon tier as wild. This layer is the Blue-Ribbon subset only (lower Red/Yellow/Green tiers aren't in it, so there's nothing to drop). Whole layer -> wild_reproduction.",
+      "_comment": "WY Game & Fish Stream Classifications (services6.arcgis.com/cWzdqIyxbijuhPLw Stream_Classifications) -- WGFD's full Blue/Red/Yellow/Green ribbon system on the strClass field, REPLACING the old Blue_Ribbon_Streams layer that carried only the top tier (so all of WY rendered gold). Verified live: blue = the premier waters (North Platte Miracle Mile, Encampment, Clarks Fork, Bighorn tailwater); red/yellow/green descend in trout-stream quality. Per the western-coverage carve-out (a quality tier with no reproduction field -> wild), all four ribbon colors are de-facto self-sustaining wild trout fisheries -> wild_reproduction, with a tier_map preserving the ribbon order: blue->gold, red->class1, yellow->class2, green->class3 (the build's size ladder may still bump big named reaches up one, as it does for every tier_map source). Dropped (absent from the map, no default): orange = warmwater plains rivers (Powder, Belle Fourche, Little Missouri, lower Bighorn); clear = unrated mix; brown (2 reaches). This extends the prior top-tier-only treatment now that WGFD's actual named classification -- not a guess -- is available.",
       "state": "WY",
-      "label": "WY Blue Ribbon Trout Streams",
-      "mode": "single",
-      "class": "wild_reproduction",
-      "tier": "gold",
-      "url": "https://services6.arcgis.com/cWzdqIyxbijuhPLw/arcgis/rest/services/Blue_Ribbon_Streams/FeatureServer/0/query?where=1%3D1"
+      "label": "WY Stream Classifications (ribbon tiers)",
+      "mode": "field_map",
+      "field": "strClass",
+      "url": "https://services6.arcgis.com/cWzdqIyxbijuhPLw/arcgis/rest/services/Stream_Classifications/FeatureServer/0/query?where=1%3D1",
+      "map": {
+        "blue": "wild_reproduction",
+        "red": "wild_reproduction",
+        "yellow": "wild_reproduction",
+        "green": "wild_reproduction"
+      },
+      "tier_map": {
+        "blue": "gold",
+        "red": "class1",
+        "yellow": "class2",
+        "green": "class3"
+      }
     },
     {
       "_comment": "UT DWR Blue Ribbon Fisheries, rivers only (Blue_Ribbon_Fisheries_VIEW/FeatureServer/0 = Blue_Ribbon_Rivers; the /1 lakes layer is intentionally excluded to avoid greening stocked reservoirs). UT's single Blue Ribbon quality tier -- ~17 premier river segments (Green, Provo, Weber, Logan, ...), de-facto wild trout rivers. Per the western-coverage carve-out (top tier = wild). Whole layer -> wild_reproduction.",

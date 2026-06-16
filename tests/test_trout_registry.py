@@ -256,18 +256,37 @@ def test_sc_trout_category_wild_cr_vs_stocked():
     assert reg.row_bucket(sc, {}) is None
 
 
-def test_wy_and_ut_blue_ribbon_single_wild():
-    # Western carve-out: Blue Ribbon premier-water tiers -> wild (whole layer).
-    for st in ("WY", "UT"):
-        s = SOURCES[st]
-        assert s["mode"] == "single"
-        assert reg.row_bucket(s, {}) == "wild_reproduction"
+def test_ut_blue_ribbon_single_wild():
+    # Western carve-out: UT Blue Ribbon premier waters -> wild (whole layer).
+    s = SOURCES["UT"]
+    assert s["mode"] == "single"
+    assert reg.row_bucket(s, {}) == "wild_reproduction"
+
+
+def test_wy_stream_classifications_ribbon_tiers():
+    # WY full WGFD ribbon system (replaces Blue-Ribbon-only): strClass field_map.
+    # blue/red/yellow/green are all wild trout fisheries (western carve-out) with
+    # a tier_map preserving ribbon order; orange (warmwater) / clear (unrated) /
+    # brown are absent from the map (no default) -> dropped.
+    wy = SOURCES["WY"]
+    assert wy["mode"] == "field_map" and wy["field"] == "strClass"
+    f = "strClass"
+    for color in ("blue", "red", "yellow", "green"):
+        assert reg.row_bucket(wy, {f: color}) == "wild_reproduction"
+    assert reg.row_tier(wy, {f: "blue"}) == "gold"
+    assert reg.row_tier(wy, {f: "red"}) == "class1"
+    assert reg.row_tier(wy, {f: "yellow"}) == "class2"
+    assert reg.row_tier(wy, {f: "green"}) == "class3"
+    for drop in ("orange", "clear", "brown", "", None):
+        assert reg.row_bucket(wy, {f: drop}) is None
+    assert reg.row_bucket(wy, {}) is None
+    assert reg.classify_fields(wy) == ["strClass"]
 
 
 def test_row_tier_gold_and_ladders():
     # explicit gold + the class1/2/3 ladders
-    assert reg.row_tier(SOURCES["WY"], {}) == "gold"
     assert reg.row_tier(SOURCES["UT"], {}) == "gold"
+    assert reg.row_tier(SOURCES["WY"], {"strClass": "blue"}) == "gold"
     assert reg.row_tier(SOURCES["MO"], {"AreaType": "Blue Ribbon"}) == "gold"
     assert reg.row_tier(SOURCES["MO"], {"AreaType": "Red Ribbon"}) == "class2"
     assert reg.row_tier(SOURCES["MO"], {"AreaType": "White Ribbon"}) == "class3"
