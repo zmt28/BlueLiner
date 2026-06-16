@@ -7,7 +7,7 @@
       "state": "MD",
       "url": "https://dnr.geodata.md.gov/dnrdata/rest/services/Fisheries",
       "field": null,
-      "note": "Enumerate MD DNR Fisheries services for a wild-trout / special-management layer richer than DesignatedUse_Trout."
+      "note": "MD now classifies via DesignatedUse_Trout Des_Use (Use III/III-P wild vs IV/IV-P stocked), so the core wild/stocked split is solved. Lower priority: enumerate MD DNR Fisheries for an even richer wild-trout / special-management (catch-and-release / trophy) layer that could add a finer tier."
     },
     {
       "id": "nv-lct-successor",
@@ -16,6 +16,38 @@
       "url": "https://services.arcgis.com/RyxlXSfFi87rAosq/arcgis/rest/services",
       "field": null,
       "note": "NDOW retired LCT_Occupied_Streams_NV (all layerIds 404). Find the republished Lahontan cutthroat occupied-streams service."
+    },
+    {
+      "id": "vt-stocked-trout-line",
+      "kind": "discover",
+      "state": "VT",
+      "url": "https://anrmaps.vermont.gov/arcgis/rest/services/map_services/MAP_ANR_ANRATLASFISHWILDLIFE_WM_NOCACHE/MapServer",
+      "field": null,
+      "note": "VT trout = all-wild Brook Trout Waters (layer 49, EBTJV catchment polygons). Seeking a STOCKED-trout LINE layer to add a stocked dimension (the NJ/VA wild-first two-source pattern). Only point 'Fish Stocking Locations (2021)' (layer 52, all-species points) found so far -- points buffer poorly onto the NHD line network. Re-list this MapServer's fish/trout sublayers each run to catch a stocked-stream line layer if VT publishes one, and re-scan the map_services folder for a new stocking service."
+    },
+    {
+      "id": "vt-fish-stocking-points-schema",
+      "kind": "field_dump",
+      "state": "VT",
+      "url": "https://anrmaps.vermont.gov/arcgis/rest/services/map_services/MAP_ANR_ANRATLASFISHWILDLIFE_WM_NOCACHE/MapServer/52",
+      "field": null,
+      "note": "Capture schema + samples of 'Fish Stocking Locations (2021)'. If it carries a species field we can filter to trout (brook/brown/rainbow) and buffer the points as a COARSE stocked fallback for VT -- lower fidelity than a line layer, but better than no stocked dimension. Confirm geometry (expected point) and whether a waterbody/reach-name field exists to anchor points onto named flowlines."
+    },
+    {
+      "id": "ma-stocked-trout-discover",
+      "kind": "discover",
+      "state": "MA",
+      "url": "https://arcgisserver.digital.mass.gov/arcgisserver/rest/services",
+      "field": null,
+      "note": "MA trout = all-wild Coldwater Fisheries Resources (AGOL/DFW_CFR). Seeking a MassWildlife STOCKED-trout layer to add a stocked dimension. The AGOL folder holds only DFW_CFR + DiadromousFish; the DFG (Dept of Fish & Game), FWE and NHESP folders expose no fish/trout-NAMED services. Enumerate every folder for a trout-stocking layer; MassWildlife's stocked-trout list may be an AGOL item or PDF rather than a server layer -- flag if no GIS layer exists so we fall back to a curated baseline."
+    },
+    {
+      "id": "wv-wild-trout-discover",
+      "kind": "discover",
+      "state": "WV",
+      "url": "https://services.wvgis.wvu.edu/arcgis/rest/services",
+      "field": null,
+      "note": "WV trout = all-stocked (dnrRec_fishing layer 4 Stocked Trout Streams); wild brook trout currently come ONLY from the range-wide EBTJV native overlay. Ruled out in dnrRec_fishing: 'Special Regulation Areas' layers 13/14 are 'Zero Possession Non-Game Fish' (not trout) and layer 5 is warmwater. Enumerate WVGIS / WV DNR services + AGOL for a wild / native brook trout / catch-and-release trout layer to add a WV-specific wild source on top of EBTJV."
     }
   ]
 }
