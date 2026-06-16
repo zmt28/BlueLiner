@@ -51,6 +51,25 @@
       ]
     },
     {
+      "_comment": "NJ DEP Surface Water Quality Classifications (mapsdep.nj.gov Hydrography/MapServer/7) -- New Jersey's statewide SWQS antidegradation classification (N.J.A.C. 7:9B) on the CATEGORY field. Trout Production (TP: FW2-TPC1 / FW2-TP / FW1-TP, ~13,461 reaches) = waters classified as supporting trout REPRODUCTION -> wild_reproduction per the nationwide natural-reproduction=wild principle (tier falls back to class2, then the size ladder promotes named order>=3 reaches to class1). The server-side where=CATEGORY LIKE '%TP%' fetches ONLY the TP reaches: it bounds the pull (the full layer is ~285k reaches, well over the build's MAX_PAGES*page_size cap) and IS the classification -- every fetched row is a TP variant, which the field_prefix 'tp' rule tags wild (no default -> nothing dropped). Trout Maintenance (TM) and Non-Trout (NT) are intentionally NOT mapped here: TM is stocking-dependent (no documented reproduction) and stays the province of the NJ Trout Stocked Streams layer below, so this source contributes only the WILD upgrade. Ordered BEFORE that stocked source so a TP reach claims trout_class=wild before the stocked layer can color it (first writer wins per COMID). Validated against the 2022 NJ Fish & Wildlife Digest's named wild-trout streams (Dunnfield, India Brook, Primrose Brook, Brass Castle Creek, upper Whippany) -- all carry TP; the SWQS layer is reach-accurate where the Digest is whole-name (e.g. only the wild upper Whippany is TP, the degraded lower river is NT).",
+      "state": "NJ",
+      "label": "NJ SWQS Trout Production",
+      "mode": "field_prefix",
+      "fields": [
+        "CATEGORY"
+      ],
+      "url": "https://mapsdep.nj.gov/arcgis/rest/services/Features/Hydrography/MapServer/7/query?where=CATEGORY+LIKE+%27%25TP%25%27",
+      "rules": [
+        {
+          "contains": [
+            "tp"
+          ],
+          "bucket": "wild_reproduction"
+        }
+      ]
+    },
+    {
+      "_comment": "NJ Fish & Wildlife stocked-trout streams (the actual put-and-take list). Whole layer -> stocked. Trails the SWQS Trout Production source above, so wild TP reaches keep their class on any overlap; this colors the remaining stocked reaches blue. NJ went from a single all-stocked source to this wild(TP)/stocked split, mirroring the MD Des_Use remap.",
       "state": "NJ",
       "label": "NJ Trout Stocked Streams",
       "mode": "single",

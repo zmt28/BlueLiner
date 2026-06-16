@@ -436,6 +436,31 @@ def test_psmfc_streamnet_native_overlays():
     assert "Historical" in SOURCES["RBT"]["url"]
 
 
+def test_nj_swqs_trout_production_wild_first():
+    # NJ is now two ordered sources (like CT): the SWQS Trout Production layer
+    # claims wild first, then the stocked-streams layer colors the rest. SWQS
+    # CATEGORY field_prefix: TP variants (FW2-TPC1/FW2-TP/FW1-TP) -> wild; TM/NT
+    # not mapped here (no default -> dropped; the stocked layer + the server-side
+    # where=...TP... filter mean TM/NT never actually reach this rule).
+    nj = [s for s in ALL_SOURCES if s["state"] == "NJ"]
+    assert [s["label"] for s in nj] == [
+        "NJ SWQS Trout Production", "NJ Trout Stocked Streams"]   # wild claims first
+    swqs = BY_LABEL["NJ SWQS Trout Production"]
+    assert swqs["mode"] == "field_prefix" and swqs["fields"] == ["CATEGORY"]
+    assert "TP" in swqs["url"]                       # fetch bounded to TP server-side
+    f = "CATEGORY"
+    for tp in ("FW2-TPC1", "FW2-TP", "FW1-TP"):
+        assert reg.row_bucket(swqs, {f: tp}) == "wild_reproduction"
+        assert reg.row_tier(swqs, {f: tp}) == "class2"  # ladder -> class1 in build
+    for other in ("FW2-TMC1", "FW2-TM", "FW2-NT", "FW2-NTC1/SE1", "PL", "SE1"):
+        assert reg.row_bucket(swqs, {f: other}) is None  # TM/NT unmapped, no default
+    assert reg.row_bucket(swqs, {}) is None
+    assert reg.classify_fields(swqs) == ["CATEGORY"]
+    # the stocked source still trails and is whole-layer stocked
+    assert nj[1]["mode"] == "single" and nj[1]["class"] == "stocked"
+    assert reg.row_bucket(nj[1], {}) == "stocked"
+
+
 def test_ct_is_two_ordered_sources_wild_first():
     ct = [s for s in ALL_SOURCES if s["state"] == "CT"]
     assert [s["label"] for s in ct] == ["CT (WTMA)", "CT (stocked)"]  # wild claims first
