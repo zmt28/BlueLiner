@@ -1,12 +1,15 @@
 # Endpoint watch
 
-_Run: 2026-06-16 11:03 UTC -- 9/11 reachable, **7 READY TO PROMOTE**._
+_Run: 2026-06-16 16:44 UTC -- 13/14 reachable, **7 READY TO PROMOTE**._
 
 | id | state | kind | status | captured |
 |----|-------|------|--------|----------|
-| md-designated-use-field | MD | field_dump | DOWN | - |
 | md-fisheries-folder | MD | discover | UP | yes |
 | nv-lct-successor | NV | discover | UP | yes |
+| vt-stocked-trout-line | VT | discover | UP | yes |
+| vt-fish-stocking-points-schema | VT | field_dump | UP | yes |
+| ma-stocked-trout-discover | MA | discover | UP | yes |
+| wv-wild-trout-discover | WV | discover | UP | yes |
 | cand-stocking-ma-massgis-dfg-trout-stocking--official-item | MA | verify | DOWN | - |
 | cand-access_points-de-dnrec-public-fishing-ponds | DE | verify | UP | PROMOTE |
 | cand-access_points-ca-cdfw-fishing-guide-boating-facilities | CA | verify | UP | PROMOTE |
@@ -19,10 +22,45 @@ _Run: 2026-06-16 11:03 UTC -- 9/11 reachable, **7 READY TO PROMOTE**._
 ## Captured detail (reachable entries)
 
 ### md-fisheries-folder (MD / discover)
-> Enumerate MD DNR Fisheries services for a wild-trout / special-management layer richer than DesignatedUse_Trout.
+> MD now classifies via DesignatedUse_Trout Des_Use (Use III/III-P wild vs IV/IV-P stocked), so the core wild/stocked split is solved. Lower priority: enumerate MD DNR Fisheries for an even richer wild-trout / special-management (catch-and-release / trophy) layer that could add a finer tier.
 
-- **AGOL search matches:**
-  - _(reachable, no fish/trout items)_
+- **services / layers matching fish/trout:**
+  - `Fisheries/AnadromousFish` (FeatureServer)
+  - `Fisheries/AnadromousFish` (MapServer)
+  - `Fisheries/BenthicColdwaterObligates` (FeatureServer)
+  - `Fisheries/BenthicColdwaterObligates` (MapServer)
+  - `Fisheries/ChesBaySandAndMudGISService` (FeatureServer)
+  - `Fisheries/ChesBaySandAndMudGISService` (MapServer)
+  - `Fisheries/ColdwaterResourceMapData` (FeatureServer)
+  - `Fisheries/ColdwaterResourceMapData` (MapServer)
+  - `Fisheries/DesignatedUse_Trout` (MapServer)
+  - `Fisheries/FinfishDiagnostics` (FeatureServer)
+  - `Fisheries/FinfishDiagnostics` (MapServer)
+  - `Fisheries/FisheriesLULC50mtrSW` (MapServer)
+  - `Fisheries/FishHatcheries` (MapServer)
+  - `Fisheries/FishingGrounds` (FeatureServer)
+  - `Fisheries/FishingGrounds` (MapServer)
+  - `Fisheries/GearAreaPoints` (MapServer)
+  - `Fisheries/GearAreasAndSanctuaries` (MapServer)
+  - `Fisheries/GearAreasSimple` (MapServer)
+  - `Fisheries/HOBOWaterTempLoggers` (MapServer)
+  - `Fisheries/HSCConfirmed` (FeatureServer)
+  - `Fisheries/HSCConfirmed` (MapServer)
+  - `Fisheries/HSC` (FeatureServer)
+  - `Fisheries/HSC` (MapServer)
+  - `Fisheries/ImpoundmentSurveys` (MapServer)
+  - `Fisheries/InvasiveSpecies` (MapServer)
+  - `Fisheries/MDSmallPondsSrvc` (FeatureServer)
+  - `Fisheries/MDSmallPondsSrvc` (MapServer)
+  - `Fisheries/NOAACodesShellfish` (MapServer)
+  - `Fisheries/PotomacSurveys` (MapServer)
+  - `Fisheries/PublicFishingAccessSites` (FeatureServer)
+  - `Fisheries/PublicFishingAccessSites` (MapServer)
+  - `Fisheries/StreamSurveys_NoTrout` (MapServer)
+  - `Fisheries/TidalBass` (FeatureServer)
+  - `Fisheries/TidalBass` (MapServer)
+  - `Fisheries/TroutPopulation_Watershed2017` (MapServer)
+  - `Fisheries/TroutStockingActivities` (MapServer)
 
 ### nv-lct-successor (NV / discover)
 > NDOW retired LCT_Occupied_Streams_NV (all layerIds 404). Find the republished Lahontan cutthroat occupied-streams service.
@@ -35,6 +73,105 @@ _Run: 2026-06-16 11:03 UTC -- 9/11 reachable, **7 READY TO PROMOTE**._
   - `Nevada_Department_of_Wildlife_Fish_Hatchery_Locations` (FeatureServer)
   - `Red_Banded_Trout_Distributions` (FeatureServer)
   - `Mule_Deer_Trout_Creek_Herd_All` (FeatureServer)
+
+### vt-stocked-trout-line (VT / discover)
+> VT trout = all-wild Brook Trout Waters (layer 49, EBTJV catchment polygons). Seeking a STOCKED-trout LINE layer to add a stocked dimension (the NJ/VA wild-first two-source pattern). Only point 'Fish Stocking Locations (2021)' (layer 52, all-species points) found so far -- points buffer poorly onto the NHD line network. Re-list this MapServer's fish/trout sublayers each run to catch a stocked-stream line layer if VT publishes one, and re-scan the map_services folder for a new stocking service.
+
+- **matching layers:**
+  - layer 38: `Commercial Baitfish Dealers` (esriGeometryPoint)
+  - layer 51: `Fish and Wildlife Facilities` (esriGeometryPoint)
+  - layer 52: `Fish Stocking Locations (2021)` (esriGeometryPoint)
+  - layer 53: `Family Friendly Fishing` (esriGeometryPoint)
+  - layer 54: `Chittenden County Fishing` (esriGeometryPoint)
+  - layer 2: `Fishing Access Areas` (esriGeometryPoint)
+  - layer 5: `Invasive Plant Atlas` (esriGeometryPoint)
+  - layer 45: `Baitfish Zones` (esriGeometryPolygon)
+  - layer 49: `Brook Trout Waters` (esriGeometryPolygon)
+  - layer 34: `Fisheries Admin Districts` (esriGeometryPolygon)
+
+### vt-fish-stocking-points-schema (VT / field_dump)
+> Capture schema + samples of 'Fish Stocking Locations (2021)'. If it carries a species field we can filter to trout (brook/brown/rainbow) and buffer the points as a COARSE stocked fallback for VT -- lower fidelity than a line layer, but better than no stocked dimension. Confirm geometry (expected point) and whether a waterbody/reach-name field exists to anchor points onto named flowlines.
+
+- **layer:** `Fish Stocking Locations (2021)`  geometry: `esriGeometryPoint`  count: `250`
+- **fields** (name | type | alias | coded-domain):
+  - `OBJECTID` | OID | 'OBJECTID'
+  - `Hatchery` | String | 'Hatchery'
+  - `Watershed` | String | 'Watershed'
+  - `Waterbody` | String | 'Waterbody'
+  - `Location` | String | 'Location'
+  - `Town` | String | 'Town'
+  - `Species` | String | 'Species'
+  - `LAT` | Double | 'LAT'
+  - `LONG` | Double | 'LONG'
+  - `SHAPE` | Geometry | 'SHAPE'
+- **sample features (3):**
+  - ```json
+    {"OBJECTID": 1, "Hatchery": "Bennington", "Watershed": "Deerfield River", "Waterbody": "Sherman Reservoir", "Location": "Access area", "Town": "Whitingham", "Species": "BNT", "LAT": 42.745277, "LONG": -72.926788}
+    ```
+  - ```json
+    {"OBJECTID": 2, "Hatchery": "Bennington", "Watershed": "Deerfield River", "Waterbody": "Lake Raponda", "Location": "Access area", "Town": "Wilmington", "Species": "RBT", "LAT": 42.884006, "LONG": -72.820045}
+    ```
+  - ```json
+    {"OBJECTID": 3, "Hatchery": "Bennington", "Watershed": "Deerfield River", "Waterbody": "Red Mill Pond", "Location": "Access area", "Town": "Woodford", "Species": "BKT", "LAT": 42.890621, "LONG": -73.028102}
+    ```
+
+### ma-stocked-trout-discover (MA / discover)
+> MA trout = all-wild Coldwater Fisheries Resources (AGOL/DFW_CFR). Seeking a MassWildlife STOCKED-trout layer to add a stocked dimension. The AGOL folder holds only DFW_CFR + DiadromousFish; the DFG (Dept of Fish & Game), FWE and NHESP folders expose no fish/trout-NAMED services. Enumerate every folder for a trout-stocking layer; MassWildlife's stocked-trout list may be an AGOL item or PDF rather than a server layer -- flag if no GIS layer exists so we fall back to a curated baseline.
+
+- **services / layers matching fish/trout:**
+  - _folder_ `AGOL`
+  - _folder_ `Basemaps`
+  - _folder_ `DCAM`
+  - _folder_ `DCR`
+  - _folder_ `DEP`
+  - _folder_ `DFG`
+  - _folder_ `DHCD`
+  - _folder_ `DOEServices`
+  - _folder_ `DPH`
+  - _folder_ `DPS`
+  - _folder_ `DUA`
+  - _folder_ `EOLWD`
+  - _folder_ `EPSServices`
+  - _folder_ `FEMA`
+  - _folder_ `FWE`
+  - _folder_ `GeocodeServices`
+  - _folder_ `GeocodeServicesArcMap`
+  - _folder_ `HealthConnector`
+  - _folder_ `Legislature`
+  - _folder_ `LiDAR`
+  - _folder_ `MEMA`
+  - _folder_ `NHESP`
+  - _folder_ `PublicSafety`
+  - _folder_ `Transportation`
+  - _folder_ `Utilities`
+
+### wv-wild-trout-discover (WV / discover)
+> WV trout = all-stocked (dnrRec_fishing layer 4 Stocked Trout Streams); wild brook trout currently come ONLY from the range-wide EBTJV native overlay. Ruled out in dnrRec_fishing: 'Special Regulation Areas' layers 13/14 are 'Zero Possession Non-Game Fish' (not trout) and layer 5 is warmwater. Enumerate WVGIS / WV DNR services + AGOL for a wild / native brook trout / catch-and-release trout layer to add a WV-specific wild source on top of EBTJV.
+
+- **services / layers matching fish/trout:**
+  - _folder_ `Applications`
+  - _folder_ `Biota`
+  - _folder_ `Boundaries`
+  - _folder_ `Climatology_Meteorology_Atmosphere`
+  - _folder_ `Economy`
+  - _folder_ `Elevation`
+  - _folder_ `Environment`
+  - _folder_ `Farming`
+  - _folder_ `Geocode`
+  - _folder_ `Geoscientific_Information`
+  - _folder_ `Hazards`
+  - _folder_ `Health`
+  - _folder_ `Imagery_BaseMaps_EarthCover`
+  - _folder_ `Inland_Waters`
+  - _folder_ `Intelligence_Military`
+  - _folder_ `Location`
+  - _folder_ `Planning_Cadastre`
+  - _folder_ `Society`
+  - _folder_ `Structure`
+  - _folder_ `Test`
+  - _folder_ `Transportation`
+  - _folder_ `Utilities`
+  - _folder_ `Utilities_Communication`
 
 ### cand-access_points-de-dnrec-public-fishing-ponds (DE / verify)
 > [access_points candidate] DNREC Public Fishing Ponds
