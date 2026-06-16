@@ -1,6 +1,6 @@
 # Endpoint watch
 
-_Run: 2026-06-16 16:44 UTC -- 13/14 reachable, **7 READY TO PROMOTE**._
+_Run: 2026-06-16 20:45 UTC -- 15/16 reachable, **7 READY TO PROMOTE**._
 
 | id | state | kind | status | captured |
 |----|-------|------|--------|----------|
@@ -10,6 +10,8 @@ _Run: 2026-06-16 16:44 UTC -- 13/14 reachable, **7 READY TO PROMOTE**._
 | vt-fish-stocking-points-schema | VT | field_dump | UP | yes |
 | ma-stocked-trout-discover | MA | discover | UP | yes |
 | wv-wild-trout-discover | WV | discover | UP | yes |
+| ca-trout-only-stocked-discover | CA | discover | UP | yes |
+| ut-trout-streams-beyond-blueribbon | UT | discover | UP | yes |
 | cand-stocking-ma-massgis-dfg-trout-stocking--official-item | MA | verify | DOWN | - |
 | cand-access_points-de-dnrec-public-fishing-ponds | DE | verify | UP | PROMOTE |
 | cand-access_points-ca-cdfw-fishing-guide-boating-facilities | CA | verify | UP | PROMOTE |
@@ -134,7 +136,6 @@ _Run: 2026-06-16 16:44 UTC -- 13/14 reachable, **7 READY TO PROMOTE**._
   - _folder_ `EPSServices`
   - _folder_ `FEMA`
   - _folder_ `FWE`
-  - _folder_ `GeocodeServices`
   - _folder_ `GeocodeServicesArcMap`
   - _folder_ `HealthConnector`
   - _folder_ `Legislature`
@@ -172,6 +173,112 @@ _Run: 2026-06-16 16:44 UTC -- 13/14 reachable, **7 READY TO PROMOTE**._
   - _folder_ `Transportation`
   - _folder_ `Utilities`
   - _folder_ `Utilities_Communication`
+
+### ca-trout-only-stocked-discover (CA / discover)
+> CA = wild-only (Heritage & Wild Trout, biosds1356). Seeking a TROUT-ONLY stocked layer to add a stocked dimension (NJ/VA wild-first pattern). CDFW 'Recent Stocked Waters' [biosds778_fpu, 536 polygons] is the only stocked layer found but is ALL-SPECIES (fields are just StockingWaterID/DFGWATERID/Counties/last_yr_stkd -- no species/taxa), so whole-layer use would mislabel warmwater reservoirs as stocked trout. Re-scan the CDFW org + AGOL for a catchable-TROUT planting / hatchery trout allotment layer carrying a species field; if none surfaces, revisit ds778 with a coldwater/elevation or NHD-COMID filter.
+
+- **services / layers matching fish/trout:**
+  - `20mm_Fish_Distribution` (FeatureServer)
+  - `California_Department_of_Fish_and_Wildlife_Terrestrial_Regions` (FeatureServer)
+  - `CDFW_Fish_Hatcheries` (FeatureServer)
+  - `CDFW_Fish_Rescues` (FeatureServer)
+  - `Colorado_River_Access` (FeatureServer)
+  - `Essential_Fish_Habitat_Conservation_Area` (FeatureServer)
+  - `Fish_Passage_updated_11_21` (FeatureServer)
+  - `Fishing_Closures` (FeatureServer)
+  - `FishingClosure` (FeatureServer)
+  - `FishingRegulationsV1` (FeatureServer)
+  - `Groundfish_Conservation_Area` (FeatureServer)
+  - `Lake_Tahoe_Fish_Habitat` (FeatureServer)
+  - `Local_Fish_Passage_Recommendation_update` (FeatureServer)
+  - `Los_Padres_NF_Trail_and_Road_Access` (FeatureServer)
+  - `PilotPlantingPlotsOutline` (FeatureServer)
+  - `PilotPlantingRows` (FeatureServer)
+  - `RAMP_2023_2024_Survey_Map_WFL8` (FeatureServer)
+  - `RAMP_Fishing_Zones` (FeatureServer)
+  - `RAMPFishingZones` (FeatureServer)
+  - `regLinkFishing` (FeatureServer)
+  - `regLinkFishingDev` (FeatureServer)
+  - `SLS_Fish_Distribution` (FeatureServer)
+  - `SLS_FishDistribution` (FeatureServer)
+  - `ago_launch_20190614` (MapServer)
+  - `FishingGuide` (FeatureServer)
+
+### ut-trout-streams-beyond-blueribbon (UT / discover)
+> UT = Blue Ribbon premier rivers only (gold) + native cutthroat (UTCT overlay). No comprehensive UT trout-STREAM classification found in the UDWR org (services/ZzrwjTRez6FJiOq4); the UDWR_Fish_Stocking_Events VIEW is LAKES (polygons), not streams. Re-scan for a statewide sportfish-management / trout-stream classification, or a stocked-trout STREAM layer, to add tiers + a stocked dimension beyond the ~17 Blue Ribbon segments.
+
+- **services / layers matching fish/trout:**
+  - `5_1a_Power_Plant_Capacity__Electricity` (FeatureServer)
+  - `5_1b_Largest_Power_Plants_Electricity` (FeatureServer)
+  - `accessPlanning_Surveys_base` (FeatureServer)
+  - `accessPlanning_Surveys_edits` (FeatureServer)
+  - `airboat_tracks` (FeatureServer)
+  - `Biomass_Power_Plants_1_view` (FeatureServer)
+  - `Bison_SITLA_Access` (FeatureServer)
+  - `BlackBear_SITLA_Access` (FeatureServer)
+  - `Blue_Ribbon_Fisheries_VIEW` (FeatureServer)
+  - `BRCMP_BoaterAccess` (FeatureServer)
+  - `BRCMP_Recreation_Access` (FeatureServer)
+  - `BRCMP_Recreation_Access_Boater_Access_Points` (FeatureServer)
+  - `BRCMP_Recreation_Access_Cutler_Reservoir_Recreation_Areas` (FeatureServer)
+  - `BRCMP_Recreation_Access_DWR_Managed_Access_Areas` (FeatureServer)
+  - `BRCMP_Recreation_Access_Trails` (FeatureServer)
+  - `CABHS_SITLA_Access` (FeatureServer)
+  - `Coal_Power_Plants_GIS_Layer` (FeatureServer)
+  - `Coal_Power_Plants_view` (FeatureServer)
+  - `Coal_Power_Plantsupdated` (FeatureServer)
+  - `Coal_Power_Plantsupdated_view` (FeatureServer)
+  - `Community_fisheries` (FeatureServer)
+  - `Consumption_at_Power_Plants` (FeatureServer)
+  - `Cutthroat_Genetic_Results` (FeatureServer)
+  - `DesertBHS_SITLA_Access` (FeatureServer)
+  - `Elk_Antlerless_SITLA_Access` (FeatureServer)
+  - `Elk_SITLA_Access` (FeatureServer)
+  - `Fishing__Loco` (FeatureServer)
+  - `geothermal_power_plants_updated_view` (FeatureServer)
+  - `Geothermal_Power_Plants_view` (FeatureServer)
+  - `GSL_WMA_Access_Points` (FeatureServer)
+  - `hydroelectric_power_plants_view` (FeatureServer)
+  - `JRCMP_Access_JRC_Recreation_Planning_Lines` (FeatureServer)
+  - `JRCMP_Access_JRC_Recreation_Planning_Points` (FeatureServer)
+  - `JRCMP_Access_Trails` (FeatureServer)
+  - `JRCMP_Hydrology_Waste_Water_Treatment_Plants` (FeatureServer)
+  - `JRCMP_Infrastructure_Salt_Lake_County_Flood_Control_Access` (FeatureServer)
+  - `JRCMP_Recreation_Fishing_Hotspots` (FeatureServer)
+  - `Lake_Powell_Boater_Zip` (FeatureServer)
+  - `Loconotive_Springs_WMA_Fishing___view` (FeatureServer)
+  - `Moose_SITLA_Access` (FeatureServer)
+  - `MtnGoat_SITLA_Access` (FeatureServer)
+  - `MUDE_SITLA_Access` (FeatureServer)
+  - `Natural_Gas_Power_Plants__view` (FeatureServer)
+  - `Natural_gas_power_plants_updated_view` (FeatureServer)
+  - `Natural_Gas_Processing_Plants_in_the_U_S__view` (FeatureServer)
+  - `petroleum_power_plants_updated_view` (FeatureServer)
+  - `Petroleum_Power_Plants_view` (FeatureServer)
+  - `plantPortalV6_View` (FeatureServer)
+  - `plantPortalV7_view` (FeatureServer)
+  - `PlantZones` (FeatureServer)
+  - `Pronghorn_SITLA_Access` (FeatureServer)
+  - `Public_Access_Properties_Dashboards_` (FeatureServer)
+  - `RESTRICT_20220718_USFS_FishlakeNF` (FeatureServer)
+  - `restrict_20240712_USFS_Fishlake` (FeatureServer)
+  - `Rich_County_Trail_Assets_and_Access_WFL1` (FeatureServer)
+  - `RockyMtnBHS_SITLA_Access` (FeatureServer)
+  - `RTP_Handicap_Access` (FeatureServer)
+  - `solar_power_plants_view` (FeatureServer)
+  - `Stockton_Bar_Line` (FeatureServer)
+  - `Turkey_Release_Transplant_Areas_WFL1` (FeatureServer)
+  - `Turkey_SITLA_Access` (FeatureServer)
+  - `UDWR_Fish_Stocking_Events_1979_2024_VIEW` (FeatureServer)
+  - `updated_solar_plants_12_19_25_update_view` (FeatureServer)
+  - `USAC_Weber_River_access` (FeatureServer)
+  - `Utah_Lake_Access` (FeatureServer)
+  - `Utah_Natural_Gas_Processing_Plants` (FeatureServer)
+  - `Utah_Natural_Gas_Processing_Plants_view` (FeatureServer)
+  - `Weber_River_access_ruling` (FeatureServer)
+  - `White_Sands_Launch_Complex` (FeatureServer)
+  - `Wind_Power_Plants_view` (FeatureServer)
+  - `Zip_Fish` (FeatureServer)
 
 ### cand-access_points-de-dnrec-public-fishing-ponds (DE / verify)
 > [access_points candidate] DNREC Public Fishing Ponds
