@@ -32,10 +32,31 @@ def test_registry_covers_states_with_valid_modes():
 
 
 def test_single_bucket_states():
-    assert reg.row_bucket(SOURCES["MD"], {}) == "designated"
     assert reg.row_bucket(SOURCES["VA"], {}) == "wild_reproduction"
     assert reg.row_bucket(SOURCES["WV"], {}) == "stocked"
     assert reg.row_bucket(SOURCES["NJ"], {}) == "stocked"
+
+
+def test_md_des_use_field_map_wild_vs_stocked():
+    # MD COMAR Des_Use remap (replaces the old whole-layer designated->class3):
+    # Use III / III-P 'Nontidal Cold Water' (natural trout) -> wild; Use IV / IV-P
+    # 'Recreational Trout Waters' (put-and-take) -> stocked; Use I / I-P
+    # (warm-water, NOT trout) drops -- no map entry, no default. Verified live.
+    md = SOURCES["MD"]
+    assert md["mode"] == "field_map" and md["field"] == "Des_Use"
+    f = md["field"]
+    assert reg.row_bucket(md, {f: "III"}) == "wild_reproduction"
+    assert reg.row_bucket(md, {f: "III-P"}) == "wild_reproduction"
+    assert reg.row_bucket(md, {f: "IV"}) == "stocked"
+    assert reg.row_bucket(md, {f: "IV-P"}) == "stocked"
+    # warm-water + the size-laddered tiers
+    assert reg.row_bucket(md, {f: "I"}) is None
+    assert reg.row_bucket(md, {f: "I-P"}) is None
+    assert reg.row_bucket(md, {f: ""}) is None      # unexpected value drops (no default)
+    assert reg.row_bucket(md, {}) is None
+    assert reg.row_tier(md, {f: "III"}) == "class2"   # wild fallback (ladder-> class1 in build)
+    assert reg.row_tier(md, {f: "IV"}) == "class3"    # stocked fallback
+    assert reg.classify_fields(md) == ["Des_Use"]
 
 
 def test_ny_field_map_matches_old_mgmtcat_logic():
@@ -276,7 +297,6 @@ def test_row_tier_falls_back_from_class():
     # sources with no explicit tier spec derive tier from the trout_class
     assert reg.row_tier(SOURCES["VA"], {}) == "class2"   # wild_reproduction
     assert reg.row_tier(SOURCES["NJ"], {}) == "class3"   # stocked
-    assert reg.row_tier(SOURCES["MD"], {}) == "class3"   # designated
     assert reg.layer_tier({"class": "class_a"}) == "class1"  # PA-style sublayer
 
 

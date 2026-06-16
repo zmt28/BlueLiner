@@ -2,14 +2,6 @@
   "_comment": "INVESTIGATION watchlist for the standing endpoint watcher (scripts/endpoint_watch.py, scheduled via .github/workflows/endpoint-watch.yml). These are NOT candidate feeds (those live in data/{stocking,access_points}/candidates.json and are auto-included by the watcher) -- they are one-time captures we want the moment a flaky/retired/down state GIS server becomes reachable again. Schema per entry: {id: stable slug; kind: one of field_dump|discover|verify; state: 2-letter code (for the in-state bbox check on verify/field_dump samples); url: the target (a layer URL for field_dump/verify, a folder/org root for discover); field: (field_dump only) a layer field name -- null means 'dump ALL fields + samples so a human can identify the one we need'; once the field is known, set it and the watcher additionally queries its distinct values; note: human context on what we're after and why}. kinds: field_dump -> probe a layer, and if up dump name/geometry/fields + 3 sample features (+ distinct values when field is set); discover -> if up, enumerate the folder's services / search the org and list trout/fish-named layers with record counts; verify -> run the candidate 4-check (meta, count, f=geojson sample, in-state bbox) on a url. The watcher never edits sources.json -- it only reports; promotion stays human-reviewed.",
   "entries": [
     {
-      "id": "md-designated-use-field",
-      "kind": "field_dump",
-      "state": "MD",
-      "url": "https://dnr.geodata.md.gov/dnrdata/rest/services/Fisheries/DesignatedUse_Trout/MapServer/0",
-      "field": null,
-      "note": "MD trout is mode:single -> class 'designated' -> tier class3 for the WHOLE state, overriding EBTJV wild tagging. Need the Use III/III-P (natural/wild) vs Use IV/IV-P (recreational/stocked) use-class field to differentiate tiers. field is null = dump ALL fields + samples so we can identify it; once known, set field and the watcher also dumps its distinct values."
-    },
-    {
       "id": "md-fisheries-folder",
       "kind": "discover",
       "state": "MD",

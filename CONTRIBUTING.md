@@ -107,8 +107,9 @@ river order >= 5. Each feature carries `comid`, `levelpathid`,
 ~104K flowlines / ~6 MB gzipped for HUC-02 + HUC-05.
 
 `trout_class` values: `wild_reproduction` (PA PASDA "With Tributaries"
-+ VA DWR), `class_a` (PA), `wilderness` (PA), `stocked` (PA),
-`designated` (MD DNR), or `null` when no trout designation applies.
++ VA DWR + MD DNR Use III/III-P cold water), `class_a` (PA),
+`wilderness` (PA), `stocked` (PA + MD DNR Use IV/IV-P), `designated`
+(legacy, no longer emitted), or `null` when no trout designation applies.
 
 Don't hand-edit. Regenerate by running:
 

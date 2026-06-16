@@ -74,7 +74,9 @@ def folder_handler(request):
 def test_load_entries_includes_watchlist_and_candidates():
     entries, warnings = ew.load_entries()
     ids = {e["id"] for e in entries}
-    assert "md-designated-use-field" in ids
+    # md-designated-use-field was resolved (Des_Use wired into the MD field_map)
+    # and removed from the watchlist, so it should no longer load.
+    assert "md-designated-use-field" not in ids
     assert "md-fisheries-folder" in ids
     assert "nv-lct-successor" in ids
     # candidates folded in as verify-kind, flagged _is_candidate
