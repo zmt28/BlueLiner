@@ -1,0 +1,5168 @@
+[
+  {
+    "water": "Alondra Park Lake",
+    "lat": 33.88203,
+    "lon": -118.33431,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=7422"
+  },
+  {
+    "water": "American River Silver Fork",
+    "lat": 38.74061,
+    "lon": -120.25593,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=500017"
+  },
+  {
+    "water": "American River, South Fork, Camp Sacramento",
+    "lat": 38.80559,
+    "lon": -120.11008,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=501955"
+  },
+  {
+    "water": "American River, South Fork, Chili Bar",
+    "lat": 38.76597,
+    "lon": -120.82307,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=503124"
+  },
+  {
+    "water": "Angels Creek",
+    "lat": 38.07962,
+    "lon": -120.53277,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=500021"
+  },
+  {
+    "water": "Angora Lake Lower",
+    "lat": 38.86595,
+    "lon": -120.06511,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=14214"
+  },
+  {
+    "water": "Annie Lake",
+    "lat": 41.90978,
+    "lon": -120.10669,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=125"
+  },
+  {
+    "water": "Antelope Creek",
+    "lat": 41.57621,
+    "lon": -121.92521,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=500029"
+  },
+  {
+    "water": "Antelope Reservoir",
+    "lat": 40.18333,
+    "lon": -120.59274,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=11687"
+  },
+  {
+    "water": "Apollo Community Regional Park Lake",
+    "lat": 34.74228,
+    "lon": -118.20014,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=6898"
+  },
+  {
+    "water": "Ash Creek Lower",
+    "lat": 41.1952,
+    "lon": -120.94842,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=501933"
+  },
+  {
+    "water": "Ash Creek Upper",
+    "lat": 41.1451,
+    "lon": -120.81044,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=501935"
+  },
+  {
+    "water": "Atascadero Lake",
+    "lat": 35.46427,
+    "lon": -120.66647,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=6526"
+  },
+  {
+    "water": "Auburn Regional Park Pond",
+    "lat": 38.95129,
+    "lon": -121.10514,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=2242"
+  },
+  {
+    "water": "Avocado Lake",
+    "lat": 36.78705,
+    "lon": -119.41223,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=5629"
+  },
+  {
+    "water": "Baker Creek",
+    "lat": 37.1696,
+    "lon": -118.30947,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=500055"
+  },
+  {
+    "water": "Balch Park Lake Lower",
+    "lat": 36.21958,
+    "lon": -118.68053,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=21620"
+  },
+  {
+    "water": "Balch Park Lake Upper",
+    "lat": 36.22108,
+    "lon": -118.67657,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=21619"
+  },
+  {
+    "water": "Barney Schwartz Park Lake",
+    "lat": 35.63725,
+    "lon": -120.646,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=28310"
+  },
+  {
+    "water": "Bass Lake",
+    "lat": 41.70005,
+    "lon": -122.49385,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=202"
+  },
+  {
+    "water": "Bass Lake",
+    "lat": 37.31188,
+    "lon": -119.55111,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=19260"
+  },
+  {
+    "water": "Battle Creek South Fork",
+    "lat": 40.35157,
+    "lon": -121.66054,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=500070"
+  },
+  {
+    "water": "Baum Lake",
+    "lat": 40.93885,
+    "lon": -121.54501,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=783"
+  },
+  {
+    "water": "Bayley Reservoir",
+    "lat": 41.26738,
+    "lon": -120.63645,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=526"
+  },
+  {
+    "water": "Bear River Reservoir Lower",
+    "lat": 38.54504,
+    "lon": -120.23977,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=15004"
+  },
+  {
+    "water": "Beaver Creek",
+    "lat": 38.25365,
+    "lon": -120.25721,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=500091"
+  },
+  {
+    "water": "Belvedere Lake",
+    "lat": 34.0347,
+    "lon": -118.15852,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=27430"
+  },
+  {
+    "water": "Big Bear Lake",
+    "lat": 34.25312,
+    "lon": -116.92765,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=7101"
+  },
+  {
+    "water": "Big Creek, Madera",
+    "lat": 37.48163,
+    "lon": -119.63344,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=500104"
+  },
+  {
+    "water": "Big Meadows Creek",
+    "lat": 36.72031,
+    "lon": -118.82173,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=500109"
+  },
+  {
+    "water": "Bishop Creek Lower",
+    "lat": 37.36828,
+    "lon": -118.40068,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=500125"
+  },
+  {
+    "water": "Bishop Creek, Intake II",
+    "lat": 37.2475,
+    "lon": -118.58436,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=19936"
+  },
+  {
+    "water": "Bishop Creek, Middle Fork",
+    "lat": 37.2452,
+    "lon": -118.58987,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=500126"
+  },
+  {
+    "water": "Bishop Creek, South Fork",
+    "lat": 37.21574,
+    "lon": -118.56743,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=500128"
+  },
+  {
+    "water": "Black Rock Reservoir",
+    "lat": 36.92087,
+    "lon": -119.01849,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=21340"
+  },
+  {
+    "water": "Blue Lake",
+    "lat": 41.145,
+    "lon": -120.28666,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=9642"
+  },
+  {
+    "water": "Blue Lake Lower",
+    "lat": 38.6142,
+    "lon": -119.93113,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=14726"
+  },
+  {
+    "water": "Blue Lake Upper",
+    "lat": 38.63197,
+    "lon": -119.94904,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=14670"
+  },
+  {
+    "water": "Blue Lake Upper",
+    "lat": 39.17537,
+    "lon": -123.01621,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=2023"
+  },
+  {
+    "water": "Bogart Park Pond",
+    "lat": 33.98139,
+    "lon": -116.95356,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=28599"
+  },
+  {
+    "water": "Bridgeport Reservoir",
+    "lat": 38.28779,
+    "lon": -119.23094,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=3070"
+  },
+  {
+    "water": "Briles Reservoir",
+    "lat": 41.76663,
+    "lon": -120.35161,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=8630"
+  },
+  {
+    "water": "Brite Valley Reservoir",
+    "lat": 35.10694,
+    "lon": -118.54244,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=27442"
+  },
+  {
+    "water": "Broodfish Waters",
+    "lat": 41.30667,
+    "lon": -122.32923,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=28526"
+  },
+  {
+    "water": "Buckhorn Reservoir",
+    "lat": 40.85312,
+    "lon": -120.0859,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=848"
+  },
+  {
+    "water": "Bucks Lake",
+    "lat": 39.88945,
+    "lon": -121.18522,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=12092"
+  },
+  {
+    "water": "Bullseye Lake",
+    "lat": 41.5552,
+    "lon": -121.57511,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=8944"
+  },
+  {
+    "water": "Burney Creek Lower",
+    "lat": 41.00811,
+    "lon": -121.64898,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=500199"
+  },
+  {
+    "water": "Burney Creek Middle",
+    "lat": 40.87801,
+    "lon": -121.67116,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=500200"
+  },
+  {
+    "water": "Burney Creek Upper",
+    "lat": 40.82217,
+    "lon": -121.71575,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=500201"
+  },
+  {
+    "water": "Burnside Lake",
+    "lat": 38.71263,
+    "lon": -119.8905,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=14525"
+  },
+  {
+    "water": "Butte Creek",
+    "lat": 41.69929,
+    "lon": -121.98249,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=500206"
+  },
+  {
+    "water": "Cahuilla Park Lake",
+    "lat": 33.63242,
+    "lon": -116.27395,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=7532"
+  },
+  {
+    "water": "Caples Lake",
+    "lat": 38.69871,
+    "lon": -120.04541,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=14535"
+  },
+  {
+    "water": "Caribou Lake",
+    "lat": 40.50309,
+    "lon": -121.16976,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=10726"
+  },
+  {
+    "water": "Carr Park Lake",
+    "lat": 33.72175,
+    "lon": -118.02347,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=27443"
+  },
+  {
+    "water": "Carrville Pond",
+    "lat": 41.05303,
+    "lon": -122.70119,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=679"
+  },
+  {
+    "water": "Carson River East Fork",
+    "lat": 38.68942,
+    "lon": -119.76254,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=500247"
+  },
+  {
+    "water": "Carson River West Fork",
+    "lat": 38.76933,
+    "lon": -119.83667,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=500248"
+  },
+  {
+    "water": "Casitas Lake",
+    "lat": 34.39192,
+    "lon": -119.34243,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=7054"
+  },
+  {
+    "water": "Cave Lake",
+    "lat": 41.98053,
+    "lon": -120.20917,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=7994"
+  },
+  {
+    "water": "Centennial Lake",
+    "lat": 33.72562,
+    "lon": -117.91228,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=27444"
+  },
+  {
+    "water": "Cerritos Lake",
+    "lat": 33.85159,
+    "lon": -118.06032,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=27431"
+  },
+  {
+    "water": "Cherry Valley Reservoir",
+    "lat": 38.00075,
+    "lon": -119.90695,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=17177"
+  },
+  {
+    "water": "Chiquito Creek West Fork",
+    "lat": 37.38064,
+    "lon": -119.39264,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=500276"
+  },
+  {
+    "water": "Chiquito Creek, Lower",
+    "lat": 37.35303,
+    "lon": -119.34139,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=500277"
+  },
+  {
+    "water": "Chollas Park Lake",
+    "lat": 32.73695,
+    "lon": -117.06298,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=7908"
+  },
+  {
+    "water": "Clark Creek Lower",
+    "lat": 41.04375,
+    "lon": -121.67429,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=500284"
+  },
+  {
+    "water": "Clear Creek",
+    "lat": 40.29857,
+    "lon": -121.04993,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=500285"
+  },
+  {
+    "water": "Clear Creek, above Whiskeytown Lake",
+    "lat": 40.66812,
+    "lon": -122.63412,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=500286"
+  },
+  {
+    "water": "Coffee Creek",
+    "lat": 41.08413,
+    "lon": -122.71016,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=500293"
+  },
+  {
+    "water": "Cold Creek",
+    "lat": 41.29971,
+    "lon": -122.32311,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=500294"
+  },
+  {
+    "water": "Coldstream Pond, Donner Lake Park",
+    "lat": 39.31811,
+    "lon": -120.23318,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=13355"
+  },
+  {
+    "water": "Collins Lake",
+    "lat": 39.33758,
+    "lon": -121.31649,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=1904"
+  },
+  {
+    "water": "Convict Creek",
+    "lat": 37.59901,
+    "lon": -118.84914,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=500306"
+  },
+  {
+    "water": "Convict Lake",
+    "lat": 37.58931,
+    "lon": -118.85829,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=18122"
+  },
+  {
+    "water": "Corrine Lake",
+    "lat": 37.15941,
+    "lon": -119.49596,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=20744"
+  },
+  {
+    "water": "Courtright Reservoir",
+    "lat": 37.10293,
+    "lon": -118.97542,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=20919"
+  },
+  {
+    "water": "Crater Lake",
+    "lat": 40.62593,
+    "lon": -121.04775,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=10356"
+  },
+  {
+    "water": "Crystal Lake",
+    "lat": 40.04806,
+    "lon": -120.8848,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=11829"
+  },
+  {
+    "water": "Cucamonga Guasti Park Lake",
+    "lat": 34.07257,
+    "lon": -117.58974,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=7338"
+  },
+  {
+    "water": "Cuyamaca Lake",
+    "lat": 32.98735,
+    "lon": -116.57798,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=7796"
+  },
+  {
+    "water": "Dark Lake",
+    "lat": 38.85085,
+    "lon": -120.24208,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=14296"
+  },
+  {
+    "water": "Deadman Creek",
+    "lat": 37.72359,
+    "lon": -119.01091,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=500361"
+  },
+  {
+    "water": "Deer Creek",
+    "lat": 40.26181,
+    "lon": -121.44668,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=500366"
+  },
+  {
+    "water": "Deer Creek",
+    "lat": 35.87577,
+    "lon": -118.70021,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=500368"
+  },
+  {
+    "water": "Del Lago Park Lake",
+    "lat": 36.22864,
+    "lon": -119.32118,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=28311"
+  },
+  {
+    "water": "Diaz Lake",
+    "lat": 36.56224,
+    "lon": -118.05487,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=5970"
+  },
+  {
+    "water": "Dinkey Creek",
+    "lat": 37.06336,
+    "lon": -119.15637,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=500392"
+  },
+  {
+    "water": "Doane Pond",
+    "lat": 33.34015,
+    "lon": -116.90134,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=27445"
+  },
+  {
+    "water": "Dodge Reservoir",
+    "lat": 40.9804,
+    "lon": -120.1433,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=755"
+  },
+  {
+    "water": "Don Pedro Reservoir",
+    "lat": 37.75821,
+    "lon": -120.38102,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=3994"
+  },
+  {
+    "water": "Donner Lake",
+    "lat": 39.32275,
+    "lon": -120.26515,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=13306"
+  },
+  {
+    "water": "Downey Wilderness Park Lake",
+    "lat": 33.9359,
+    "lon": -118.10124,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=27434"
+  },
+  {
+    "water": "Dry Lake",
+    "lat": 41.74256,
+    "lon": -123.8771,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=175"
+  },
+  {
+    "water": "Dry Meadow Creek",
+    "lat": 36.00523,
+    "lon": -118.50436,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=500415"
+  },
+  {
+    "water": "Duncan Reservoir",
+    "lat": 41.51822,
+    "lon": -120.94463,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=8993"
+  },
+  {
+    "water": "Eagle Lake",
+    "lat": 40.64297,
+    "lon": -120.73953,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=27364"
+  },
+  {
+    "water": "Eastman Lake",
+    "lat": 37.2307,
+    "lon": -119.97248,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=4630"
+  },
+  {
+    "water": "Echo Lake",
+    "lat": 40.43241,
+    "lon": -121.16166,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=11436"
+  },
+  {
+    "water": "Echo Park Lake",
+    "lat": 34.07319,
+    "lon": -118.26047,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=7342"
+  },
+  {
+    "water": "Edison Lake",
+    "lat": 37.38275,
+    "lon": -118.97616,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=18937"
+  },
+  {
+    "water": "Eisenhower Park Lake",
+    "lat": 33.83584,
+    "lon": -117.83842,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=7449"
+  },
+  {
+    "water": "El Dorado Forebay",
+    "lat": 38.76983,
+    "lon": -120.58376,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=2409"
+  },
+  {
+    "water": "El Dorado Park Lakes",
+    "lat": 33.82055,
+    "lon": -118.08456,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=7466"
+  },
+  {
+    "water": "El Estero Lake",
+    "lat": 36.59773,
+    "lon": -121.88519,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=5928"
+  },
+  {
+    "water": "Elk Grove Park Pond",
+    "lat": 38.39504,
+    "lon": -121.37573,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=28309"
+  },
+  {
+    "water": "Ellery Lake",
+    "lat": 37.93644,
+    "lon": -119.23792,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=17316"
+  },
+  {
+    "water": "Ewing Gulch Reservoir",
+    "lat": 40.56524,
+    "lon": -123.1653,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=977"
+  },
+  {
+    "water": "Feather River Middle Fork, Portola",
+    "lat": 39.81588,
+    "lon": -120.43209,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=503112"
+  },
+  {
+    "water": "Feather River North Fork, Almanor",
+    "lat": 40.31058,
+    "lon": -121.23889,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=500492"
+  },
+  {
+    "water": "Fee Reservoir",
+    "lat": 41.83307,
+    "lon": -120.02316,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=158"
+  },
+  {
+    "water": "Finnon Reservoir",
+    "lat": 38.79835,
+    "lon": -120.75006,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=2373"
+  },
+  {
+    "water": "Fish Creek",
+    "lat": 37.26038,
+    "lon": -119.35484,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=500503"
+  },
+  {
+    "water": "Fish Lake",
+    "lat": 41.26363,
+    "lon": -123.68322,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=485"
+  },
+  {
+    "water": "Folsom Lake",
+    "lat": 38.74553,
+    "lon": -121.1198,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=2315"
+  },
+  {
+    "water": "Ford Park Ponds",
+    "lat": 34.04389,
+    "lon": -117.1621,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=7348"
+  },
+  {
+    "water": "Freeman Creek",
+    "lat": 36.1454,
+    "lon": -118.49134,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=500522"
+  },
+  {
+    "water": "Freshwater Lagoon",
+    "lat": 41.26799,
+    "lon": -124.09281,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=472"
+  },
+  {
+    "water": "Fresno City Woodward Park Lake",
+    "lat": 36.8637,
+    "lon": -119.78348,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=28286"
+  },
+  {
+    "water": "Fuller Lake",
+    "lat": 39.34836,
+    "lon": -120.65173,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=13199"
+  },
+  {
+    "water": "Georges Creek",
+    "lat": 36.70429,
+    "lon": -118.12898,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=500546"
+  },
+  {
+    "water": "Glass Creek",
+    "lat": 37.75194,
+    "lon": -118.9988,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=500555"
+  },
+  {
+    "water": "Glen Helen Park Lake",
+    "lat": 34.20791,
+    "lon": -117.40392,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=7155"
+  },
+  {
+    "water": "Gold Lake",
+    "lat": 39.67791,
+    "lon": -120.65625,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=12260"
+  },
+  {
+    "water": "Goodale Creek",
+    "lat": 36.9776,
+    "lon": -118.25617,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=500561"
+  },
+  {
+    "water": "Goodrich Creek Lower",
+    "lat": 40.32958,
+    "lon": -120.93111,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=500563"
+  },
+  {
+    "water": "Graeagle Mill Pond",
+    "lat": 39.76691,
+    "lon": -120.61529,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=1506"
+  },
+  {
+    "water": "Granite Creek (West Fork)",
+    "lat": 37.53744,
+    "lon": -119.26391,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=500569"
+  },
+  {
+    "water": "Granite Park Pond",
+    "lat": 38.54374,
+    "lon": -121.40564,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=28287"
+  },
+  {
+    "water": "Grant Lake",
+    "lat": 37.83995,
+    "lon": -119.11154,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=17387"
+  },
+  {
+    "water": "Green Valley Lake",
+    "lat": 34.23821,
+    "lon": -117.08081,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=7121"
+  },
+  {
+    "water": "Greenhorn Reservoir",
+    "lat": 41.71141,
+    "lon": -122.65311,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=193"
+  },
+  {
+    "water": "Greer Park Lake",
+    "lat": 33.73671,
+    "lon": -118.00858,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=27446"
+  },
+  {
+    "water": "Gregory Lake",
+    "lat": 34.2431,
+    "lon": -117.26906,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=7116"
+  },
+  {
+    "water": "Gull Lake",
+    "lat": 37.77562,
+    "lon": -119.08329,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=17467"
+  },
+  {
+    "water": "Hagan Community Park Pond",
+    "lat": 38.60519,
+    "lon": -121.30879,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=2507"
+  },
+  {
+    "water": "Halsey Forebay",
+    "lat": 38.97241,
+    "lon": -121.03829,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=2227"
+  },
+  {
+    "water": "Hansen Dam Lake",
+    "lat": 34.26611,
+    "lon": -118.39292,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=7115"
+  },
+  {
+    "water": "Harry L Englebright Lake",
+    "lat": 39.26992,
+    "lon": -121.24953,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=1926"
+  },
+  {
+    "water": "Hat Creek Middle",
+    "lat": 40.92344,
+    "lon": -121.54768,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=500623"
+  },
+  {
+    "water": "Hat Creek Upper",
+    "lat": 40.76406,
+    "lon": -121.49479,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=500624"
+  },
+  {
+    "water": "Hatchet Creek",
+    "lat": 40.86111,
+    "lon": -121.84838,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=500626"
+  },
+  {
+    "water": "Hedrick Pond (Redwood Lake)",
+    "lat": 36.22984,
+    "lon": -118.67979,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=21531"
+  },
+  {
+    "water": "Hensley Lake",
+    "lat": 37.12439,
+    "lon": -119.87728,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=4899"
+  },
+  {
+    "water": "Herring Creek",
+    "lat": 38.22355,
+    "lon": -119.95454,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=500644"
+  },
+  {
+    "water": "Hidden Valley Pond",
+    "lat": 37.98278,
+    "lon": -122.09057,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=28289"
+  },
+  {
+    "water": "Hollenbeck Park Lake",
+    "lat": 34.03993,
+    "lon": -118.21825,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=27435"
+  },
+  {
+    "water": "Horseshoe Lake",
+    "lat": 37.57434,
+    "lon": -122.00229,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=4368"
+  },
+  {
+    "water": "Howe Community Park Lake",
+    "lat": 38.60576,
+    "lon": -121.4119,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=28355"
+  },
+  {
+    "water": "Hume Lake",
+    "lat": 36.79077,
+    "lon": -118.90548,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=21425"
+  },
+  {
+    "water": "Huntington Lake",
+    "lat": 37.23992,
+    "lon": -119.19617,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=19904"
+  },
+  {
+    "water": "Huntington Park Lake",
+    "lat": 33.6984,
+    "lon": -118.01117,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=7520"
+  },
+  {
+    "water": "Independence Creek",
+    "lat": 36.80878,
+    "lon": -118.19943,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=500709"
+  },
+  {
+    "water": "Indian Creek Reservoir",
+    "lat": 38.74681,
+    "lon": -119.77865,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=2439"
+  },
+  {
+    "water": "Indian Valley Reservoir",
+    "lat": 39.12375,
+    "lon": -122.54101,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=2055"
+  },
+  {
+    "water": "Iron Canyon Reservoir",
+    "lat": 41.05005,
+    "lon": -121.98307,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=689"
+  },
+  {
+    "water": "Jackson Lake",
+    "lat": 34.39188,
+    "lon": -117.72611,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=7053"
+  },
+  {
+    "water": "Jenkinson Lake",
+    "lat": 38.72295,
+    "lon": -120.55646,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=27400"
+  },
+  {
+    "water": "Jenks Lake",
+    "lat": 34.1643,
+    "lon": -116.88196,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=7180"
+  },
+  {
+    "water": "Juanita Lake",
+    "lat": 41.81511,
+    "lon": -122.12401,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=162"
+  },
+  {
+    "water": "June Lake",
+    "lat": 37.78865,
+    "lon": -119.07363,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=17431"
+  },
+  {
+    "water": "Kangaroo Lake",
+    "lat": 41.33415,
+    "lon": -122.63489,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=458"
+  },
+  {
+    "water": "Kapusta Pond",
+    "lat": 40.49384,
+    "lon": -122.3392,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=28585"
+  },
+  {
+    "water": "Kaweah Reservoir",
+    "lat": 36.40542,
+    "lon": -118.97341,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=6120"
+  },
+  {
+    "water": "Kenneth Hahn Lake",
+    "lat": 34.00936,
+    "lon": -118.37053,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=27436"
+  },
+  {
+    "water": "Kern River South Fork",
+    "lat": 36.0224,
+    "lon": -118.13539,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=500757"
+  },
+  {
+    "water": "Kern River, Section 1",
+    "lat": 35.47651,
+    "lon": -118.72638,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=500759"
+  },
+  {
+    "water": "Kern River, Section 2",
+    "lat": 35.54006,
+    "lon": -118.63637,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=500760"
+  },
+  {
+    "water": "Kern River, Section 3",
+    "lat": 35.60928,
+    "lon": -118.50344,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=502014"
+  },
+  {
+    "water": "Kern River, Section 4",
+    "lat": 35.73067,
+    "lon": -118.42393,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=500761"
+  },
+  {
+    "water": "Kern River, Section 5",
+    "lat": 35.79641,
+    "lon": -118.45101,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=500762"
+  },
+  {
+    "water": "Kern River, Section 6",
+    "lat": 35.94698,
+    "lon": -118.47774,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=500763"
+  },
+  {
+    "water": "Kings River, Below Pine Flat Dam",
+    "lat": 36.80206,
+    "lon": -119.39032,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=500770"
+  },
+  {
+    "water": "Kirkwood Lake",
+    "lat": 38.70587,
+    "lon": -120.0832,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=14537"
+  },
+  {
+    "water": "La Mirada Lake",
+    "lat": 33.90373,
+    "lon": -118.00658,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=7410"
+  },
+  {
+    "water": "Laguna Lake",
+    "lat": 33.90832,
+    "lon": -117.93618,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=7406"
+  },
+  {
+    "water": "Lake Almanor",
+    "lat": 40.24874,
+    "lon": -121.1501,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=1116"
+  },
+  {
+    "water": "Lake Alpine",
+    "lat": 38.47621,
+    "lon": -119.99937,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=15216"
+  },
+  {
+    "water": "Lake Chabot",
+    "lat": 38.13662,
+    "lon": -122.23515,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=3458"
+  },
+  {
+    "water": "Lake Davis",
+    "lat": 39.91255,
+    "lon": -120.51056,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=12078"
+  },
+  {
+    "water": "Lake Del Valle",
+    "lat": 37.5957,
+    "lon": -121.71699,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=4320"
+  },
+  {
+    "water": "Lake Fulmor",
+    "lat": 33.80515,
+    "lon": -116.7795,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=7453"
+  },
+  {
+    "water": "Lake Hemet",
+    "lat": 33.66612,
+    "lon": -116.69306,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=7515"
+  },
+  {
+    "water": "Lake Isabella",
+    "lat": 35.66955,
+    "lon": -118.42724,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=21584"
+  },
+  {
+    "water": "Lake Jennings",
+    "lat": 32.85769,
+    "lon": -116.88786,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=7855"
+  },
+  {
+    "water": "Lake Murray",
+    "lat": 32.78679,
+    "lon": -117.04297,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=7887"
+  },
+  {
+    "water": "Lake Sabrina",
+    "lat": 37.20591,
+    "lon": -118.61901,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=20257"
+  },
+  {
+    "water": "Lake San Antonio",
+    "lat": 35.84757,
+    "lon": -120.97321,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=6342"
+  },
+  {
+    "water": "Lake Shastina",
+    "lat": 41.51711,
+    "lon": -122.39548,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=298"
+  },
+  {
+    "water": "Lake Tabeaud",
+    "lat": 38.34819,
+    "lon": -120.66324,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=3021"
+  },
+  {
+    "water": "Lake Valley Reservoir",
+    "lat": 39.29823,
+    "lon": -120.58263,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=13421"
+  },
+  {
+    "water": "Lake Wohlford",
+    "lat": 33.17345,
+    "lon": -116.99269,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=7714"
+  },
+  {
+    "water": "Lakeshore Park Pond",
+    "lat": 37.5537,
+    "lon": -122.03606,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=4413"
+  },
+  {
+    "water": "Lee Vining Creek",
+    "lat": 37.93161,
+    "lon": -119.1496,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=500822"
+  },
+  {
+    "water": "Lee Vining Creek South Fork",
+    "lat": 37.93771,
+    "lon": -119.24529,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=500823"
+  },
+  {
+    "water": "Legg Lakes",
+    "lat": 34.03302,
+    "lon": -118.06046,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=7367"
+  },
+  {
+    "water": "Lewis Creek",
+    "lat": 37.38348,
+    "lon": -119.6213,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=500827"
+  },
+  {
+    "water": "Lewiston Lake",
+    "lat": 40.74804,
+    "lon": -122.79284,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=859"
+  },
+  {
+    "water": "Lily Lake",
+    "lat": 41.97671,
+    "lon": -120.20993,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=8004"
+  },
+  {
+    "water": "Lincoln Park Lake",
+    "lat": 34.06625,
+    "lon": -118.20253,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=27437"
+  },
+  {
+    "water": "Little Grass Valley Reservoir",
+    "lat": 39.72919,
+    "lon": -120.99021,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=12183"
+  },
+  {
+    "water": "Little Lake",
+    "lat": 33.72782,
+    "lon": -116.91721,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=7498"
+  },
+  {
+    "water": "Lone Pine Creek",
+    "lat": 36.59727,
+    "lon": -118.09775,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=500860"
+  },
+  {
+    "water": "Lopez Lake",
+    "lat": 35.19775,
+    "lon": -120.47414,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=6664"
+  },
+  {
+    "water": "Lower Bucks Lake",
+    "lat": 39.90029,
+    "lon": -121.21919,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=12098"
+  },
+  {
+    "water": "Lumsden Pond",
+    "lat": 38.72786,
+    "lon": -120.77658,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=28298"
+  },
+  {
+    "water": "Lundy Lake",
+    "lat": 38.02905,
+    "lon": -119.23116,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=17168"
+  },
+  {
+    "water": "Lyons Canal (Columbia Ditch)",
+    "lat": 38.05326,
+    "lon": -120.24329,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=500891"
+  },
+  {
+    "water": "Lyons Lake",
+    "lat": 39.2037,
+    "lon": -121.0825,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=27404"
+  },
+  {
+    "water": "Lyons Reservoir",
+    "lat": 38.10167,
+    "lon": -120.16346,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=16955"
+  },
+  {
+    "water": "Mamie Lake",
+    "lat": 37.60834,
+    "lon": -119.01048,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=18076"
+  },
+  {
+    "water": "Mammoth Creek",
+    "lat": 37.6368,
+    "lon": -118.91395,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=500902"
+  },
+  {
+    "water": "Mammoth Pool Lake",
+    "lat": 37.34881,
+    "lon": -119.31051,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=18988"
+  },
+  {
+    "water": "Manzanita Lake",
+    "lat": 37.2485,
+    "lon": -119.51781,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=19955"
+  },
+  {
+    "water": "Markleeville Creek",
+    "lat": 38.69308,
+    "lon": -119.78085,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=500910"
+  },
+  {
+    "water": "Mary Lake",
+    "lat": 37.6029,
+    "lon": -119.00283,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=18091"
+  },
+  {
+    "water": "Mather Lake",
+    "lat": 38.55613,
+    "lon": -121.25361,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=2753"
+  },
+  {
+    "water": "McCloud Reservoir",
+    "lat": 41.15165,
+    "lon": -122.07888,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=602"
+  },
+  {
+    "water": "McCloud River, Fowlers, Lower Falls",
+    "lat": 41.24298,
+    "lon": -122.02178,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=501874"
+  },
+  {
+    "water": "McClure Reservoir",
+    "lat": 37.63251,
+    "lon": -120.25274,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=4245"
+  },
+  {
+    "water": "McCoy Flat Reservoir",
+    "lat": 40.46867,
+    "lon": -120.95448,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=10977"
+  },
+  {
+    "water": "McCumber Reservoir",
+    "lat": 40.54057,
+    "lon": -121.7329,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=997"
+  },
+  {
+    "water": "McGee Creek",
+    "lat": 37.57397,
+    "lon": -118.78365,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=500930"
+  },
+  {
+    "water": "McSwain Reservoir",
+    "lat": 37.52923,
+    "lon": -120.29208,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=4426"
+  },
+  {
+    "water": "Medicine Lake",
+    "lat": 41.58228,
+    "lon": -121.59954,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=8879"
+  },
+  {
+    "water": "Medicine Lake Little",
+    "lat": 41.58827,
+    "lon": -121.61243,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=8878"
+  },
+  {
+    "water": "Merced Lake North",
+    "lat": 37.72731,
+    "lon": -122.49468,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=4169"
+  },
+  {
+    "water": "Merced River, Section I",
+    "lat": 37.5235,
+    "lon": -120.32511,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=500942"
+  },
+  {
+    "water": "Merced River, Section ll",
+    "lat": 37.66406,
+    "lon": -119.85423,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=500943"
+  },
+  {
+    "water": "Ming Lake",
+    "lat": 35.43964,
+    "lon": -118.86564,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=6540"
+  },
+  {
+    "water": "Modesto Reservoir",
+    "lat": 37.66814,
+    "lon": -120.65894,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=4250"
+  },
+  {
+    "water": "Mojave Narrows Regional Park Lake",
+    "lat": 34.51352,
+    "lon": -117.27694,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=6967"
+  },
+  {
+    "water": "Mono Creek",
+    "lat": 37.36224,
+    "lon": -118.99109,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=500979"
+  },
+  {
+    "water": "Montgomery Creek",
+    "lat": 40.84165,
+    "lon": -121.92034,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=500984"
+  },
+  {
+    "water": "Mooney Grove Park Pond",
+    "lat": 36.28024,
+    "lon": -119.30892,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=28597"
+  },
+  {
+    "water": "Mosquito Lake, Lower",
+    "lat": 38.51595,
+    "lon": -119.91077,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=15155"
+  },
+  {
+    "water": "Mosquito Lake, Upper",
+    "lat": 38.51558,
+    "lon": -119.91323,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=15158"
+  },
+  {
+    "water": "Mountain Meadows Reservoir",
+    "lat": 40.26969,
+    "lon": -120.96047,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=1134"
+  },
+  {
+    "water": "Moura Pond",
+    "lat": 39.40809,
+    "lon": -123.81091,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=28573"
+  },
+  {
+    "water": "Murry Park Pond",
+    "lat": 36.06887,
+    "lon": -119.00342,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=28303"
+  },
+  {
+    "water": "Nacimiento River, Upper",
+    "lat": 36.00791,
+    "lon": -121.40211,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=501820"
+  },
+  {
+    "water": "Nelder Creek",
+    "lat": 37.37374,
+    "lon": -119.60567,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=501015"
+  },
+  {
+    "water": "New Melones Reservoir",
+    "lat": 37.99374,
+    "lon": -120.50662,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=26882"
+  },
+  {
+    "water": "Nora Lake",
+    "lat": 40.47766,
+    "lon": -121.86235,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=1038"
+  },
+  {
+    "water": "North Battle Creek Reservoir",
+    "lat": 40.60285,
+    "lon": -121.65142,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=10374"
+  },
+  {
+    "water": "North Lake",
+    "lat": 37.23149,
+    "lon": -118.61384,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=20117"
+  },
+  {
+    "water": "Oak Grove Park Lake",
+    "lat": 38.05498,
+    "lon": -121.36788,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=27414"
+  },
+  {
+    "water": "Orr Lake",
+    "lat": 41.66251,
+    "lon": -121.99251,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=219"
+  },
+  {
+    "water": "Owens River, below Tinnemaha",
+    "lat": 37.04975,
+    "lon": -118.22253,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=501051"
+  },
+  {
+    "water": "Owens River, Section 2",
+    "lat": 37.18383,
+    "lon": -118.26827,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=501053"
+  },
+  {
+    "water": "Owens River, Section 3",
+    "lat": 37.67994,
+    "lon": -118.75656,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=501054"
+  },
+  {
+    "water": "Packer Lake",
+    "lat": 39.62264,
+    "lon": -120.65571,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=12343"
+  },
+  {
+    "water": "Paradise Reservoir",
+    "lat": 39.85822,
+    "lon": -121.58064,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=1382"
+  },
+  {
+    "water": "Peppermint Creek, Lower",
+    "lat": 36.05381,
+    "lon": -118.47708,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=501071"
+  },
+  {
+    "water": "Peppermint Creek, Upper",
+    "lat": 36.08501,
+    "lon": -118.53742,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=501072"
+  },
+  {
+    "water": "Pillsbury Reservoir",
+    "lat": 39.4225,
+    "lon": -122.94642,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=1787"
+  },
+  {
+    "water": "Pine Creek Reservoir",
+    "lat": 41.42294,
+    "lon": -120.42279,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=397"
+  },
+  {
+    "water": "Pine Flat Reservoir",
+    "lat": 36.86988,
+    "lon": -119.28857,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=21343"
+  },
+  {
+    "water": "Pinecrest Lake",
+    "lat": 38.19606,
+    "lon": -119.98235,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=15944"
+  },
+  {
+    "water": "Pit River South Fork",
+    "lat": 41.22917,
+    "lon": -120.41895,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=501096"
+  },
+  {
+    "water": "Plaskett Meadows Pond",
+    "lat": 39.72659,
+    "lon": -122.84403,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=1522"
+  },
+  {
+    "water": "Pleasant Valley Reservoir",
+    "lat": 37.42237,
+    "lon": -118.53604,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=4507"
+  },
+  {
+    "water": "Portal Forebay",
+    "lat": 37.31882,
+    "lon": -119.06936,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=19303"
+  },
+  {
+    "water": "Powerhouse Stream",
+    "lat": 38.03112,
+    "lon": -120.32727,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=501111"
+  },
+  {
+    "water": "Prado Park Lake",
+    "lat": 33.94324,
+    "lon": -117.6468,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=27449"
+  },
+  {
+    "water": "Prosser Reservoir",
+    "lat": 39.38038,
+    "lon": -120.15676,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=12920"
+  },
+  {
+    "water": "Puddingstone Lake",
+    "lat": 34.08698,
+    "lon": -117.80442,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=7306"
+  },
+  {
+    "water": "Rainbow Pond",
+    "lat": 41.2823,
+    "lon": -120.74503,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=9470"
+  },
+  {
+    "water": "Ralphine Lake",
+    "lat": 38.45491,
+    "lon": -122.66711,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=2848"
+  },
+  {
+    "water": "Rancho Jurupa Park Pond",
+    "lat": 33.9815,
+    "lon": -117.41928,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=7379"
+  },
+  {
+    "water": "Rancho Seco Lake",
+    "lat": 38.33753,
+    "lon": -121.09503,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=3028"
+  },
+  {
+    "water": "Rancho Simi Park Lake",
+    "lat": 34.26651,
+    "lon": -118.76385,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=27440"
+  },
+  {
+    "water": "Red Lake",
+    "lat": 38.69885,
+    "lon": -119.97426,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=14544"
+  },
+  {
+    "water": "Reseda Park Lake",
+    "lat": 34.1886,
+    "lon": -118.53425,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=28292"
+  },
+  {
+    "water": "Reservoir \"C\"",
+    "lat": 41.66294,
+    "lon": -120.77027,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=8789"
+  },
+  {
+    "water": "Reservoir \"F\"",
+    "lat": 41.57052,
+    "lon": -120.88007,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=26531"
+  },
+  {
+    "water": "Reyes Creek",
+    "lat": 34.68105,
+    "lon": -119.30934,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=501146"
+  },
+  {
+    "water": "River Walk Lake",
+    "lat": 35.35076,
+    "lon": -119.12708,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=27466"
+  },
+  {
+    "water": "Robinson Creek",
+    "lat": 38.19388,
+    "lon": -119.32132,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=501150"
+  },
+  {
+    "water": "Rock Creek",
+    "lat": 37.29123,
+    "lon": -119.3617,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=501151"
+  },
+  {
+    "water": "Rock Creek Lake",
+    "lat": 37.4525,
+    "lon": -118.7372,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=18767"
+  },
+  {
+    "water": "Rock Creek, Section 1",
+    "lat": 37.49927,
+    "lon": -118.60317,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=501154"
+  },
+  {
+    "water": "Rock Creek, Section 2",
+    "lat": 37.54325,
+    "lon": -118.69304,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=501155"
+  },
+  {
+    "water": "Rollins Reservoir",
+    "lat": 39.15263,
+    "lon": -120.94066,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=2063"
+  },
+  {
+    "water": "Round Corral Reservoir",
+    "lat": 40.89827,
+    "lon": -120.01664,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=27454"
+  },
+  {
+    "water": "Round Valley Reservoir",
+    "lat": 40.1075,
+    "lon": -120.95899,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=11748"
+  },
+  {
+    "water": "Rush Creek",
+    "lat": 37.78945,
+    "lon": -119.12355,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=501185"
+  },
+  {
+    "water": "Russian River, Upper East Branch",
+    "lat": 39.24825,
+    "lon": -123.12207,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=501705"
+  },
+  {
+    "water": "Ruth Reservoir",
+    "lat": 40.33486,
+    "lon": -123.40059,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=1062"
+  },
+  {
+    "water": "Sacramento River",
+    "lat": 41.18773,
+    "lon": -122.28382,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=501200"
+  },
+  {
+    "water": "Sacramento River",
+    "lat": 41.14199,
+    "lon": -122.31499,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=501199"
+  },
+  {
+    "water": "Saddlebag Creek (Lee Vining Creek)",
+    "lat": 37.93907,
+    "lon": -119.25151,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=501205"
+  },
+  {
+    "water": "Saddlebag Lake",
+    "lat": 37.97366,
+    "lon": -119.27499,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=17271"
+  },
+  {
+    "water": "Salmon Lake, Upper",
+    "lat": 39.65711,
+    "lon": -120.65207,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=12309"
+  },
+  {
+    "water": "San Joaquin River, South Fork",
+    "lat": 37.32576,
+    "lon": -119.01923,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=501229"
+  },
+  {
+    "water": "Sandy Wool Lake",
+    "lat": 37.455,
+    "lon": -121.86239,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=27415"
+  },
+  {
+    "water": "Santa Ana River",
+    "lat": 34.17605,
+    "lon": -116.94311,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=501243"
+  },
+  {
+    "water": "Santa Ana River South Fork",
+    "lat": 34.16853,
+    "lon": -116.83143,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=501244"
+  },
+  {
+    "water": "Santa Fe Reservoir",
+    "lat": 34.11291,
+    "lon": -117.95028,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=27441"
+  },
+  {
+    "water": "Santa Margarita Lake",
+    "lat": 35.32856,
+    "lon": -120.47503,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=6595"
+  },
+  {
+    "water": "Sardine Lake Lower",
+    "lat": 39.6147,
+    "lon": -120.62639,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=12358"
+  },
+  {
+    "water": "Sawmill Pond",
+    "lat": 38.88914,
+    "lon": -120.02601,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=27416"
+  },
+  {
+    "water": "Scotts Flat Reservoir",
+    "lat": 39.27723,
+    "lon": -120.91757,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=1946"
+  },
+  {
+    "water": "Shadow Cliff Lake",
+    "lat": 37.66975,
+    "lon": -121.83649,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=27417"
+  },
+  {
+    "water": "Shasta Lake",
+    "lat": 40.78588,
+    "lon": -122.30724,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=784"
+  },
+  {
+    "water": "Shaver Lake",
+    "lat": 37.1257,
+    "lon": -119.29045,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=20780"
+  },
+  {
+    "water": "Sherwin Creek",
+    "lat": 37.63072,
+    "lon": -118.93767,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=501293"
+  },
+  {
+    "water": "Shotoverin Lake",
+    "lat": 40.48135,
+    "lon": -121.14503,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=10951"
+  },
+  {
+    "water": "Silver Lake",
+    "lat": 38.65839,
+    "lon": -120.11876,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=14582"
+  },
+  {
+    "water": "Silver Lake",
+    "lat": 40.49422,
+    "lon": -121.16317,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=10784"
+  },
+  {
+    "water": "Silver Lake",
+    "lat": 37.77689,
+    "lon": -119.12516,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=17432"
+  },
+  {
+    "water": "Siskiyou Lake",
+    "lat": 41.283,
+    "lon": -122.3402,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=494"
+  },
+  {
+    "water": "Skinner Lake",
+    "lat": 33.58828,
+    "lon": -117.05665,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=7564"
+  },
+  {
+    "water": "Sly Creek Reservoir",
+    "lat": 39.59444,
+    "lon": -121.10675,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=12347"
+  },
+  {
+    "water": "Smith Flat Reservoir",
+    "lat": 41.12381,
+    "lon": -120.48996,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=643"
+  },
+  {
+    "water": "South Lake",
+    "lat": 37.16542,
+    "lon": -118.57036,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=20572"
+  },
+  {
+    "water": "Southside Park Pond",
+    "lat": 38.56817,
+    "lon": -121.50301,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=28294"
+  },
+  {
+    "water": "Spanish Creek",
+    "lat": 39.9976,
+    "lon": -120.94356,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=501333"
+  },
+  {
+    "water": "Stanislaus River Clarks Fork",
+    "lat": 38.38408,
+    "lon": -119.8204,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=501359"
+  },
+  {
+    "water": "Stanislaus River Middle Fork",
+    "lat": 38.34477,
+    "lon": -119.83302,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=501360"
+  },
+  {
+    "water": "Stanislaus River North Fork",
+    "lat": 38.27623,
+    "lon": -120.26314,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=501361"
+  },
+  {
+    "water": "Stanislaus River South Fork",
+    "lat": 38.17042,
+    "lon": -120.06685,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=501362"
+  },
+  {
+    "water": "Stony Creek",
+    "lat": 36.6661,
+    "lon": -118.83413,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=501379"
+  },
+  {
+    "water": "Stough Reservoir",
+    "lat": 41.56216,
+    "lon": -120.25447,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=8956"
+  },
+  {
+    "water": "Stumpy Meadows Reservoir",
+    "lat": 38.89934,
+    "lon": -120.59212,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=14044"
+  },
+  {
+    "water": "Success Reservoir",
+    "lat": 36.08336,
+    "lon": -118.91356,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=6285"
+  },
+  {
+    "water": "Sugar Pine Reservoir",
+    "lat": 39.13391,
+    "lon": -120.79222,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=26875"
+  },
+  {
+    "water": "Susan River Lower",
+    "lat": 40.4123,
+    "lon": -120.64649,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=501402"
+  },
+  {
+    "water": "Susan River Middle",
+    "lat": 40.39564,
+    "lon": -120.77301,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=501403"
+  },
+  {
+    "water": "Susan River Upper",
+    "lat": 40.4128,
+    "lon": -120.86209,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=501404"
+  },
+  {
+    "water": "Sycamore Island Pond",
+    "lat": 36.8517,
+    "lon": -119.82615,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=28570"
+  },
+  {
+    "water": "Taboose Creek",
+    "lat": 36.99819,
+    "lon": -118.2578,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=501414"
+  },
+  {
+    "water": "Tamarack Creek",
+    "lat": 37.19346,
+    "lon": -119.19832,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=501416"
+  },
+  {
+    "water": "Temescal Lake",
+    "lat": 37.84642,
+    "lon": -122.23038,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=4018"
+  },
+  {
+    "water": "Tenmile Creek, Upper",
+    "lat": 36.78315,
+    "lon": -118.90038,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=501431"
+  },
+  {
+    "water": "Three Lakes, Middle",
+    "lat": 39.96948,
+    "lon": -121.21979,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=12041"
+  },
+  {
+    "water": "Three Lakes, Upper",
+    "lat": 39.96762,
+    "lon": -121.21255,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=12043"
+  },
+  {
+    "water": "Tinnemaha Creek",
+    "lat": 37.04996,
+    "lon": -118.27214,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=501442"
+  },
+  {
+    "water": "Tioga Lake",
+    "lat": 37.92475,
+    "lon": -119.2529,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=17336"
+  },
+  {
+    "water": "Trinity Lake (Clair Engle Lake)",
+    "lat": 40.90504,
+    "lon": -122.72672,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=669"
+  },
+  {
+    "water": "Trinity River East Fork",
+    "lat": 41.0203,
+    "lon": -122.61003,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=501743"
+  },
+  {
+    "water": "Trinity River Stuart Fork",
+    "lat": 40.85911,
+    "lon": -122.89282,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=501467"
+  },
+  {
+    "water": "Trinity River, above Clair Engle Lake",
+    "lat": 41.12499,
+    "lon": -122.70041,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=501468"
+  },
+  {
+    "water": "Trout Lake",
+    "lat": 41.68573,
+    "lon": -122.47599,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=207"
+  },
+  {
+    "water": "Tule River Middle Fork",
+    "lat": 36.13856,
+    "lon": -118.76753,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=501474"
+  },
+  {
+    "water": "Tule River North Fork, Middle Fork #1",
+    "lat": 36.18908,
+    "lon": -118.66644,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=501475"
+  },
+  {
+    "water": "Tule River South Fork, Middle Fork #2",
+    "lat": 36.13722,
+    "lon": -118.60649,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=501476"
+  },
+  {
+    "water": "Tule River South Fork, Middle Fork #3",
+    "lat": 36.13746,
+    "lon": -118.5752,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=501477"
+  },
+  {
+    "water": "Tulloch Lake",
+    "lat": 37.9011,
+    "lon": -120.58097,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=3910"
+  },
+  {
+    "water": "Tuttle Creek",
+    "lat": 36.56521,
+    "lon": -118.12574,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=501487"
+  },
+  {
+    "water": "Twin Lake Lower, Bridgeport",
+    "lat": 38.16256,
+    "lon": -119.33641,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=16313"
+  },
+  {
+    "water": "Twin Lake Upper, Bridgeport",
+    "lat": 38.1491,
+    "lon": -119.36447,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=16523"
+  },
+  {
+    "water": "Twin Lakes, Mammoth",
+    "lat": 37.61778,
+    "lon": -119.00792,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=18044"
+  },
+  {
+    "water": "Union Reservoir",
+    "lat": 38.43343,
+    "lon": -119.99044,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=15311"
+  },
+  {
+    "water": "Wagon Creek",
+    "lat": 41.29248,
+    "lon": -122.32565,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=501535"
+  },
+  {
+    "water": "Walton Pond",
+    "lat": 38.92272,
+    "lon": -120.77636,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=13989"
+  },
+  {
+    "water": "Ward Lake",
+    "lat": 37.30083,
+    "lon": -118.98791,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=19474"
+  },
+  {
+    "water": "Weaver Lake",
+    "lat": 39.46528,
+    "lon": -120.65744,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=12470"
+  },
+  {
+    "water": "West Valley Reservoir",
+    "lat": 41.19997,
+    "lon": -120.39942,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=580"
+  },
+  {
+    "water": "Whiskeytown Lake",
+    "lat": 40.6256,
+    "lon": -122.55905,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=934"
+  },
+  {
+    "water": "White Pines Lake",
+    "lat": 38.26866,
+    "lon": -120.34162,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=15633"
+  },
+  {
+    "water": "Willow Creek North Fork",
+    "lat": 37.34221,
+    "lon": -119.57039,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=501572"
+  },
+  {
+    "water": "Willow Creek, South Fork",
+    "lat": 37.25319,
+    "lon": -119.49972,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=501573"
+  },
+  {
+    "water": "Wishon Reservoir",
+    "lat": 37.01779,
+    "lon": -118.96296,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=21249"
+  },
+  {
+    "water": "Woodward Reservoir",
+    "lat": 37.85224,
+    "lon": -120.85862,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=4014"
+  },
+  {
+    "water": "Wrights Lake",
+    "lat": 38.84911,
+    "lon": -120.23283,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=14295"
+  },
+  {
+    "water": "Yosemite Lake",
+    "lat": 37.37774,
+    "lon": -120.43002,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=4530"
+  },
+  {
+    "water": "Yucaipa Lake",
+    "lat": 34.05339,
+    "lon": -117.04854,
+    "species": [
+      "Trout"
+    ],
+    "category": "Stocked trout water (CDFW)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://apps.wildlife.ca.gov/fishing/?stockid=27451"
+  }
+]
