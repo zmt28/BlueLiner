@@ -1,42 +1,4251 @@
 [
   {
-    "water": "Strawberry Reservoir",
-    "lat": 40.1700, "lon": -111.1200,
-    "species": ["Cutthroat", "Rainbow"],
-    "category": "Stocked trout lake",
-    "season_months": [1, 12],
-    "agency_url": "https://dwrapps.utah.gov/fishing/?NA=Strawberry+Reservoir+%28Blue+Ribbon%29"
+    "water": "Academy Mill Reservoir",
+    "lat": 39.28296,
+    "lon": -111.37105,
+    "species": [
+      "Tiger",
+      "Brook"
+    ],
+    "category": "Stocked trout water (UDWR)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://dwrapps.utah.gov/fishing/?NA=Academy%20Mill%20Reservoir"
   },
   {
-    "water": "Scofield Reservoir",
-    "lat": 39.7880, "lon": -111.1280,
-    "species": ["Rainbow", "Cutthroat", "Tiger"],
-    "category": "Stocked trout lake",
-    "season_months": [1, 12],
-    "agency_url": "https://wildlife.utah.gov/pdf/fish/scofield_plan_2017.pdf"
+    "water": "American Fork Creek",
+    "lat": 40.43812,
+    "lon": -111.72156,
+    "species": [
+      "Brown",
+      "Rainbow",
+      "Cutthroat"
+    ],
+    "category": "Managed trout water (UDWR)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://dwrapps.utah.gov/fishing/?NA=American%20Fork%20Creek"
   },
   {
-    "water": "Panguitch Lake",
-    "lat": 37.7020, "lon": -112.6530,
-    "species": ["Rainbow", "Cutthroat", "Tiger"],
-    "category": "Stocked trout lake",
-    "season_months": [1, 12],
-    "agency_url": "https://wildlife.utah.gov/pdf/fish/technical-reports/panguitch_lake_2022_trend_net_survey.pdf"
+    "water": "Andy Adams Reservoir",
+    "lat": 41.07166,
+    "lon": -111.93434,
+    "species": [
+      "Rainbow"
+    ],
+    "category": "Stocked trout water (UDWR)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://dwrapps.utah.gov/fishing/?NA=Andy%20Adams%20Reservoir"
   },
   {
-    "water": "Logan River (Logan Canyon)",
-    "lat": 41.7420, "lon": -111.7560,
-    "species": ["Rainbow", "Brown", "Cutthroat"],
-    "category": "Put-and-take",
-    "season_months": [5, 9],
-    "agency_url": "https://wildlife.utah.gov/news/utah-wildlife-news/1909-great-places-to-go-fishing-on-memorial-day-weekend-and-free-fishing-day.html"
+    "water": "Asay Creek",
+    "lat": 37.60363,
+    "lon": -112.46549,
+    "species": [
+      "Brown",
+      "Cutthroat",
+      "Rainbow"
+    ],
+    "category": "Managed trout water (UDWR)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://dwrapps.utah.gov/fishing/?NA=Asay%20Creek"
   },
   {
-    "water": "Mirror Lake (Uinta Mountains)",
-    "lat": 40.7040, "lon": -110.8880,
-    "species": ["Rainbow", "Tiger"],
-    "category": "Stocked trout lake",
-    "season_months": [6, 9],
-    "agency_url": "https://wildlife.utah.gov/news/utah-wildlife-news/961-fishing-july-fourth.html"
+    "water": "Baker Reservoir",
+    "lat": 37.37861,
+    "lon": -113.63788,
+    "species": [
+      "Rainbow",
+      "Brown"
+    ],
+    "category": "Stocked trout water (UDWR)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://dwrapps.utah.gov/fishing/?NA=Baker%20Reservoir"
+  },
+  {
+    "water": "Basin Creek, Deep Creek Mtns.",
+    "lat": 39.89524,
+    "lon": -113.86373,
+    "species": [
+      "Cutthroat"
+    ],
+    "category": "Managed trout water (UDWR)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://dwrapps.utah.gov/fishing/?NA=Basin%20Creek%2C%20Deep%20Creek%20Mtns."
+  },
+  {
+    "water": "Bear Lake (Blue Ribbon)",
+    "lat": 41.99567,
+    "lon": -111.32963,
+    "species": [
+      "Cutthroat",
+      "Lake"
+    ],
+    "category": "Stocked trout water (UDWR)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://dwrapps.utah.gov/fishing/?NA=Bear%20Lake%20%28Blue%20Ribbon%29"
+  },
+  {
+    "water": "Bear River, West Fork",
+    "lat": 40.81147,
+    "lon": -110.92963,
+    "species": [
+      "Cutthroat"
+    ],
+    "category": "Managed trout water (UDWR)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://dwrapps.utah.gov/fishing/?NA=Bear%20River%2C%20West%20Fork"
+  },
+  {
+    "water": "Beaver River, Lower",
+    "lat": 38.21381,
+    "lon": -112.87397,
+    "species": [
+      "Brown",
+      "Rainbow"
+    ],
+    "category": "Managed trout water (UDWR)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://dwrapps.utah.gov/fishing/?NA=Beaver%20River%2C%20Lower"
+  },
+  {
+    "water": "Beaver River, Upper",
+    "lat": 38.26611,
+    "lon": -112.48882,
+    "species": [
+      "Brown",
+      "Rainbow"
+    ],
+    "category": "Managed trout water (UDWR)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://dwrapps.utah.gov/fishing/?NA=Beaver%20River%2C%20Upper"
+  },
+  {
+    "water": "Bee Tree (Manti Mountains)",
+    "lat": 39.12885,
+    "lon": -111.53296,
+    "species": [
+      "Brook"
+    ],
+    "category": "Stocked trout water (UDWR)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://dwrapps.utah.gov/fishing/?NA=Bee%20Tree%20%28Manti%20Mountains%29"
+  },
+  {
+    "water": "Benches Pond",
+    "lat": 39.65421,
+    "lon": -111.29499,
+    "species": [
+      "Rainbow"
+    ],
+    "category": "Stocked trout water (UDWR)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://dwrapps.utah.gov/fishing/?NA=Benches%20Pond"
+  },
+  {
+    "water": "Big East Reservoir (Payson Lakes)",
+    "lat": 39.93426,
+    "lon": -111.64051,
+    "species": [
+      "Brook",
+      "Rainbow"
+    ],
+    "category": "Stocked trout water (UDWR)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://dwrapps.utah.gov/fishing/?NA=Big%20East%20Reservoir%20%28Payson%20Lakes%29"
+  },
+  {
+    "water": "Big Sand Wash",
+    "lat": 40.30426,
+    "lon": -110.22634,
+    "species": [
+      "Rainbow",
+      "Brown"
+    ],
+    "category": "Stocked trout water (UDWR)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://dwrapps.utah.gov/fishing/?NA=Big%20Sand%20Wash"
+  },
+  {
+    "water": "Birch Creek Reservoir",
+    "lat": 41.50579,
+    "lon": -111.32605,
+    "species": [
+      "Cutthroat",
+      "Rainbow",
+      "Tiger"
+    ],
+    "category": "Stocked trout water (UDWR)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://dwrapps.utah.gov/fishing/?NA=Birch%20Creek%20Reservoir"
+  },
+  {
+    "water": "Blacksmith Fork River",
+    "lat": 41.6196,
+    "lon": -111.66324,
+    "species": [
+      "Brown",
+      "Cutthroat",
+      "Rainbow"
+    ],
+    "category": "Managed trout water (UDWR)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://dwrapps.utah.gov/fishing/?NA=Blacksmith%20Fork%20River"
+  },
+  {
+    "water": "Blanding Reservoir No. 4",
+    "lat": 37.66661,
+    "lon": -109.49806,
+    "species": [
+      "Rainbow",
+      "Tiger"
+    ],
+    "category": "Stocked trout water (UDWR)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://dwrapps.utah.gov/fishing/?NA=Blanding%20Reservoir%20No.%204"
+  },
+  {
+    "water": "Blue Lake",
+    "lat": 39.05529,
+    "lon": -111.50506,
+    "species": [
+      "Tiger",
+      "Grayling",
+      "Brook"
+    ],
+    "category": "Stocked trout water (UDWR)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://dwrapps.utah.gov/fishing/?NA=Blue%20Lake"
+  },
+  {
+    "water": "Boulder Mountain Lakes (Blue Ribbon)",
+    "lat": 38.09444,
+    "lon": -111.56287,
+    "species": [
+      "Grayling",
+      "Brook",
+      "Cutthroat",
+      "Rainbow",
+      "Splake",
+      "Tiger"
+    ],
+    "category": "Stocked trout water (UDWR)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://dwrapps.utah.gov/fishing/?NA=Boulder%20Mountain%20Lakes%20%28Blue%20Ribbon%29"
+  },
+  {
+    "water": "Boulger Reservoir",
+    "lat": 39.64519,
+    "lon": -111.25498,
+    "species": [
+      "Rainbow",
+      "Cutthroat"
+    ],
+    "category": "Stocked trout water (UDWR)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://dwrapps.utah.gov/fishing/?NA=Boulger%20Reservoir"
+  },
+  {
+    "water": "Bountiful Lake",
+    "lat": 40.90573,
+    "lon": -111.92475,
+    "species": [
+      "Rainbow",
+      "Brown"
+    ],
+    "category": "Stocked trout water (UDWR)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://dwrapps.utah.gov/fishing/?NA=Bountiful%20Lake"
+  },
+  {
+    "water": "Box Lake (Payson Lakes)",
+    "lat": 39.93564,
+    "lon": -111.64402,
+    "species": [
+      "Rainbow",
+      "Brook"
+    ],
+    "category": "Stocked trout water (UDWR)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://dwrapps.utah.gov/fishing/?NA=Box%20Lake%20%28Payson%20Lakes%29"
+  },
+  {
+    "water": "Brad's Secret (Manti Mountains)",
+    "lat": 39.20339,
+    "lon": -111.57928,
+    "species": [
+      "Brook"
+    ],
+    "category": "Stocked trout water (UDWR)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://dwrapps.utah.gov/fishing/?NA=Brad%27s%20Secret%20%28Manti%20Mountains%29"
+  },
+  {
+    "water": "Bristlecone (Brian Head) Pond",
+    "lat": 37.6899,
+    "lon": -112.8518,
+    "species": [
+      "Rainbow",
+      "Tiger"
+    ],
+    "category": "Stocked trout water (UDWR)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://dwrapps.utah.gov/fishing/?NA=Bristlecone%20%28Brian%20Head%29%20Pond"
+  },
+  {
+    "water": "Brough Reservoir",
+    "lat": 40.25576,
+    "lon": -109.70313,
+    "species": [
+      "Rainbow",
+      "Brown"
+    ],
+    "category": "Stocked trout water (UDWR)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://dwrapps.utah.gov/fishing/?NA=Brough%20Reservoir"
+  },
+  {
+    "water": "Browne Lake",
+    "lat": 40.86495,
+    "lon": -109.81386,
+    "species": [
+      "Brook",
+      "Rainbow",
+      "Cutthroat",
+      "Tiger"
+    ],
+    "category": "Stocked trout water (UDWR)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://dwrapps.utah.gov/fishing/?NA=Browne%20Lake"
+  },
+  {
+    "water": "Bullock Reservoir",
+    "lat": 40.35531,
+    "lon": -109.81637,
+    "species": [
+      "Brown",
+      "Rainbow"
+    ],
+    "category": "Stocked trout water (UDWR)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://dwrapps.utah.gov/fishing/?NA=Bullock%20Reservoir"
+  },
+  {
+    "water": "Burraston Ponds",
+    "lat": 39.79812,
+    "lon": -111.86499,
+    "species": [
+      "Rainbow",
+      "Brook",
+      "Brown",
+      "Tiger"
+    ],
+    "category": "Stocked trout water (UDWR)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://dwrapps.utah.gov/fishing/?NA=Burraston%20Ponds"
+  },
+  {
+    "water": "Calder Reservoir",
+    "lat": 40.73037,
+    "lon": -109.20791,
+    "species": [
+      "Cutthroat",
+      "Rainbow",
+      "Brown",
+      "Tiger"
+    ],
+    "category": "Stocked trout water (UDWR)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://dwrapps.utah.gov/fishing/?NA=Calder%20Reservoir"
+  },
+  {
+    "water": "Canyon View Park Pond",
+    "lat": 40.08262,
+    "lon": -111.60183,
+    "species": [
+      "Rainbow"
+    ],
+    "category": "Stocked trout water (UDWR)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://dwrapps.utah.gov/fishing/?NA=Canyon%20View%20Park%20Pond"
+  },
+  {
+    "water": "Carbon County Community Fishing Pond",
+    "lat": 39.58963,
+    "lon": -110.83581,
+    "species": [
+      "Rainbow"
+    ],
+    "category": "Stocked trout water (UDWR)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://dwrapps.utah.gov/fishing/?NA=Carbon%20County%20Community%20Fishing%20Pond"
+  },
+  {
+    "water": "Causey Reservoir",
+    "lat": 41.29945,
+    "lon": -111.58013,
+    "species": [
+      "Brown",
+      "Rainbow",
+      "Tiger",
+      "Lake",
+      "Cutthroat"
+    ],
+    "category": "Stocked trout water (UDWR)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://dwrapps.utah.gov/fishing/?NA=Causey%20Reservoir"
+  },
+  {
+    "water": "Clear Creek (Blue Ribbon)",
+    "lat": 38.5453,
+    "lon": -112.38562,
+    "species": [
+      "Cutthroat"
+    ],
+    "category": "Managed trout water (UDWR)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://dwrapps.utah.gov/fishing/?NA=Clear%20Creek%20%28Blue%20Ribbon%29"
+  },
+  {
+    "water": "Cleveland Reservoir",
+    "lat": 39.58058,
+    "lon": -111.23675,
+    "species": [
+      "Rainbow",
+      "Cutthroat"
+    ],
+    "category": "Stocked trout water (UDWR)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://dwrapps.utah.gov/fishing/?NA=Cleveland%20Reservoir"
+  },
+  {
+    "water": "Clinton Park Pond",
+    "lat": 41.14942,
+    "lon": -112.08156,
+    "species": [
+      "Rainbow"
+    ],
+    "category": "Stocked trout water (UDWR)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://dwrapps.utah.gov/fishing/?NA=Clinton%20Park%20Pond"
+  },
+  {
+    "water": "Cottonwood Reservoir",
+    "lat": 40.35592,
+    "lon": -109.78683,
+    "species": [
+      "Brown",
+      "Rainbow"
+    ],
+    "category": "Stocked trout water (UDWR)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://dwrapps.utah.gov/fishing/?NA=Cottonwood%20Reservoir"
+  },
+  {
+    "water": "Cove Pond",
+    "lat": 40.49379,
+    "lon": -112.05652,
+    "species": [
+      "Rainbow",
+      "Tiger"
+    ],
+    "category": "Stocked trout water (UDWR)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://dwrapps.utah.gov/fishing/?NA=Cove%20Pond"
+  },
+  {
+    "water": "Crouse Reservoir",
+    "lat": 40.72444,
+    "lon": -109.18368,
+    "species": [
+      "Rainbow",
+      "Brown",
+      "Cutthroat",
+      "Tiger"
+    ],
+    "category": "Stocked trout water (UDWR)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://dwrapps.utah.gov/fishing/?NA=Crouse%20Reservoir"
+  },
+  {
+    "water": "Currant Creek Reservoir (Blue Ribbon)",
+    "lat": 40.34037,
+    "lon": -111.05838,
+    "species": [
+      "Cutthroat",
+      "Rainbow",
+      "Tiger"
+    ],
+    "category": "Stocked trout water (UDWR)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://dwrapps.utah.gov/fishing/?NA=Currant%20Creek%20Reservoir%20%28Blue%20Ribbon%29"
+  },
+  {
+    "water": "Danny R. Crump Fishing Pond (Riverton City Pond)",
+    "lat": 40.50172,
+    "lon": -111.96945,
+    "species": [
+      "Rainbow"
+    ],
+    "category": "Stocked trout water (UDWR)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://dwrapps.utah.gov/fishing/?NA=Danny%20R.%20Crump%20Fishing%20Pond%20%28Riverton%20City%20Pond%29"
+  },
+  {
+    "water": "Deep Lake (Manti Mountains)",
+    "lat": 39.10979,
+    "lon": -111.52011,
+    "species": [
+      "Brook",
+      "Rainbow",
+      "Tiger"
+    ],
+    "category": "Stocked trout water (UDWR)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://dwrapps.utah.gov/fishing/?NA=Deep%20Lake%20%28Manti%20Mountains%29"
+  },
+  {
+    "water": "Deer Creek Reservoir (Blue Ribbon)",
+    "lat": 40.44338,
+    "lon": -111.49337,
+    "species": [
+      "Rainbow",
+      "Brown",
+      "Cutthroat"
+    ],
+    "category": "Stocked trout water (UDWR)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://dwrapps.utah.gov/fishing/?NA=Deer%20Creek%20Reservoir%20%28Blue%20Ribbon%29"
+  },
+  {
+    "water": "Deer Valley Ponds",
+    "lat": 40.64346,
+    "lon": -111.47958,
+    "species": [
+      "Rainbow",
+      "Tiger"
+    ],
+    "category": "Stocked trout water (UDWR)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://dwrapps.utah.gov/fishing/?NA=Deer%20Valley%20Ponds"
+  },
+  {
+    "water": "Deseret Reservoir (Rainbow Reservoir)",
+    "lat": 40.32555,
+    "lon": -112.30372,
+    "species": [
+      "Rainbow",
+      "Cutthroat"
+    ],
+    "category": "Stocked trout water (UDWR)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://dwrapps.utah.gov/fishing/?NA=Deseret%20Reservoir%20%28Rainbow%20Reservoir%29"
+  },
+  {
+    "water": "Diamond Fork River",
+    "lat": 40.06832,
+    "lon": -111.43343,
+    "species": [
+      "Brown",
+      "Cutthroat"
+    ],
+    "category": "Managed trout water (UDWR)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://dwrapps.utah.gov/fishing/?NA=Diamond%20Fork%20River"
+  },
+  {
+    "water": "Dons Lake",
+    "lat": 38.56229,
+    "lon": -109.18753,
+    "species": [
+      "Rainbow"
+    ],
+    "category": "Stocked trout water (UDWR)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://dwrapps.utah.gov/fishing/?NA=Dons%20Lake"
+  },
+  {
+    "water": "Duchesne River, Hanna Upstream to North Fork Duchesne River Confluence (Blue Ribbon)",
+    "lat": 40.42995,
+    "lon": -110.80377,
+    "species": [
+      "Brown",
+      "Cutthroat",
+      "Rainbow"
+    ],
+    "category": "Managed trout water (UDWR)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://dwrapps.utah.gov/fishing/?NA=Duchesne%20River%2C%20Hanna%20Upstream%20to%20North%20Fork%20Duchesne%20River%20Confluence%20%28Blue%20Ribbon%29"
+  },
+  {
+    "water": "Duchesne River, West Fork, Downstream of Wolf Creek (Blue Ribbon)",
+    "lat": 40.45557,
+    "lon": -110.85361,
+    "species": [
+      "Brown",
+      "Brook",
+      "Cutthroat"
+    ],
+    "category": "Managed trout water (UDWR)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://dwrapps.utah.gov/fishing/?NA=Duchesne%20River%2C%20West%20Fork%2C%20Downstream%20of%20Wolf%20Creek%20%28Blue%20Ribbon%29"
+  },
+  {
+    "water": "Duchesne River, West Fork, Upstream of Wolf Creek (Blue Ribbon)",
+    "lat": 40.44745,
+    "lon": -111.02261,
+    "species": [
+      "Cutthroat",
+      "Brown"
+    ],
+    "category": "Managed trout water (UDWR)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://dwrapps.utah.gov/fishing/?NA=Duchesne%20River%2C%20West%20Fork%2C%20Upstream%20of%20Wolf%20Creek%20%28Blue%20Ribbon%29"
+  },
+  {
+    "water": "Duck Creek Pond / Aspen Mirror Lake",
+    "lat": 37.52014,
+    "lon": -112.68504,
+    "species": [
+      "Rainbow",
+      "Tiger",
+      "Brook"
+    ],
+    "category": "Stocked trout water (UDWR)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://dwrapps.utah.gov/fishing/?NA=Duck%20Creek%20Pond%20/%20Aspen%20Mirror%20Lake"
+  },
+  {
+    "water": "Duck Fork Reservoir (Blue Ribbon)",
+    "lat": 39.16939,
+    "lon": -111.45079,
+    "species": [
+      "Cutthroat",
+      "Tiger"
+    ],
+    "category": "Stocked trout water (UDWR)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://dwrapps.utah.gov/fishing/?NA=Duck%20Fork%20Reservoir%20%28Blue%20Ribbon%29"
+  },
+  {
+    "water": "East Canyon Reservoir (Blue Ribbon)",
+    "lat": 40.90826,
+    "lon": -111.5897,
+    "species": [
+      "Rainbow",
+      "Brown",
+      "Splake",
+      "Tiger"
+    ],
+    "category": "Stocked trout water (UDWR)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://dwrapps.utah.gov/fishing/?NA=East%20Canyon%20Reservoir%20%28Blue%20Ribbon%29"
+  },
+  {
+    "water": "East Fork Sevier River, Black Canyon (Blue Ribbon)",
+    "lat": 38.05041,
+    "lon": -111.9797,
+    "species": [
+      "Brown",
+      "Cutthroat",
+      "Rainbow"
+    ],
+    "category": "Managed trout water (UDWR)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://dwrapps.utah.gov/fishing/?NA=East%20Fork%20Sevier%20River%2C%20Black%20Canyon%20%28Blue%20Ribbon%29"
+  },
+  {
+    "water": "East Fork Sevier River, Kingston Canyon (Blue Ribbon)",
+    "lat": 38.18337,
+    "lon": -112.08323,
+    "species": [
+      "Brown",
+      "Cutthroat",
+      "Rainbow"
+    ],
+    "category": "Managed trout water (UDWR)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://dwrapps.utah.gov/fishing/?NA=East%20Fork%20Sevier%20River%2C%20Kingston%20Canyon%20%28Blue%20Ribbon%29"
+  },
+  {
+    "water": "East Fork Sevier River, Upper",
+    "lat": 37.49022,
+    "lon": -112.29702,
+    "species": [
+      "Brook",
+      "Brown",
+      "Rainbow",
+      "Cutthroat"
+    ],
+    "category": "Managed trout water (UDWR)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://dwrapps.utah.gov/fishing/?NA=East%20Fork%20Sevier%20River%2C%20Upper"
+  },
+  {
+    "water": "East Park Reservoir",
+    "lat": 40.78469,
+    "lon": -109.54769,
+    "species": [
+      "Brook",
+      "Rainbow",
+      "Tiger"
+    ],
+    "category": "Stocked trout water (UDWR)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://dwrapps.utah.gov/fishing/?NA=East%20Park%20Reservoir"
+  },
+  {
+    "water": "East Parley's (Manti Mountains)",
+    "lat": 39.19251,
+    "lon": -111.60561,
+    "species": [
+      "Brook"
+    ],
+    "category": "Stocked trout water (UDWR)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://dwrapps.utah.gov/fishing/?NA=East%20Parley%27s%20%28Manti%20Mountains%29"
+  },
+  {
+    "water": "Echo Reservoir",
+    "lat": 40.94501,
+    "lon": -111.41024,
+    "species": [
+      "Brown",
+      "Rainbow",
+      "Cutthroat"
+    ],
+    "category": "Stocked trout water (UDWR)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://dwrapps.utah.gov/fishing/?NA=Echo%20Reservoir"
+  },
+  {
+    "water": "Electric Lake",
+    "lat": 39.61706,
+    "lon": -111.22476,
+    "species": [
+      "Cutthroat",
+      "Tiger",
+      "Rainbow",
+      "Lake"
+    ],
+    "category": "Stocked trout water (UDWR)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://dwrapps.utah.gov/fishing/?NA=Electric%20Lake"
+  },
+  {
+    "water": "Emerald Lake",
+    "lat": 39.07436,
+    "lon": -111.49748,
+    "species": [
+      "Grayling",
+      "Rainbow"
+    ],
+    "category": "Stocked trout water (UDWR)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://dwrapps.utah.gov/fishing/?NA=Emerald%20Lake"
+  },
+  {
+    "water": "Enterprise Reservoirs",
+    "lat": 37.52044,
+    "lon": -113.86156,
+    "species": [
+      "Rainbow",
+      "Brown",
+      "Cutthroat"
+    ],
+    "category": "Stocked trout water (UDWR)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://dwrapps.utah.gov/fishing/?NA=Enterprise%20Reservoirs"
+  },
+  {
+    "water": "Fairmont Park Pond",
+    "lat": 40.72132,
+    "lon": -111.86045,
+    "species": [
+      "Rainbow"
+    ],
+    "category": "Stocked trout water (UDWR)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://dwrapps.utah.gov/fishing/?NA=Fairmont%20Park%20Pond"
+  },
+  {
+    "water": "Fairview Lakes",
+    "lat": 39.64109,
+    "lon": -111.31148,
+    "species": [
+      "Rainbow"
+    ],
+    "category": "Stocked trout water (UDWR)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://dwrapps.utah.gov/fishing/?NA=Fairview%20Lakes"
+  },
+  {
+    "water": "Farmington Pond",
+    "lat": 40.99294,
+    "lon": -111.88886,
+    "species": [
+      "Rainbow",
+      "Tiger"
+    ],
+    "category": "Stocked trout water (UDWR)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://dwrapps.utah.gov/fishing/?NA=Farmington%20Pond"
+  },
+  {
+    "water": "Ferron Creek",
+    "lat": 39.15605,
+    "lon": -111.30142,
+    "species": [
+      "Cutthroat",
+      "Rainbow",
+      "Tiger"
+    ],
+    "category": "Managed trout water (UDWR)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://dwrapps.utah.gov/fishing/?NA=Ferron%20Creek"
+  },
+  {
+    "water": "Ferron Reservoir",
+    "lat": 39.14226,
+    "lon": -111.45246,
+    "species": [
+      "Brook",
+      "Cutthroat",
+      "Rainbow"
+    ],
+    "category": "Stocked trout water (UDWR)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://dwrapps.utah.gov/fishing/?NA=Ferron%20Reservoir"
+  },
+  {
+    "water": "First Dam - Logan River",
+    "lat": 41.74199,
+    "lon": -111.7897,
+    "species": [
+      "Rainbow",
+      "Brown",
+      "Cutthroat"
+    ],
+    "category": "Stocked trout water (UDWR)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://dwrapps.utah.gov/fishing/?NA=First%20Dam%20-%20Logan%20River"
+  },
+  {
+    "water": "Fish Lake (Blue Ribbon)",
+    "lat": 38.5481,
+    "lon": -111.70987,
+    "species": [
+      "Lake",
+      "Rainbow",
+      "Splake",
+      "Brook",
+      "Brown",
+      "Cutthroat",
+      "Tiger"
+    ],
+    "category": "Stocked trout water (UDWR)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://dwrapps.utah.gov/fishing/?NA=Fish%20Lake%20%28Blue%20Ribbon%29"
+  },
+  {
+    "water": "Flaming Gorge Reservoir (Blue Ribbon)",
+    "lat": 41.06208,
+    "lon": -109.55855,
+    "species": [
+      "Cutthroat",
+      "Lake",
+      "Rainbow",
+      "Brown"
+    ],
+    "category": "Stocked trout water (UDWR)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://dwrapps.utah.gov/fishing/?NA=Flaming%20Gorge%20Reservoir%20%28Blue%20Ribbon%29"
+  },
+  {
+    "water": "Forsyth Reservoir",
+    "lat": 38.52508,
+    "lon": -111.53176,
+    "species": [
+      "Splake",
+      "Tiger",
+      "Cutthroat"
+    ],
+    "category": "Stocked trout water (UDWR)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://dwrapps.utah.gov/fishing/?NA=Forsyth%20Reservoir"
+  },
+  {
+    "water": "Fort Buenaventura Pond",
+    "lat": 41.21442,
+    "lon": -111.9889,
+    "species": [
+      "Rainbow"
+    ],
+    "category": "Stocked trout water (UDWR)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://dwrapps.utah.gov/fishing/?NA=Fort%20Buenaventura%20Pond"
+  },
+  {
+    "water": "Foy Lake",
+    "lat": 37.90179,
+    "lon": -109.51007,
+    "species": [
+      "Brook",
+      "Rainbow"
+    ],
+    "category": "Stocked trout water (UDWR)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://dwrapps.utah.gov/fishing/?NA=Foy%20Lake"
+  },
+  {
+    "water": "Garden City Pond",
+    "lat": 41.93823,
+    "lon": -111.39909,
+    "species": [
+      "Rainbow"
+    ],
+    "category": "Stocked trout water (UDWR)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://dwrapps.utah.gov/fishing/?NA=Garden%20City%20Pond"
+  },
+  {
+    "water": "George Creek",
+    "lat": 41.90989,
+    "lon": -113.43543,
+    "species": [
+      "Cutthroat",
+      "Rainbow"
+    ],
+    "category": "Managed trout water (UDWR)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://dwrapps.utah.gov/fishing/?NA=George%20Creek"
+  },
+  {
+    "water": "Gigliotti Pond",
+    "lat": 39.70238,
+    "lon": -110.86596,
+    "species": [
+      "Rainbow"
+    ],
+    "category": "Stocked trout water (UDWR)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://dwrapps.utah.gov/fishing/?NA=Gigliotti%20Pond"
+  },
+  {
+    "water": "Glassmans Pond",
+    "lat": 41.17996,
+    "lon": -111.95171,
+    "species": [
+      "Rainbow"
+    ],
+    "category": "Stocked trout water (UDWR)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://dwrapps.utah.gov/fishing/?NA=Glassmans%20Pond"
+  },
+  {
+    "water": "Goode Ski Lake (21st Street Pond)",
+    "lat": 41.23236,
+    "lon": -111.99265,
+    "species": [
+      "Rainbow"
+    ],
+    "category": "Stocked trout water (UDWR)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://dwrapps.utah.gov/fishing/?NA=Goode%20Ski%20Lake%20%2821st%20Street%20Pond%29"
+  },
+  {
+    "water": "Gooseberry Reservoir",
+    "lat": 39.71095,
+    "lon": -111.29256,
+    "species": [
+      "Rainbow",
+      "Grayling",
+      "Cutthroat"
+    ],
+    "category": "Stocked trout water (UDWR)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://dwrapps.utah.gov/fishing/?NA=Gooseberry%20Reservoir"
+  },
+  {
+    "water": "Grandpas Pond (Sandy Community Fishery)",
+    "lat": 40.5758,
+    "lon": -111.91694,
+    "species": [
+      "Rainbow"
+    ],
+    "category": "Stocked trout water (UDWR)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://dwrapps.utah.gov/fishing/?NA=Grandpas%20Pond%20%28Sandy%20Community%20Fishery%29"
+  },
+  {
+    "water": "Granite Creek, Deep Creek Mtns.",
+    "lat": 39.79756,
+    "lon": -113.89526,
+    "species": [
+      "Cutthroat"
+    ],
+    "category": "Managed trout water (UDWR)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://dwrapps.utah.gov/fishing/?NA=Granite%20Creek%2C%20Deep%20Creek%20Mtns."
+  },
+  {
+    "water": "Grantsville Reservoir",
+    "lat": 40.54238,
+    "lon": -112.50655,
+    "species": [
+      "Brown",
+      "Rainbow"
+    ],
+    "category": "Stocked trout water (UDWR)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://dwrapps.utah.gov/fishing/?NA=Grantsville%20Reservoir"
+  },
+  {
+    "water": "Grassy Lake",
+    "lat": 39.32215,
+    "lon": -111.33137,
+    "species": [
+      "Rainbow",
+      "Tiger"
+    ],
+    "category": "Stocked trout water (UDWR)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://dwrapps.utah.gov/fishing/?NA=Grassy%20Lake"
+  },
+  {
+    "water": "Green River Below Flaming Gorge Dam (Blue Ribbon)",
+    "lat": 40.8894,
+    "lon": -109.23035,
+    "species": [
+      "Brown",
+      "Rainbow",
+      "Cutthroat"
+    ],
+    "category": "Managed trout water (UDWR)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://dwrapps.utah.gov/fishing/?NA=Green%20River%20Below%20Flaming%20Gorge%20Dam%20%28Blue%20Ribbon%29"
+  },
+  {
+    "water": "Hidden Lake",
+    "lat": 38.57573,
+    "lon": -109.18778,
+    "species": [
+      "Rainbow"
+    ],
+    "category": "Stocked trout water (UDWR)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://dwrapps.utah.gov/fishing/?NA=Hidden%20Lake"
+  },
+  {
+    "water": "Highland Glen Park Pond",
+    "lat": 40.41574,
+    "lon": -111.7813,
+    "species": [
+      "Rainbow",
+      "Tiger",
+      "Brook"
+    ],
+    "category": "Stocked trout water (UDWR)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://dwrapps.utah.gov/fishing/?NA=Highland%20Glen%20Park%20Pond"
+  },
+  {
+    "water": "Hobbs Reservoir",
+    "lat": 41.10245,
+    "lon": -111.91827,
+    "species": [
+      "Brown",
+      "Rainbow",
+      "Cutthroat",
+      "Lake"
+    ],
+    "category": "Stocked trout water (UDWR)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://dwrapps.utah.gov/fishing/?NA=Hobbs%20Reservoir"
+  },
+  {
+    "water": "Holmes Creek Reservoir",
+    "lat": 41.07174,
+    "lon": -111.91468,
+    "species": [
+      "Rainbow"
+    ],
+    "category": "Stocked trout water (UDWR)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://dwrapps.utah.gov/fishing/?NA=Holmes%20Creek%20Reservoir"
+  },
+  {
+    "water": "Huntington (Mammoth) Reservoir (Blue Ribbon)",
+    "lat": 39.5907,
+    "lon": -111.26844,
+    "species": [
+      "Splake",
+      "Tiger",
+      "Cutthroat"
+    ],
+    "category": "Stocked trout water (UDWR)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://dwrapps.utah.gov/fishing/?NA=Huntington%20%28Mammoth%29%20Reservoir%20%28Blue%20Ribbon%29"
+  },
+  {
+    "water": "Huntington Creek",
+    "lat": 39.43826,
+    "lon": -111.13411,
+    "species": [
+      "Brown",
+      "Cutthroat"
+    ],
+    "category": "Managed trout water (UDWR)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://dwrapps.utah.gov/fishing/?NA=Huntington%20Creek"
+  },
+  {
+    "water": "Huntington Creek, Left Fork",
+    "lat": 39.5355,
+    "lon": -111.21594,
+    "species": [
+      "Brown",
+      "Cutthroat"
+    ],
+    "category": "Managed trout water (UDWR)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://dwrapps.utah.gov/fishing/?NA=Huntington%20Creek%2C%20Left%20Fork"
+  },
+  {
+    "water": "Huntington Creek, Right Fork",
+    "lat": 39.55515,
+    "lon": -111.17364,
+    "species": [
+      "Brown",
+      "Cutthroat"
+    ],
+    "category": "Managed trout water (UDWR)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://dwrapps.utah.gov/fishing/?NA=Huntington%20Creek%2C%20Right%20Fork"
+  },
+  {
+    "water": "Huntington Game Farm Pond",
+    "lat": 39.3642,
+    "lon": -110.97435,
+    "species": [
+      "Rainbow"
+    ],
+    "category": "Stocked trout water (UDWR)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://dwrapps.utah.gov/fishing/?NA=Huntington%20Game%20Farm%20Pond"
+  },
+  {
+    "water": "Huntington North Reservoir",
+    "lat": 39.34636,
+    "lon": -110.94807,
+    "species": [
+      "Rainbow",
+      "Brown"
+    ],
+    "category": "Stocked trout water (UDWR)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://dwrapps.utah.gov/fishing/?NA=Huntington%20North%20Reservoir"
+  },
+  {
+    "water": "Hyrum Reservoir",
+    "lat": 41.6187,
+    "lon": -111.85892,
+    "species": [
+      "Brown",
+      "Rainbow"
+    ],
+    "category": "Stocked trout water (UDWR)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://dwrapps.utah.gov/fishing/?NA=Hyrum%20Reservoir"
+  },
+  {
+    "water": "Indian Farms Creek, Deep Creek Mtns.",
+    "lat": 39.84381,
+    "lon": -113.82453,
+    "species": [
+      "Cutthroat"
+    ],
+    "category": "Managed trout water (UDWR)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://dwrapps.utah.gov/fishing/?NA=Indian%20Farms%20Creek%2C%20Deep%20Creek%20Mtns."
+  },
+  {
+    "water": "Jensen Nature Park Pond",
+    "lat": 41.06618,
+    "lon": -112.05354,
+    "species": [
+      "Rainbow",
+      "Brown",
+      "Tiger"
+    ],
+    "category": "Stocked trout water (UDWR)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://dwrapps.utah.gov/fishing/?NA=Jensen%20Nature%20Park%20Pond"
+  },
+  {
+    "water": "Joes Valley Reservoir (Blue Ribbon)",
+    "lat": 39.29317,
+    "lon": -111.2799,
+    "species": [
+      "Cutthroat",
+      "Splake",
+      "Rainbow",
+      "Tiger"
+    ],
+    "category": "Stocked trout water (UDWR)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://dwrapps.utah.gov/fishing/?NA=Joes%20Valley%20Reservoir%20%28Blue%20Ribbon%29"
+  },
+  {
+    "water": "Johnson Creek",
+    "lat": 41.88935,
+    "lon": -113.529,
+    "species": [
+      "Cutthroat"
+    ],
+    "category": "Managed trout water (UDWR)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://dwrapps.utah.gov/fishing/?NA=Johnson%20Creek"
+  },
+  {
+    "water": "Johnson Reservoir",
+    "lat": 38.60968,
+    "lon": -111.64469,
+    "species": [
+      "Tiger"
+    ],
+    "category": "Stocked trout water (UDWR)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://dwrapps.utah.gov/fishing/?NA=Johnson%20Reservoir"
+  },
+  {
+    "water": "Jordan River",
+    "lat": 40.61166,
+    "lon": -111.92129,
+    "species": [
+      "Brown"
+    ],
+    "category": "Managed trout water (UDWR)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://dwrapps.utah.gov/fishing/?NA=Jordan%20River"
+  },
+  {
+    "water": "Jordan River Reservoir (Willow Creek Pond)",
+    "lat": 40.39575,
+    "lon": -111.89456,
+    "species": [
+      "Rainbow"
+    ],
+    "category": "Managed trout water (UDWR)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://dwrapps.utah.gov/fishing/?NA=Jordan%20River%20Reservoir%20%28Willow%20Creek%20Pond%29"
+  },
+  {
+    "water": "Jordanelle Reservoir (Blue Ribbon)",
+    "lat": 40.61891,
+    "lon": -111.4086,
+    "species": [
+      "Brown",
+      "Rainbow",
+      "Cutthroat",
+      "Splake"
+    ],
+    "category": "Stocked trout water (UDWR)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://dwrapps.utah.gov/fishing/?NA=Jordanelle%20Reservoir%20%28Blue%20Ribbon%29"
+  },
+  {
+    "water": "Kaysville Ponds",
+    "lat": 41.02222,
+    "lon": -111.94097,
+    "species": [
+      "Rainbow"
+    ],
+    "category": "Stocked trout water (UDWR)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://dwrapps.utah.gov/fishing/?NA=Kaysville%20Ponds"
+  },
+  {
+    "water": "Kens Lake",
+    "lat": 38.48187,
+    "lon": -109.42982,
+    "species": [
+      "Rainbow",
+      "Brown"
+    ],
+    "category": "Stocked trout water (UDWR)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://dwrapps.utah.gov/fishing/?NA=Kens%20Lake"
+  },
+  {
+    "water": "Kidney Pond",
+    "lat": 40.54616,
+    "lon": -111.91692,
+    "species": [
+      "Rainbow",
+      "Brook"
+    ],
+    "category": "Stocked trout water (UDWR)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://dwrapps.utah.gov/fishing/?NA=Kidney%20Pond"
+  },
+  {
+    "water": "Knight-Ideal Pond",
+    "lat": 39.53798,
+    "lon": -110.71915,
+    "species": [
+      "Rainbow"
+    ],
+    "category": "Stocked trout water (UDWR)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://dwrapps.utah.gov/fishing/?NA=Knight-Ideal%20Pond"
+  },
+  {
+    "water": "Kolob Reservoir (Blue Ribbon)",
+    "lat": 37.43891,
+    "lon": -113.04844,
+    "species": [
+      "Cutthroat",
+      "Rainbow",
+      "Brook",
+      "Tiger"
+    ],
+    "category": "Stocked trout water (UDWR)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://dwrapps.utah.gov/fishing/?NA=Kolob%20Reservoir%20%28Blue%20Ribbon%29"
+  },
+  {
+    "water": "Koosharem Reservoir",
+    "lat": 38.60047,
+    "lon": -111.84128,
+    "species": [
+      "Cutthroat",
+      "Rainbow",
+      "Brook",
+      "Splake",
+      "Tiger"
+    ],
+    "category": "Stocked trout water (UDWR)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://dwrapps.utah.gov/fishing/?NA=Koosharem%20Reservoir"
+  },
+  {
+    "water": "Lake at the Hills (Leigh Hill)",
+    "lat": 37.66215,
+    "lon": -113.08812,
+    "species": [
+      "Rainbow",
+      "Brook",
+      "Brown"
+    ],
+    "category": "Stocked trout water (UDWR)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://dwrapps.utah.gov/fishing/?NA=Lake%20at%20the%20Hills%20%28Leigh%20Hill%29"
+  },
+  {
+    "water": "Lake Blanche",
+    "lat": 40.60562,
+    "lon": -111.69256,
+    "species": [
+      "Grayling",
+      "Cutthroat",
+      "Brook"
+    ],
+    "category": "Stocked trout water (UDWR)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://dwrapps.utah.gov/fishing/?NA=Lake%20Blanche"
+  },
+  {
+    "water": "Lake Canyon Lake (Blue Ribbon)",
+    "lat": 40.05831,
+    "lon": -110.62616,
+    "species": [
+      "Cutthroat",
+      "Tiger"
+    ],
+    "category": "Stocked trout water (UDWR)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://dwrapps.utah.gov/fishing/?NA=Lake%20Canyon%20Lake%20%28Blue%20Ribbon%29"
+  },
+  {
+    "water": "Lake Catherine",
+    "lat": 40.58094,
+    "lon": -111.59319,
+    "species": [
+      "Brook"
+    ],
+    "category": "Stocked trout water (UDWR)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://dwrapps.utah.gov/fishing/?NA=Lake%20Catherine"
+  },
+  {
+    "water": "Lake Florence",
+    "lat": 40.60518,
+    "lon": -111.69649,
+    "species": [
+      "Brook"
+    ],
+    "category": "Stocked trout water (UDWR)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://dwrapps.utah.gov/fishing/?NA=Lake%20Florence"
+  },
+  {
+    "water": "Lake Lillian",
+    "lat": 40.60356,
+    "lon": -111.6974,
+    "species": [
+      "Grayling",
+      "Brook"
+    ],
+    "category": "Stocked trout water (UDWR)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://dwrapps.utah.gov/fishing/?NA=Lake%20Lillian"
+  },
+  {
+    "water": "Lake Mary",
+    "lat": 40.58881,
+    "lon": -111.5899,
+    "species": [
+      "Brook",
+      "Lake"
+    ],
+    "category": "Stocked trout water (UDWR)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://dwrapps.utah.gov/fishing/?NA=Lake%20Mary"
+  },
+  {
+    "water": "Lake Powell (Blue Ribbon)",
+    "lat": 37.25249,
+    "lon": -110.99598,
+    "species": [
+      "Brown",
+      "Lake",
+      "Rainbow"
+    ],
+    "category": "Stocked trout water (UDWR)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://dwrapps.utah.gov/fishing/?NA=Lake%20Powell%20%28Blue%20Ribbon%29"
+  },
+  {
+    "water": "Laketown Reservoir",
+    "lat": 41.80194,
+    "lon": -111.30713,
+    "species": [
+      "Rainbow",
+      "Cutthroat"
+    ],
+    "category": "Stocked trout water (UDWR)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://dwrapps.utah.gov/fishing/?NA=Laketown%20Reservoir"
+  },
+  {
+    "water": "Little Dell Reservoir",
+    "lat": 40.77302,
+    "lon": -111.69495,
+    "species": [
+      "Cutthroat",
+      "Brook"
+    ],
+    "category": "Stocked trout water (UDWR)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://dwrapps.utah.gov/fishing/?NA=Little%20Dell%20Reservoir"
+  },
+  {
+    "water": "Little Montes Reservoir",
+    "lat": 40.34784,
+    "lon": -109.93226,
+    "species": [
+      "Rainbow",
+      "Brook"
+    ],
+    "category": "Stocked trout water (UDWR)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://dwrapps.utah.gov/fishing/?NA=Little%20Montes%20Reservoir"
+  },
+  {
+    "water": "Lloyds Lake",
+    "lat": 37.85189,
+    "lon": -109.36282,
+    "species": [
+      "Rainbow"
+    ],
+    "category": "Stocked trout water (UDWR)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://dwrapps.utah.gov/fishing/?NA=Lloyds%20Lake"
+  },
+  {
+    "water": "Logan River (Blue Ribbon)",
+    "lat": 41.81354,
+    "lon": -111.6245,
+    "species": [
+      "Brook",
+      "Brown",
+      "Cutthroat"
+    ],
+    "category": "Managed trout water (UDWR)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://dwrapps.utah.gov/fishing/?NA=Logan%20River%20%28Blue%20Ribbon%29"
+  },
+  {
+    "water": "Loggers Fork Reservoir (Manti Mountains)",
+    "lat": 39.2645,
+    "lon": -111.4613,
+    "species": [
+      "Rainbow"
+    ],
+    "category": "Stocked trout water (UDWR)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://dwrapps.utah.gov/fishing/?NA=Loggers%20Fork%20Reservoir%20%28Manti%20Mountains%29"
+  },
+  {
+    "water": "Long Park Reservoir, North Slope",
+    "lat": 40.90687,
+    "lon": -109.86331,
+    "species": [
+      "Grayling",
+      "Brook",
+      "Rainbow",
+      "Tiger"
+    ],
+    "category": "Managed trout water (UDWR)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://dwrapps.utah.gov/fishing/?NA=Long%20Park%20Reservoir%2C%20North%20Slope"
+  },
+  {
+    "water": "Lost Creek Reservoir (Blue Ribbon)",
+    "lat": 41.19369,
+    "lon": -111.38723,
+    "species": [
+      "Cutthroat",
+      "Rainbow",
+      "Splake",
+      "Tiger"
+    ],
+    "category": "Stocked trout water (UDWR)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://dwrapps.utah.gov/fishing/?NA=Lost%20Creek%20Reservoir%20%28Blue%20Ribbon%29"
+  },
+  {
+    "water": "Lower Bowns Reservoir",
+    "lat": 38.10775,
+    "lon": -111.27107,
+    "species": [
+      "Rainbow",
+      "Tiger"
+    ],
+    "category": "Stocked trout water (UDWR)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://dwrapps.utah.gov/fishing/?NA=Lower%20Bowns%20Reservoir"
+  },
+  {
+    "water": "Lower Fish Creek (Blue Ribbon)",
+    "lat": 39.78079,
+    "lon": -111.07099,
+    "species": [
+      "Brown",
+      "Cutthroat",
+      "Rainbow",
+      "Tiger"
+    ],
+    "category": "Managed trout water (UDWR)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://dwrapps.utah.gov/fishing/?NA=Lower%20Fish%20Creek%20%28Blue%20Ribbon%29"
+  },
+  {
+    "water": "Lower Stillwater Ponds (Blue Ribbon)",
+    "lat": 40.50619,
+    "lon": -110.58715,
+    "species": [
+      "Brook",
+      "Brown",
+      "Rainbow",
+      "Tiger",
+      "Cutthroat"
+    ],
+    "category": "Stocked trout water (UDWR)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://dwrapps.utah.gov/fishing/?NA=Lower%20Stillwater%20Ponds%20%28Blue%20Ribbon%29"
+  },
+  {
+    "water": "Lower WPA Pond (Manti Mountains)",
+    "lat": 39.11709,
+    "lon": -111.52481,
+    "species": [
+      "Brook"
+    ],
+    "category": "Stocked trout water (UDWR)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://dwrapps.utah.gov/fishing/?NA=Lower%20WPA%20Pond%20%28Manti%20Mountains%29"
+  },
+  {
+    "water": "Mabey Pond",
+    "lat": 41.10886,
+    "lon": -112.01755,
+    "species": [
+      "Rainbow"
+    ],
+    "category": "Stocked trout water (UDWR)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://dwrapps.utah.gov/fishing/?NA=Mabey%20Pond"
+  },
+  {
+    "water": "Mammoth Creek",
+    "lat": 37.62636,
+    "lon": -112.61654,
+    "species": [
+      "Brook",
+      "Brown",
+      "Cutthroat",
+      "Rainbow",
+      "Tiger"
+    ],
+    "category": "Managed trout water (UDWR)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://dwrapps.utah.gov/fishing/?NA=Mammoth%20Creek"
+  },
+  {
+    "water": "Manila Creek Pond",
+    "lat": 40.39868,
+    "lon": -111.75076,
+    "species": [
+      "Rainbow",
+      "Tiger"
+    ],
+    "category": "Stocked trout water (UDWR)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://dwrapps.utah.gov/fishing/?NA=Manila%20Creek%20Pond"
+  },
+  {
+    "water": "Mantua Reservoir",
+    "lat": 41.50463,
+    "lon": -111.9327,
+    "species": [
+      "Rainbow"
+    ],
+    "category": "Stocked trout water (UDWR)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://dwrapps.utah.gov/fishing/?NA=Mantua%20Reservoir"
+  },
+  {
+    "water": "Maple Lake",
+    "lat": 39.95703,
+    "lon": -111.69399,
+    "species": [
+      "Rainbow",
+      "Brook",
+      "Tiger"
+    ],
+    "category": "Stocked trout water (UDWR)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://dwrapps.utah.gov/fishing/?NA=Maple%20Lake"
+  },
+  {
+    "water": "Matt Warner Reservoir",
+    "lat": 40.77194,
+    "lon": -109.29892,
+    "species": [
+      "Rainbow",
+      "Brown",
+      "Tiger"
+    ],
+    "category": "Stocked trout water (UDWR)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://dwrapps.utah.gov/fishing/?NA=Matt%20Warner%20Reservoir"
+  },
+  {
+    "water": "May Day Pond",
+    "lat": 38.07197,
+    "lon": -110.74269,
+    "species": [
+      "Tiger",
+      "Rainbow"
+    ],
+    "category": "Stocked trout water (UDWR)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://dwrapps.utah.gov/fishing/?NA=May%20Day%20Pond"
+  },
+  {
+    "water": "Mayors Pond",
+    "lat": 41.5038,
+    "lon": -111.9987,
+    "species": [
+      "Rainbow",
+      "Brown"
+    ],
+    "category": "Stocked trout water (UDWR)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://dwrapps.utah.gov/fishing/?NA=Mayors%20Pond"
+  },
+  {
+    "water": "McClellan Lake (Payson Lakes)",
+    "lat": 39.93878,
+    "lon": -111.64367,
+    "species": [
+      "Rainbow",
+      "Brook"
+    ],
+    "category": "Stocked trout water (UDWR)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://dwrapps.utah.gov/fishing/?NA=McClellan%20Lake%20%28Payson%20Lakes%29"
+  },
+  {
+    "water": "Meadow Creek Pond",
+    "lat": 41.17042,
+    "lon": -112.08222,
+    "species": [
+      "Rainbow",
+      "Brown",
+      "Tiger"
+    ],
+    "category": "Stocked trout water (UDWR)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://dwrapps.utah.gov/fishing/?NA=Meadow%20Creek%20Pond"
+  },
+  {
+    "water": "Midas Pond",
+    "lat": 40.54718,
+    "lon": -111.91659,
+    "species": [
+      "Rainbow",
+      "Brook"
+    ],
+    "category": "Stocked trout water (UDWR)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://dwrapps.utah.gov/fishing/?NA=Midas%20Pond"
+  },
+  {
+    "water": "Mill Hollow Reservoir",
+    "lat": 40.49006,
+    "lon": -111.10602,
+    "species": [
+      "Rainbow",
+      "Tiger",
+      "Brook"
+    ],
+    "category": "Stocked trout water (UDWR)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://dwrapps.utah.gov/fishing/?NA=Mill%20Hollow%20Reservoir"
+  },
+  {
+    "water": "Mill Meadow Reservoir",
+    "lat": 38.50584,
+    "lon": -111.56594,
+    "species": [
+      "Brown",
+      "Rainbow",
+      "Splake",
+      "Tiger",
+      "Brook"
+    ],
+    "category": "Stocked trout water (UDWR)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://dwrapps.utah.gov/fishing/?NA=Mill%20Meadow%20Reservoir"
+  },
+  {
+    "water": "Millard County Streams",
+    "lat": 38.95097,
+    "lon": -112.27221,
+    "species": [
+      "Brown",
+      "Cutthroat",
+      "Rainbow",
+      "Tiger"
+    ],
+    "category": "Managed trout water (UDWR)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://dwrapps.utah.gov/fishing/?NA=Millard%20County%20Streams"
+  },
+  {
+    "water": "Miller Flat Reservoir",
+    "lat": 39.5381,
+    "lon": -111.24794,
+    "species": [
+      "Rainbow",
+      "Brook",
+      "Cutthroat"
+    ],
+    "category": "Stocked trout water (UDWR)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://dwrapps.utah.gov/fishing/?NA=Miller%20Flat%20Reservoir"
+  },
+  {
+    "water": "Millrace Park Pond",
+    "lat": 40.65566,
+    "lon": -111.92316,
+    "species": [
+      "Rainbow"
+    ],
+    "category": "Stocked trout water (UDWR)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://dwrapps.utah.gov/fishing/?NA=Millrace%20Park%20Pond"
+  },
+  {
+    "water": "Millsite Reservoir",
+    "lat": 39.09926,
+    "lon": -111.19729,
+    "species": [
+      "Cutthroat",
+      "Rainbow",
+      "Splake",
+      "Tiger"
+    ],
+    "category": "Stocked trout water (UDWR)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://dwrapps.utah.gov/fishing/?NA=Millsite%20Reservoir"
+  },
+  {
+    "water": "Minersville Reservoir (Blue Ribbon)",
+    "lat": 38.23613,
+    "lon": -112.81559,
+    "species": [
+      "Rainbow",
+      "Brown",
+      "Tiger"
+    ],
+    "category": "Stocked trout water (UDWR)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://dwrapps.utah.gov/fishing/?NA=Minersville%20Reservoir%20%28Blue%20Ribbon%29"
+  },
+  {
+    "water": "Monroe Mountain Lakes",
+    "lat": 38.55385,
+    "lon": -112.0143,
+    "species": [
+      "Cutthroat",
+      "Rainbow",
+      "Tiger",
+      "Brook",
+      "Splake"
+    ],
+    "category": "Stocked trout water (UDWR)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://dwrapps.utah.gov/fishing/?NA=Monroe%20Mountain%20Lakes"
+  },
+  {
+    "water": "Monroe Pond",
+    "lat": 38.61126,
+    "lon": -112.1094,
+    "species": [
+      "Rainbow",
+      "Brown",
+      "Brook",
+      "Tiger"
+    ],
+    "category": "Stocked trout water (UDWR)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://dwrapps.utah.gov/fishing/?NA=Monroe%20Pond"
+  },
+  {
+    "water": "Monticello Lake",
+    "lat": 37.89489,
+    "lon": -109.46829,
+    "species": [
+      "Rainbow",
+      "Tiger"
+    ],
+    "category": "Stocked trout water (UDWR)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://dwrapps.utah.gov/fishing/?NA=Monticello%20Lake"
+  },
+  {
+    "water": "Moon Lake",
+    "lat": 40.5796,
+    "lon": -110.50484,
+    "species": [
+      "Brook",
+      "Rainbow",
+      "Splake",
+      "Grayling",
+      "Cutthroat",
+      "Tiger"
+    ],
+    "category": "Stocked trout water (UDWR)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://dwrapps.utah.gov/fishing/?NA=Moon%20Lake"
+  },
+  {
+    "water": "Moose Pond",
+    "lat": 40.84267,
+    "lon": -109.64502,
+    "species": [
+      "Rainbow",
+      "Cutthroat"
+    ],
+    "category": "Stocked trout water (UDWR)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://dwrapps.utah.gov/fishing/?NA=Moose%20Pond"
+  },
+  {
+    "water": "Mount Pleasant Pond (Parleys Pond)",
+    "lat": 39.54735,
+    "lon": -111.42262,
+    "species": [
+      "Rainbow",
+      "Brown",
+      "Tiger"
+    ],
+    "category": "Stocked trout water (UDWR)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://dwrapps.utah.gov/fishing/?NA=Mount%20Pleasant%20Pond%20%28Parleys%20Pond%29"
+  },
+  {
+    "water": "Navajo Lake",
+    "lat": 37.52306,
+    "lon": -112.77539,
+    "species": [
+      "Rainbow",
+      "Splake",
+      "Tiger",
+      "Cutthroat"
+    ],
+    "category": "Stocked trout water (UDWR)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://dwrapps.utah.gov/fishing/?NA=Navajo%20Lake"
+  },
+  {
+    "water": "New Canyon Reservoir (Manti Mountains)",
+    "lat": 39.36257,
+    "lon": -111.46102,
+    "species": [
+      "Rainbow",
+      "Tiger"
+    ],
+    "category": "Stocked trout water (UDWR)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://dwrapps.utah.gov/fishing/?NA=New%20Canyon%20Reservoir%20%28Manti%20Mountains%29"
+  },
+  {
+    "water": "Newcastle Reservoir",
+    "lat": 37.64813,
+    "lon": -113.52185,
+    "species": [
+      "Rainbow",
+      "Brown"
+    ],
+    "category": "Stocked trout water (UDWR)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://dwrapps.utah.gov/fishing/?NA=Newcastle%20Reservoir"
+  },
+  {
+    "water": "Newton Reservoir",
+    "lat": 41.90555,
+    "lon": -111.98336,
+    "species": [
+      "Tiger"
+    ],
+    "category": "Stocked trout water (UDWR)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://dwrapps.utah.gov/fishing/?NA=Newton%20Reservoir"
+  },
+  {
+    "water": "Nine Mile Reservoir",
+    "lat": 39.17419,
+    "lon": -111.70925,
+    "species": [
+      "Rainbow",
+      "Tiger"
+    ],
+    "category": "Stocked trout water (UDWR)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://dwrapps.utah.gov/fishing/?NA=Nine%20Mile%20Reservoir"
+  },
+  {
+    "water": "North Fork of Birch Creek, Deep Creek Mtns.",
+    "lat": 39.73108,
+    "lon": -113.93825,
+    "species": [
+      "Cutthroat"
+    ],
+    "category": "Managed trout water (UDWR)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://dwrapps.utah.gov/fishing/?NA=North%20Fork%20of%20Birch%20Creek%2C%20Deep%20Creek%20Mtns."
+  },
+  {
+    "water": "Northwest Sunset Pond",
+    "lat": 40.53581,
+    "lon": -111.86931,
+    "species": [
+      "Rainbow"
+    ],
+    "category": "Stocked trout water (UDWR)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://dwrapps.utah.gov/fishing/?NA=Northwest%20Sunset%20Pond"
+  },
+  {
+    "water": "Ogden River",
+    "lat": 41.23854,
+    "lon": -111.91094,
+    "species": [
+      "Brown",
+      "Rainbow"
+    ],
+    "category": "Managed trout water (UDWR)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://dwrapps.utah.gov/fishing/?NA=Ogden%20River"
+  },
+  {
+    "water": "Ogden River, South Fork",
+    "lat": 41.26877,
+    "lon": -111.67275,
+    "species": [
+      "Cutthroat",
+      "Rainbow",
+      "Brown"
+    ],
+    "category": "Managed trout water (UDWR)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://dwrapps.utah.gov/fishing/?NA=Ogden%20River%2C%20South%20Fork"
+  },
+  {
+    "water": "Old Fort Ponds",
+    "lat": 40.49054,
+    "lon": -109.59087,
+    "species": [
+      "Rainbow",
+      "Tiger"
+    ],
+    "category": "Stocked trout water (UDWR)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://dwrapps.utah.gov/fishing/?NA=Old%20Fort%20Ponds"
+  },
+  {
+    "water": "Onemile Creek / Sawmill Canyon",
+    "lat": 41.96313,
+    "lon": -113.43708,
+    "species": [
+      "Cutthroat"
+    ],
+    "category": "Managed trout water (UDWR)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://dwrapps.utah.gov/fishing/?NA=Onemile%20Creek%20/%20Sawmill%20Canyon"
+  },
+  {
+    "water": "Oowah Lake",
+    "lat": 38.5008,
+    "lon": -109.2736,
+    "species": [
+      "Rainbow",
+      "Grayling",
+      "Brook"
+    ],
+    "category": "Stocked trout water (UDWR)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://dwrapps.utah.gov/fishing/?NA=Oowah%20Lake"
+  },
+  {
+    "water": "Otter Creek Reservoir (Blue Ribbon)",
+    "lat": 38.20093,
+    "lon": -111.99089,
+    "species": [
+      "Rainbow",
+      "Brown",
+      "Tiger"
+    ],
+    "category": "Stocked trout water (UDWR)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://dwrapps.utah.gov/fishing/?NA=Otter%20Creek%20Reservoir%20%28Blue%20Ribbon%29"
+  },
+  {
+    "water": "Palisade Reservoir & State Park",
+    "lat": 39.20473,
+    "lon": -111.66899,
+    "species": [
+      "Rainbow",
+      "Tiger",
+      "Cutthroat"
+    ],
+    "category": "Stocked trout water (UDWR)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://dwrapps.utah.gov/fishing/?NA=Palisade%20Reservoir%20%26%20State%20Park"
+  },
+  {
+    "water": "Panguitch Lake (Blue Ribbon)",
+    "lat": 37.7159,
+    "lon": -112.64139,
+    "species": [
+      "Cutthroat",
+      "Rainbow",
+      "Tiger",
+      "Brook",
+      "Brown",
+      "Splake"
+    ],
+    "category": "Stocked trout water (UDWR)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://dwrapps.utah.gov/fishing/?NA=Panguitch%20Lake%20%28Blue%20Ribbon%29"
+  },
+  {
+    "water": "Paragonah (Red Creek) Reservoir",
+    "lat": 37.86275,
+    "lon": -112.6788,
+    "species": [
+      "Cutthroat",
+      "Rainbow",
+      "Tiger",
+      "Splake"
+    ],
+    "category": "Stocked trout water (UDWR)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://dwrapps.utah.gov/fishing/?NA=Paragonah%20%28Red%20Creek%29%20Reservoir"
+  },
+  {
+    "water": "Parowan Pond",
+    "lat": 37.8438,
+    "lon": -112.83709,
+    "species": [
+      "Rainbow"
+    ],
+    "category": "Stocked trout water (UDWR)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://dwrapps.utah.gov/fishing/?NA=Parowan%20Pond"
+  },
+  {
+    "water": "Petes Hole Reservoir",
+    "lat": 39.29194,
+    "lon": -111.3872,
+    "species": [
+      "Rainbow",
+      "Tiger",
+      "Brook"
+    ],
+    "category": "Stocked trout water (UDWR)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://dwrapps.utah.gov/fishing/?NA=Petes%20Hole%20Reservoir"
+  },
+  {
+    "water": "Pine Lake",
+    "lat": 37.73996,
+    "lon": -111.95659,
+    "species": [
+      "Rainbow",
+      "Brook",
+      "Cutthroat",
+      "Tiger"
+    ],
+    "category": "Stocked trout water (UDWR)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://dwrapps.utah.gov/fishing/?NA=Pine%20Lake"
+  },
+  {
+    "water": "Pine Valley Reservoir",
+    "lat": 37.37866,
+    "lon": -113.47453,
+    "species": [
+      "Rainbow",
+      "Brown",
+      "Tiger"
+    ],
+    "category": "Stocked trout water (UDWR)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://dwrapps.utah.gov/fishing/?NA=Pine%20Valley%20Reservoir"
+  },
+  {
+    "water": "Pioneer Park Pond",
+    "lat": 41.51153,
+    "lon": -112.02583,
+    "species": [
+      "Rainbow"
+    ],
+    "category": "Stocked trout water (UDWR)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://dwrapps.utah.gov/fishing/?NA=Pioneer%20Park%20Pond"
+  },
+  {
+    "water": "Pittsburgh Lake",
+    "lat": 40.55833,
+    "lon": -111.61668,
+    "species": [
+      "Brook"
+    ],
+    "category": "Stocked trout water (UDWR)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://dwrapps.utah.gov/fishing/?NA=Pittsburgh%20Lake"
+  },
+  {
+    "water": "Piute Reservoir",
+    "lat": 38.28509,
+    "lon": -112.20179,
+    "species": [
+      "Rainbow",
+      "Brown"
+    ],
+    "category": "Stocked trout water (UDWR)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://dwrapps.utah.gov/fishing/?NA=Piute%20Reservoir"
+  },
+  {
+    "water": "Porcupine Reservoir",
+    "lat": 41.51895,
+    "lon": -111.73652,
+    "species": [
+      "Rainbow",
+      "Lake",
+      "Splake",
+      "Tiger"
+    ],
+    "category": "Stocked trout water (UDWR)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://dwrapps.utah.gov/fishing/?NA=Porcupine%20Reservoir"
+  },
+  {
+    "water": "Potters Ponds",
+    "lat": 39.44869,
+    "lon": -111.26823,
+    "species": [
+      "Rainbow"
+    ],
+    "category": "Stocked trout water (UDWR)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://dwrapps.utah.gov/fishing/?NA=Potters%20Ponds"
+  },
+  {
+    "water": "Price River",
+    "lat": 39.77418,
+    "lon": -110.91153,
+    "species": [
+      "Brown",
+      "Cutthroat"
+    ],
+    "category": "Managed trout water (UDWR)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://dwrapps.utah.gov/fishing/?NA=Price%20River"
+  },
+  {
+    "water": "Provo River, Lower, From I-15 upstream through town to Olmstead Diversion in Provo Canyon",
+    "lat": 40.32817,
+    "lon": -111.63282,
+    "species": [
+      "Brown",
+      "Rainbow"
+    ],
+    "category": "Managed trout water (UDWR)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://dwrapps.utah.gov/fishing/?NA=Provo%20River%2C%20Lower%2C%20From%20I-15%20upstream%20through%20town%20to%20Olmstead%20Diversion%20in%20Provo%20Canyon"
+  },
+  {
+    "water": "Provo River, Lower, Olmstead Diversion Dam upstream to Deer Creek Dam (Blue Ribbon)",
+    "lat": 40.37585,
+    "lon": -111.55497,
+    "species": [
+      "Brown",
+      "Rainbow",
+      "Cutthroat"
+    ],
+    "category": "Managed trout water (UDWR)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://dwrapps.utah.gov/fishing/?NA=Provo%20River%2C%20Lower%2C%20Olmstead%20Diversion%20Dam%20upstream%20to%20Deer%20Creek%20Dam%20%28Blue%20Ribbon%29"
+  },
+  {
+    "water": "Provo River, Lower, West Center Street Bridge to I-15",
+    "lat": 40.23791,
+    "lon": -111.7072,
+    "species": [
+      "Brown",
+      "Rainbow"
+    ],
+    "category": "Managed trout water (UDWR)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://dwrapps.utah.gov/fishing/?NA=Provo%20River%2C%20Lower%2C%20West%20Center%20Street%20Bridge%20to%20I-15"
+  },
+  {
+    "water": "Provo River, Middle, from Deer Creek Reservoir upstream to Legacy Bridge SR-113 (Blue Ribbon)",
+    "lat": 40.48422,
+    "lon": -111.46446,
+    "species": [
+      "Brown",
+      "Rainbow"
+    ],
+    "category": "Managed trout water (UDWR)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://dwrapps.utah.gov/fishing/?NA=Provo%20River%2C%20Middle%2C%20from%20Deer%20Creek%20Reservoir%20upstream%20to%20Legacy%20Bridge%20SR-113%20%28Blue%20Ribbon%29"
+  },
+  {
+    "water": "Provo River, Middle, Legacy Bridge (SR-113) upstream to Jordanelle Dam (Blue Ribbon)",
+    "lat": 40.55741,
+    "lon": -111.43536,
+    "species": [
+      "Brown",
+      "Rainbow",
+      "Cutthroat"
+    ],
+    "category": "Managed trout water (UDWR)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://dwrapps.utah.gov/fishing/?NA=Provo%20River%2C%20Middle%2C%20Legacy%20Bridge%20%28SR-113%29%20upstream%20to%20Jordanelle%20Dam%20%28Blue%20Ribbon%29"
+  },
+  {
+    "water": "Provo River, Upper, from Jordanelle Reservoir upstream to confluence with north and south forks <i>(limited angler access)</i>",
+    "lat": 40.59038,
+    "lon": -111.27091,
+    "species": [
+      "Brown",
+      "Cutthroat"
+    ],
+    "category": "Managed trout water (UDWR)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://dwrapps.utah.gov/fishing/?NA=Provo%20River%2C%20Upper%2C%20from%20Jordanelle%20Reservoir%20upstream%20to%20confluence%20with%20north%20and%20south%20forks%20%3Ci%3E%28limited%20angler%20access%29%3C/i%3E"
+  },
+  {
+    "water": "Quail Creek Reservoir (Blue Ribbon)",
+    "lat": 37.18697,
+    "lon": -113.38799,
+    "species": [
+      "Rainbow"
+    ],
+    "category": "Stocked trout water (UDWR)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://dwrapps.utah.gov/fishing/?NA=Quail%20Creek%20Reservoir%20%28Blue%20Ribbon%29"
+  },
+  {
+    "water": "Razor Ridge Pond",
+    "lat": 37.15709,
+    "lon": -113.43881,
+    "species": [
+      "Rainbow"
+    ],
+    "category": "Stocked trout water (UDWR)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://dwrapps.utah.gov/fishing/?NA=Razor%20Ridge%20Pond"
+  },
+  {
+    "water": "Red Cedar Creek, Deep Creek Mtns.",
+    "lat": 39.81964,
+    "lon": -113.8417,
+    "species": [
+      "Cutthroat"
+    ],
+    "category": "Managed trout water (UDWR)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://dwrapps.utah.gov/fishing/?NA=Red%20Cedar%20Creek%2C%20Deep%20Creek%20Mtns."
+  },
+  {
+    "water": "Red Creek Reservoir",
+    "lat": 40.3089,
+    "lon": -110.85369,
+    "species": [
+      "Rainbow",
+      "Cutthroat",
+      "Tiger"
+    ],
+    "category": "Stocked trout water (UDWR)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://dwrapps.utah.gov/fishing/?NA=Red%20Creek%20Reservoir"
+  },
+  {
+    "water": "Red Fleet Reservoir",
+    "lat": 40.57943,
+    "lon": -109.43062,
+    "species": [
+      "Rainbow",
+      "Tiger",
+      "Brown",
+      "Cutthroat"
+    ],
+    "category": "Stocked trout water (UDWR)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://dwrapps.utah.gov/fishing/?NA=Red%20Fleet%20Reservoir"
+  },
+  {
+    "water": "Red Pine Lakes",
+    "lat": 40.5411,
+    "lon": -111.69092,
+    "species": [
+      "Cutthroat",
+      "Rainbow"
+    ],
+    "category": "Stocked trout water (UDWR)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://dwrapps.utah.gov/fishing/?NA=Red%20Pine%20Lakes"
+  },
+  {
+    "water": "Riverfront Pond",
+    "lat": 40.5452,
+    "lon": -111.91723,
+    "species": [
+      "Rainbow"
+    ],
+    "category": "Stocked trout water (UDWR)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://dwrapps.utah.gov/fishing/?NA=Riverfront%20Pond"
+  },
+  {
+    "water": "Rockport Reservoir",
+    "lat": 40.77123,
+    "lon": -111.39415,
+    "species": [
+      "Brown",
+      "Rainbow"
+    ],
+    "category": "Stocked trout water (UDWR)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://dwrapps.utah.gov/fishing/?NA=Rockport%20Reservoir"
+  },
+  {
+    "water": "Salem Pond",
+    "lat": 40.05074,
+    "lon": -111.67571,
+    "species": [
+      "Rainbow",
+      "Brook",
+      "Brown",
+      "Tiger"
+    ],
+    "category": "Stocked trout water (UDWR)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://dwrapps.utah.gov/fishing/?NA=Salem%20Pond"
+  },
+  {
+    "water": "Salina City Pond",
+    "lat": 38.93178,
+    "lon": -111.83154,
+    "species": [
+      "Rainbow"
+    ],
+    "category": "Managed trout water (UDWR)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://dwrapps.utah.gov/fishing/?NA=Salina%20City%20Pond"
+  },
+  {
+    "water": "Salt Creek",
+    "lat": 39.71351,
+    "lon": -111.77179,
+    "species": [
+      "Brown",
+      "Rainbow"
+    ],
+    "category": "Managed trout water (UDWR)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://dwrapps.utah.gov/fishing/?NA=Salt%20Creek"
+  },
+  {
+    "water": "Scofield Reservoir (Blue Ribbon)",
+    "lat": 39.77379,
+    "lon": -111.15215,
+    "species": [
+      "Cutthroat",
+      "Rainbow",
+      "Tiger"
+    ],
+    "category": "Stocked trout water (UDWR)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://dwrapps.utah.gov/fishing/?NA=Scofield%20Reservoir%20%28Blue%20Ribbon%29"
+  },
+  {
+    "water": "Second Dam - Logan River",
+    "lat": 41.7457,
+    "lon": -111.7482,
+    "species": [
+      "Rainbow",
+      "Brown",
+      "Cutthroat"
+    ],
+    "category": "Stocked trout water (UDWR)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://dwrapps.utah.gov/fishing/?NA=Second%20Dam%20-%20Logan%20River"
+  },
+  {
+    "water": "Settlement Canyon Reservoir",
+    "lat": 40.50995,
+    "lon": -112.29406,
+    "species": [
+      "Rainbow",
+      "Tiger"
+    ],
+    "category": "Stocked trout water (UDWR)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://dwrapps.utah.gov/fishing/?NA=Settlement%20Canyon%20Reservoir"
+  },
+  {
+    "water": "Sevier River In Marysvale Canyon",
+    "lat": 38.52438,
+    "lon": -112.26417,
+    "species": [
+      "Brown",
+      "Rainbow"
+    ],
+    "category": "Managed trout water (UDWR)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://dwrapps.utah.gov/fishing/?NA=Sevier%20River%20In%20Marysvale%20Canyon"
+  },
+  {
+    "water": "Sheep Creek Lake",
+    "lat": 40.88923,
+    "lon": -109.85057,
+    "species": [
+      "Cutthroat",
+      "Brook"
+    ],
+    "category": "Stocked trout water (UDWR)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://dwrapps.utah.gov/fishing/?NA=Sheep%20Creek%20Lake"
+  },
+  {
+    "water": "Shingle Mill Reservoir (Manti Mountains)",
+    "lat": 39.09606,
+    "lon": -111.51489,
+    "species": [
+      "Brook",
+      "Rainbow"
+    ],
+    "category": "Stocked trout water (UDWR)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://dwrapps.utah.gov/fishing/?NA=Shingle%20Mill%20Reservoir%20%28Manti%20Mountains%29"
+  },
+  {
+    "water": "Silver Lake (American Fork Canyon)",
+    "lat": 40.52174,
+    "lon": -111.67247,
+    "species": [
+      "Grayling",
+      "Brook",
+      "Cutthroat"
+    ],
+    "category": "Stocked trout water (UDWR)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://dwrapps.utah.gov/fishing/?NA=Silver%20Lake%20%28American%20Fork%20Canyon%29"
+  },
+  {
+    "water": "Silver Lake (Big Cottonwood Canyon)",
+    "lat": 40.60392,
+    "lon": -111.58856,
+    "species": [
+      "Brook",
+      "Rainbow"
+    ],
+    "category": "Stocked trout water (UDWR)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://dwrapps.utah.gov/fishing/?NA=Silver%20Lake%20%28Big%20Cottonwood%20Canyon%29"
+  },
+  {
+    "water": "Silver Lake Flat Reservoir (American Fork Canyon)",
+    "lat": 40.50299,
+    "lon": -111.65706,
+    "species": [
+      "Grayling",
+      "Brook",
+      "Cutthroat",
+      "Rainbow"
+    ],
+    "category": "Stocked trout water (UDWR)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://dwrapps.utah.gov/fishing/?NA=Silver%20Lake%20Flat%20Reservoir%20%28American%20Fork%20Canyon%29"
+  },
+  {
+    "water": "Skylars Pond (West Willow Pond)",
+    "lat": 41.71945,
+    "lon": -111.85094,
+    "species": [
+      "Rainbow"
+    ],
+    "category": "Stocked trout water (UDWR)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://dwrapps.utah.gov/fishing/?NA=Skylars%20Pond%20%28West%20Willow%20Pond%29"
+  },
+  {
+    "water": "Skyline Pond",
+    "lat": 37.11282,
+    "lon": -113.56869,
+    "species": [
+      "Rainbow"
+    ],
+    "category": "Stocked trout water (UDWR)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://dwrapps.utah.gov/fishing/?NA=Skyline%20Pond"
+  },
+  {
+    "water": "Smith and Morehouse Reservoir",
+    "lat": 40.75591,
+    "lon": -111.10301,
+    "species": [
+      "Cutthroat",
+      "Rainbow",
+      "Tiger",
+      "Grayling",
+      "Brown",
+      "Splake"
+    ],
+    "category": "Stocked trout water (UDWR)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://dwrapps.utah.gov/fishing/?NA=Smith%20and%20Morehouse%20Reservoir"
+  },
+  {
+    "water": "Smith Family Park Pond",
+    "lat": 41.33183,
+    "lon": -112.03762,
+    "species": [
+      "Rainbow",
+      "Brown",
+      "Tiger"
+    ],
+    "category": "Stocked trout water (UDWR)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://dwrapps.utah.gov/fishing/?NA=Smith%20Family%20Park%20Pond"
+  },
+  {
+    "water": "Soup Bowl Reservoir",
+    "lat": 39.29596,
+    "lon": -111.3864,
+    "species": [
+      "Rainbow",
+      "Tiger"
+    ],
+    "category": "Stocked trout water (UDWR)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://dwrapps.utah.gov/fishing/?NA=Soup%20Bowl%20Reservoir"
+  },
+  {
+    "water": "Spanish Fork River",
+    "lat": 40.07144,
+    "lon": -111.58331,
+    "species": [
+      "Brown",
+      "Cutthroat",
+      "Rainbow"
+    ],
+    "category": "Managed trout water (UDWR)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://dwrapps.utah.gov/fishing/?NA=Spanish%20Fork%20River"
+  },
+  {
+    "water": "Spanish Oaks Reservoir",
+    "lat": 40.07217,
+    "lon": -111.59948,
+    "species": [
+      "Rainbow",
+      "Cutthroat"
+    ],
+    "category": "Stocked trout water (UDWR)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://dwrapps.utah.gov/fishing/?NA=Spanish%20Oaks%20Reservoir"
+  },
+  {
+    "water": "Spirit Lake",
+    "lat": 40.84119,
+    "lon": -109.99853,
+    "species": [
+      "Cutthroat",
+      "Tiger",
+      "Brook"
+    ],
+    "category": "Stocked trout water (UDWR)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://dwrapps.utah.gov/fishing/?NA=Spirit%20Lake"
+  },
+  {
+    "water": "Spring Lake",
+    "lat": 40.00575,
+    "lon": -111.74521,
+    "species": [
+      "Rainbow",
+      "Tiger"
+    ],
+    "category": "Stocked trout water (UDWR)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://dwrapps.utah.gov/fishing/?NA=Spring%20Lake"
+  },
+  {
+    "water": "Starvation Reservoir (Blue Ribbon)",
+    "lat": 40.19111,
+    "lon": -110.46582,
+    "species": [
+      "Brown",
+      "Rainbow"
+    ],
+    "category": "Stocked trout water (UDWR)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://dwrapps.utah.gov/fishing/?NA=Starvation%20Reservoir%20%28Blue%20Ribbon%29"
+  },
+  {
+    "water": "Stateline Res",
+    "lat": 40.98118,
+    "lon": -110.3909,
+    "species": [
+      "Rainbow",
+      "Lake",
+      "Tiger"
+    ],
+    "category": "Stocked trout water (UDWR)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://dwrapps.utah.gov/fishing/?NA=Stateline%20Res"
+  },
+  {
+    "water": "Steed Pond",
+    "lat": 41.12257,
+    "lon": -112.04376,
+    "species": [
+      "Rainbow"
+    ],
+    "category": "Stocked trout water (UDWR)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://dwrapps.utah.gov/fishing/?NA=Steed%20Pond"
+  },
+  {
+    "water": "Steinaker Reservoir",
+    "lat": 40.51595,
+    "lon": -109.53322,
+    "species": [
+      "Rainbow",
+      "Brown",
+      "Tiger"
+    ],
+    "category": "Stocked trout water (UDWR)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://dwrapps.utah.gov/fishing/?NA=Steinaker%20Reservoir"
+  },
+  {
+    "water": "Straight Canyon Creek (Blue Ribbon)",
+    "lat": 39.27444,
+    "lon": -111.22026,
+    "species": [
+      "Brown"
+    ],
+    "category": "Managed trout water (UDWR)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://dwrapps.utah.gov/fishing/?NA=Straight%20Canyon%20Creek%20%28Blue%20Ribbon%29"
+  },
+  {
+    "water": "Stratton Pond (Grandpa's Pond)",
+    "lat": 37.17707,
+    "lon": -113.37715,
+    "species": [
+      "Rainbow"
+    ],
+    "category": "Stocked trout water (UDWR)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://dwrapps.utah.gov/fishing/?NA=Stratton%20Pond%20%28Grandpa%27s%20Pond%29"
+  },
+  {
+    "water": "Strawberry Reservoir (Blue Ribbon)",
+    "lat": 40.17262,
+    "lon": -111.12579,
+    "species": [
+      "Cutthroat",
+      "Rainbow"
+    ],
+    "category": "Stocked trout water (UDWR)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://dwrapps.utah.gov/fishing/?NA=Strawberry%20Reservoir%20%28Blue%20Ribbon%29"
+  },
+  {
+    "water": "Strawberry River, Starvation Reservoir through Duchesne (Blue Ribbon)",
+    "lat": 40.16989,
+    "lon": -110.42106,
+    "species": [
+      "Brown",
+      "Rainbow"
+    ],
+    "category": "Managed trout water (UDWR)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://dwrapps.utah.gov/fishing/?NA=Strawberry%20River%2C%20Starvation%20Reservoir%20through%20Duchesne%20%28Blue%20Ribbon%29"
+  },
+  {
+    "water": "Sullivan Virgin River Park Pond",
+    "lat": 37.1178,
+    "lon": -113.50166,
+    "species": [
+      "Rainbow"
+    ],
+    "category": "Stocked trout water (UDWR)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://dwrapps.utah.gov/fishing/?NA=Sullivan%20Virgin%20River%20Park%20Pond"
+  },
+  {
+    "water": "Sunset Pond",
+    "lat": 40.53486,
+    "lon": -111.868,
+    "species": [
+      "Rainbow"
+    ],
+    "category": "Stocked trout water (UDWR)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://dwrapps.utah.gov/fishing/?NA=Sunset%20Pond"
+  },
+  {
+    "water": "Tawa Ponds",
+    "lat": 37.14891,
+    "lon": -113.6282,
+    "species": [
+      "Rainbow"
+    ],
+    "category": "Stocked trout water (UDWR)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://dwrapps.utah.gov/fishing/?NA=Tawa%20Ponds"
+  },
+  {
+    "water": "Theodore Ahlin Park Pond (Pole Canyon Pond)",
+    "lat": 39.95462,
+    "lon": -111.78827,
+    "species": [
+      "Rainbow",
+      "Tiger"
+    ],
+    "category": "Stocked trout water (UDWR)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://dwrapps.utah.gov/fishing/?NA=Theodore%20Ahlin%20Park%20Pond%20%28Pole%20Canyon%20Pond%29"
+  },
+  {
+    "water": "Third Dam - Logan River",
+    "lat": 41.75293,
+    "lon": -111.71954,
+    "species": [
+      "Rainbow",
+      "Brown",
+      "Cutthroat"
+    ],
+    "category": "Stocked trout water (UDWR)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://dwrapps.utah.gov/fishing/?NA=Third%20Dam%20-%20Logan%20River"
+  },
+  {
+    "water": "Thousand Lake Mountain",
+    "lat": 38.48911,
+    "lon": -111.46502,
+    "species": [
+      "Brook",
+      "Cutthroat",
+      "Rainbow",
+      "Tiger",
+      "Lake",
+      "Splake"
+    ],
+    "category": "Stocked trout water (UDWR)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://dwrapps.utah.gov/fishing/?NA=Thousand%20Lake%20Mountain"
+  },
+  {
+    "water": "Tibble Fork Reservoir",
+    "lat": 40.48228,
+    "lon": -111.64425,
+    "species": [
+      "Rainbow",
+      "Grayling",
+      "Brook",
+      "Brown",
+      "Cutthroat"
+    ],
+    "category": "Stocked trout water (UDWR)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://dwrapps.utah.gov/fishing/?NA=Tibble%20Fork%20Reservoir"
+  },
+  {
+    "water": "Tom's Creek, Deep Creek Mtns.",
+    "lat": 39.8631,
+    "lon": -113.84039,
+    "species": [
+      "Cutthroat"
+    ],
+    "category": "Managed trout water (UDWR)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://dwrapps.utah.gov/fishing/?NA=Tom%27s%20Creek%2C%20Deep%20Creek%20Mtns."
+  },
+  {
+    "water": "Town Reservoir (Manti Mountains)",
+    "lat": 39.13649,
+    "lon": -111.6057,
+    "species": [
+      "Rainbow"
+    ],
+    "category": "Stocked trout water (UDWR)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://dwrapps.utah.gov/fishing/?NA=Town%20Reservoir%20%28Manti%20Mountains%29"
+  },
+  {
+    "water": "Tropic Reservoir",
+    "lat": 37.60252,
+    "lon": -112.25343,
+    "species": [
+      "Rainbow",
+      "Brown",
+      "Tiger"
+    ],
+    "category": "Stocked trout water (UDWR)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://dwrapps.utah.gov/fishing/?NA=Tropic%20Reservoir"
+  },
+  {
+    "water": "Trout Creek, Deep Creek Mtns.",
+    "lat": 39.76408,
+    "lon": -113.91936,
+    "species": [
+      "Cutthroat"
+    ],
+    "category": "Managed trout water (UDWR)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://dwrapps.utah.gov/fishing/?NA=Trout%20Creek%2C%20Deep%20Creek%20Mtns."
+  },
+  {
+    "water": "Tushar (Beaver) Mountain Lakes",
+    "lat": 38.25894,
+    "lon": -112.44287,
+    "species": [
+      "Brook",
+      "Cutthroat",
+      "Rainbow",
+      "Tiger",
+      "Grayling",
+      "Brown",
+      "Splake"
+    ],
+    "category": "Stocked trout water (UDWR)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://dwrapps.utah.gov/fishing/?NA=Tushar%20%28Beaver%29%20Mountain%20Lakes"
+  },
+  {
+    "water": "Twin Lakes Reservoir",
+    "lat": 40.59723,
+    "lon": -111.59995,
+    "species": [
+      "Cutthroat",
+      "Brook"
+    ],
+    "category": "Stocked trout water (UDWR)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://dwrapps.utah.gov/fishing/?NA=Twin%20Lakes%20Reservoir"
+  },
+  {
+    "water": "Uinta Mountains, Bear River (Blue Ribbon)",
+    "lat": 40.83558,
+    "lon": -110.81328,
+    "species": [
+      "Brook",
+      "Cutthroat",
+      "Tiger",
+      "Grayling"
+    ],
+    "category": "Stocked trout water (UDWR)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://dwrapps.utah.gov/fishing/?NA=Uinta%20Mountains%2C%20Bear%20River%20%28Blue%20Ribbon%29"
+  },
+  {
+    "water": "Uinta Mountains, Beaver Creek Forks (Blue Ribbon)",
+    "lat": 40.88427,
+    "lon": -110.2661,
+    "species": [
+      "Brook",
+      "Grayling",
+      "Cutthroat",
+      "Tiger"
+    ],
+    "category": "Stocked trout water (UDWR)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://dwrapps.utah.gov/fishing/?NA=Uinta%20Mountains%2C%20Beaver%20Creek%20Forks%20%28Blue%20Ribbon%29"
+  },
+  {
+    "water": "Uinta Mountains, Blacks Fork (Blue Ribbon)",
+    "lat": 40.87966,
+    "lon": -110.59512,
+    "species": [
+      "Brook",
+      "Cutthroat",
+      "Tiger"
+    ],
+    "category": "Stocked trout water (UDWR)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://dwrapps.utah.gov/fishing/?NA=Uinta%20Mountains%2C%20Blacks%20Fork%20%28Blue%20Ribbon%29"
+  },
+  {
+    "water": "Uinta Mountains, Burnt Fork (Blue Ribbon)",
+    "lat": 40.88131,
+    "lon": -110.10713,
+    "species": [
+      "Cutthroat",
+      "Brook",
+      "Rainbow",
+      "Grayling"
+    ],
+    "category": "Stocked trout water (UDWR)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://dwrapps.utah.gov/fishing/?NA=Uinta%20Mountains%2C%20Burnt%20Fork%20%28Blue%20Ribbon%29"
+  },
+  {
+    "water": "Uinta Mountains, Dry Gulch (Blue Ribbon)",
+    "lat": 40.61662,
+    "lon": -110.26182,
+    "species": [
+      "Brook",
+      "Cutthroat",
+      "Rainbow"
+    ],
+    "category": "Stocked trout water (UDWR)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://dwrapps.utah.gov/fishing/?NA=Uinta%20Mountains%2C%20Dry%20Gulch%20%28Blue%20Ribbon%29"
+  },
+  {
+    "water": "Uinta Mountains, Duchesne River (Blue Ribbon)",
+    "lat": 40.58508,
+    "lon": -110.8672,
+    "species": [
+      "Brook",
+      "Grayling",
+      "Cutthroat",
+      "Tiger",
+      "Rainbow"
+    ],
+    "category": "Stocked trout water (UDWR)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://dwrapps.utah.gov/fishing/?NA=Uinta%20Mountains%2C%20Duchesne%20River%20%28Blue%20Ribbon%29"
+  },
+  {
+    "water": "Uinta Mountains, Henrys Fork (Blue Ribbon)",
+    "lat": 40.89704,
+    "lon": -110.35197,
+    "species": [
+      "Cutthroat",
+      "Brook",
+      "Tiger"
+    ],
+    "category": "Stocked trout water (UDWR)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://dwrapps.utah.gov/fishing/?NA=Uinta%20Mountains%2C%20Henrys%20Fork%20%28Blue%20Ribbon%29"
+  },
+  {
+    "water": "Uinta Mountains, Lake Fork (Blue Ribbon)",
+    "lat": 40.62991,
+    "lon": -110.54812,
+    "species": [
+      "Brook",
+      "Cutthroat",
+      "Grayling",
+      "Rainbow",
+      "Splake",
+      "Tiger"
+    ],
+    "category": "Stocked trout water (UDWR)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://dwrapps.utah.gov/fishing/?NA=Uinta%20Mountains%2C%20Lake%20Fork%20%28Blue%20Ribbon%29"
+  },
+  {
+    "water": "Uinta Mountains, Mirror Lake Highway (Blue Ribbon)",
+    "lat": 40.73078,
+    "lon": -110.91385,
+    "species": [
+      "Brook",
+      "Rainbow",
+      "Tiger",
+      "Grayling",
+      "Cutthroat"
+    ],
+    "category": "Stocked trout water (UDWR)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://dwrapps.utah.gov/fishing/?NA=Uinta%20Mountains%2C%20Mirror%20Lake%20Highway%20%28Blue%20Ribbon%29"
+  },
+  {
+    "water": "Uinta Mountains, North Slope East (Blue Ribbon)",
+    "lat": 40.85741,
+    "lon": -109.90313,
+    "species": [
+      "Brook",
+      "Cutthroat",
+      "Tiger",
+      "Grayling"
+    ],
+    "category": "Stocked trout water (UDWR)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://dwrapps.utah.gov/fishing/?NA=Uinta%20Mountains%2C%20North%20Slope%20East%20%28Blue%20Ribbon%29"
+  },
+  {
+    "water": "Uinta Mountains, North Slope Roadside Lakes (Blue Ribbon)",
+    "lat": 40.94602,
+    "lon": -110.40664,
+    "species": [
+      "Brook",
+      "Rainbow",
+      "Grayling",
+      "Tiger"
+    ],
+    "category": "Stocked trout water (UDWR)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://dwrapps.utah.gov/fishing/?NA=Uinta%20Mountains%2C%20North%20Slope%20Roadside%20Lakes%20%28Blue%20Ribbon%29"
+  },
+  {
+    "water": "Uinta Mountains, Provo River (Blue Ribbon)",
+    "lat": 40.63335,
+    "lon": -111.02211,
+    "species": [
+      "Brook",
+      "Cutthroat",
+      "Grayling",
+      "Tiger"
+    ],
+    "category": "Stocked trout water (UDWR)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://dwrapps.utah.gov/fishing/?NA=Uinta%20Mountains%2C%20Provo%20River%20%28Blue%20Ribbon%29"
+  },
+  {
+    "water": "Uinta Mountains, Rock Creek (Blue Ribbon)",
+    "lat": 40.62134,
+    "lon": -110.71126,
+    "species": [
+      "Brook",
+      "Cutthroat",
+      "Grayling"
+    ],
+    "category": "Stocked trout water (UDWR)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://dwrapps.utah.gov/fishing/?NA=Uinta%20Mountains%2C%20Rock%20Creek%20%28Blue%20Ribbon%29"
+  },
+  {
+    "water": "Uinta Mountains, Smiths Fork (Blue Ribbon)",
+    "lat": 40.87078,
+    "lon": -110.44952,
+    "species": [
+      "Brook",
+      "Cutthroat",
+      "Tiger"
+    ],
+    "category": "Stocked trout water (UDWR)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://dwrapps.utah.gov/fishing/?NA=Uinta%20Mountains%2C%20Smiths%20Fork%20%28Blue%20Ribbon%29"
+  },
+  {
+    "water": "Uinta Mountains, South Slope East (Blue Ribbon)",
+    "lat": 40.69841,
+    "lon": -109.74007,
+    "species": [
+      "Brook",
+      "Cutthroat",
+      "Grayling",
+      "Golden",
+      "Rainbow",
+      "Tiger"
+    ],
+    "category": "Stocked trout water (UDWR)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://dwrapps.utah.gov/fishing/?NA=Uinta%20Mountains%2C%20South%20Slope%20East%20%28Blue%20Ribbon%29"
+  },
+  {
+    "water": "Uinta Mountains, Uinta River (Blue Ribbon)",
+    "lat": 40.72803,
+    "lon": -110.21562,
+    "species": [
+      "Brook",
+      "Cutthroat",
+      "Grayling",
+      "Golden",
+      "Tiger"
+    ],
+    "category": "Stocked trout water (UDWR)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://dwrapps.utah.gov/fishing/?NA=Uinta%20Mountains%2C%20Uinta%20River%20%28Blue%20Ribbon%29"
+  },
+  {
+    "water": "Uinta Mountains, Weber River (Blue Ribbon)",
+    "lat": 40.72722,
+    "lon": -111.05774,
+    "species": [
+      "Brook",
+      "Cutthroat",
+      "Grayling",
+      "Rainbow",
+      "Tiger"
+    ],
+    "category": "Stocked trout water (UDWR)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://dwrapps.utah.gov/fishing/?NA=Uinta%20Mountains%2C%20Weber%20River%20%28Blue%20Ribbon%29"
+  },
+  {
+    "water": "Uinta Mountains, Whiterocks (Blue Ribbon)",
+    "lat": 40.69227,
+    "lon": -109.98999,
+    "species": [
+      "Brook",
+      "Cutthroat",
+      "Grayling",
+      "Tiger",
+      "Rainbow"
+    ],
+    "category": "Stocked trout water (UDWR)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://dwrapps.utah.gov/fishing/?NA=Uinta%20Mountains%2C%20Whiterocks%20%28Blue%20Ribbon%29"
+  },
+  {
+    "water": "Uinta Mountains, Yellowstone/Swift Creek (Blue Ribbon)",
+    "lat": 40.61694,
+    "lon": -110.38287,
+    "species": [
+      "Brook",
+      "Cutthroat",
+      "Grayling"
+    ],
+    "category": "Stocked trout water (UDWR)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://dwrapps.utah.gov/fishing/?NA=Uinta%20Mountains%2C%20Yellowstone/Swift%20Creek%20%28Blue%20Ribbon%29"
+  },
+  {
+    "water": "Upper Fremont River",
+    "lat": 38.539,
+    "lon": -111.57994,
+    "species": [
+      "Brown",
+      "Rainbow"
+    ],
+    "category": "Managed trout water (UDWR)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://dwrapps.utah.gov/fishing/?NA=Upper%20Fremont%20River"
+  },
+  {
+    "water": "Upper Mill Creek (SLCo)",
+    "lat": 40.70174,
+    "lon": -111.69789,
+    "species": [
+      "Cutthroat"
+    ],
+    "category": "Managed trout water (UDWR)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://dwrapps.utah.gov/fishing/?NA=Upper%20Mill%20Creek%20%28SLCo%29"
+  },
+  {
+    "water": "Upper WPA Pond (Manti Mountains)",
+    "lat": 39.11637,
+    "lon": -111.51986,
+    "species": [
+      "Brook",
+      "Rainbow"
+    ],
+    "category": "Stocked trout water (UDWR)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://dwrapps.utah.gov/fishing/?NA=Upper%20WPA%20Pond%20%28Manti%20Mountains%29"
+  },
+  {
+    "water": "Utah Lake",
+    "lat": 40.20982,
+    "lon": -111.82424,
+    "species": [
+      "Brown",
+      "Cutthroat"
+    ],
+    "category": "Stocked trout water (UDWR)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://dwrapps.utah.gov/fishing/?NA=Utah%20Lake"
+  },
+  {
+    "water": "Vernon Reservoir",
+    "lat": 39.98922,
+    "lon": -112.38662,
+    "species": [
+      "Brown",
+      "Rainbow",
+      "Tiger"
+    ],
+    "category": "Stocked trout water (UDWR)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://dwrapps.utah.gov/fishing/?NA=Vernon%20Reservoir"
+  },
+  {
+    "water": "Vivian Park Pond (Provo Canyon)",
+    "lat": 40.35539,
+    "lon": -111.5722,
+    "species": [
+      "Rainbow",
+      "Brown"
+    ],
+    "category": "Stocked trout water (UDWR)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://dwrapps.utah.gov/fishing/?NA=Vivian%20Park%20Pond%20%28Provo%20Canyon%29"
+  },
+  {
+    "water": "Wasatch Mtn State Park Pond",
+    "lat": 40.53435,
+    "lon": -111.4901,
+    "species": [
+      "Rainbow",
+      "Brown",
+      "Tiger",
+      "Cutthroat"
+    ],
+    "category": "Stocked trout water (UDWR)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://dwrapps.utah.gov/fishing/?NA=Wasatch%20Mtn%20State%20Park%20Pond"
+  },
+  {
+    "water": "Wayne Bartholomew Family Park Pond",
+    "lat": 40.14995,
+    "lon": -111.55788,
+    "species": [
+      "Rainbow",
+      "Brown",
+      "Cutthroat",
+      "Tiger"
+    ],
+    "category": "Stocked trout water (UDWR)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://dwrapps.utah.gov/fishing/?NA=Wayne%20Bartholomew%20Family%20Park%20Pond"
+  },
+  {
+    "water": "Weber River",
+    "lat": 41.13472,
+    "lon": -111.80726,
+    "species": [
+      "Brown",
+      "Rainbow",
+      "Brook"
+    ],
+    "category": "Managed trout water (UDWR)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://dwrapps.utah.gov/fishing/?NA=Weber%20River"
+  },
+  {
+    "water": "Weber River, Echo Reservoir to Wanship Dam (Blue Ribbon)",
+    "lat": 40.86806,
+    "lon": -111.3926,
+    "species": [
+      "Brown",
+      "Rainbow"
+    ],
+    "category": "Managed trout water (UDWR)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://dwrapps.utah.gov/fishing/?NA=Weber%20River%2C%20Echo%20Reservoir%20to%20Wanship%20Dam%20%28Blue%20Ribbon%29"
+  },
+  {
+    "water": "Wellsville Reservoir",
+    "lat": 41.62786,
+    "lon": -111.93112,
+    "species": [
+      "Rainbow",
+      "Tiger",
+      "Cutthroat"
+    ],
+    "category": "Stocked trout water (UDWR)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://dwrapps.utah.gov/fishing/?NA=Wellsville%20Reservoir"
+  },
+  {
+    "water": "White Pine Lake",
+    "lat": 40.54134,
+    "lon": -111.67977,
+    "species": [
+      "Cutthroat"
+    ],
+    "category": "Stocked trout water (UDWR)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://dwrapps.utah.gov/fishing/?NA=White%20Pine%20Lake"
+  },
+  {
+    "water": "Wide Hollow Reservoir",
+    "lat": 37.78734,
+    "lon": -111.63782,
+    "species": [
+      "Rainbow",
+      "Tiger"
+    ],
+    "category": "Stocked trout water (UDWR)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://dwrapps.utah.gov/fishing/?NA=Wide%20Hollow%20Reservoir"
+  },
+  {
+    "water": "Wildcat Creek",
+    "lat": 41.90904,
+    "lon": -113.61007,
+    "species": [
+      "Cutthroat"
+    ],
+    "category": "Managed trout water (UDWR)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://dwrapps.utah.gov/fishing/?NA=Wildcat%20Creek"
+  },
+  {
+    "water": "Willow Lake",
+    "lat": 39.13518,
+    "lon": -111.38589,
+    "species": [
+      "Rainbow",
+      "Tiger"
+    ],
+    "category": "Stocked trout water (UDWR)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://dwrapps.utah.gov/fishing/?NA=Willow%20Lake"
+  },
+  {
+    "water": "Willow Pond",
+    "lat": 40.63785,
+    "lon": -111.91638,
+    "species": [
+      "Rainbow",
+      "Brook",
+      "Brown",
+      "Tiger"
+    ],
+    "category": "Stocked trout water (UDWR)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://dwrapps.utah.gov/fishing/?NA=Willow%20Pond"
+  },
+  {
+    "water": "Woods Ranch Pond (Kids Pond)",
+    "lat": 37.59125,
+    "lon": -112.91638,
+    "species": [
+      "Rainbow"
+    ],
+    "category": "Stocked trout water (UDWR)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://dwrapps.utah.gov/fishing/?NA=Woods%20Ranch%20Pond%20%28Kids%20Pond%29"
+  },
+  {
+    "water": "Wrigley Springs Reservoir",
+    "lat": 39.09074,
+    "lon": -111.29974,
+    "species": [
+      "Rainbow",
+      "Tiger"
+    ],
+    "category": "Stocked trout water (UDWR)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://dwrapps.utah.gov/fishing/?NA=Wrigley%20Springs%20Reservoir"
+  },
+  {
+    "water": "Yankee Meadow Reservoir",
+    "lat": 37.75077,
+    "lon": -112.77404,
+    "species": [
+      "Brook",
+      "Cutthroat",
+      "Rainbow"
+    ],
+    "category": "Stocked trout water (UDWR)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://dwrapps.utah.gov/fishing/?NA=Yankee%20Meadow%20Reservoir"
+  },
+  {
+    "water": "Yearns Reservoir (Manti Mountains)",
+    "lat": 39.25463,
+    "lon": -111.54303,
+    "species": [
+      "Rainbow",
+      "Tiger"
+    ],
+    "category": "Stocked trout water (UDWR)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://dwrapps.utah.gov/fishing/?NA=Yearns%20Reservoir%20%28Manti%20Mountains%29"
+  },
+  {
+    "water": "Yuba Reservoir & State Park",
+    "lat": 39.3062,
+    "lon": -111.93452,
+    "species": [
+      "Rainbow",
+      "Tiger"
+    ],
+    "category": "Stocked trout water (UDWR)",
+    "season_months": [
+      1,
+      12
+    ],
+    "agency_url": "https://dwrapps.utah.gov/fishing/?NA=Yuba%20Reservoir%20%26%20State%20Park"
   }
 ]
