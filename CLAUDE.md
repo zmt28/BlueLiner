@@ -31,6 +31,9 @@ python scripts/verify_feed_sources.py  # End-to-end check of the live ArcGIS fee
 python scripts/build_nhdplus_vaa.py       # NHDPlus routing attributes
 python scripts/build_clickable_streams.py # Stream network geometry
 python scripts/build_public_lands.py      # PAD-US public lands overlay
+python scripts/build_ut_stocking.py       # UT stocking-overlay baseline scraped
+                                          # from UDWR's Fish Utah JSON app (no
+                                          # ArcGIS feed) -> data/stocking/UT.json
 ```
 
 ### Docker (production build)
