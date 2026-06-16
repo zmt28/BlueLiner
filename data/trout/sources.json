@@ -16,11 +16,20 @@
       }
     },
     {
+      "_comment": "VA DWR Wild Trout Streams (services.dwr.virginia.gov Public/WildTroutStreams/0, polylines) -- whole layer -> wild_reproduction (class2, size-laddered to class1 on named order>=3 reaches). VA is two ordered sources (like NJ/CT): this wild layer claims its COMIDs first, then the VA Stocked Trout Reaches layer below colors the put-and-take streams. Before that second source VA was all-green wild with no stocked dimension.",
       "state": "VA",
       "label": "Virginia Wild Trout Streams",
       "mode": "single",
       "class": "wild_reproduction",
       "url": "https://services.dwr.virginia.gov/arcgis/rest/services/Public/WildTroutStreams/MapServer/0/query?where=1%3D1"
+    },
+    {
+      "_comment": "VA DWR Stocked Trout Reaches (services.dwr.virginia.gov Public/StockedTroutWaters/MapServer/1 -- the POLYLINE reaches layer; layer 0 of that service is Stocked Trout Lakes (points) and is intentionally excluded to avoid buffering lake points onto unrelated flowlines). ~367 put-and-take stocked stream reaches -> stocked (class3). Trails the VA Wild Trout Streams source above so a wild reach keeps trout_class=wild on any overlap (first writer wins per COMID); this gives VA a real wild(green)/stocked(blue) split where before it was wild-only, same pattern as the NJ wild(SWQS-TP)/stocked remap.",
+      "state": "VA",
+      "label": "VA Stocked Trout Reaches",
+      "mode": "single",
+      "class": "stocked",
+      "url": "https://services.dwr.virginia.gov/arcgis/rest/services/Public/StockedTroutWaters/MapServer/1/query?where=1%3D1"
     },
     {
       "state": "PA",

@@ -32,7 +32,7 @@ def test_registry_covers_states_with_valid_modes():
 
 
 def test_single_bucket_states():
-    assert reg.row_bucket(SOURCES["VA"], {}) == "wild_reproduction"
+    assert reg.row_bucket(BY_LABEL["Virginia Wild Trout Streams"], {}) == "wild_reproduction"
     assert reg.row_bucket(SOURCES["WV"], {}) == "stocked"
     assert reg.row_bucket(SOURCES["NJ"], {}) == "stocked"
 
@@ -295,7 +295,8 @@ def test_row_tier_regulation_states():
 
 def test_row_tier_falls_back_from_class():
     # sources with no explicit tier spec derive tier from the trout_class
-    assert reg.row_tier(SOURCES["VA"], {}) == "class2"   # wild_reproduction
+    assert reg.row_tier(BY_LABEL["Virginia Wild Trout Streams"], {}) == "class2"  # wild
+    assert reg.row_tier(BY_LABEL["VA Stocked Trout Reaches"], {}) == "class3"      # stocked
     assert reg.row_tier(SOURCES["NJ"], {}) == "class3"   # stocked
     assert reg.layer_tier({"class": "class_a"}) == "class1"  # PA-style sublayer
 
@@ -304,7 +305,7 @@ def test_wild_and_native_flags():
     assert reg.class_is_wild("wild_reproduction") and reg.class_is_wild("class_a")
     assert not reg.class_is_wild("stocked")
     assert reg.is_native(SOURCES["UTCT"]) is True
-    assert reg.is_native(SOURCES["VA"]) is False
+    assert reg.is_native(BY_LABEL["Virginia Wild Trout Streams"]) is False
 
 
 def test_co_multilayer_tiers_and_native():
@@ -434,6 +435,21 @@ def test_psmfc_streamnet_native_overlays():
     # bull trout + redband exclude historical reaches server-side (current only)
     assert "Historical" in SOURCES["BULL"]["url"]
     assert "Historical" in SOURCES["RBT"]["url"]
+
+
+def test_va_two_sources_wild_then_stocked():
+    # VA gained a stocked dimension: the Wild Trout Streams layer (wild) is
+    # ordered before the Stocked Trout Reaches layer (stocked) so wild claims
+    # COMIDs first, then stocked colors the put-and-take reaches. Same wild-first
+    # ordering as NJ/CT.
+    va = [s for s in ALL_SOURCES if s["state"] == "VA"]
+    assert [s["label"] for s in va] == [
+        "Virginia Wild Trout Streams", "VA Stocked Trout Reaches"]  # wild claims first
+    assert va[0]["mode"] == "single" and va[0]["class"] == "wild_reproduction"
+    assert va[1]["mode"] == "single" and va[1]["class"] == "stocked"
+    assert "StockedTroutWaters/MapServer/1" in va[1]["url"]  # the polyline reaches, not /0 lakes
+    assert reg.row_bucket(va[0], {}) == "wild_reproduction"
+    assert reg.row_bucket(va[1], {}) == "stocked"
 
 
 def test_nj_swqs_trout_production_wild_first():
