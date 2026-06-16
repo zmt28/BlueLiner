@@ -1041,11 +1041,29 @@ def _bbox_overlap(a, b) -> bool:
 
 # ──────────────────────── Feature assembly ────────────────────────
 
+def _clean_name(raw) -> str | None:
+    """Cleaned gnis_name (stripped; pandas NaN / 'nan' / empty -> None). Mirrors
+    the name handling in build_feature so the river-coherence grouping key and
+    the emitted gnis_name agree."""
+    if raw is None or raw != raw:   # None or NaN (NaN != NaN)
+        return None
+    s = str(raw).strip()
+    if not s or s.lower() == "nan":
+        return None
+    return s
+
+
 def build_feature(comid: int, row, gnis_col: str | None,
-                  attrs: dict, trout: tuple | None, native: bool = False) -> dict | None:
+                  attrs: dict, trout: tuple | None, native: bool = False,
+                  resolved: tuple | None = None) -> dict | None:
     """Build a single GeoJSON feature dict. `trout` is the (trout_class, tier)
     for this COMID (or None for an order-only reach); `native` is the OR-merged
-    native-overlay flag (independent of which source won the class/tier)."""
+    native-overlay flag (independent of which source won the class/tier).
+
+    `resolved`, when given, is the FINAL (trout_class, tier) already settled by
+    the river-level coherence pass (post size-ladder, post group harmonization);
+    it is used verbatim and the per-reach size ladder is skipped. Absent, the
+    legacy path applies the size ladder to `trout` here."""
     a = attrs.get(comid)
     if not a:
         return None
@@ -1067,11 +1085,15 @@ def build_feature(comid: int, row, gnis_col: str | None,
         if s and s.lower() != "nan":
             name = s
     order = int(a["streamorder"]) if a["streamorder"] else None
-    cls, tier = trout if trout else (None, None)
-    is_wild = trout_registry.class_is_wild(cls) if cls else False
-    # Size ladder: generic wild on a named river (order>=3) -> class1; designated
-    # premier-wild on a named river (order>=4) -> gold. See trout_registry.
-    tier = trout_registry.refine_tier(tier, is_wild, name, order)
+    if resolved is not None:
+        cls, tier = resolved
+        is_wild = trout_registry.class_is_wild(cls) if cls else False
+    else:
+        cls, tier = trout if trout else (None, None)
+        is_wild = trout_registry.class_is_wild(cls) if cls else False
+        # Size ladder: generic wild on a named river (order>=3) -> class1;
+        # designated premier-wild on a named river (order>=4) -> gold.
+        tier = trout_registry.refine_tier(tier, is_wild, name, order)
     return {
         "type": "Feature",
         "geometry": shapely.geometry.mapping(geom),
@@ -1338,6 +1360,54 @@ def main(argv: list[str] | None = None) -> int:
                         if nat:
                             region_native.add(c)
 
+            # ── River-level coherence (best-class-wins) ──
+            # Resolve each tagged reach's FINAL (class, tier) -- applying the
+            # size ladder here -- then promote every reach in a
+            # (levelpathid, gnis_name) group to the group's STRONGEST reach.
+            # A named river coded as a III-P/IV/I-P patchwork (e.g. the
+            # Gunpowder) then renders as ONE class/tier instead of fragmenting
+            # green/blue/grey, and unclassified reaches sharing a classified
+            # group's (levelpathid, gnis_name) inherit its class (gap fill).
+            # Grouping on gnis_name as well as levelpathid keeps a distinct
+            # downstream name (the tidal "Gunpowder River" shares the Gunpowder
+            # Falls levelpath) from being swept in. Mirrors the panel chip's
+            # strongest-class-per-river rule (reach_trout.river_trout_class).
+            region_name: dict[int, str | None] = {}
+            for _, row in gdf.iterrows():
+                comid = int(row[id_col])
+                if comid not in region_name:
+                    region_name[comid] = _clean_name(
+                        row[gnis_col] if gnis_col else None)
+            group_best: dict[tuple, tuple] = {}   # (lpid, norm_name)->(cls,tier)
+            for comid, (cls, tier) in region_trout.items():
+                a = attrs.get(comid)
+                if not a:
+                    continue
+                name = region_name.get(comid)
+                order = int(a["streamorder"]) if a.get("streamorder") else None
+                is_wild = trout_registry.class_is_wild(cls) if cls else False
+                ftier = trout_registry.refine_tier(tier, is_wild, name, order)
+                region_trout[comid] = (cls, ftier)  # bank post-ladder tier
+                lpid = a.get("levelpathid")
+                if lpid is None or not name:
+                    continue
+                gk = (lpid, name.lower())
+                cur = group_best.get(gk)
+                if cur is None or (trout_registry.reach_priority(cls, ftier)
+                                   < trout_registry.reach_priority(*cur)):
+                    group_best[gk] = (cls, ftier)
+
+            def _harmonized(comid: int, name: str | None) -> tuple | None:
+                """Group winner for this reach's (levelpathid, gnis_name), else
+                its own post-ladder (class, tier), else None (untagged reach)."""
+                a = attrs.get(comid)
+                lpid = a.get("levelpathid") if a else None
+                if lpid is not None and name:
+                    gb = group_best.get((lpid, name.lower()))
+                    if gb is not None:
+                        return gb
+                return region_trout.get(comid)
+
             seen: set[int] = set()  # dedup within region (COMIDs unique per VPU)
             emitted_here = 0
             for _, row in gdf.iterrows():
@@ -1345,20 +1415,19 @@ def main(argv: list[str] | None = None) -> int:
                 if comid in seen:
                     continue
                 seen.add(comid)
-                nm = (str(row[gnis_col]).strip()
-                      if gnis_col and row[gnis_col] else None)
-                is_val = nm in val_names
-                if is_val:
-                    name_to_comids[nm].add(comid)
+                name = region_name.get(comid)
+                if name in val_names:
+                    name_to_comids[name].add(comid)
                 a = attrs.get(comid)
                 order = a.get("streamorder") if a else None
-                trout = region_trout.get(comid)
                 native = comid in region_native
+                resolved = _harmonized(comid, name)
                 clickable = (order is not None and order >= MIN_ORDER) \
-                    or trout is not None or native
+                    or resolved is not None or native
                 if not clickable:
                     continue
-                feat = build_feature(comid, row, gnis_col, attrs, trout, native)
+                feat = build_feature(comid, row, gnis_col, attrs, None,
+                                     native, resolved=resolved)
                 if not feat:
                     continue
                 # Count classes/tiers from EMITTED features (not raw join
@@ -1378,9 +1447,9 @@ def main(argv: list[str] | None = None) -> int:
                 raw_bytes += len(seg)
                 n_feats += 1
                 emitted_here += 1
-                if is_val:
+                if name in val_names:
                     val_clickable.add(comid)
-                    if trout is not None:
+                    if resolved is not None:
                         val_trout.add(comid)
             print(f"  [{region['id']}] {emitted_here:,} features"
                   f" ({len(region_trout):,} trout)")

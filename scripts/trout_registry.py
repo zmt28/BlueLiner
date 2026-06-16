@@ -113,6 +113,49 @@ FALLBACK_CLASS_TIER = {
     "wild_reproduction": "class2", "stocked": "class3", "designated": "class3",
 }
 
+# ───────────── River-level coherence (best-class-wins) ─────────────
+# A single named river often carries several per-reach designations: MD's
+# Des_Use codes a famous continuous trout river like the Gunpowder as a
+# patchwork of III-P (wild), IV (stocked) and I-P (warmwater, dropped) reaches,
+# so the map fragments green/blue/grey along one river. The build harmonizes
+# each (levelpathid, gnis_name) group to its STRONGEST reach so the whole named
+# river renders as one class/tier.
+#
+# CLASS_PRECEDENCE (strongest -> weakest) mirrors reach_trout.CLASS_PRECEDENCE
+# -- the panel chip's "strongest class wins per river" rule -- so the rendered
+# lines and the panel header agree. TIER_PRECEDENCE is the color axis; within
+# the winning class the best tier wins, so a wild river the size ladder split
+# into class1 (green) and class2 (blue) reaches paints uniformly.
+CLASS_PRECEDENCE = ["class_a", "wilderness", "wild_reproduction",
+                    "designated", "stocked"]
+_CLASS_RANK = {c: i for i, c in enumerate(CLASS_PRECEDENCE)}
+TIER_PRECEDENCE = ["gold", "class1", "class2", "class3"]
+_TIER_RANK = {t: i for i, t in enumerate(TIER_PRECEDENCE)}
+
+
+def reach_priority(trout_class, tier) -> tuple[int, int]:
+    """Sort key for river-level coherence -- LOWER is stronger. Primary axis is
+    the trout_class (wild designations outrank stocked, mirroring the panel
+    chip); secondary is the tier color rank. Unclassified/None sorts weakest on
+    both axes. Pure."""
+    return (_CLASS_RANK.get(trout_class, len(CLASS_PRECEDENCE)),
+            _TIER_RANK.get(tier, len(TIER_PRECEDENCE)))
+
+
+def strongest_reach(reaches):
+    """Best (trout_class, tier) among an iterable of (trout_class, tier) pairs
+    by reach_priority, or None when every reach is unclassified (class None).
+    Pure -- the build groups a river's reaches and promotes them all to this."""
+    best = None
+    best_key = None
+    for cls, tier in reaches:
+        if cls is None:
+            continue
+        key = reach_priority(cls, tier)
+        if best_key is None or key < best_key:
+            best, best_key = (cls, tier), key
+    return best
+
 
 def class_is_wild(trout_class) -> bool:
     """`is_wild` flag from a final trout_class (uniform across all modes)."""
