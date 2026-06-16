@@ -81,34 +81,22 @@ PASDA). Each fetch retries with backoff; if a source stays unreachable it's
 recorded in the manifest's `trout_sources` map and, unless `--require-trout` is
 set, the build proceeds with that state untagged.
 
-MD's DNR server (`dnr.geodata.md.gov`) flaps, so MD has a committed fallback:
-`data/nhdplus/MD_designated_comids.json` — the set of NHDPlusV2 COMIDs tagged
-`designated` by a prior **live** build. When the live MD endpoint is down the
-builder tags MD from this seed instead (manifest shows `MD: bundled-seed`), so
-a release stays MD-complete and `--require-trout` still passes. COMIDs are
-stable NHDPlusV2 identifiers, so the seed is equivalent to a live fetch until MD
-changes its designations.
+MD's DNR server (`dnr.geodata.md.gov`) flaps, so — like every state source —
+MD falls back to its auto-captured seed in `data/nhdplus/seeds/` when the live
+endpoint is down (manifest shows `MD: bundled-seed`), so a release stays
+MD-complete and `--require-trout` still passes. The auto-seed is the build's own
+spatial-join output (NHDPlusV2 COMIDs), refreshed after every healthy full build
+and committed back by `data-build.yml`.
 
-Regenerate the seed from a fresh live build (run when MD's endpoint is healthy):
-
-```bash
-python - <<'PY'
-import gzip, json, subprocess
-src = "data/nhdplus/clickable_streams.geojson.gz"
-sha = subprocess.run(["git","log","-1","--format=%h","--",src],
-                     capture_output=True, text=True).stdout.strip()
-fc = json.load(gzip.open(src, "rt"))
-comids = sorted({int(f["properties"]["comid"]) for f in fc["features"]
-                 if f["properties"]["trout_class"] == "designated"})
-json.dump({"state":"MD","trout_class":"designated",
-           "source":"Maryland DNR Designated Use Trout",
-           "captured_from":f"{src} @ {sha}","comid_count":len(comids),
-           "comids":comids},
-          open("data/nhdplus/MD_designated_comids.json","w"),
-          separators=(",",":"))
-print(f"{len(comids):,} COMIDs")
-PY
-```
+> The legacy hand-captured single-class fallback (`MD_designated_comids.json`,
+> `seed:` registry key) was **retired** when MD moved from `mode: single`
+> `class: designated` to a `field_map` on `Des_Use` (Use III/III-P natural →
+> wild, IV/IV-P recreational → stocked, I/I-P warm-water → dropped). That seed
+> tagged the whole layer one `designated` class, which the remap supersedes; and
+> its COMIDs can't be hand-regenerated from the live layer because MD's own
+> `ComID` field is a different NHD vintage than NHDPlusV2 — only the build's
+> geometry spatial join assigns NHDPlusV2 COMIDs. The first full build after the
+> remap banks a correct per-class auto-seed.
 
 ## Cutover & rollback
 

@@ -80,7 +80,8 @@ Type B (derived):
 | NY | Wild-Premier → `class1`; Wild-Quality → `class2`; Stocked/-Extended → `class3` |
 | GA | (wild default) → `class2`; Heavily Stocked/Delayed Harvest → `class3`/`class2` |
 | VA/MA/VT/ME | wild designation → `class1`/`class2` |
-| NJ/WV/MD | stocked/designated → `class3`/`class2` |
+| NJ/WV | stocked → `class3` |
+| MD | Use III/III-P (natural) → `class2` (wild); Use IV/IV-P (recreational) → `class3` (stocked); Use I/I-P (warm-water) → dropped |
 | CT | WTMA Class 1 → `class1`; stocked → `class3` |
 | IA | wild_trt present → `class2`; blank (stocked) → `class3` |
 | MO | Blue Ribbon → `gold` (MO's explicit premier designation); Red → `class2`; White/Park → `class3` |

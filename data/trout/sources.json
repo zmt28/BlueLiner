@@ -2,19 +2,34 @@
   "_comment": "Declarative trout-source registry consumed by scripts/build_clickable_streams.py via scripts/trout_registry.py. Order = precedence (first writer wins per COMID; states don't geographically overlap, so order among them is immaterial -- kept as the historical MD->VA->PA->NE->NY->NC->GA order for byte-identical output). Adding a state = adding an entry here (the discovery dossiers emit draft entries in this shape), not new Python. Modes: single (whole layer -> one class) | multi_layer (one class per sublayer) | field_map (exact value->class; unmapped rows dropped) | field_prefix (ordered substring rules over coalesced fields; unmatched dropped) | flags (any 'Yes' flag field -> stocked, else default). A `seed` is a committed COMID fallback used only if the live endpoint is unreachable. NV REMOVED 2026-06-12: NDOW retired LCT_Occupied_Streams_NV (service answers but every layerId returns 'not found'; verified via CI probe, see gis_verify_out history). It blocked the data-build unreachable-source gate. Re-add when the republished NDOW service is found (discovery round was in flight).",
   "sources": [
     {
+      "_comment": "MD DNR Designated Use Trout (dnr.geodata.md.gov Fisheries/DesignatedUse_Trout/0) -- field_map on Des_Use, Maryland's COMAR designated-use code (verified live, host on the build allowlist; the layer's own renderer keys on Des_Use). REPLACES the old whole-layer mode:single class:designated, which bucketed the entire layer to one tier (FALLBACK designated->class3) and so painted all of MD monochrome -- the wild Gunpowder tailwater scored identically to a put-and-take creek, and ~12.9k warm-water reaches were mislabeled trout. Per the nationwide wild/stocked principle: Use III / III-P 'Nontidal Cold Water' (natural, self-sustaining trout; 8,704 reaches) -> wild_reproduction (tier falls back to class2, then the size ladder promotes named order>=3 reaches -- the Gunpowder main stem -- to class1); Use IV / IV-P 'Recreational Trout Waters' (put-and-take stocked; 6,510) -> stocked (class3). Use I / I-P (warm-water aquatic life, NOT trout; 12,909) is absent from the map and carries no default -> dropped, so warm water stops rendering as trout water. field_map is EXACT-match; the '-P' (public-water-supply) suffix is a use qualifier that doesn't change the trout class, so III-P/IV-P are mapped alongside III/IV. NOTE the layer's ComID field is a different NHD vintage than NHDPlusV2 (range ~26M-132M vs NHDPlusV2's 7-digit COMIDs), so the build's geometry spatial join -- NOT that ComID -- is what assigns NHDPlusV2 COMIDs; the legacy single-class seed (data/nhdplus/MD_designated_comids.json) was therefore retired with this remap and the next full data-build banks a correct per-class auto-seed.",
       "state": "MD",
       "label": "Maryland Designated Use Trout",
-      "mode": "single",
-      "class": "designated",
+      "mode": "field_map",
+      "field": "Des_Use",
       "url": "https://dnr.geodata.md.gov/dnrdata/rest/services/Fisheries/DesignatedUse_Trout/MapServer/0/query?where=1%3D1",
-      "seed": "data/nhdplus/MD_designated_comids.json"
+      "map": {
+        "III": "wild_reproduction",
+        "III-P": "wild_reproduction",
+        "IV": "stocked",
+        "IV-P": "stocked"
+      }
     },
     {
+      "_comment": "VA DWR Wild Trout Streams (services.dwr.virginia.gov Public/WildTroutStreams/0, polylines) -- whole layer -> wild_reproduction (class2, size-laddered to class1 on named order>=3 reaches). VA is two ordered sources (like NJ/CT): this wild layer claims its COMIDs first, then the VA Stocked Trout Reaches layer below colors the put-and-take streams. Before that second source VA was all-green wild with no stocked dimension.",
       "state": "VA",
       "label": "Virginia Wild Trout Streams",
       "mode": "single",
       "class": "wild_reproduction",
       "url": "https://services.dwr.virginia.gov/arcgis/rest/services/Public/WildTroutStreams/MapServer/0/query?where=1%3D1"
+    },
+    {
+      "_comment": "VA DWR Stocked Trout Reaches (services.dwr.virginia.gov Public/StockedTroutWaters/MapServer/1 -- the POLYLINE reaches layer; layer 0 of that service is Stocked Trout Lakes (points) and is intentionally excluded to avoid buffering lake points onto unrelated flowlines). ~367 put-and-take stocked stream reaches -> stocked (class3). Trails the VA Wild Trout Streams source above so a wild reach keeps trout_class=wild on any overlap (first writer wins per COMID); this gives VA a real wild(green)/stocked(blue) split where before it was wild-only, same pattern as the NJ wild(SWQS-TP)/stocked remap.",
+      "state": "VA",
+      "label": "VA Stocked Trout Reaches",
+      "mode": "single",
+      "class": "stocked",
+      "url": "https://services.dwr.virginia.gov/arcgis/rest/services/Public/StockedTroutWaters/MapServer/1/query?where=1%3D1"
     },
     {
       "state": "PA",
@@ -45,6 +60,25 @@
       ]
     },
     {
+      "_comment": "NJ DEP Surface Water Quality Classifications (mapsdep.nj.gov Hydrography/MapServer/7) -- New Jersey's statewide SWQS antidegradation classification (N.J.A.C. 7:9B) on the CATEGORY field. Trout Production (TP: FW2-TPC1 / FW2-TP / FW1-TP, ~13,461 reaches) = waters classified as supporting trout REPRODUCTION -> wild_reproduction per the nationwide natural-reproduction=wild principle (tier falls back to class2, then the size ladder promotes named order>=3 reaches to class1). The server-side where=CATEGORY LIKE '%TP%' fetches ONLY the TP reaches: it bounds the pull (the full layer is ~285k reaches, well over the build's MAX_PAGES*page_size cap) and IS the classification -- every fetched row is a TP variant, which the field_prefix 'tp' rule tags wild (no default -> nothing dropped). Trout Maintenance (TM) and Non-Trout (NT) are intentionally NOT mapped here: TM is stocking-dependent (no documented reproduction) and stays the province of the NJ Trout Stocked Streams layer below, so this source contributes only the WILD upgrade. Ordered BEFORE that stocked source so a TP reach claims trout_class=wild before the stocked layer can color it (first writer wins per COMID). Validated against the 2022 NJ Fish & Wildlife Digest's named wild-trout streams (Dunnfield, India Brook, Primrose Brook, Brass Castle Creek, upper Whippany) -- all carry TP; the SWQS layer is reach-accurate where the Digest is whole-name (e.g. only the wild upper Whippany is TP, the degraded lower river is NT).",
+      "state": "NJ",
+      "label": "NJ SWQS Trout Production",
+      "mode": "field_prefix",
+      "fields": [
+        "CATEGORY"
+      ],
+      "url": "https://mapsdep.nj.gov/arcgis/rest/services/Features/Hydrography/MapServer/7/query?where=CATEGORY+LIKE+%27%25TP%25%27",
+      "rules": [
+        {
+          "contains": [
+            "tp"
+          ],
+          "bucket": "wild_reproduction"
+        }
+      ]
+    },
+    {
+      "_comment": "NJ Fish & Wildlife stocked-trout streams (the actual put-and-take list). Whole layer -> stocked. Trails the SWQS Trout Production source above, so wild TP reaches keep their class on any overlap; this colors the remaining stocked reaches blue. NJ went from a single all-stocked source to this wild(TP)/stocked split, mirroring the MD Des_Use remap.",
       "state": "NJ",
       "label": "NJ Trout Stocked Streams",
       "mode": "single",

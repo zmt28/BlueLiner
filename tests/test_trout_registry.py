@@ -32,10 +32,31 @@ def test_registry_covers_states_with_valid_modes():
 
 
 def test_single_bucket_states():
-    assert reg.row_bucket(SOURCES["MD"], {}) == "designated"
-    assert reg.row_bucket(SOURCES["VA"], {}) == "wild_reproduction"
+    assert reg.row_bucket(BY_LABEL["Virginia Wild Trout Streams"], {}) == "wild_reproduction"
     assert reg.row_bucket(SOURCES["WV"], {}) == "stocked"
     assert reg.row_bucket(SOURCES["NJ"], {}) == "stocked"
+
+
+def test_md_des_use_field_map_wild_vs_stocked():
+    # MD COMAR Des_Use remap (replaces the old whole-layer designated->class3):
+    # Use III / III-P 'Nontidal Cold Water' (natural trout) -> wild; Use IV / IV-P
+    # 'Recreational Trout Waters' (put-and-take) -> stocked; Use I / I-P
+    # (warm-water, NOT trout) drops -- no map entry, no default. Verified live.
+    md = SOURCES["MD"]
+    assert md["mode"] == "field_map" and md["field"] == "Des_Use"
+    f = md["field"]
+    assert reg.row_bucket(md, {f: "III"}) == "wild_reproduction"
+    assert reg.row_bucket(md, {f: "III-P"}) == "wild_reproduction"
+    assert reg.row_bucket(md, {f: "IV"}) == "stocked"
+    assert reg.row_bucket(md, {f: "IV-P"}) == "stocked"
+    # warm-water + the size-laddered tiers
+    assert reg.row_bucket(md, {f: "I"}) is None
+    assert reg.row_bucket(md, {f: "I-P"}) is None
+    assert reg.row_bucket(md, {f: ""}) is None      # unexpected value drops (no default)
+    assert reg.row_bucket(md, {}) is None
+    assert reg.row_tier(md, {f: "III"}) == "class2"   # wild fallback (ladder-> class1 in build)
+    assert reg.row_tier(md, {f: "IV"}) == "class3"    # stocked fallback
+    assert reg.classify_fields(md) == ["Des_Use"]
 
 
 def test_ny_field_map_matches_old_mgmtcat_logic():
@@ -274,9 +295,9 @@ def test_row_tier_regulation_states():
 
 def test_row_tier_falls_back_from_class():
     # sources with no explicit tier spec derive tier from the trout_class
-    assert reg.row_tier(SOURCES["VA"], {}) == "class2"   # wild_reproduction
+    assert reg.row_tier(BY_LABEL["Virginia Wild Trout Streams"], {}) == "class2"  # wild
+    assert reg.row_tier(BY_LABEL["VA Stocked Trout Reaches"], {}) == "class3"      # stocked
     assert reg.row_tier(SOURCES["NJ"], {}) == "class3"   # stocked
-    assert reg.row_tier(SOURCES["MD"], {}) == "class3"   # designated
     assert reg.layer_tier({"class": "class_a"}) == "class1"  # PA-style sublayer
 
 
@@ -284,7 +305,7 @@ def test_wild_and_native_flags():
     assert reg.class_is_wild("wild_reproduction") and reg.class_is_wild("class_a")
     assert not reg.class_is_wild("stocked")
     assert reg.is_native(SOURCES["UTCT"]) is True
-    assert reg.is_native(SOURCES["VA"]) is False
+    assert reg.is_native(BY_LABEL["Virginia Wild Trout Streams"]) is False
 
 
 def test_co_multilayer_tiers_and_native():
@@ -414,6 +435,46 @@ def test_psmfc_streamnet_native_overlays():
     # bull trout + redband exclude historical reaches server-side (current only)
     assert "Historical" in SOURCES["BULL"]["url"]
     assert "Historical" in SOURCES["RBT"]["url"]
+
+
+def test_va_two_sources_wild_then_stocked():
+    # VA gained a stocked dimension: the Wild Trout Streams layer (wild) is
+    # ordered before the Stocked Trout Reaches layer (stocked) so wild claims
+    # COMIDs first, then stocked colors the put-and-take reaches. Same wild-first
+    # ordering as NJ/CT.
+    va = [s for s in ALL_SOURCES if s["state"] == "VA"]
+    assert [s["label"] for s in va] == [
+        "Virginia Wild Trout Streams", "VA Stocked Trout Reaches"]  # wild claims first
+    assert va[0]["mode"] == "single" and va[0]["class"] == "wild_reproduction"
+    assert va[1]["mode"] == "single" and va[1]["class"] == "stocked"
+    assert "StockedTroutWaters/MapServer/1" in va[1]["url"]  # the polyline reaches, not /0 lakes
+    assert reg.row_bucket(va[0], {}) == "wild_reproduction"
+    assert reg.row_bucket(va[1], {}) == "stocked"
+
+
+def test_nj_swqs_trout_production_wild_first():
+    # NJ is now two ordered sources (like CT): the SWQS Trout Production layer
+    # claims wild first, then the stocked-streams layer colors the rest. SWQS
+    # CATEGORY field_prefix: TP variants (FW2-TPC1/FW2-TP/FW1-TP) -> wild; TM/NT
+    # not mapped here (no default -> dropped; the stocked layer + the server-side
+    # where=...TP... filter mean TM/NT never actually reach this rule).
+    nj = [s for s in ALL_SOURCES if s["state"] == "NJ"]
+    assert [s["label"] for s in nj] == [
+        "NJ SWQS Trout Production", "NJ Trout Stocked Streams"]   # wild claims first
+    swqs = BY_LABEL["NJ SWQS Trout Production"]
+    assert swqs["mode"] == "field_prefix" and swqs["fields"] == ["CATEGORY"]
+    assert "TP" in swqs["url"]                       # fetch bounded to TP server-side
+    f = "CATEGORY"
+    for tp in ("FW2-TPC1", "FW2-TP", "FW1-TP"):
+        assert reg.row_bucket(swqs, {f: tp}) == "wild_reproduction"
+        assert reg.row_tier(swqs, {f: tp}) == "class2"  # ladder -> class1 in build
+    for other in ("FW2-TMC1", "FW2-TM", "FW2-NT", "FW2-NTC1/SE1", "PL", "SE1"):
+        assert reg.row_bucket(swqs, {f: other}) is None  # TM/NT unmapped, no default
+    assert reg.row_bucket(swqs, {}) is None
+    assert reg.classify_fields(swqs) == ["CATEGORY"]
+    # the stocked source still trails and is whole-layer stocked
+    assert nj[1]["mode"] == "single" and nj[1]["class"] == "stocked"
+    assert reg.row_bucket(nj[1], {}) == "stocked"
 
 
 def test_ct_is_two_ordered_sources_wild_first():

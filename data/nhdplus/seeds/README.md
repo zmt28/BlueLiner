@@ -43,6 +43,7 @@ source produced, so seed-based tagging reproduces the live tagging exactly.
 - **Bootstrap**: this directory starts with no seeds; the first post-merge
   full build populates it. Missing/empty seeds are handled gracefully (the
   source is simply gate-relevant until its first capture). The legacy
-  explicit `seed:` registry key (MD → `data/nhdplus/MD_designated_comids.json`)
-  still works as a pre-seeded entry; an auto capture here takes precedence
-  once it exists.
+  explicit `seed:` registry key still works as a pre-seeded entry (an auto
+  capture here takes precedence once it exists), but no source currently uses
+  it — MD's `seed:` was retired when it moved to a `Des_Use` `field_map`, since
+  its hand-captured single-class file no longer matched the per-class output.
