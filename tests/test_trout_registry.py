@@ -356,6 +356,51 @@ def test_refine_tier_size_ladder():
     assert r("gold", True, "Big River", 6) == "gold"        # already gold
 
 
+def test_class_precedence_mirrors_panel_chip():
+    # The build's river-coherence precedence MUST stay identical to the panel
+    # chip's (reach_trout.CLASS_PRECEDENCE) so the rendered lines and the
+    # "Trout water" chip agree on the strongest class. Pinned literally here so
+    # a drift on either side fails loudly.
+    assert reg.CLASS_PRECEDENCE == [
+        "class_a", "wilderness", "wild_reproduction", "designated", "stocked"]
+
+
+def test_reach_priority_class_then_tier():
+    p = reg.reach_priority
+    # Wild always outranks stocked, regardless of tier color.
+    assert p("wild_reproduction", "class2") < p("stocked", "class3")
+    assert p("wild_reproduction", "class3") < p("stocked", "class1")
+    # Within a class, the better tier (gold>class1>class2>class3) wins.
+    assert p("wild_reproduction", "class1") < p("wild_reproduction", "class2")
+    assert p("class_a", "gold") < p("class_a", "class1")
+    # class_a/wilderness outrank wild_reproduction; designated outranks stocked.
+    assert p("class_a", "class3") < p("wild_reproduction", "gold")
+    assert p("designated", "class3") < p("stocked", "gold")
+    # Unclassified (None) sorts weakest on both axes.
+    assert p("stocked", "class3") < p(None, None)
+
+
+def test_strongest_reach_best_class_wins():
+    s = reg.strongest_reach
+    # The Gunpowder symptom: one named river coded wild + stocked + dropped.
+    # Best-class-wins -> the whole river resolves to the wild reach.
+    assert s([("wild_reproduction", "class2"),
+              ("stocked", "class3"),
+              (None, None)]) == ("wild_reproduction", "class2")
+    # Wild river the size ladder split class1/class2 -> promotes to class1.
+    assert s([("wild_reproduction", "class2"),
+              ("wild_reproduction", "class1")]) == ("wild_reproduction", "class1")
+    # A purely stocked river stays stocked/class3 (nothing to promote to).
+    assert s([("stocked", "class3"), ("stocked", "class3")]) == \
+        ("stocked", "class3")
+    # All-unclassified -> None (no classified member to harmonize to).
+    assert s([(None, None), (None, None)]) is None
+    assert s([]) is None
+    # class_a (Class A wild) beats a same-river wild_reproduction reach.
+    assert s([("wild_reproduction", "class1"),
+              ("class_a", "class1")]) == ("class_a", "class1")
+
+
 EBTJV_NATIVE_LABEL = "EBTJV / TU Eastern Brook Trout Portfolio (range-wide native)"
 EBTJV_WILD_LABEL = "EBTJV / TU Eastern Brook Trout Portfolio (species-unspecified wild trout)"
 
