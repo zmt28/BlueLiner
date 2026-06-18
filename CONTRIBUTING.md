@@ -176,24 +176,57 @@ downloader, so the build script cannot fetch it programmatically** --
 the operator downloads the ZIP once by hand, the script reads from
 disk.
 
-The build script doesn't ingest PAD-US verbatim. Two angler-driven
-filters are applied at build time:
+The build script doesn't ingest PAD-US verbatim. Several angler-driven
+filters are applied at build time (see `decide_access` / `is_corridor`
+in the script):
 
-- `Pub_Access IN ('OA', 'RA')` only -- Open Access and Restricted.
-  UK (Unknown) and XA (Closed) parcels are dropped. Rendering
-  unknown-access lands as "public-ish" would send anglers to locked
-  gates; rendering closed-to-fishing refuges as public is similarly
-  misleading. The frontend keys its style off this same field (green
-  for OA, dashed yellow for RA).
+- **Access tier.** `Pub_Access IN ('OA', 'RA')` is kept as-is (Open
+  Access / Restricted). `Pub_Access = 'UK'` (Unknown) is kept **only
+  when a government manager owns it** (`Mang_Type` in FED / STAT / LOC /
+  DIST / JNT / TERR) and then rendered as Open Access -- a large share
+  of genuinely public, fishable land (state parks, state forests, WMAs,
+  municipal watershed land like Baltimore City's Prettyboy holdings) is
+  coded UK simply because the agency never reported an access value, and
+  dropping it left obvious state parks missing from the map. Private /
+  NGO / tribal UK parcels stay dropped (locked gates), as do all `XA`
+  (Closed) parcels. Military reservations are excluded from the UK->OA
+  promotion (`_MILITARY_RE`) so a federally-owned-but-closed base never
+  paints green. The frontend keys its style off the resulting field
+  (green for OA, dashed yellow for RA).
+- **Linear corridors dropped.** PAD-US's Fee layer carries rail-trails,
+  towpaths, greenways and parkway/utility strips as long, thin POLYGONS.
+  Painted as area fill they read as "this narrow strip is fishable
+  public land" and they duplicate the dedicated river-trails line layer
+  (`scripts/build_trails.py`). Any parcel whose estimated mean width
+  (`2*area/perimeter`, measured in EPSG:5070 metres) is under
+  `CORRIDOR_MIN_WIDTH_M` (40 m) is screened out -- footpaths are
+  ~10-30 m, real riverside parks are >=120 m, so the threshold separates
+  them with margin.
 - Easement layer dropped entirely. Conservation easements on private
   land restrict the owner's development rights, not the public's
   access rights; ~95% are not legally fishable without permission.
 
-Interior holes smaller than ~30 acres are also stripped from each
-polygon (National Forest features carry hundreds of tiny private-
+Geometry is simplified with `preserve_topology=True` at a gentler
+tolerance (0.008 deg) so narrow riverside park corridors no longer
+collapse to nothing (the old 0.015 + `preserve_topology=False` annihilated
+them, which is why the Gunpowder Falls SP strip below Prettyboy Dam went
+missing). Interior holes smaller than ~30 acres are still stripped from
+each polygon (National Forest features carry hundreds of tiny private-
 inholding rings that dominate vertex count without being visually
-meaningful at app zoom). If a future PAD-US vintage exposes a finer-
-grained access taxonomy, revisit `KEEP_PUB_ACCESS` in the script.
+meaningful at app zoom).
+
+**Verify before you trust a rebuild.** Point `scripts/diagnose_padus.py`
+at a spot you KNOW is public to see how PAD-US codes it and whether the
+build will keep it (needs open egress -- run in CI / a dev box, not the
+Claude Code sandbox):
+
+```sh
+python scripts/diagnose_padus.py --lat 39.6126 --lon -76.6889  # Gunpowder SP
+python scripts/diagnose_padus.py --lat 39.5826 --lon -76.6605  # Torrey rail-trail
+```
+
+If a future PAD-US vintage exposes a finer-grained access taxonomy,
+revisit `decide_access` / `KEEP_PUB_ACCESS` / `PUBLIC_MANAGER_TYPES`.
 
 To roll a new PAD-US vintage (4.0 -> 4.1 -> ...):
 
