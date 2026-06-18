@@ -1,0 +1,4 @@
+# Blueliner agent dependencies (in addition to the app's root requirements.txt,
+# which provides httpx + the db/enrichment modules we reuse).
+anthropic>=0.69
+mcp>=1.2
