@@ -17,3 +17,7 @@ bluelines.db*
 node_modules/
 static/dist/
 gis_verify_out/
+
+# Agent runtime artifacts
+agent/logs/
+agent/**/__pycache__/
