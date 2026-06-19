@@ -348,17 +348,20 @@
 
   function injectStyles() {
     var css =
-      "#bl-agent-panel{position:fixed;right:16px;bottom:16px;width:340px;max-height:72vh;"
+      // Docked on the LEFT, just right of the 88px rail and below the top pills,
+      // running the full height of the map — a proper side panel, not a tile.
+      "#bl-agent-panel{position:fixed;left:104px;top:84px;bottom:18px;width:372px;max-width:calc(100vw - 124px);"
         + "display:flex;flex-direction:column;background:#fff;border:1px solid #d8dde4;"
-        + "border-radius:12px;box-shadow:0 8px 30px rgba(11,42,58,.22);z-index:1200;"
-        + "font:13px/1.45 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;color:#16202b;overflow:hidden}"
+        + "border-radius:14px;box-shadow:0 10px 34px rgba(11,42,58,.20);z-index:800;"
+        + "font:13.5px/1.5 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;color:#16202b;overflow:hidden}"
+      + "#bl-agent-panel.min{bottom:auto}"
       + "#bl-agent-panel.min .bl-agent-body{display:none}"
       + ".bl-agent-head{display:flex;align-items:center;justify-content:space-between;"
-        + "padding:9px 12px;background:#0B2A3A;color:#fff;cursor:default}"
-      + ".bl-agent-title{font-weight:600}"
+        + "padding:12px 14px;background:#0B2A3A;color:#fff;cursor:default;flex:0 0 auto}"
+      + ".bl-agent-title{font-weight:600;font-size:15px}"
       + ".bl-agent-badge{font-size:10px;background:#7A3DB8;padding:1px 6px;border-radius:8px;margin-left:4px}"
-      + ".bl-agent-min{background:transparent;border:0;color:#fff;font-size:18px;cursor:pointer;line-height:1}"
-      + ".bl-agent-body{padding:10px 12px;overflow-y:auto}"
+      + ".bl-agent-min{background:transparent;border:0;color:#fff;font-size:20px;cursor:pointer;line-height:1}"
+      + ".bl-agent-body{padding:13px 14px;overflow-y:auto;flex:1 1 auto}"
       + ".bl-agent-models{font-size:11px;color:#647489;margin-bottom:8px}"
       + ".bl-agent-tabs{display:flex;gap:6px;margin-bottom:8px}"
       + ".bl-agent-tab{flex:1;padding:6px;border:1px solid #d8dde4;background:#f4f6f8;border-radius:7px;cursor:pointer;font-size:12px}"
@@ -388,7 +391,9 @@
       + ".bl-agent-notes{font-size:11px;color:#647489;margin-top:8px;font-style:italic}"
       + ".bl-agent-empty{font-size:12px;color:#647489;padding:8px 0}"
       + ".bl-agent-error{font-size:12px;color:#8A3327;background:#F8E7E4;padding:8px;border-radius:7px}"
-      + "@media(max-width:760px){#bl-agent-panel{right:8px;left:8px;width:auto;bottom:70px;max-height:60vh}}";
+      // < 760px the rail collapses to a bottom tab bar, so dock as a bottom sheet.
+      + "@media(max-width:760px){#bl-agent-panel{left:8px;right:8px;top:auto;bottom:70px;"
+        + "width:auto;max-width:none;height:auto;max-height:62vh}#bl-agent-panel.min{bottom:70px}}";
     var s = document.createElement("style");
     s.textContent = css;
     document.head.appendChild(s);
