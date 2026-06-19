@@ -106,7 +106,8 @@ def _aggregate(per_run: list[dict]) -> dict:
     }
 
 
-def run(versions: list[int], scenarios: list[dict]) -> dict:
+def run(versions: list[int], scenarios: list[dict],
+        orchestrator: str = "hand") -> dict:
     by_version: dict[int, dict] = {}
     for v in versions:
         per_run, per_cat = [], {}
@@ -117,7 +118,7 @@ def run(versions: list[int], scenarios: list[dict]) -> dict:
             os.environ["AGENT_SCENARIO"] = scenario_path
             req = TripRequest(**sc["request"])
             try:
-                result = plan_trip(req, version=v)
+                result = plan_trip(req, version=v, orchestrator=orchestrator)
             except Exception as e:  # never let one scenario abort the sweep
                 result = {"recommendations": [], "blocked": [], "error": str(e),
                           "grounding": {"ok": True}, "usage": {}, "latency_ms": 0}

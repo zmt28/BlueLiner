@@ -286,8 +286,42 @@ def _stdio_params() -> StdioServerParameters:
                                  env={**os.environ})
 
 
+def apply_guardrails(proposal, evidence, sourced, *, req, forecast, memory, llm):
+    """v3 guardrails + one grounding-correction retry. Shared by BOTH the
+    hand-written loop and the LangGraph orchestration, so the ONLY thing that
+    differs between the two harnesses is the orchestration — never the safety
+    logic, the tools, the scorer, or the prompts. That's what makes the A/B a
+    controlled experiment."""
+    guarded = guardrails.apply(proposal, evidence, sourced)
+    if not guarded["grounding_ok"]:
+        correction = (f"These numbers were not in any tool result and must be "
+                      f"removed or replaced with sourced values: {guarded['unsourced']}.")
+        proposal = _rank(llm, req, evidence, forecast, memory, correction)
+        guarded = guardrails.apply(proposal, evidence, sourced)
+    return guarded
+
+
+async def _hand_pipeline(req, version, llm, trace, sourced):
+    """Hand-written orchestration: one MCP session, gather -> (memory) -> rank ->
+    guardrails. Returns (evidence, proposal)."""
+    async with stdio_client(_stdio_params()) as (r, w):
+        async with ClientSession(r, w) as session:
+            await session.initialize()
+            evidence, forecast = await _gather(session, llm, req, trace, sourced)
+            memory = None
+            if version >= 2 and req.user_id is not None:
+                memory = await _fetch_memory(session, req.user_id, trace)
+                _collect_numbers(memory, sourced)
+            proposal = _rank(llm, req, evidence, forecast, memory)
+            if version >= 3:
+                proposal = apply_guardrails(proposal, evidence, sourced,
+                                            req=req, forecast=forecast,
+                                            memory=memory, llm=llm)
+            return evidence, proposal
+
+
 async def _plan_async(req: TripRequest, version: int, trace: RunTrace,
-                      usage: Usage) -> dict:
+                      usage: Usage, orchestrator: str = "hand") -> dict:
     llm = LLM(usage=usage)
     trace.cheap_model = config.CHEAP_MODEL
     trace.strong_model = config.STRONG_MODEL
@@ -295,34 +329,18 @@ async def _plan_async(req: TripRequest, version: int, trace: RunTrace,
     evidence: dict = {}
     sourced: set = set()  # every number any tool returned this session
 
-    # v0: naive single call, no tools, no data.
     if version == 0:
+        # naive single call, no tools, no data (orchestrator-independent).
         user = req.user_message() + "\n\nReturn JSON only in this shape:\n" + _JSON_SHAPE_HINT
         proposal = _complete_json(llm, model=config.STRONG_MODEL,
                                   system=_V0_SYSTEM, user=user,
                                   max_tokens=config.RANKER_MAX_TOKENS)
+    elif orchestrator == "graph":
+        from . import planner_graph
+        evidence, proposal = await planner_graph.graph_pipeline(
+            req, version, llm, trace, sourced)
     else:
-        async with stdio_client(_stdio_params()) as (r, w):
-            async with ClientSession(r, w) as session:
-                await session.initialize()
-                evidence, forecast = await _gather(session, llm, req, trace, sourced)
-                memory = None
-                if version >= 2 and req.user_id is not None:
-                    memory = await _fetch_memory(session, req.user_id, trace)
-                    _collect_numbers(memory, sourced)
-                proposal = _rank(llm, req, evidence, forecast, memory)
-
-                # v3: deterministic guardrails + one grounding-correction retry.
-                if version >= 3:
-                    guarded = guardrails.apply(proposal, evidence, sourced)
-                    if not guarded["grounding_ok"]:
-                        correction = (
-                            f"These numbers were not in any tool result and must be "
-                            f"removed or replaced with sourced values: "
-                            f"{guarded['unsourced']}.")
-                        proposal = _rank(llm, req, evidence, forecast, memory, correction)
-                        guarded = guardrails.apply(proposal, evidence, sourced)
-                    proposal = guarded
+        evidence, proposal = await _hand_pipeline(req, version, llm, trace, sourced)
 
     # Grounding is enforced only in v3, but we always compute it for the report,
     # so the v0->v3 hallucination-rate drop is measurable.
@@ -330,6 +348,7 @@ async def _plan_async(req: TripRequest, version: int, trace: RunTrace,
     recs = proposal.get("recommendations", [])
     result = {
         "version": version,
+        "orchestrator": orchestrator,
         "recommendations": recs,
         "blocked": proposal.get("blocked", []),
         "notes": proposal.get("notes", ""),
@@ -341,15 +360,19 @@ async def _plan_async(req: TripRequest, version: int, trace: RunTrace,
     return result
 
 
-def plan_trip(req: TripRequest, version: int = 3, *, log: bool = True) -> dict:
-    """Plan a trip and return the recommendation. Synchronous entry point."""
+def plan_trip(req: TripRequest, version: int = 3, *, log: bool = True,
+              orchestrator: str = "hand") -> dict:
+    """Plan a trip and return the recommendation. Synchronous entry point.
+    `orchestrator` selects the hand-written loop or the LangGraph variant —
+    identical tools/scorer/guardrails/prompts, only the sequencing differs."""
     trace = RunTrace(request=req.__dict__.copy(), version=version).start()
     usage = Usage()
     try:
-        result = asyncio.run(_plan_async(req, version, trace, usage))
+        result = asyncio.run(_plan_async(req, version, trace, usage, orchestrator))
     except Exception as e:  # keep coverage measurable in the eval
         trace.error = f"{type(e).__name__}: {e}"
-        result = {"version": version, "recommendations": [], "blocked": [],
+        result = {"version": version, "orchestrator": orchestrator,
+                  "recommendations": [], "blocked": [],
                   "notes": "", "violations": [], "error": trace.error,
                   "grounding": {"ok": True, "unsourced": []},
                   "evidence_river_ids": [], "confidence": None}
