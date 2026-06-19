@@ -1,0 +1,198 @@
+{
+  "trace": [
+    {
+      "node": "generate_candidates",
+      "n_region": 6012,
+      "shortlist": 10
+    },
+    {
+      "node": "gather_evidence",
+      "n": 10,
+      "ungauged": 10
+    },
+    {
+      "node": "infer_thermal",
+      "inferred": 10
+    },
+    {
+      "node": "score",
+      "n": 10
+    },
+    {
+      "node": "reflect_verify",
+      "kept": 10,
+      "dropped": 0
+    },
+    {
+      "node": "rank",
+      "n": 10,
+      "grounding_ok": true,
+      "unsourced": [],
+      "cost_usd": 0.03847
+    },
+    {
+      "node": "human_confirm",
+      "mode": "headless_skip"
+    },
+    {
+      "node": "update_flywheel",
+      "recorded": 0,
+      "promoted": 0
+    }
+  ],
+  "ranked": [
+    {
+      "comid": 5894848,
+      "descriptor": "Elks Run",
+      "confidence": 0.733,
+      "suitability_score": 0.978,
+      "evidence": [
+        "Same-named reach as designated trout water Elks Run; topology distance 0.0 mi \u2014 likely the same drainage network",
+        "Stream order 3; reach length 0.001 km suggests a short connector or headwater segment with potential cold tributary character",
+        "Public access confirmed; nearest access point Potomac River \u2013 Dargan/Shinham, 2.21 mi"
+      ],
+      "why_not_higher": "Ungauged \u2014 water temperature entirely inferred; no same-network gauge identified",
+      "access_note": "public | confirm access locally and verify current regulations",
+      "needs_access_verify": false
+    },
+    {
+      "comid": 4509258,
+      "descriptor": "Difficult Run",
+      "confidence": 0.733,
+      "suitability_score": 0.978,
+      "evidence": [
+        "Same-named reach as designated trout water Difficult Run; topology distance 0.0 mi",
+        "Stream order 4; nearest access point Anglers Inn only 0.61 mi away \u2014 closest walk-in proximity of all prospects listed",
+        "Public access confirmed via Anglers Inn access point"
+      ],
+      "why_not_higher": "Ungauged \u2014 water temperature entirely inferred; no same-network gauge identified",
+      "access_note": "public | confirm access locally and verify current regulations",
+      "needs_access_verify": false
+    },
+    {
+      "comid": 4507334,
+      "descriptor": "Dutchman Creek",
+      "confidence": 0.733,
+      "suitability_score": 0.978,
+      "evidence": [
+        "Same-named reach as designated trout water Dutchman Creek; topology distance 0.0 mi",
+        "Stream order 3; reach length 0.008 km suggests compact headwater or near-confluence segment",
+        "Public access confirmed; nearest access point Brunswick, 0.83 mi"
+      ],
+      "why_not_higher": "Ungauged \u2014 water temperature entirely inferred; no same-network gauge identified",
+      "access_note": "public | confirm access locally and verify current regulations",
+      "needs_access_verify": false
+    },
+    {
+      "comid": 4763756,
+      "descriptor": "Big Elk Creek",
+      "confidence": 0.733,
+      "suitability_score": 0.978,
+      "evidence": [
+        "Same-named reach as designated trout water Big Elk Creek; topology distance 0.02 mi",
+        "Stream order 3; reach length 0.043 km \u2014 meaningful fishable segment near designated trout corridor",
+        "Public access confirmed; nearest access point Elk River Park, 1.01 mi"
+      ],
+      "why_not_higher": "Ungauged \u2014 water temperature entirely inferred; no same-network gauge identified",
+      "access_note": "public | confirm access locally and verify current regulations",
+      "needs_access_verify": false
+    },
+    {
+      "comid": 4507488,
+      "descriptor": "Potomac River",
+      "confidence": 0.733,
+      "suitability_score": 0.978,
+      "evidence": [
+        "Same-named reach as designated trout water Potomac River; topology distance 0.01 mi",
+        "Stream order 7 \u2014 mainstem reach; large-river trout habitat potential in designated section",
+        "Public access confirmed; nearest access point Violettes Lock, 1.06 mi"
+      ],
+      "why_not_higher": "Ungauged for this reach \u2014 temperature inferred; stream order 7 mainstem reach means trout habitat quality is highly dependent on seasonal temperature swings not captured here",
+      "access_note": "public | confirm access locally and verify current regulations",
+      "needs_access_verify": false
+    },
+    {
+      "comid": 11690566,
+      "descriptor": "Patapsco River",
+      "confidence": 0.733,
+      "suitability_score": 0.978,
+      "evidence": [
+        "Topology proxy to designated trout reach comid 11690522, 0.02 mi distance \u2014 likely adjacent or same-corridor segment",
+        "Stream order 5; reach length 0.046 km within proximity of confirmed designated trout water",
+        "Public access confirmed; nearest access point Fort Armistead, 2.29 mi"
+      ],
+      "why_not_higher": "Does not share the name of the nearest trout water (comid 11690522); relationship to designated reach requires field confirmation; ungauged temperature",
+      "access_note": "public | confirm access locally and verify current regulations",
+      "needs_access_verify": false
+    },
+    {
+      "comid": 5909711,
+      "descriptor": "South Fork Back Creek",
+      "confidence": 0.733,
+      "suitability_score": 0.978,
+      "evidence": [
+        "Same-named reach as wild-reproduction trout water South Fork Back Creek; topology distance 0.01 mi \u2014 wild reproduction classification suggests self-sustaining population in this drainage",
+        "Stream order 3; reach length 0.04 km near wild trout corridor",
+        "Wild-reproduction designation of nearest trout water is a stronger ecological signal than stocked-only designation"
+      ],
+      "why_not_higher": "Access tier unknown \u2014 no access point identified; ungauged temperature entirely inferred",
+      "access_note": "unverified | confirm public access and local regulations before fishing",
+      "needs_access_verify": true
+    },
+    {
+      "comid": 11905886,
+      "descriptor": "Patuxent River",
+      "confidence": 0.733,
+      "suitability_score": 0.978,
+      "evidence": [
+        "Same-named reach as designated trout water Patuxent River; topology distance 0.02 mi",
+        "Stream order 4; reach length 0.069 km \u2014 largest reach segment among unverified-access prospects",
+        "Designated trout classification of nearest named water supports cold-water habitat hypothesis"
+      ],
+      "why_not_higher": "Access tier unknown \u2014 no access point identified; ungauged temperature entirely inferred",
+      "access_note": "unverified | confirm public access and local regulations before fishing",
+      "needs_access_verify": true
+    },
+    {
+      "comid": 8430992,
+      "descriptor": "Flintstone Creek",
+      "confidence": 0.733,
+      "suitability_score": 0.978,
+      "evidence": [
+        "Same-named reach as designated trout water Flintstone Creek; topology distance 0.01 mi",
+        "Stream order 3; reach length 0.021 km within the designated trout drainage",
+        "Designated trout classification of nearest named water supports cold-water habitat hypothesis"
+      ],
+      "why_not_higher": "Access tier unknown \u2014 no access point identified; ungauged temperature entirely inferred",
+      "access_note": "unverified | confirm public access and local regulations before fishing",
+      "needs_access_verify": true
+    },
+    {
+      "comid": 11908556,
+      "descriptor": "tributary near Patuxent River",
+      "confidence": 0.733,
+      "suitability_score": 0.978,
+      "evidence": [
+        "Topology proxy to designated trout water Patuxent River, 0.02 mi distance; stream order 5",
+        "Reach length 0.049 km adjacent to designated trout corridor on Patuxent River",
+        "No GNIS name on record \u2014 reach identity and character require field verification"
+      ],
+      "why_not_higher": "No GNIS name; access tier unknown; does not share name of nearest trout water; ungauged temperature entirely inferred \u2014 highest combined uncertainty of all prospects listed",
+      "access_note": "unverified | confirm public access and local regulations before fishing",
+      "needs_access_verify": true
+    }
+  ],
+  "excluded": [],
+  "usage": {
+    "input_tokens": 2543,
+    "output_tokens": 2056,
+    "cache_read_tokens": 0,
+    "by_model": {
+      "claude-sonnet-4-6": {
+        "input": 2543,
+        "output": 2056
+      }
+    },
+    "est_cost_usd": 0.03847
+  }
+}
