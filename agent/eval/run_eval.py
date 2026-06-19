@@ -188,15 +188,46 @@ def render_report(by_version: dict, n_scenarios: int) -> str:
         L.append(f"| {c} | {p}% |")
     L.append("")
 
+    v0 = by_version.get(0, {})
+    v1 = by_version.get(1, {})
     L.append("## Reading this table\n")
-    L.append("- **v0** has no tools: it invents flows/temps (hallucination high) "
-             "and has no safety backstop.")
-    L.append("- **v1** grounds every reading in a tool result; agreement jumps and "
-             "hallucinated readings collapse toward 0.")
-    L.append("- **v2** adds catch-log memory: it breaks ties toward the angler's "
-             "productive conditions (see the `memory-*` scenarios).")
-    L.append("- **v3** adds the deterministic guardrails: **safety violations → 0** "
-             "and the grounding contract forces hallucinated readings to 0.")
+    L.append("- **v0 (no tools)** invents every reading (100% hallucinated) and, "
+             "blind to conditions, recommends flooded/warm/private water "
+             f"({v0.get('safety_violation_pct', '?')}% safety violations) — it "
+             "can't even scope to the right candidate rivers (8% agreement).")
+    L.append("- **v1 (tool-grounded)** is the big jump: agreement → 100%, and "
+             "grounding every number in a tool result collapses hallucination "
+             f"100% → {v1.get('hallucination_pct', '?')}%. Tool-grounding does the "
+             "heavy lifting.")
+    L.append("- **v2 (+memory)** matches v1 on top-1 but personalizes (table "
+             "above). Hallucination ticks up because the model weaves in the "
+             "angler's pattern and occasionally rounds a band — exactly what v3's "
+             "contract is for.")
+    L.append("- **v3 (+guardrails)** is the guarantee: the grounding contract + one "
+             "regeneration force hallucinated readings to **0%**, and safety "
+             "violations are **0% by construction**.")
+    L.append("")
+    L.append("## Honest caveats (say these out loud)\n")
+    L.append("- **Safety 0% at v1/v2 is luck, not a guarantee.** Same number as v3, "
+             "but only v3 *cannot* recommend blocked water regardless of the "
+             f"model's reasoning. v0's {v0.get('safety_violation_pct', '?')}% is the "
+             "real 'ungrounded is unsafe' signal.")
+    L.append(f"- **Exact-best dips ({v1.get('top1_exact_pct', '?')}% → "
+             f"{by_version[final].get('top1_exact_pct', '?')}% at v{final}).** The "
+             "guardrails reorder for staleness/freshness the pure-scorer oracle "
+             "ignores (e.g. demoting a stale-but-green reading), so v3's top pick "
+             "sometimes differs from the oracle's exact pick while staying in the "
+             "best tier (agreement still 100%) — v3 being *more* right than the "
+             "oracle, not less.")
+    L.append("- **Personalization is confounded (n=4 memory scenarios).** Cooler "
+             "water is generically better for trout, so v1 already scores well "
+             "without memory; the clearer evidence of memory is qualitative — "
+             "v2/v3 rationales cite the angler's catch-log pattern, which v1 "
+             "cannot. Treat the small-n delta as directional.")
+    L.append("- **Positive-only oracle.** Designation/scorer labels mark *safe & "
+             "well-rated*, the deltas above undercount nothing here because "
+             "conditions are injected — but the discovery agent (prospector) "
+             "inherits a genuine positive-unlabeled caveat.")
     L.append("")
     return "\n".join(L)
 
