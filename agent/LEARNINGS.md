@@ -310,6 +310,40 @@ functions, so the only variable is the sequencing.
   prospector's subtasks are deterministic, so a multi-agent bake-off would measure
   a strawman — "an agent per geometry calc is overhead by construction."
 
+## 9. Demoing in the product — the security posture as a PM artifact
+
+The live demo runs both agents *inside the real BlueLiner map*. Building it
+surfaced a product-security decision worth a slide, because the app is publicly
+deployed and the model calls cost real money against my key.
+
+- **The threat I actually had to close:** not "someone steals the key from the
+  browser" (it's server-side), but "the public deployment becomes a free,
+  unmetered proxy to my Anthropic account." A naive `app.include_router` in
+  `main.py` would have shipped a public `/api/agent/plan` that *anyone* could
+  spend my key through. That's the failure mode I designed against.
+- **Defense in depth beats a single flag.** The key can't be spent in production
+  because of *four* independent layers, any one of which suffices: (1) the public
+  app never imports the router; (2) the agent dependencies aren't installed in
+  the production image; (3) no `ANTHROPIC_API_KEY` on the web service; (4) the
+  endpoint is off unless `AGENT_DEMO_ENABLED=1`, optionally behind a token.
+  Listing them as independent layers — not "I added an if-statement" — is the
+  security-literate framing.
+- **Self-gating UI over conditional builds.** `static/agent-demo.js` ships in the
+  same bundle the public site serves, then calls `/api/agent/health` and renders
+  nothing unless the server says `enabled:true`. So I didn't need a separate
+  "demo build" of the frontend; the *server's* posture is the single source of
+  truth for whether the feature exists. One artifact, gated at the trust boundary.
+- **Blast-radius thinking is a PM instinct, not just a security one.** The right
+  answer to "can you 110% guarantee it's safe?" isn't only "yes, here's why" —
+  it's *also* "and I bounded the downside anyway": a dedicated, spend-capped,
+  revocable Console key. Reversibility/containment as a product decision.
+- **A demo is an architecture forcing-function.** Wiring the UI is what made me
+  reuse the exact same `plan_trip` / `run_discovery` entry points the eval drives
+  — the demo and the eval exercise identical code, so the demo can't quietly
+  diverge from the measured system. (Sync FastAPI handlers, so the agents'
+  internal `asyncio.run` runs cleanly in the threadpool — a small but real
+  integration gotcha.)
+
 ## Running facts for the deck
 - Trip-planner v0→v3: agreement **8→100%**, safety **16→0% (enforced)**,
   hallucination **100→0%**, personalization **0→100%** (n=4, confounded).
