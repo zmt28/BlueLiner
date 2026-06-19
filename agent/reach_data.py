@@ -122,9 +122,29 @@ def designation_status(comid: int, masked: bool = False,
 def candidate_reaches(states, held_out: Optional[set] = None) -> list[dict]:
     """Reaches that LOOK undesignated to the agent: truly undesignated, plus any
     masked held-out designations. Filtered to fishable size (order >= MIN_ORDER
-    or trout-tagged-but-held-out)."""
+    or trout-tagged-but-held-out), and — crucially — with same-stream extensions
+    of KNOWN trout water removed.
+
+    Why drop same-stream extensions: a reach that shares a `levelpathid` with a
+    designated reach is just another segment of a stream we already know is trout
+    water. The map already renders that stream's designated sections (color is
+    per-reach), so surfacing the untagged remainder isn't a discovery — it's
+    restating the obvious, and at distance ~0 it would dominate the ranking and
+    bury the genuinely novel leads (a DIFFERENT tributary near trout water).
+
+    This uses the same masking unit as the backtest: in the held-out evaluation a
+    whole stream's designation is masked by `levelpathid`, so it contributes no
+    *visible* trout levelpath here and its reaches correctly STAY candidates —
+    the agent must rediscover them via a different nearby trout stream, not via
+    its own (hidden) designation. Production (no held-outs) excludes every
+    same-stream extension."""
     held_out = held_out or set()
     reg = _region(tuple(states))
+    # Levelpaths of trout water the agent is allowed to see (held-outs excluded).
+    visible_trout_levelpaths = {
+        r["levelpathid"] for r in reg["designated_recs"]
+        if r["levelpathid"] is not None and r["comid"] not in held_out
+    }
     out = []
     for r in reg["reaches"]:
         visible_designated = bool(r["trout_class"]) and r["comid"] not in held_out
@@ -132,6 +152,11 @@ def candidate_reaches(states, held_out: Optional[set] = None) -> list[dict]:
             continue  # the agent excludes already-known trout water
         if r["streamorder"] < MIN_ORDER and not r["trout_class"]:
             continue  # too small to reliably hold fish (and not trout-tagged)
+        # Same-stream extension of visible trout water -> not a discovery. (A
+        # held-out reach isn't dropped here: its whole stream is masked, so its
+        # levelpath isn't in the visible set.)
+        if r["comid"] not in held_out and r["levelpathid"] in visible_trout_levelpaths:
+            continue
         out.append(r)
     return out
 
