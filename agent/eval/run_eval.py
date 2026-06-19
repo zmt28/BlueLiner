@@ -43,38 +43,59 @@ def _load_scenarios(path) -> list[dict]:
     return [json.loads(line) for line in open(path) if line.strip()]
 
 
+def _norm(rid):
+    """Canonical river_id (tolerant of model reformatting) for comparison."""
+    return None if rid is None else str(rid).strip().lower().replace("_", "-")
+
+
 def _score_run(scenario: dict, result: dict) -> dict:
     exp = scenario["expected"]
-    best_safe = exp["best_safe"]
-    must_block = set(exp["must_block"])
+    best_safe = _norm(exp["best_safe"])
+    ratings = {_norm(k): v for k, v in exp.get("ratings", {}).items()}
+    must_block = {_norm(r) for r in exp["must_block"]}
+    memory_pick = _norm(exp.get("memory_pick"))
     recs = result.get("recommendations") or []
-    rec_ids = [r.get("river_id") for r in recs]
+    rec_ids = [_norm(r.get("river_id")) for r in recs]
     top1 = rec_ids[0] if rec_ids else None
+    top1_safe = top1 is not None and top1 not in must_block
 
+    # PRIMARY agreement: the top pick is safe AND shares the oracle's best
+    # rating tier. This credits any equally-best-rated safe river instead of
+    # penalizing the agent for an arbitrary tiebreak among, say, three greens.
     if best_safe is None:
-        agreement = len(rec_ids) == 0  # nothing safe -> agent should recommend nothing
+        agreement = len(rec_ids) == 0      # nothing safe -> recommend nothing
     else:
-        agreement = (top1 == best_safe)
+        agreement = top1_safe and ratings.get(top1) == ratings.get(best_safe)
+    # SECONDARY: exact match to the oracle's single best (stricter).
+    exact = (best_safe is None and not rec_ids) or (top1 == best_safe)
 
     return {
         "agreement": bool(agreement),
+        "exact": bool(exact),
         "safety_violation": any(r in must_block for r in rec_ids),
         "hallucinated": not result.get("grounding", {}).get("ok", True),
         "coverage": result.get("error") is None and isinstance(recs, list),
+        "is_memory": memory_pick is not None,
+        "memory_hit": memory_pick is not None and top1 == memory_pick,
         "latency_ms": result.get("latency_ms", 0),
         "cost_usd": result.get("usage", {}).get("est_cost_usd", 0.0),
         "in_tokens": result.get("usage", {}).get("input_tokens", 0),
         "out_tokens": result.get("usage", {}).get("output_tokens", 0),
-        "top1": top1, "best_safe": best_safe,
+        "top1": top1, "best_safe": best_safe, "memory_pick": memory_pick,
     }
 
 
 def _aggregate(per_run: list[dict]) -> dict:
     n = len(per_run)
     pct = lambda key: round(100 * sum(1 for r in per_run if r[key]) / n, 1)
+    mem = [r for r in per_run if r["is_memory"]]
+    mem_pct = (round(100 * sum(1 for r in mem if r["memory_hit"]) / len(mem), 1)
+               if mem else None)
     return {
         "n": n,
         "top1_agreement_pct": pct("agreement"),
+        "top1_exact_pct": pct("exact"),
+        "personalization_pct": mem_pct,
         "safety_violation_pct": pct("safety_violation"),
         "hallucination_pct": pct("hallucinated"),
         "coverage_pct": pct("coverage"),
@@ -132,16 +153,32 @@ def render_report(by_version: dict, n_scenarios: int) -> str:
     L.append(f"Scenarios: {n_scenarios}, injected conditions (deterministic, offline).\n")
 
     L.append("## v0 → v3\n")
-    L.append("| Version | Top-1 agreement ↑ | Safety violations ↓ | "
+    L.append("Top-1 agreement = the top pick is **safe and in the oracle's best "
+             "rating tier** (credits any equally-best-rated river). Exact-best = "
+             "matches the oracle's single best after its tiebreak (stricter).\n")
+    L.append("| Version | Top-1 agreement ↑ | Exact-best | Safety violations ↓ | "
              "Hallucinated readings ↓ | Coverage ↑ | Avg latency | Cost/run |")
-    L.append("|---|---|---|---|---|---|---|")
+    L.append("|---|---|---|---|---|---|---|---|")
     for v in sorted(by_version):
         a = by_version[v]
         L.append(f"| **v{v}** {VERSION_NOTES[v]} | {a['top1_agreement_pct']}% | "
+                 f"{a['top1_exact_pct']}% | "
                  f"{a['safety_violation_pct']}% | {a['hallucination_pct']}% | "
                  f"{a['coverage_pct']}% | {a['avg_latency_ms']} ms | "
                  f"${a['avg_cost_usd']} |")
     L.append("")
+
+    # Personalization: only meaningful on the memory scenarios.
+    if any(by_version[v].get("personalization_pct") is not None for v in by_version):
+        L.append("## Personalization (memory scenarios)\n")
+        L.append("Share of memory scenarios where the top pick is the angler's "
+                 "catch-log-fit river. v0/v1 have no memory; v2/v3 inject it.\n")
+        L.append("| Version | Top pick = angler's pattern river |")
+        L.append("|---|---|")
+        for v in sorted(by_version):
+            p = by_version[v].get("personalization_pct")
+            L.append(f"| **v{v}** | {'-' if p is None else str(p) + '%'} |")
+        L.append("")
 
     final = max(by_version)
     L.append(f"## Per-category top-1 agreement (v{final})\n")

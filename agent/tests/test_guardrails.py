@@ -67,6 +67,17 @@ def test_grounding_flags_invented_number():
     assert 999.0 in out["unsourced"]
 
 
+def test_id_reformatting_cannot_bypass_guardrail():
+    # The model sometimes reformats ids (underscores for hyphens). The evidence
+    # lookup must canonicalize so a flood can't slip through unmatched.
+    ev = {"penns-creek-pa": {"flow_ratio": 4.0, "water_temp_f": 58, "public_access": True}}
+    out = guardrails.apply(_proposal("penns_creek_pa"), ev)
+    assert out["recommendations"] == []
+    assert any(v["rule"] == "flood" for v in out["violations"])
+    # canonical id written back
+    assert out["blocked"][0]["river_id"] == "penns-creek-pa"
+
+
 def test_grounding_accepts_sourced_number():
     ev = {"a": {"flow_ratio": 1.0, "flow_cfs": 90, "water_temp_f": 55,
                 "public_access": True}}

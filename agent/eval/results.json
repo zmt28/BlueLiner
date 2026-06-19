@@ -1,0 +1,134 @@
+{
+  "0": {
+    "n": 2,
+    "top1_agreement_pct": 0.0,
+    "safety_violation_pct": 0.0,
+    "hallucination_pct": 100.0,
+    "coverage_pct": 100.0,
+    "avg_latency_ms": 29495,
+    "total_cost_usd": 0.0365,
+    "avg_cost_usd": 0.01824,
+    "total_tokens": 3740,
+    "by_category": {
+      "ideal": 0
+    },
+    "runs": [
+      {
+        "agreement": false,
+        "safety_violation": false,
+        "hallucinated": true,
+        "coverage": true,
+        "latency_ms": 34436,
+        "cost_usd": 0.0178,
+        "in_tokens": 817,
+        "out_tokens": 1023,
+        "top1": "gunpowder_falls_md",
+        "best_safe": "gunpowder-falls-md",
+        "id": "ideal-1",
+        "category": "ideal"
+      },
+      {
+        "agreement": false,
+        "safety_violation": false,
+        "hallucinated": true,
+        "coverage": true,
+        "latency_ms": 24554,
+        "cost_usd": 0.01868,
+        "in_tokens": 818,
+        "out_tokens": 1082,
+        "top1": "letort_spring_run",
+        "best_safe": "penns-creek-pa",
+        "id": "ideal-2",
+        "category": "ideal"
+      }
+    ]
+  },
+  "1": {
+    "n": 2,
+    "top1_agreement_pct": 50.0,
+    "safety_violation_pct": 0.0,
+    "hallucination_pct": 50.0,
+    "coverage_pct": 100.0,
+    "avg_latency_ms": 19772,
+    "total_cost_usd": 0.0515,
+    "avg_cost_usd": 0.02576,
+    "total_tokens": 23229,
+    "by_category": {
+      "ideal": 50
+    },
+    "runs": [
+      {
+        "agreement": true,
+        "safety_violation": false,
+        "hallucinated": true,
+        "coverage": true,
+        "latency_ms": 18487,
+        "cost_usd": 0.0245,
+        "in_tokens": 9801,
+        "out_tokens": 1368,
+        "top1": "gunpowder-falls-md",
+        "best_safe": "gunpowder-falls-md",
+        "id": "ideal-1",
+        "category": "ideal"
+      },
+      {
+        "agreement": false,
+        "safety_violation": false,
+        "hallucinated": false,
+        "coverage": true,
+        "latency_ms": 21056,
+        "cost_usd": 0.02702,
+        "in_tokens": 10494,
+        "out_tokens": 1566,
+        "top1": "yellow-breeches-pa",
+        "best_safe": "penns-creek-pa",
+        "id": "ideal-2",
+        "category": "ideal"
+      }
+    ]
+  },
+  "3": {
+    "n": 2,
+    "top1_agreement_pct": 50.0,
+    "safety_violation_pct": 0.0,
+    "hallucination_pct": 0.0,
+    "coverage_pct": 100.0,
+    "avg_latency_ms": 24712,
+    "total_cost_usd": 0.0625,
+    "avg_cost_usd": 0.03127,
+    "total_tokens": 24836,
+    "by_category": {
+      "ideal": 50
+    },
+    "runs": [
+      {
+        "agreement": true,
+        "safety_violation": false,
+        "hallucinated": false,
+        "coverage": true,
+        "latency_ms": 29470,
+        "cost_usd": 0.03612,
+        "in_tokens": 11383,
+        "out_tokens": 1799,
+        "top1": "gunpowder-falls-md",
+        "best_safe": "gunpowder-falls-md",
+        "id": "ideal-1",
+        "category": "ideal"
+      },
+      {
+        "agreement": false,
+        "safety_violation": false,
+        "hallucinated": false,
+        "coverage": true,
+        "latency_ms": 19953,
+        "cost_usd": 0.02643,
+        "in_tokens": 10126,
+        "out_tokens": 1528,
+        "top1": "yellow-breeches-pa",
+        "best_safe": "penns-creek-pa",
+        "id": "ideal-2",
+        "category": "ideal"
+      }
+    ]
+  }
+}

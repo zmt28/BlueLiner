@@ -65,14 +65,18 @@ def cond(temp, flow, median, hours=0.5, tier="public"):
             "last_updated_hours_ago": hours, "access_tier": tier}
 
 
-def scenario(sid, category, candidates, conditions, text, user_id=None, top_n=3):
+def scenario(sid, category, candidates, conditions, text, user_id=None,
+             top_n=3, memory_pick=None):
+    expected = _oracle(conditions)
+    if memory_pick is not None:
+        expected["memory_pick"] = memory_pick
     return {
         "id": sid, "category": category,
         "request": {"lat": LAT, "lng": LNG, "state": None, "dates": None,
                     "preferences": "", "user_id": user_id,
                     "radius_miles": 120, "top_n": top_n, "text": text},
         "injected": {"candidates": candidates, "conditions": conditions},
-        "expected": _oracle(conditions),
+        "expected": expected,
     }
 
 
@@ -203,18 +207,31 @@ def build() -> list[dict]:
          "big-hunting-creek-md": cond(72, 14, 16)},             # too warm
         "Only two options and both look bad -- confirm?"))
 
-    # --- memory-sensitive: two greens; angler's pattern should break the tie ---
-    # (user_id 1 is seeded with brown-trout catches clustering cool + ~1x median)
-    S.append(scenario("memory-1", "ideal",
+    # --- memory: two equally-rated (green) rivers; the angler's seeded pattern
+    # (browns at cool water ~52-57F, near-median flow) should tip the pick to the
+    # cooler, in-band river. memory_pick = the catch-log-fit river. ---
+    S.append(scenario("memory-1", "memory",
         ["gunpowder-falls-md", "patapsco-river-md"],
         {"gunpowder-falls-md": cond(54, 100, 110),      # cool, ~0.9x  (fits pattern)
          "patapsco-river-md": cond(64, 190, 180)},       # warmer, ~1.05x
-        "Where should I go this weekend?", user_id=1))
-    S.append(scenario("memory-2", "ideal",
+        "Where should I go this weekend?", user_id=1,
+        memory_pick="gunpowder-falls-md"))
+    S.append(scenario("memory-2", "memory",
         ["spring-creek-pa", "penns-creek-pa"],
-        {"spring-creek-pa": cond(55, 74, 78),
-         "penns-creek-pa": cond(63, 315, 300)},
-        "PA pick for me?", user_id=1))
+        {"spring-creek-pa": cond(55, 74, 78),            # cool (fits pattern)
+         "penns-creek-pa": cond(63, 315, 300)},          # warmer
+        "PA pick for me?", user_id=1, memory_pick="spring-creek-pa"))
+    S.append(scenario("memory-3", "memory",
+        ["savage-river-md", "north-branch-potomac-md"],
+        {"savage-river-md": cond(53, 125, 130),          # cool (fits pattern)
+         "north-branch-potomac-md": cond(62, 250, 260)}, # warmer
+        "Western MD pick for me?", user_id=1,
+        memory_pick="savage-river-md"))
+    S.append(scenario("memory-4", "memory",
+        ["rapidan-river-va", "patapsco-river-md"],
+        {"rapidan-river-va": cond(54, 48, 50),           # cool (fits pattern)
+         "patapsco-river-md": cond(64, 185, 180)},       # warmer
+        "VA pick for me?", user_id=1, memory_pick="rapidan-river-va"))
 
     return S
 

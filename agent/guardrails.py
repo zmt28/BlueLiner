@@ -39,6 +39,12 @@ _SMALL_COUNTS = {0.0, 1.0, 2.0, 3.0, 4.0, 5.0}
 _NUM_RE = re.compile(r"-?\d+(?:\.\d+)?")
 
 
+def _norm(rid) -> str:
+    """Canonical river_id form, tolerant of model reformatting (hyphen/underscore,
+    case, whitespace)."""
+    return str(rid).strip().lower().replace("_", "-")
+
+
 def _allowed_numbers(evidence: dict) -> set[float]:
     allowed: set[float] = set(_DOMAIN_CONSTANTS) | set(_SMALL_COUNTS)
     for ev in evidence.values():
@@ -83,6 +89,11 @@ def apply(proposal: dict, evidence: dict) -> dict:
     blocked: list[dict] = list(proposal.get("blocked", []))
     blocked_ids = {b.get("river_id") for b in blocked}
 
+    # Canonicalize: the model occasionally re-formats river_ids (e.g. underscores
+    # for hyphens). Match against the evidence keys so a format drift can NEVER
+    # bypass a guardrail by making the evidence lookup silently miss.
+    ev_index = {_norm(k): (k, v) for k, v in evidence.items()}
+
     def block(river_id, reason, rule):
         if river_id not in blocked_ids:
             blocked.append({"river_id": river_id, "reason": reason})
@@ -90,8 +101,9 @@ def apply(proposal: dict, evidence: dict) -> dict:
         violations.append(Violation(rule, river_id, "block", reason))
 
     for rec in proposal.get("recommendations", []):
-        rid = rec.get("river_id")
-        ev = evidence.get(rid, {})
+        rid, ev = ev_index.get(_norm(rec.get("river_id")),
+                               (rec.get("river_id"), {}))
+        rec["river_id"] = rid  # write back the canonical id
         ratio = ev.get("flow_ratio")
         temp = ev.get("water_temp_f")
         public = ev.get("public_access", True)
