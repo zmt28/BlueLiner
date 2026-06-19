@@ -31,6 +31,13 @@
          helper after any dynamic HTML injection so freshly-rendered
          <i data-lucide="..."> nodes get hydrated to inline SVG. -->
     <script src="https://unpkg.com/lucide@latest" defer></script>
+    <!-- Agent demo panel (LOCAL ONLY). Ships in the static bundle but self-gates:
+         on boot it GETs /api/agent/health and stays invisible unless the server
+         reports {enabled:true}. The public deployment never mounts the agent
+         router (route 404s) and never sets AGENT_DEMO_ENABLED, so this is inert
+         in production. It only activates against agent/demo_server.py run locally
+         with AGENT_DEMO_ENABLED=1. No API key is ever exposed to the browser. -->
+    <script src="/static/agent-demo.js" defer></script>
 </head>
 <body>
     <!-- =====================================================================
