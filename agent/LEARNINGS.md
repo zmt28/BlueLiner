@@ -160,6 +160,78 @@ system evolves (trip-planner → prospector/LangGraph → harness A/B).
 
 ---
 
+## 6. Prospector (discovery agent) — eval methodology learnings
+
+These came out of building the held-out-labels backtest on real MD/VA/PA reaches
+(103.6K bundled reaches, 36.4K designated trout reaches as labels). Most are
+about making a *discovery* eval honest — a strong "how I measured / what didn't
+work" thread.
+
+### 6.1 Mask whole RIVERS, not random reaches (segment in-painting)
+- **What:** first version held out random reaches and got ROC-AUC 0.999 —
+  suspiciously perfect. A masked reach is geometrically adjacent to other visible
+  segments of the *same* river, so "proximity to trout water" recovers it
+  trivially. That's segment in-painting, not discovery.
+- **Fix:** mask whole watercourses by `levelpathid`, so a held-out river must be
+  found via proximity to a *different* trout river — genuine discovery.
+- **Slide:** evaluation rigor — "the first eval was measuring the wrong thing."
+
+### 6.2 Easy negatives inflate AUC → add a hard-negative test
+- Trout water clusters geographically, so held-out trout rivers separate from a
+  *random* undesignated background near-perfectly (AUC ~0.99) — optimistic. Added
+  a **hard-negative AUC**: held-outs vs only *near-trout undesignated* reaches.
+  That's the honest, harder number where topology can't separate and the other
+  signals must. Bracketing optimistic (random) vs pessimistic (hard) AUC is the
+  senior move.
+
+### 6.3 For trout, SIZE is a weak/negative signal — topology dominates
+- Naively weighting stream-order/flow into suitability *collapsed* held-out
+  recall (the gated AUC inverted, hard-neg AUC < 0.5). Reason: **trout thrive in
+  small cold tributaries** (order 2-3), but the undesignated background is filtered
+  to order ≥3 — so "bigger = better" demotes exactly the water we want. Lesson:
+  the broad ranker is **topology-dominant** (0.8 weight); size is a soft floor, not
+  a discriminator.
+
+### 6.4 Offline thermal is uninformative — it belongs on the shortlist, not the broad ranker
+- Without network, there are no same-network gauge readings, so a thermal term is
+  a constant that just *dilutes* topology. Decision: thermal counts only when
+  actually gauged; the real thermal refinement happens on the **top-K shortlist**
+  via the LLM/live-fetch layer (the v1→v2 lever), not in the deterministic broad
+  ranker. This also motivates the architecture: deterministic topology ranks 60K
+  reaches for free; the LLM touches only the shortlist (bounded cost).
+
+### 6.5 Access is the binding constraint AND the data gap (the RV punchline)
+- **Finding:** topology is a near-perfect *lead generator* (AUC 0.99), but
+  enforcing access **collapses** recall (AUC 0.99 → 0.77, recall@100 0.25 → 0.07).
+  Not a model bug: we only have access **POINTS** (PAD-US public-land *polygons*
+  were retired to vector tiles), and they're sparse and **skewed toward private
+  easements on trout water**, so a naive access filter zeroes the very reaches we
+  want.
+- **Design response (matches the uncertainty guardrail):** access is a *guardrail*
+  (hard-exclude only KNOWN-private — absence of a mapped point ≠ private) plus an
+  *uncertainty flag* ("verify access locally"), NOT a rank demotion. Access
+  violations (surfacing known-private) = 0; ~most surfaced prospects carry the
+  verify-access flag — that count *is* the data-gap metric.
+- **The slide:** "the value and the bottleneck are both in qualifying inventory on
+  the binding constraint" — and here the bottleneck is *data coverage of that
+  constraint*, so the roadmap lever is wiring PAD-US polygons back in, not more
+  modeling. Direct RV "undervalued inventory" mapping.
+
+### 6.6 Topology is a geometry-proximity PROXY (documented limitation)
+- The bundled NHDPlus VAA keeps no downstream pointers (`comid`, `hydroseq`,
+  `levelpathid`, `streamlevel`, `gnis_name`, `lengthkm` only), so we can't walk the
+  flow network to *prove* "tributary of a trout stream." We approximate with
+  shapely geometry proximity to the nearest designated trout reach (offline,
+  scales to 60K). Exact flow-network tributary topology via NLDI navigation is the
+  expansion path — but it doesn't scale to a whole-region backtest under rate
+  limits.
+
+### 6.7 Positive-unlabeled, stated plainly
+- Non-held-out undesignated reaches are *unlabeled*, not negatives — a top-ranked
+  one may be a real discovery the backtest can't credit. So recall is a **lower
+  bound** and PR-AUC uses sampled background as proxy negatives. "My eval
+  undercounts my wins by construction" is itself a differentiator.
+
 ## Running facts for the deck
 - Trip-planner v0→v3: agreement **8→100%**, safety **16→0% (enforced)**,
   hallucination **100→0%**, personalization **0→100%** (n=4, confounded).
