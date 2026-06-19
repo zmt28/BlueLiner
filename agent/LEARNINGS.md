@@ -242,6 +242,35 @@ work" thread.
   bound** and PR-AUC uses sampled background as proxy negatives. "My eval
   undercounts my wins by construction" is itself a differentiator.
 
+### 6.8 A product critique tightened BOTH the output and the eval (same-stream extensions)
+- **The critique (from review):** the agent's top results were things like "Elks
+  Run — undesignated reach on the same-named designated trout stream, distance
+  0.0 mi." That's not a discovery — it's *the rest of a stream we already know is
+  trout water*, and the map already renders designations per-reach, so the angler
+  can see it. At distance 0.0 these dominated the ranking and **buried** the
+  genuinely novel leads (a *different* tributary near trout water).
+- **The fix, in one principled unit:** drop any candidate whose `levelpathid`
+  matches a known-trout reach's. Same `levelpathid` = same continuous flow path =
+  same stream. Chose levelpathid over name because names ("Mill Creek", "Beaver
+  Creek") repeat across genuinely different streams — name-matching would wrongly
+  delete real discoveries. This is the **same masking unit as §6.1**, so the live
+  agent and the eval now define "a valid discovery" identically. In MD this
+  removed **29% of candidates** (1,765 / 6,012) and dropped distance-0 results to
+  **zero**, leaving 81 real near-a-*different*-trout-stream leads.
+- **The honest eval delta (isolated, MD/VA/PA):** topology-only barely moved
+  (recall@100 0.247→0.247, hard-neg AUC 0.981→0.986) — it never leaned on these.
+  The **full** (access-gated) model improved (hard-neg AUC 0.316→~0.50,
+  recall@100 0.069→0.096) because the removed extensions were **positive-unlabeled**
+  (§6.7) — almost-certainly-trout water that was being counted as *negatives* and
+  unfairly penalizing the gated ranker. The full model's hard-neg AUC is *still*
+  ~chance (~0.50), so the honest §6.5 finding ("access-gating costs
+  discrimination") is **preserved, not cooked** — the gain is removing mislabeled
+  negatives, not a real lift in separability.
+- **The slide:** a sharp product question ("isn't this result useless?") drove a
+  change that cleaned the product, aligned live behavior with the eval's
+  definition of success, *and* surfaced a measurement bias — and I reported the
+  metric move with its cause instead of just banking the prettier number.
+
 ## 7. LangGraph orchestration — what the framework did (and didn't) buy
 
 ### 7.1 LangGraph moved reliability/legibility, NOT quality — say this plainly
