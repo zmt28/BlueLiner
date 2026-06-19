@@ -10,10 +10,18 @@ from __future__ import annotations
 
 import pytest
 
-from agent import prospector_nodes as N
-from agent.prospector_graph import build_graph
-
+# The graph layer pulls the agent stack (mcp/anthropic) + langgraph, which the
+# app's lean requirements-dev.txt (what CI installs) doesn't include. Skip
+# cleanly there; this module runs wherever agent/requirements.txt is installed.
+# Guards MUST precede the agent imports below, or collection ImportErrors before
+# the skip fires.
+pytest.importorskip("mcp")
+pytest.importorskip("anthropic")
+pytest.importorskip("langgraph")
 pytest.importorskip("shapely")
+
+from agent import prospector_nodes as N  # noqa: E402
+from agent.prospector_graph import build_graph  # noqa: E402
 
 
 def _merge(state, update):
