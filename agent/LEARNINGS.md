@@ -283,6 +283,33 @@ work" thread.
 - **Confidence stays deterministic — the LLM explains, it does not re-score.**
   Keeps the calibration curve meaningful and the rationale grounded.
 
+## 8. The controlled harness A/B — measured, not asserted (the framework slide)
+
+Ran the trip-planner v3 over the same 25 scenarios under **both** orchestrations
+(hand-written loop vs LangGraph), holding tools/scorer/guardrails/prompts/model
+split identical — `apply_guardrails` and `_gather`/`_rank` are literally the same
+functions, so the only variable is the sequencing.
+
+| Orchestrator | Agreement | Safety | Hallucinated | Avg latency | Cost/run | Orchestration LOC |
+|---|---|---|---|---|---|---|
+| hand  | 100% | 0% | 0% | 19,421 ms | $0.0265 | 17 |
+| graph | 100% | 0% | 0% | 19,790 ms | $0.0252 | 38 |
+
+- **Quality is identical** — agreement/safety/hallucination flat. The framework is
+  **not a quality lever**; claiming it boosted metrics would be a confound. Saying
+  this out loud (and showing it) is the differentiator vs. a framework-chaser.
+- The only real delta is **2.2× the orchestration code** (38 vs 17 lines) — a state
+  class, node wrappers, graph wiring, and a dependency — for a **linear** workflow
+  with nothing to branch on and no interrupt to resume. Latency/cost are within
+  noise.
+- **The decision this justifies, empirically:** hand-written loop for the linear
+  trip-planner; LangGraph for the branching, human-in-the-loop prospector (where
+  `interrupt()` + durable checkpointing earned their place — see §7.2). Same
+  building blocks, right tool per workflow.
+- Pair with the argued (not built) **single-vs-multi-agent** restraint: the
+  prospector's subtasks are deterministic, so a multi-agent bake-off would measure
+  a strawman — "an agent per geometry calc is overhead by construction."
+
 ## Running facts for the deck
 - Trip-planner v0→v3: agreement **8→100%**, safety **16→0% (enforced)**,
   hallucination **100→0%**, personalization **0→100%** (n=4, confounded).
