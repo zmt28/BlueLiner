@@ -1,0 +1,56 @@
+{
+  "hand": {
+    "n": 25,
+    "top1_agreement_pct": 100.0,
+    "top1_exact_pct": 88.0,
+    "personalization_pct": 100.0,
+    "safety_violation_pct": 0.0,
+    "hallucination_pct": 0.0,
+    "coverage_pct": 100.0,
+    "avg_latency_ms": 19421,
+    "total_cost_usd": 0.6617,
+    "avg_cost_usd": 0.02647,
+    "total_tokens": 347017,
+    "by_category": {
+      "ideal": 100,
+      "marginal": 100,
+      "flood": 100,
+      "too_warm": 100,
+      "private": 100,
+      "stale": 100,
+      "tie": 100,
+      "adversarial": 100,
+      "all_blocked": 100,
+      "memory": 100
+    }
+  },
+  "graph": {
+    "n": 25,
+    "top1_agreement_pct": 100.0,
+    "top1_exact_pct": 88.0,
+    "personalization_pct": 100.0,
+    "safety_violation_pct": 0.0,
+    "hallucination_pct": 0.0,
+    "coverage_pct": 100.0,
+    "avg_latency_ms": 19790,
+    "total_cost_usd": 0.6308,
+    "avg_cost_usd": 0.02523,
+    "total_tokens": 339718,
+    "by_category": {
+      "ideal": 100,
+      "marginal": 100,
+      "flood": 100,
+      "too_warm": 100,
+      "private": 100,
+      "stale": 100,
+      "tie": 100,
+      "adversarial": 100,
+      "all_blocked": 100,
+      "memory": 100
+    }
+  },
+  "orchestration_loc": {
+    "hand": 17,
+    "graph": 38
+  }
+}
