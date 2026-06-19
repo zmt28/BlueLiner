@@ -1,0 +1,184 @@
+{
+  "request": {
+    "lat": 39.5,
+    "lng": -79.1,
+    "state": null,
+    "dates": null,
+    "preferences": "",
+    "user_id": null,
+    "radius_miles": 120,
+    "top_n": 2,
+    "text": "Western MD this weekend -- gauges look laggy."
+  },
+  "version": 3,
+  "started_at": "2026-06-19T16:55:18.038870+00:00",
+  "cheap_model": "claude-haiku-4-5",
+  "strong_model": "claude-sonnet-4-6",
+  "tool_calls": [
+    {
+      "name": "get_candidate_rivers",
+      "args": {
+        "lat": 39.5,
+        "lng": -79.1,
+        "radius_miles": 120
+      },
+      "latency_ms": 7,
+      "source": "injected (eval scenario)",
+      "ok": true
+    },
+    {
+      "name": "get_forecast",
+      "args": {
+        "lat": 39.5,
+        "lng": -79.1,
+        "days": 3
+      },
+      "latency_ms": 1634,
+      "source": "noaa-live",
+      "ok": true
+    },
+    {
+      "name": "get_river_conditions",
+      "args": {
+        "river_id": "savage-river-md"
+      },
+      "latency_ms": 3,
+      "source": "injected (eval scenario)",
+      "ok": true
+    },
+    {
+      "name": "get_river_conditions",
+      "args": {
+        "river_id": "north-branch-potomac-md"
+      },
+      "latency_ms": 2,
+      "source": "injected (eval scenario)",
+      "ok": true
+    },
+    {
+      "name": "get_access",
+      "args": {
+        "river_id": "savage-river-md"
+      },
+      "latency_ms": 2,
+      "source": "injected (eval scenario)",
+      "ok": true
+    },
+    {
+      "name": "get_access",
+      "args": {
+        "river_id": "north-branch-potomac-md"
+      },
+      "latency_ms": 2,
+      "source": "injected (eval scenario)",
+      "ok": true
+    }
+  ],
+  "violations": [
+    {
+      "rule": "staleness",
+      "river_id": "savage-river-md",
+      "action": "confidence",
+      "detail": "reading 11h old (> 6h)"
+    }
+  ],
+  "confidence": "low",
+  "usage": {
+    "input_tokens": 10114,
+    "output_tokens": 1400,
+    "cache_read_tokens": 0,
+    "by_model": {
+      "claude-haiku-4-5": {
+        "input": 8557,
+        "output": 952
+      },
+      "claude-sonnet-4-6": {
+        "input": 1557,
+        "output": 448
+      }
+    },
+    "est_cost_usd": 0.02471
+  },
+  "latency_ms": 20505,
+  "result": {
+    "version": 3,
+    "recommendations": [
+      {
+        "river_id": "savage-river-md",
+        "name": "Savage River",
+        "verdict": "Go \u2014 flow at 120 cfs (92% of median) and water temp at 52\u00b0F are ideal trout conditions.",
+        "overall_score": "green",
+        "confidence": "low",
+        "why": [
+          "Flow is 120 cfs, just 92% of the 130 cfs median \u2014 well within safe, fishable range",
+          "Water temp of 52\u00b0F is prime for trout (well below the 68\u00b0F ceiling)",
+          "Public access with 4 access points, only 1.3 miles away",
+          "Data is 11 hours old, reducing confidence slightly but conditions appear stable",
+          "Forecast shows mostly sunny skies with minimal precipitation (2\u201317%) over the weekend, unlikely to spike flows"
+        ],
+        "sources": [
+          "injected (eval scenario)",
+          "noaa-live"
+        ],
+        "warnings": [
+          "stale data (reading 11h old)"
+        ]
+      },
+      {
+        "river_id": "north-branch-potomac-md",
+        "name": "North Branch Potomac",
+        "verdict": "Caution \u2014 flow at 600 cfs is 231% of median, significantly elevated; water temp of 64\u00b0F is still safe for trout but conditions are rough.",
+        "overall_score": "yellow",
+        "confidence": "high",
+        "why": [
+          "Flow is 600 cfs, 231% of the 260 cfs median \u2014 well above normal and potentially dangerous/unfishable",
+          "Water temp of 64\u00b0F is below the 68\u00b0F trout threshold but on the warmer side",
+          "5 public access points, 13.5 miles away",
+          "Data is very fresh (0.4 hours ago), giving high confidence in the reading",
+          "Elevated flow likely due to recent runoff; minimal precip forecast may help flows recede"
+        ],
+        "sources": [
+          "injected (eval scenario)",
+          "noaa-live"
+        ]
+      }
+    ],
+    "blocked": [],
+    "notes": "Savage River is the clear top pick this weekend; North Branch Potomac is fishable in terms of temperature but the severely elevated flow warrants caution \u2014 wade carefully or consider bank fishing only.",
+    "violations": [
+      {
+        "rule": "staleness",
+        "river_id": "savage-river-md",
+        "action": "confidence",
+        "detail": "reading 11h old (> 6h)"
+      }
+    ],
+    "grounding": {
+      "ok": true,
+      "unsourced": []
+    },
+    "evidence_river_ids": [
+      "north-branch-potomac-md",
+      "savage-river-md"
+    ],
+    "confidence": "low",
+    "usage": {
+      "input_tokens": 10114,
+      "output_tokens": 1400,
+      "cache_read_tokens": 0,
+      "by_model": {
+        "claude-haiku-4-5": {
+          "input": 8557,
+          "output": 952
+        },
+        "claude-sonnet-4-6": {
+          "input": 1557,
+          "output": 448
+        }
+      },
+      "est_cost_usd": 0.02471
+    },
+    "latency_ms": 20505
+  },
+  "error": null
+}

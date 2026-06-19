@@ -159,6 +159,22 @@ def _merge_evidence(evidence: dict, name: str, obj: object) -> None:
                  access_points=obj.get("access_points"))
 
 
+def _collect_numbers(obj, out: set) -> None:
+    """Recursively gather every numeric value a tool returned, so the grounding
+    check whitelists the full set of readings the agent actually saw this
+    session (conditions, forecast temps/precip, medians, memory patterns, ...)."""
+    if isinstance(obj, bool):
+        return
+    if isinstance(obj, (int, float)):
+        out.add(float(obj))
+    elif isinstance(obj, dict):
+        for v in obj.values():
+            _collect_numbers(v, out)
+    elif isinstance(obj, list):
+        for v in obj:
+            _collect_numbers(v, out)
+
+
 def _parse_json(text: str) -> dict:
     """Extract the outermost JSON object from a model response."""
     text = text.strip()
@@ -197,8 +213,9 @@ def _complete_json(llm: LLM, *, model: str, system: str, user: str,
 # MCP-driven retrieval loop
 # --------------------------------------------------------------------------
 async def _gather(session: ClientSession, llm: LLM, req: TripRequest,
-                  trace: RunTrace) -> tuple[dict, Optional[dict]]:
-    """Cheap-model tool loop. Returns (evidence, forecast)."""
+                  trace: RunTrace, sourced: set) -> tuple[dict, Optional[dict]]:
+    """Cheap-model tool loop. Returns (evidence, forecast); fills `sourced` with
+    every number any tool returned (for the grounding check)."""
     tools_list = await session.list_tools()
     anthropic_tools = [{"name": t.name, "description": t.description or "",
                         "input_schema": t.inputSchema} for t in tools_list.tools]
@@ -224,6 +241,7 @@ async def _gather(session: ClientSession, llm: LLM, req: TripRequest,
             trace.record_tool(blk.name, dict(blk.input),
                               int((time.monotonic() - t0) * 1000), _source_of(obj))
             _merge_evidence(evidence, blk.name, obj)
+            _collect_numbers(obj, sourced)
             if blk.name == "get_forecast":
                 forecast = obj if isinstance(obj, dict) else forecast
             results.append({"type": "tool_result", "tool_use_id": blk.id,
@@ -274,38 +292,41 @@ async def _plan_async(req: TripRequest, version: int, trace: RunTrace,
     trace.cheap_model = config.CHEAP_MODEL
     trace.strong_model = config.STRONG_MODEL
 
+    evidence: dict = {}
+    sourced: set = set()  # every number any tool returned this session
+
     # v0: naive single call, no tools, no data.
     if version == 0:
         user = req.user_message() + "\n\nReturn JSON only in this shape:\n" + _JSON_SHAPE_HINT
         proposal = _complete_json(llm, model=config.STRONG_MODEL,
                                   system=_V0_SYSTEM, user=user,
                                   max_tokens=config.RANKER_MAX_TOKENS)
-        evidence: dict = {}
     else:
         async with stdio_client(_stdio_params()) as (r, w):
             async with ClientSession(r, w) as session:
                 await session.initialize()
-                evidence, forecast = await _gather(session, llm, req, trace)
+                evidence, forecast = await _gather(session, llm, req, trace, sourced)
                 memory = None
                 if version >= 2 and req.user_id is not None:
                     memory = await _fetch_memory(session, req.user_id, trace)
+                    _collect_numbers(memory, sourced)
                 proposal = _rank(llm, req, evidence, forecast, memory)
 
                 # v3: deterministic guardrails + one grounding-correction retry.
                 if version >= 3:
-                    guarded = guardrails.apply(proposal, evidence)
+                    guarded = guardrails.apply(proposal, evidence, sourced)
                     if not guarded["grounding_ok"]:
                         correction = (
-                            f"These numbers were not in the evidence and must be "
+                            f"These numbers were not in any tool result and must be "
                             f"removed or replaced with sourced values: "
                             f"{guarded['unsourced']}.")
                         proposal = _rank(llm, req, evidence, forecast, memory, correction)
-                        guarded = guardrails.apply(proposal, evidence)
+                        guarded = guardrails.apply(proposal, evidence, sourced)
                     proposal = guarded
 
     # Grounding is enforced only in v3, but we always compute it for the report,
     # so the v0->v3 hallucination-rate drop is measurable.
-    g_ok, unsourced = guardrails.check_grounding(proposal, evidence)
+    g_ok, unsourced = guardrails.check_grounding(proposal, evidence, sourced)
     recs = proposal.get("recommendations", [])
     result = {
         "version": version,

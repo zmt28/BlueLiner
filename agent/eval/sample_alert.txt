@@ -1,0 +1,19 @@
+[watch][dev-email] to=demo-angler@blueliner.app
+  subject: North Branch Potomac just hit ideal
+  North Branch Potomac just came into shape: flow 0.9x median, water 56F. Public access, fresh reading. Source: injected (eval scenario).
+
+— Blueliner (you're getting this because North Branch Potomac is on your watchlist)
+
+[watch][dev-email] to=demo-angler@blueliner.app
+  subject: Savage River just hit ideal
+  Savage River just came into shape: flow 0.9x median, water 52F. Public access, fresh reading. Source: injected (eval scenario).
+
+— Blueliner (you're getting this because Savage River is on your watchlist)
+
+[watch][dev-email] to=demo-angler@blueliner.app
+  subject: Gunpowder Falls just hit ideal
+  Gunpowder Falls just came into shape: flow 0.9x median, water 55F. Public access, fresh reading. Source: injected (eval scenario).
+
+— Blueliner (you're getting this because Gunpowder Falls is on your watchlist)
+
+[watch] checked 3 rivers; 3 ideal-transition alert(s) sent.

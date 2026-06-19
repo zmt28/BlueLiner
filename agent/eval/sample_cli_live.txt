@@ -1,0 +1,34 @@
+
+=== Recommendations ===
+1. Patapsco River [green] (confidence: medium)
+   verdict: Go — flow at 56.7 cfs (52% of median) is below the angler's sweet spot but conditions are green, closest river at 9.3 miles, and no temp concerns reported.
+     - Flow is 56.7 cfs, 52% of median (110.0 cfs) — below the angler's historically productive flow band of 0.7–1.2x median for brown trout
+     - Scorer rates conditions green based on current flow vs. median
+     - Closest candidate at 9.3 miles from angler's location
+     - 6 public access points available
+     - Water temp not available; cannot confirm trout-safe temperature
+     sources: usgs-live (01589000)
+2. Big Hunting Creek [green] (confidence: medium)
+   verdict: Go — flow at 34.5 cfs (63% of median) is closer to productive range, green rating, and strong public access, though 52 miles away.
+     - Flow is 34.5 cfs, 63% of median (55.0 cfs) — flow ratio of 0.63 is approaching the angler's productive brown trout band of 0.7–1.2x median
+     - Scorer rates conditions green
+     - 3 public access points; fully public access
+     - Water temp not available; cannot confirm trout-safe temperature
+     - 52.0 miles from angler location — farther than Patapsco but better flow alignment
+     sources: usgs-live (01639500)
+3. Gunpowder Falls [yellow] (confidence: medium)
+   verdict: Caution — flow at 75.6 cfs (45% of median) is yellow-rated and below the angler's productive flow band, though public access is solid.
+     - Flow is 75.6 cfs, 45% of median (169.0 cfs) — well below the angler's productive flow ratio range of 0.7–1.2x median for brown trout
+     - Scorer rates conditions yellow
+     - 6 public access points; fully public
+     - 23.9 miles from angler location
+     - Water temp not available; cannot confirm trout-safe temperature
+     sources: usgs-live (01582500)
+
+=== Blocked (guardrails) ===
+   x beaver-creek-md: No flow, temperature, or gauge data available — cannot assess conditions or safety.
+   x yellow-breeches-pa: No flow, temperature, or gauge data available — cannot assess conditions or safety.
+
+grounding ok: True  unsourced: []
+latency: 25233 ms   tokens: 10757in/1558out   est cost: $0.02921
+notes: Water temperature is absent for all candidates — if temps are elevated (summer conditions), trout stress risk cannot be ruled out; verify locally before fishing.

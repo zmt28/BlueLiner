@@ -36,11 +36,25 @@ class Violation:
 # grounding check doesn't flag the model for quoting the optimal-temp band.
 _DOMAIN_CONSTANTS = {40.0, 45.0, 48.0, 65.0, 68.0, 0.25, 0.5, 2.0, 3.0}
 _SMALL_COUNTS = {0.0, 1.0, 2.0, 3.0, 4.0, 5.0}
-_NUM_RE = re.compile(r"-?\d+(?:\.\d+)?")
+# A leading '-' counts as a negative sign only when NOT preceded by a digit/dot,
+# so ranges like "82-86F" parse as 82 and 86 (not 82 and -86).
+_NUM_RE = re.compile(r"(?<![\d.])-?\d+(?:\.\d+)?")
 
 
-def _allowed_numbers(evidence: dict) -> set[float]:
+def _norm(rid) -> str:
+    """Canonical river_id form, tolerant of model reformatting (hyphen/underscore,
+    case, whitespace)."""
+    return str(rid).strip().lower().replace("_", "-")
+
+
+def _allowed_numbers(evidence: dict, extra: set | None = None) -> set[float]:
+    """Numbers the agent is allowed to cite: every reading any tool returned this
+    session (`extra`), plus the per-river condition fields, domain constants, and
+    derived percent-deltas (the model says "10% above median" where evidence
+    stores "110% of median" -- both trace to the same sourced reading)."""
     allowed: set[float] = set(_DOMAIN_CONSTANTS) | set(_SMALL_COUNTS)
+    if extra:
+        allowed |= {float(x) for x in extra}
     for ev in evidence.values():
         for key in ("flow_cfs", "water_temp_f", "median_cfs",
                     "flow_vs_median_pct", "flow_ratio", "distance_miles",
@@ -49,6 +63,9 @@ def _allowed_numbers(evidence: dict) -> set[float]:
             if isinstance(v, (int, float)):
                 allowed.add(float(v))
                 allowed.add(round(float(v)))
+        pct = ev.get("flow_vs_median_pct")
+        if isinstance(pct, (int, float)):
+            allowed.add(abs(float(pct) - 100.0))   # "X% above/below median"
     return allowed
 
 
@@ -57,10 +74,12 @@ def _is_sourced(n: float, allowed: set[float]) -> bool:
     return any(abs(n - a) <= tol for a in allowed)
 
 
-def check_grounding(proposal: dict, evidence: dict) -> tuple[bool, list[float]]:
+def check_grounding(proposal: dict, evidence: dict,
+                    extra: set | None = None) -> tuple[bool, list[float]]:
     """Scan the recommendation rationale for numbers not traceable to a tool
-    result. Returns (ok, unsourced_numbers)."""
-    allowed = _allowed_numbers(evidence)
+    result. `extra` = every number any tool returned this session (forecast,
+    memory, etc.). Returns (ok, unsourced_numbers)."""
+    allowed = _allowed_numbers(evidence, extra)
     unsourced: list[float] = []
     for rec in proposal.get("recommendations", []):
         text = " ".join(str(b) for b in rec.get("why", []))
@@ -72,16 +91,22 @@ def check_grounding(proposal: dict, evidence: dict) -> tuple[bool, list[float]]:
     return (len(unsourced) == 0), unsourced
 
 
-def apply(proposal: dict, evidence: dict) -> dict:
+def apply(proposal: dict, evidence: dict, extra: set | None = None) -> dict:
     """Filter/demote/annotate the model's proposal per the safety rules.
 
     `evidence` maps river_id -> merged conditions+access dict gathered from
-    tools this session. Returns a corrected proposal plus the violation log.
+    tools this session. `extra` = every number any tool returned this session
+    (for the grounding check). Returns a corrected proposal plus the violation log.
     """
     violations: list[Violation] = []
     survivors: list[dict] = []
     blocked: list[dict] = list(proposal.get("blocked", []))
     blocked_ids = {b.get("river_id") for b in blocked}
+
+    # Canonicalize: the model occasionally re-formats river_ids (e.g. underscores
+    # for hyphens). Match against the evidence keys so a format drift can NEVER
+    # bypass a guardrail by making the evidence lookup silently miss.
+    ev_index = {_norm(k): (k, v) for k, v in evidence.items()}
 
     def block(river_id, reason, rule):
         if river_id not in blocked_ids:
@@ -90,8 +115,9 @@ def apply(proposal: dict, evidence: dict) -> dict:
         violations.append(Violation(rule, river_id, "block", reason))
 
     for rec in proposal.get("recommendations", []):
-        rid = rec.get("river_id")
-        ev = evidence.get(rid, {})
+        rid, ev = ev_index.get(_norm(rec.get("river_id")),
+                               (rec.get("river_id"), {}))
+        rec["river_id"] = rid  # write back the canonical id
         ratio = ev.get("flow_ratio")
         temp = ev.get("water_temp_f")
         public = ev.get("public_access", True)
@@ -130,7 +156,8 @@ def apply(proposal: dict, evidence: dict) -> dict:
     for r in survivors:
         r.pop("_demote", None)
 
-    grounding_ok, unsourced = check_grounding({"recommendations": survivors}, evidence)
+    grounding_ok, unsourced = check_grounding({"recommendations": survivors},
+                                              evidence, extra)
     if not grounding_ok:
         violations.append(Violation(
             "grounding", None, "grounding",

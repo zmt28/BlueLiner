@@ -49,10 +49,12 @@ def _catalog() -> dict:
 def _scenario() -> Optional[dict]:
     """Injected conditions for eval mode, or None for live mode.
 
-    Not cached: the eval rewrites AGENT_SCENARIO per scenario within one process
-    when run in-process, and re-reads cheaply.
+    Reads AGENT_SCENARIO from the environment at call time (not import time) so
+    in-process callers (e.g. the proactive watcher) can toggle it too, and the
+    eval can rewrite it per scenario. Re-reads cheaply.
     """
-    path = config.SCENARIO_PATH
+    import os
+    path = os.environ.get("AGENT_SCENARIO")
     if not path:
         return None
     try:
