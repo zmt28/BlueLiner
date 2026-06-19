@@ -160,6 +160,16 @@ system evolves (trip-planner → prospector/LangGraph → harness A/B).
 
 ---
 
+- **LangGraph install needs a constraint here.** `pip install langgraph
+  langgraph-checkpoint-sqlite` tripped on a Debian-managed `PyJWT`; pinning
+  `PyJWT==2.7.0` via `-c constraints.txt` let it resolve. (langgraph pulls
+  `langchain-core` — that's expected and fine; the "no LangChain" boundary is
+  about not using LangChain's chains/agents, not avoiding the small core dep.)
+- **A PR tracks its branch head — mind the multi-PR cadence.** Pushing step-2
+  commits to the same branch as an open step-1 PR would silently absorb them into
+  that PR. Workflow that keeps PRs clean: land the step-1 PR, fast-forward the
+  branch to the merged main, then continue — so each step is its own reviewable PR.
+
 ## 6. Prospector (discovery agent) — eval methodology learnings
 
 These came out of building the held-out-labels backtest on real MD/VA/PA reaches
