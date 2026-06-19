@@ -1,0 +1,64 @@
+{
+  "interrupt": {
+    "comid": 5894848,
+    "descriptor": "Elks Run \u2014 undesignated reach on same-named designated trout stream",
+    "confidence": 0.733,
+    "suitability_score": 0.978,
+    "evidence": [
+      "Same-named as designated trout water 'Elks Run'; topology distance 0.0 mi \u2014 this reach sits on or at the threshold of the designated corridor",
+      "Stream order 3, indicating meaningful tributary size with sustained baseflow potential",
+      "Public access confirmed; nearest access point 'Potomac River - Dargan/Shinham' 2.21 mi from reach"
+    ],
+    "why_not_higher": "Ungauged \u2014 water temperature entirely inferred, not measured; access point is 2.21 mi away, requiring route confirmation on the ground",
+    "access_note": "public | confirm public access and local regulations before fishing",
+    "needs_access_verify": false
+  },
+  "confirmations": [
+    {
+      "comid": 5894848,
+      "decision": "confirmed: fished it, caught a wild brookie"
+    }
+  ],
+  "trace": [
+    {
+      "node": "generate_candidates",
+      "n_region": 6012,
+      "shortlist": 6
+    },
+    {
+      "node": "gather_evidence",
+      "n": 6,
+      "ungauged": 6
+    },
+    {
+      "node": "infer_thermal",
+      "inferred": 6
+    },
+    {
+      "node": "score",
+      "n": 6
+    },
+    {
+      "node": "reflect_verify",
+      "kept": 6,
+      "dropped": 0
+    },
+    {
+      "node": "rank",
+      "n": 6,
+      "grounding_ok": true,
+      "unsourced": [],
+      "cost_usd": 0.02876
+    },
+    {
+      "node": "human_confirm",
+      "awaited": 5894848,
+      "decision": "confirmed: fished it, caught a wild brookie"
+    },
+    {
+      "node": "update_flywheel",
+      "recorded": 1,
+      "promoted": 0
+    }
+  ]
+}

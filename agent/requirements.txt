@@ -1,4 +1,7 @@
 # Blueliner agent dependencies (in addition to the app's root requirements.txt,
-# which provides httpx + the db/enrichment modules we reuse).
+# which provides httpx + shapely + the db/enrichment modules we reuse).
 anthropic>=0.69
 mcp>=1.2
+# Prospector orchestration (graph + durable human-in-the-loop checkpointer).
+langgraph>=0.2
+langgraph-checkpoint-sqlite>=2.0

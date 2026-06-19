@@ -242,6 +242,47 @@ work" thread.
   bound** and PR-AUC uses sampled background as proxy negatives. "My eval
   undercounts my wins by construction" is itself a differentiator.
 
+## 7. LangGraph orchestration — what the framework did (and didn't) buy
+
+### 7.1 LangGraph moved reliability/legibility, NOT quality — say this plainly
+- The prospector's ranking quality is the **deterministic** suitability/confidence
+  (calibrated in the backtest); the LLM only writes the rationale. So adopting
+  LangGraph did **not** change recall/precision/calibration — and claiming it did
+  would be the confound to avoid. What LangGraph bought: explicit, inspectable
+  control flow (the graph diagram *is* the trace), a clean conditional branch
+  (ungauged → `infer_thermal`), a first-class human-in-the-loop **interrupt**, and
+  **durable checkpointing**. That's an operationalization/legibility win, framed
+  honestly.
+
+### 7.2 The durable interrupt actually works (the operationalization proof)
+- Verified end-to-end: the graph **paused** at `human_confirm` (interrupt firing on
+  the top prospect), and after a later `Command(resume=...)` the `SqliteSaver`
+  checkpointer **restored state and resumed** to `update_flywheel`, which recorded
+  the confirmation. This is the concrete "resumes across cron/session boundaries"
+  benefit for the proactive flywheel — not a slide-only claim.
+
+### 7.3 Right tool for the job: graph for the prospector, hand-loop for the planner
+- The trip-planner is **linear** (retrieve → rank → guard) and a hand-written
+  Anthropic tool-use loop kept it maximally legible — a graph would have been
+  over-abstraction. The prospector has **real branching + a human interrupt +
+  proactive resumption**, which is exactly what earns LangGraph. Presenting both,
+  and *why each*, is the "measured framework choice" slide.
+
+### 7.4 Measured-restraint decisions (the "what I chose not to build" slide)
+- **LangGraph, not LangChain, and only for orchestration:** tools stayed on MCP,
+  scorer/guardrails stayed plain Python, no higher-level chains.
+- **Deterministic gather; LLM only on the shortlist:** `gather_evidence` calls the
+  tools deterministically (exhaustive + free); one strong-model call writes the
+  rationale over the verified shortlist. A per-candidate LLM tool-loop adds
+  cost/latency without improving recall (the deterministic gather is exhaustive).
+  One Sonnet call per discovery ≈ $0.04; deterministic topology ranks the whole
+  region for free.
+- **Single agent, not multi-agent:** one discovery graph, not separate
+  topology/thermal/access agents + an orchestrator (more latency/cost, no recall
+  gain at this scale).
+- **Confidence stays deterministic — the LLM explains, it does not re-score.**
+  Keeps the calibration curve meaningful and the rationale grounded.
+
 ## Running facts for the deck
 - Trip-planner v0→v3: agreement **8→100%**, safety **16→0% (enforced)**,
   hallucination **100→0%**, personalization **0→100%** (n=4, confounded).
