@@ -1,6 +1,6 @@
 # Endpoint watch
 
-_Run: 2026-06-19 19:44 UTC -- 14/16 reachable, **6 READY TO PROMOTE**._
+_Run: 2026-06-20 02:52 UTC -- 15/16 reachable, **7 READY TO PROMOTE**._
 
 | id | state | kind | status | captured |
 |----|-------|------|--------|----------|
@@ -13,7 +13,7 @@ _Run: 2026-06-19 19:44 UTC -- 14/16 reachable, **6 READY TO PROMOTE**._
 | ca-trout-only-stocked-discover | CA | discover | UP | yes |
 | ut-trout-streams-beyond-blueribbon | UT | discover | UP | yes |
 | cand-stocking-ma-massgis-dfg-trout-stocking--official-item | MA | verify | DOWN | - |
-| cand-access_points-de-dnrec-public-fishing-ponds | DE | verify | DOWN | - |
+| cand-access_points-de-dnrec-public-fishing-ponds | DE | verify | UP | PROMOTE |
 | cand-access_points-ca-cdfw-fishing-guide-boating-facilities | CA | verify | UP | PROMOTE |
 | cand-access_points-ut-ut-dwr-community-fisheries | UT | verify | UP | PROMOTE |
 | cand-access_points-tx-tx-public-water-access---boat-ramps--owner-uncon | TX | verify | UP | PROMOTE |
@@ -136,6 +136,7 @@ _Run: 2026-06-19 19:44 UTC -- 14/16 reachable, **6 READY TO PROMOTE**._
   - _folder_ `EPSServices`
   - _folder_ `FEMA`
   - _folder_ `FWE`
+  - _folder_ `GeocodeServices`
   - _folder_ `GeocodeServicesArcMap`
   - _folder_ `HealthConnector`
   - _folder_ `Legislature`
@@ -279,6 +280,13 @@ _Run: 2026-06-19 19:44 UTC -- 14/16 reachable, **6 READY TO PROMOTE**._
   - `White_Sands_Launch_Complex` (FeatureServer)
   - `Wind_Power_Plants_view` (FeatureServer)
   - `Zip_Fish` (FeatureServer)
+
+### cand-access_points-de-dnrec-public-fishing-ponds (DE / verify)
+> [access_points candidate] DNREC Public Fishing Ponds
+
+- :rotating_light: **READY TO PROMOTE** -- candidate passes the 4-check. Review + add to sources.json (human-gated; the watcher does not auto-edit).
+- **verdict:** PASS  (`Depths`, geom `esriGeometryPoint`, count `51`)
+- **fields:** `["OBJECTID", "DEPTH", "POND", "SHAPE"]`
 
 ### cand-access_points-ca-cdfw-fishing-guide-boating-facilities (CA / verify)
 > [access_points candidate] CDFW Fishing Guide Boating Facilities
