@@ -1,6 +1,6 @@
 # Endpoint watch
 
-_Run: 2026-06-22 16:47 UTC -- 15/16 reachable, **7 READY TO PROMOTE**._
+_Run: 2026-06-22 20:39 UTC -- 15/16 reachable, **7 READY TO PROMOTE**._
 
 | id | state | kind | status | captured |
 |----|-------|------|--------|----------|
@@ -26,8 +26,43 @@ _Run: 2026-06-22 16:47 UTC -- 15/16 reachable, **7 READY TO PROMOTE**._
 ### md-fisheries-folder (MD / discover)
 > MD now classifies via DesignatedUse_Trout Des_Use (Use III/III-P wild vs IV/IV-P stocked), so the core wild/stocked split is solved. Lower priority: enumerate MD DNR Fisheries for an even richer wild-trout / special-management (catch-and-release / trophy) layer that could add a finer tier.
 
-- **AGOL search matches:**
-  - _(reachable, no fish/trout items)_
+- **services / layers matching fish/trout:**
+  - `Fisheries/AnadromousFish` (FeatureServer)
+  - `Fisheries/AnadromousFish` (MapServer)
+  - `Fisheries/BenthicColdwaterObligates` (FeatureServer)
+  - `Fisheries/BenthicColdwaterObligates` (MapServer)
+  - `Fisheries/ChesBaySandAndMudGISService` (FeatureServer)
+  - `Fisheries/ChesBaySandAndMudGISService` (MapServer)
+  - `Fisheries/ColdwaterResourceMapData` (FeatureServer)
+  - `Fisheries/ColdwaterResourceMapData` (MapServer)
+  - `Fisheries/DesignatedUse_Trout` (MapServer)
+  - `Fisheries/FinfishDiagnostics` (FeatureServer)
+  - `Fisheries/FinfishDiagnostics` (MapServer)
+  - `Fisheries/FisheriesLULC50mtrSW` (MapServer)
+  - `Fisheries/FishHatcheries` (MapServer)
+  - `Fisheries/FishingGrounds` (FeatureServer)
+  - `Fisheries/FishingGrounds` (MapServer)
+  - `Fisheries/GearAreaPoints` (MapServer)
+  - `Fisheries/GearAreasAndSanctuaries` (MapServer)
+  - `Fisheries/GearAreasSimple` (MapServer)
+  - `Fisheries/HOBOWaterTempLoggers` (MapServer)
+  - `Fisheries/HSCConfirmed` (FeatureServer)
+  - `Fisheries/HSCConfirmed` (MapServer)
+  - `Fisheries/HSC` (FeatureServer)
+  - `Fisheries/HSC` (MapServer)
+  - `Fisheries/ImpoundmentSurveys` (MapServer)
+  - `Fisheries/InvasiveSpecies` (MapServer)
+  - `Fisheries/MDSmallPondsSrvc` (FeatureServer)
+  - `Fisheries/MDSmallPondsSrvc` (MapServer)
+  - `Fisheries/NOAACodesShellfish` (MapServer)
+  - `Fisheries/PotomacSurveys` (MapServer)
+  - `Fisheries/PublicFishingAccessSites` (FeatureServer)
+  - `Fisheries/PublicFishingAccessSites` (MapServer)
+  - `Fisheries/StreamSurveys_NoTrout` (MapServer)
+  - `Fisheries/TidalBass` (FeatureServer)
+  - `Fisheries/TidalBass` (MapServer)
+  - `Fisheries/TroutPopulation_Watershed2017` (MapServer)
+  - `Fisheries/TroutStockingActivities` (MapServer)
 
 ### nv-lct-successor (NV / discover)
 > NDOW retired LCT_Occupied_Streams_NV (all layerIds 404). Find the republished Lahontan cutthroat occupied-streams service.
@@ -101,7 +136,6 @@ _Run: 2026-06-22 16:47 UTC -- 15/16 reachable, **7 READY TO PROMOTE**._
   - _folder_ `EPSServices`
   - _folder_ `FEMA`
   - _folder_ `FWE`
-  - _folder_ `GeocodeServices`
   - _folder_ `GeocodeServicesArcMap`
   - _folder_ `HealthConnector`
   - _folder_ `Legislature`
