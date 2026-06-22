@@ -131,15 +131,14 @@ def orchestration():
     cards=[(360,"Hand-written loop",YEL,YEL_LT,"17","lines of orchestration","linear planner"),
            (1010,"LangGraph",LAV,LAV_LT,"38","lines (2.2×)","branching + HITL")]
     cy=200; ch=420; cw=560
-    for x,name,color,lt,lines,lsub,foot in cards:
+    for x,name,color,lt,lines,lsub,sub in cards:
         box(s,x,cy,cw,ch,line=color,lw=2.4,radius=0.05,anchor=MSO_ANCHOR.TOP)
-        label(s,x,cy+22,cw,44,[P(name,23,lt,b=True,align=PP_ALIGN.CENTER,font=HEAD)])
-        label(s,x,cy+74,cw,116,[P("100%",46,GREEN,b=True,align=PP_ALIGN.CENTER,font=HEAD),P("scenario quality",12,MUTE,align=PP_ALIGN.CENTER,sb=6)])
-        conn(s,x+60,cy+200,x+cw-60,cy+200,color=LINE,width=1.4,arrow=False)
-        label(s,x,cy+210,cw,116,[P(lines,44,lt,b=True,align=PP_ALIGN.CENTER,font=MONO),P(lsub,12,MUTE,align=PP_ALIGN.CENTER,sb=6)])
-        box(s,x+cw/2-95,cy+326,190,32,fill=PANEL_DK,line=color,lw=1,radius=0.5,anchor=MSO_ANCHOR.MIDDLE,paras=[P(foot,12,lt,align=PP_ALIGN.CENTER)])
-    label(s,920,cy+98,80,60,[P("=",40,MUTE,b=True,align=PP_ALIGN.CENTER,font=HEAD)])
-    label(s,920,cy+228,80,40,[P("vs",22,MUTE,b=True,align=PP_ALIGN.CENTER,font=HEAD)])
+        label(s,x,cy+24,cw,66,[P(name,23,lt,b=True,align=PP_ALIGN.CENTER,font=HEAD),P(sub,12,MUTE,align=PP_ALIGN.CENTER,sb=4)])
+        label(s,x,cy+106,cw,110,[P("100%",46,GREEN,b=True,align=PP_ALIGN.CENTER,font=HEAD),P("scenario quality",12,MUTE,align=PP_ALIGN.CENTER,sb=6)])
+        conn(s,x+60,cy+230,x+cw-60,cy+230,color=LINE,width=1.4,arrow=False)
+        label(s,x,cy+240,cw,110,[P(lines,46,lt,b=True,align=PP_ALIGN.CENTER,font=MONO),P(lsub,12,MUTE,align=PP_ALIGN.CENTER,sb=6)])
+    label(s,920,cy+152,80,60,[P("=",40,MUTE,b=True,align=PP_ALIGN.CENTER,font=HEAD)])
+    label(s,920,cy+286,80,40,[P("vs",22,MUTE,b=True,align=PP_ALIGN.CENTER,font=HEAD)])
     box(s,360,664,1210,340,fill=PANEL_DK,line=LINE,lw=1.5,radius=0.04,anchor=MSO_ANCHOR.TOP,paras=[
         P("Decision",16,FG,b=True,font=HEAD,sa=6),
         P("Hand-loop for the linear Trip Planner — less code, fully legible.",13.5,MUTE),
