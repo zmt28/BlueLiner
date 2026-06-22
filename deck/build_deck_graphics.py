@@ -133,15 +133,13 @@ def orchestration():
     cy=200; ch=420; cw=560
     for x,name,color,lt,lines,lsub,foot in cards:
         box(s,x,cy,cw,ch,line=color,lw=2.4,radius=0.05,anchor=MSO_ANCHOR.TOP)
-        label(s,x,cy+28,cw,50,[P(name,24,lt,b=True,align=PP_ALIGN.CENTER,font=HEAD)])
-        label(s,x,cy+92,cw,90,[P("100%",60,GREEN,b=True,align=PP_ALIGN.CENTER,font=HEAD)])
-        label(s,x,cy+188,cw,28,[P("scenario quality",13,MUTE,align=PP_ALIGN.CENTER)])
-        conn(s,x+50,cy+232,x+cw-50,cy+232,color=LINE,width=1.4,arrow=False)
-        label(s,x,cy+248,cw,80,[P(lines,52,lt,b=True,align=PP_ALIGN.CENTER,font=MONO)])
-        label(s,x,cy+340,cw,28,[P(lsub,13,MUTE,align=PP_ALIGN.CENTER)])
-        box(s,x+cw/2-95,cy+372,190,32,fill=PANEL_DK,line=color,lw=1,radius=0.5,anchor=MSO_ANCHOR.MIDDLE,paras=[P(foot,12,lt,align=PP_ALIGN.CENTER)])
-    label(s,920,290,80,60,[P("=",40,MUTE,b=True,align=PP_ALIGN.CENTER,font=HEAD)])
-    label(s,920,452,80,40,[P("vs",22,MUTE,b=True,align=PP_ALIGN.CENTER,font=HEAD)])
+        label(s,x,cy+22,cw,44,[P(name,23,lt,b=True,align=PP_ALIGN.CENTER,font=HEAD)])
+        label(s,x,cy+74,cw,116,[P("100%",46,GREEN,b=True,align=PP_ALIGN.CENTER,font=HEAD),P("scenario quality",12,MUTE,align=PP_ALIGN.CENTER,sb=6)])
+        conn(s,x+60,cy+200,x+cw-60,cy+200,color=LINE,width=1.4,arrow=False)
+        label(s,x,cy+210,cw,116,[P(lines,44,lt,b=True,align=PP_ALIGN.CENTER,font=MONO),P(lsub,12,MUTE,align=PP_ALIGN.CENTER,sb=6)])
+        box(s,x+cw/2-95,cy+326,190,32,fill=PANEL_DK,line=color,lw=1,radius=0.5,anchor=MSO_ANCHOR.MIDDLE,paras=[P(foot,12,lt,align=PP_ALIGN.CENTER)])
+    label(s,920,cy+98,80,60,[P("=",40,MUTE,b=True,align=PP_ALIGN.CENTER,font=HEAD)])
+    label(s,920,cy+228,80,40,[P("vs",22,MUTE,b=True,align=PP_ALIGN.CENTER,font=HEAD)])
     box(s,360,664,1210,340,fill=PANEL_DK,line=LINE,lw=1.5,radius=0.04,anchor=MSO_ANCHOR.TOP,paras=[
         P("Decision",16,FG,b=True,font=HEAD,sa=6),
         P("Hand-loop for the linear Trip Planner — less code, fully legible.",13.5,MUTE),
