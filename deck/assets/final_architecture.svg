@@ -1,0 +1,67 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1920" height="1080" viewBox="0 0 1920 1080"><defs><marker id="ab" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#5BA8C8"/></marker><marker id="ag" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#7FBE8E"/></marker><marker id="am" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#9DB6C2"/></marker><marker id="ap" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#A878DA"/></marker><marker id="ac" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#B3473B"/></marker></defs><rect width="1920" height="1080" fill="#0B2A3A"/><text x="70" y="62.239999999999995" font-family="DejaVu Sans" font-size="32" fill="#EAF2F6" font-weight="bold" text-anchor="start">Two Agents, One Trustworthy Spine</text>
+<text x="70" y="106.3" font-family="DejaVu Sans" font-size="15" fill="#9DB6C2" font-weight="normal" text-anchor="start">Two agents share one deterministic, guardrailed spine.</text>
+<text x="185" y="161.02" font-family="DejaVu Sans" font-size="11" fill="#6E8C9C" font-weight="bold" text-anchor="middle" letter-spacing="1.5">REQUESTS</text>
+<text x="550" y="161.02" font-family="DejaVu Sans" font-size="11" fill="#6E8C9C" font-weight="bold" text-anchor="middle" letter-spacing="1.5">ORCHESTRATION</text>
+<text x="1015" y="161.02" font-family="DejaVu Sans" font-size="11" fill="#6E8C9C" font-weight="bold" text-anchor="middle" letter-spacing="1.5">SHARED TRUSTWORTHY SPINE</text>
+<text x="1560" y="161.02" font-family="DejaVu Sans" font-size="11" fill="#6E8C9C" font-weight="bold" text-anchor="middle" letter-spacing="1.5">DATA SOURCES</text>
+<rect x="70" y="210" width="230" height="120" rx="14" ry="14" fill="#102E41" stroke="#5BA8C8" stroke-width="2"/>
+<text x="185.0" y="262.84000000000003" font-family="DejaVu Sans" font-size="15" fill="#95C5D9" font-weight="bold" text-anchor="middle">Trip Planner</text>
+<text x="185.0" y="283.44" font-family="DejaVu Sans" font-size="11" fill="#9DB6C2" font-weight="normal" text-anchor="middle">“where to fish?”</text>
+<rect x="70" y="470" width="230" height="120" rx="14" ry="14" fill="#102E41" stroke="#7A3DB8" stroke-width="2"/>
+<text x="185.0" y="522.84" font-family="DejaVu Sans" font-size="15" fill="#A878DA" font-weight="bold" text-anchor="middle">Prospector</text>
+<text x="185.0" y="543.4399999999999" font-family="DejaVu Sans" font-size="11" fill="#9DB6C2" font-weight="normal" text-anchor="middle">“find new trout water?”</text>
+<rect x="360" y="210" width="420" height="150" rx="14" ry="14" fill="#102E41" stroke="#5BA8C8" stroke-width="2"/>
+<text x="376" y="268.5" font-family="DejaVu Sans" font-size="18" fill="#95C5D9" font-weight="bold" text-anchor="start">Trip Planner</text>
+<text x="376" y="289.66" font-family="DejaVu Sans" font-size="11" fill="#9DB6C2" font-weight="normal" text-anchor="start">hand-written tool loop</text>
+<text x="376" y="310.18" font-family="DejaVu Sans Mono" font-size="11" fill="#EAF2F6" font-weight="normal" text-anchor="start">Haiku retrieval → Sonnet ranking</text>
+<rect x="360" y="470" width="420" height="150" rx="14" ry="14" fill="#102E41" stroke="#7A3DB8" stroke-width="2"/>
+<text x="376" y="528.5" font-family="DejaVu Sans" font-size="18" fill="#A878DA" font-weight="bold" text-anchor="start">Prospector</text>
+<text x="376" y="549.66" font-family="DejaVu Sans" font-size="11" fill="#9DB6C2" font-weight="normal" text-anchor="start">LangGraph</text>
+<text x="376" y="570.18" font-family="DejaVu Sans" font-size="11" fill="#EAF2F6" font-weight="normal" text-anchor="start">branching · human-in-the-loop</text>
+<rect x="800" y="180" width="430" height="690" rx="18" ry="18" fill="#0E3144" stroke="#5BA8C8" stroke-width="2"/>
+<rect x="820" y="220" width="390" height="82" rx="14" ry="14" fill="#102E41" stroke="#5BA8C8" stroke-width="2"/>
+<text x="836" y="263.24" font-family="DejaVu Sans" font-size="16" fill="#EAF2F6" font-weight="bold" text-anchor="start">MCP tool belt</text>
+<text x="1196" y="262.2" font-family="DejaVu Sans" font-size="10" fill="#5BA8C8" font-weight="bold" text-anchor="end">retrieval</text>
+<rect x="820" y="340" width="390" height="92" rx="14" ry="14" fill="#143A50" stroke="#4A8C5C" stroke-width="3"/>
+<text x="836" y="388.24" font-family="DejaVu Sans" font-size="16" fill="#EAF2F6" font-weight="bold" text-anchor="start">Deterministic scorer</text>
+<text x="1196" y="387.2" font-family="DejaVu Sans" font-size="10" fill="#7FBE8E" font-weight="bold" text-anchor="end">the oracle</text>
+<rect x="820" y="470" width="390" height="82" rx="14" ry="14" fill="#102E41" stroke="#B7892F" stroke-width="2"/>
+<text x="836" y="513.24" font-family="DejaVu Sans" font-size="16" fill="#EAF2F6" font-weight="bold" text-anchor="start">Grounding contract</text>
+<rect x="820" y="580" width="390" height="92" rx="14" ry="14" fill="#102E41" stroke="#B3473B" stroke-width="2"/>
+<text x="836" y="628.24" font-family="DejaVu Sans" font-size="16" fill="#EAF2F6" font-weight="bold" text-anchor="start">Guardrail veto</text>
+<text x="1196" y="627.2" font-family="DejaVu Sans" font-size="10" fill="#B3473B" font-weight="bold" text-anchor="end">rules decide</text>
+<text x="1015" y="722.66" font-family="DejaVu Sans" font-size="13" fill="#95C5D9" font-weight="bold" text-anchor="middle">the model advises · the rules decide</text>
+<line x1="1015" y1="302" x2="1015" y2="338" stroke="#9DB6C2" stroke-width="2.2" marker-end="url(#am)"/>
+<line x1="1015" y1="432" x2="1015" y2="468" stroke="#9DB6C2" stroke-width="2.2" marker-end="url(#am)"/>
+<line x1="1015" y1="552" x2="1015" y2="578" stroke="#9DB6C2" stroke-width="2.2" marker-end="url(#am)"/>
+<rect x="1280" y="210" width="250" height="72" rx="14" ry="14" fill="#102E41" stroke="#3E5C6E" stroke-width="1.4"/>
+<text x="1405.0" y="247.95999999999998" font-family="DejaVu Sans" font-size="14" fill="#EAF2F6" font-weight="bold" text-anchor="middle">USGS NWIS</text>
+<rect x="1570" y="210" width="250" height="72" rx="14" ry="14" fill="#102E41" stroke="#3E5C6E" stroke-width="1.4"/>
+<text x="1695.0" y="247.95999999999998" font-family="DejaVu Sans" font-size="14" fill="#EAF2F6" font-weight="bold" text-anchor="middle">USGS NLDI</text>
+<rect x="1280" y="300" width="250" height="72" rx="14" ry="14" fill="#102E41" stroke="#3E5C6E" stroke-width="1.4"/>
+<text x="1405.0" y="337.96" font-family="DejaVu Sans" font-size="14" fill="#EAF2F6" font-weight="bold" text-anchor="middle">NOAA</text>
+<rect x="1570" y="300" width="250" height="72" rx="14" ry="14" fill="#102E41" stroke="#3E5C6E" stroke-width="1.4"/>
+<text x="1695.0" y="337.96" font-family="DejaVu Sans" font-size="14" fill="#EAF2F6" font-weight="bold" text-anchor="middle">State ArcGIS</text>
+<rect x="1280" y="390" width="250" height="72" rx="14" ry="14" fill="#102E41" stroke="#3E5C6E" stroke-width="1.4"/>
+<text x="1405.0" y="427.96" font-family="DejaVu Sans" font-size="14" fill="#EAF2F6" font-weight="bold" text-anchor="middle">PAD-US</text>
+<rect x="1570" y="390" width="250" height="72" rx="14" ry="14" fill="#102E41" stroke="#3E5C6E" stroke-width="1.4"/>
+<text x="1695.0" y="427.96" font-family="DejaVu Sans" font-size="14" fill="#EAF2F6" font-weight="bold" text-anchor="middle">Postgres</text>
+<line x1="1280" y1="246" x2="1214" y2="265" stroke="#5BA8C8" stroke-width="2.2" marker-end="url(#ab)"/>
+<text x="1230" y="254.2" font-family="DejaVu Sans" font-size="10" fill="#95C5D9" font-weight="normal" text-anchor="end">fetch</text>
+<text x="1710" y="489.02" font-family="DejaVu Sans" font-size="11" fill="#6E8C9C" font-weight="bold" text-anchor="middle" letter-spacing="1.5">OUTPUT</text>
+<rect x="1280" y="506" width="275" height="120" rx="14" ry="14" fill="#102E41" stroke="#4A8C5C" stroke-width="2"/>
+<text x="1417.5" y="562.5" font-family="DejaVu Sans" font-size="34" fill="#7FBE8E" font-weight="bold" text-anchor="middle">$0.02</text>
+<text x="1417.5" y="590.9799999999999" font-family="DejaVu Sans" font-size="11" fill="#9DB6C2" font-weight="normal" text-anchor="middle">per decision</text>
+<rect x="1575" y="506" width="275" height="120" rx="14" ry="14" fill="#102E41" stroke="#5BA8C8" stroke-width="2"/>
+<text x="1712.5" y="561.94" font-family="DejaVu Sans" font-size="30" fill="#95C5D9" font-weight="bold" text-anchor="middle">17–18 s</text>
+<text x="1712.5" y="588.34" font-family="DejaVu Sans" font-size="11" fill="#9DB6C2" font-weight="normal" text-anchor="middle">latency</text>
+<text x="1565" y="652.61" font-family="DejaVu Sans" font-size="10.5" fill="#9DB6C2" font-weight="normal" text-anchor="middle">→ ranked, grounded recommendations + guardrail verdicts, on the map</text>
+<line x1="300" y1="270" x2="356" y2="270" stroke="#5BA8C8" stroke-width="2.2" marker-end="url(#ab)"/>
+<line x1="300" y1="530" x2="356" y2="530" stroke="#7A3DB8" stroke-width="2.2" marker-end="url(#ap)"/>
+<line x1="780" y1="285" x2="798" y2="300" stroke="#5BA8C8" stroke-width="2.2" marker-end="url(#ab)"/>
+<line x1="780" y1="525" x2="798" y2="470" stroke="#7A3DB8" stroke-width="2.2" marker-end="url(#ap)"/>
+<line x1="1230" y1="610" x2="1278" y2="566" stroke="#B3473B" stroke-width="2.4" marker-end="url(#ac)"/>
+<rect x="70" y="900" width="1780" height="110" rx="14" ry="14" fill="#0C2535" stroke="#5BA8C8" stroke-width="1.6" stroke-dasharray="7 6"/>
+<text x="92" y="935.02" font-family="DejaVu Sans" font-size="11" fill="#95C5D9" font-weight="bold" text-anchor="start" letter-spacing="1">OFFLINE EVAL HARNESS</text>
+<text x="92" y="967.02" font-family="DejaVu Sans" font-size="11" fill="#9DB6C2" font-weight="normal" text-anchor="start">The scorer here is the eval oracle — same code · validated on 25 planner scenarios + an honest discovery eval</text>
+<line x1="812" y1="900" x2="816" y2="434" stroke="#7FBE8E" stroke-width="1.8" stroke-dasharray="6 5" marker-end="url(#ag)"/></svg>

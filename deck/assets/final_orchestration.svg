@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1920" height="1080" viewBox="0 0 1920 1080"><defs><marker id="ab" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#5BA8C8"/></marker><marker id="ag" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#7FBE8E"/></marker><marker id="am" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#9DB6C2"/></marker><marker id="ap" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#A878DA"/></marker><marker id="ac" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#B3473B"/></marker></defs><rect width="1920" height="1080" fill="#0B2A3A"/><text x="70" y="64.24" font-family="DejaVu Sans" font-size="32" fill="#EAF2F6" font-weight="bold" text-anchor="start">Engineering Judgment: Right Tool for the Job</text>
+<text x="960" y="162.66" font-family="DejaVu Sans" font-size="13" fill="#6E8C9C" font-weight="bold" text-anchor="middle" letter-spacing="1">SAME v3 PLANNER · 25 SCENARIOS · ONLY ORCHESTRATION CHANGES</text>
+<rect x="360" y="200" width="560" height="420" rx="18" ry="18" fill="#102E41" stroke="#5BA8C8" stroke-width="2.4"/>
+<text x="640.0" y="249.68" font-family="DejaVu Sans" font-size="24" fill="#95C5D9" font-weight="bold" text-anchor="middle">Hand-written loop</text>
+<text x="640.0" y="347.2" font-family="DejaVu Sans" font-size="60" fill="#7FBE8E" font-weight="bold" text-anchor="middle">100%</text>
+<text x="640.0" y="408.66" font-family="DejaVu Sans" font-size="13" fill="#9DB6C2" font-weight="normal" text-anchor="middle">scenario quality</text>
+<line x1="410" y1="436" x2="870" y2="436" stroke="#3E5C6E" stroke-width="1.4"/>
+<text x="640.0" y="496.64" font-family="DejaVu Sans Mono" font-size="52" fill="#95C5D9" font-weight="bold" text-anchor="middle">17</text>
+<text x="640.0" y="558.66" font-family="DejaVu Sans" font-size="13" fill="#9DB6C2" font-weight="normal" text-anchor="middle">lines of orchestration</text>
+<rect x="545.0" y="574" width="190" height="32" rx="16" ry="16" fill="#0C2535" stroke="#5BA8C8" stroke-width="1"/>
+<text x="640.0" y="593.84" font-family="DejaVu Sans" font-size="12" fill="#95C5D9" font-weight="normal" text-anchor="middle">linear planner</text>
+<rect x="1010" y="200" width="560" height="420" rx="18" ry="18" fill="#102E41" stroke="#7A3DB8" stroke-width="2.4"/>
+<text x="1290.0" y="249.68" font-family="DejaVu Sans" font-size="24" fill="#A878DA" font-weight="bold" text-anchor="middle">LangGraph</text>
+<text x="1290.0" y="347.2" font-family="DejaVu Sans" font-size="60" fill="#7FBE8E" font-weight="bold" text-anchor="middle">100%</text>
+<text x="1290.0" y="408.66" font-family="DejaVu Sans" font-size="13" fill="#9DB6C2" font-weight="normal" text-anchor="middle">scenario quality</text>
+<line x1="1060" y1="436" x2="1520" y2="436" stroke="#3E5C6E" stroke-width="1.4"/>
+<text x="1290.0" y="496.64" font-family="DejaVu Sans Mono" font-size="52" fill="#A878DA" font-weight="bold" text-anchor="middle">38</text>
+<text x="1290.0" y="558.66" font-family="DejaVu Sans" font-size="13" fill="#9DB6C2" font-weight="normal" text-anchor="middle">lines (2.2×)</text>
+<rect x="1195.0" y="574" width="190" height="32" rx="16" ry="16" fill="#0C2535" stroke="#7A3DB8" stroke-width="1"/>
+<text x="1290.0" y="593.84" font-family="DejaVu Sans" font-size="12" fill="#A878DA" font-weight="normal" text-anchor="middle">branching + HITL</text>
+<text x="960" y="334.8" font-family="DejaVu Sans" font-size="40" fill="#9DB6C2" font-weight="bold" text-anchor="middle">=</text>
+<text x="960" y="476.04" font-family="DejaVu Sans" font-size="22" fill="#9DB6C2" font-weight="bold" text-anchor="middle">vs</text>
+<rect x="360" y="664" width="1210" height="340" rx="16" ry="16" fill="#0C2535" stroke="#3E5C6E" stroke-width="1.5"/>
+<text x="388" y="717.12" font-family="DejaVu Sans" font-size="16" fill="#EAF2F6" font-weight="bold" text-anchor="start">Decision</text>
+<text x="388" y="760.71" font-family="DejaVu Sans" font-size="15.5" fill="#9DB6C2" font-weight="normal" text-anchor="start">Hand-loop for the linear Trip Planner — less code, fully legible.</text>
+<text x="388" y="790.71" font-family="DejaVu Sans" font-size="15.5" fill="#9DB6C2" font-weight="normal" text-anchor="start">LangGraph for the branching, human-in-the-loop Prospector — where</text>
+<text x="388" y="820.71" font-family="DejaVu Sans" font-size="15.5" fill="#9DB6C2" font-weight="normal" text-anchor="start">interrupt + durable checkpoints actually earn their cost.</text>
+<text x="388" y="864.71" font-family="DejaVu Sans" font-size="15.5" fill="#95C5D9" font-weight="bold" text-anchor="start">Frameworks are not a quality lever — claiming so would be a confound.</text></svg>

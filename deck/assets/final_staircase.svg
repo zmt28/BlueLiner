@@ -1,0 +1,48 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1920" height="1080" viewBox="0 0 1920 1080"><defs><marker id="ab" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#5BA8C8"/></marker><marker id="ag" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#7FBE8E"/></marker><marker id="am" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#9DB6C2"/></marker><marker id="ap" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#A878DA"/></marker><marker id="ac" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#B3473B"/></marker></defs><rect width="1920" height="1080" fill="#0B2A3A"/><text x="70" y="64.24" font-family="DejaVu Sans" font-size="32" fill="#EAF2F6" font-weight="bold" text-anchor="start">Trip Planner: The v0 → v3 Staircase</text>
+<text x="70" y="110.3" font-family="DejaVu Sans" font-size="15" fill="#9DB6C2" font-weight="normal" text-anchor="start">Grounding + guardrails turn a confident liar into a trustworthy assistant (25 scenarios)</text>
+<rect x="400.0" y="170" width="344.5" height="104" rx="14" ry="14" fill="#102E41" stroke="#B3473B" stroke-width="2"/>
+<text x="572.25" y="217.94" font-family="DejaVu Sans" font-size="30" fill="#B3473B" font-weight="bold" text-anchor="middle">v0</text>
+<text x="572.25" y="244.34" font-family="DejaVu Sans" font-size="11" fill="#9DB6C2" font-weight="normal" text-anchor="middle">naive prompt, no tools</text>
+<rect x="762.5" y="170" width="344.5" height="104" rx="14" ry="14" fill="#102E41" stroke="#5BA8C8" stroke-width="2"/>
+<text x="934.75" y="217.94" font-family="DejaVu Sans" font-size="30" fill="#5BA8C8" font-weight="bold" text-anchor="middle">v1</text>
+<text x="934.75" y="244.34" font-family="DejaVu Sans" font-size="11" fill="#9DB6C2" font-weight="normal" text-anchor="middle">tool-grounded</text>
+<rect x="1125.0" y="170" width="344.5" height="104" rx="14" ry="14" fill="#102E41" stroke="#B7892F" stroke-width="2"/>
+<text x="1297.25" y="217.94" font-family="DejaVu Sans" font-size="30" fill="#B7892F" font-weight="bold" text-anchor="middle">v2</text>
+<text x="1297.25" y="244.34" font-family="DejaVu Sans" font-size="11" fill="#9DB6C2" font-weight="normal" text-anchor="middle">+ catch-log memory</text>
+<rect x="1487.5" y="170" width="344.5" height="104" rx="14" ry="14" fill="#143A50" stroke="#4A8C5C" stroke-width="3"/>
+<text x="1659.75" y="217.94" font-family="DejaVu Sans" font-size="30" fill="#4A8C5C" font-weight="bold" text-anchor="middle">v3</text>
+<text x="1659.75" y="244.34" font-family="DejaVu Sans" font-size="11" fill="#EAF2F6" font-weight="normal" text-anchor="middle">+ guardrails &amp; grounding</text>
+<rect opacity="0" x="70" y="296" width="320" height="150" rx="14" ry="14" fill="#102E41" stroke="#3E5C6E" stroke-width="1.6"/>
+<text x="86" y="364.62" font-family="DejaVu Sans" font-size="17" fill="#EAF2F6" font-weight="bold" text-anchor="start">Recommendation agreement</text>
+<text x="86" y="385.26" font-family="DejaVu Sans" font-size="11" fill="#6E8C9C" font-weight="normal" text-anchor="start">higher is better</text>
+<rect x="400.0" y="296" width="344.5" height="150" rx="14" ry="14" fill="#102E41" stroke="#B3473B" stroke-width="1.6"/>
+<text x="572.25" y="376.6" font-family="DejaVu Sans" font-size="40" fill="#B3473B" font-weight="bold" text-anchor="middle">8%</text>
+<rect x="762.5" y="296" width="344.5" height="150" rx="14" ry="14" fill="#102E41" stroke="#4A8C5C" stroke-width="1.6"/>
+<text x="934.75" y="376.6" font-family="DejaVu Sans" font-size="40" fill="#4A8C5C" font-weight="bold" text-anchor="middle">100%</text>
+<rect x="1125.0" y="296" width="344.5" height="150" rx="14" ry="14" fill="#102E41" stroke="#4A8C5C" stroke-width="1.6"/>
+<text x="1297.25" y="376.6" font-family="DejaVu Sans" font-size="40" fill="#4A8C5C" font-weight="bold" text-anchor="middle">100%</text>
+<rect x="1487.5" y="296" width="344.5" height="150" rx="14" ry="14" fill="#102E41" stroke="#4A8C5C" stroke-width="2.6"/>
+<text x="1659.75" y="376.6" font-family="DejaVu Sans" font-size="40" fill="#4A8C5C" font-weight="bold" text-anchor="middle">100%</text>
+<rect opacity="0" x="70" y="460" width="320" height="150" rx="14" ry="14" fill="#102E41" stroke="#3E5C6E" stroke-width="1.6"/>
+<text x="86" y="528.62" font-family="DejaVu Sans" font-size="17" fill="#EAF2F6" font-weight="bold" text-anchor="start">Safety violations</text>
+<text x="86" y="549.26" font-family="DejaVu Sans" font-size="11" fill="#6E8C9C" font-weight="normal" text-anchor="start">lower is better</text>
+<rect x="400.0" y="460" width="344.5" height="150" rx="14" ry="14" fill="#102E41" stroke="#B3473B" stroke-width="1.6"/>
+<text x="572.25" y="540.6" font-family="DejaVu Sans" font-size="40" fill="#B3473B" font-weight="bold" text-anchor="middle">16%</text>
+<rect x="762.5" y="460" width="344.5" height="150" rx="14" ry="14" fill="#102E41" stroke="#4A8C5C" stroke-width="1.6"/>
+<text x="934.75" y="540.6" font-family="DejaVu Sans" font-size="40" fill="#4A8C5C" font-weight="bold" text-anchor="middle">0%</text>
+<rect x="1125.0" y="460" width="344.5" height="150" rx="14" ry="14" fill="#102E41" stroke="#4A8C5C" stroke-width="1.6"/>
+<text x="1297.25" y="540.6" font-family="DejaVu Sans" font-size="40" fill="#4A8C5C" font-weight="bold" text-anchor="middle">0%</text>
+<rect x="1487.5" y="460" width="344.5" height="150" rx="14" ry="14" fill="#102E41" stroke="#4A8C5C" stroke-width="2.6"/>
+<text x="1659.75" y="540.6" font-family="DejaVu Sans" font-size="40" fill="#4A8C5C" font-weight="bold" text-anchor="middle">0%</text>
+<rect opacity="0" x="70" y="624" width="320" height="150" rx="14" ry="14" fill="#102E41" stroke="#3E5C6E" stroke-width="1.6"/>
+<text x="86" y="692.62" font-family="DejaVu Sans" font-size="17" fill="#EAF2F6" font-weight="bold" text-anchor="start">Hallucinated readings</text>
+<text x="86" y="713.26" font-family="DejaVu Sans" font-size="11" fill="#6E8C9C" font-weight="normal" text-anchor="start">lower is better</text>
+<rect x="400.0" y="624" width="344.5" height="150" rx="14" ry="14" fill="#102E41" stroke="#B3473B" stroke-width="1.6"/>
+<text x="572.25" y="704.6" font-family="DejaVu Sans" font-size="40" fill="#B3473B" font-weight="bold" text-anchor="middle">100%</text>
+<rect x="762.5" y="624" width="344.5" height="150" rx="14" ry="14" fill="#102E41" stroke="#B7892F" stroke-width="1.6"/>
+<text x="934.75" y="704.6" font-family="DejaVu Sans" font-size="40" fill="#B7892F" font-weight="bold" text-anchor="middle">4%</text>
+<rect x="1125.0" y="624" width="344.5" height="150" rx="14" ry="14" fill="#102E41" stroke="#B7892F" stroke-width="1.6"/>
+<text x="1297.25" y="704.6" font-family="DejaVu Sans" font-size="40" fill="#B7892F" font-weight="bold" text-anchor="middle">12%</text>
+<rect x="1487.5" y="624" width="344.5" height="150" rx="14" ry="14" fill="#102E41" stroke="#4A8C5C" stroke-width="2.6"/>
+<text x="1659.75" y="704.6" font-family="DejaVu Sans" font-size="40" fill="#4A8C5C" font-weight="bold" text-anchor="middle">0%</text>
+<text x="70" y="1017.48" font-family="DejaVu Sans" font-size="14" fill="#9DB6C2" font-weight="normal" text-anchor="start">v2’s hallucination bump (4% → 12%) is real — memory added unsourced numbers; the v3 grounding contract drove it to 0%.</text></svg>
