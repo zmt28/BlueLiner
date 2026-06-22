@@ -1,0 +1,126 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1760" height="780" viewBox="0 0 1760 780"><defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#5BA8C8"/></marker><marker id="arrowg" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#7FBE8E"/></marker><marker id="arrowm" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#9DB6C2"/></marker><marker id="arrowp" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#A878DA"/></marker></defs><rect width="1760" height="780" fill="#0B2A3A"/><text x="137" y="40" font-family="DejaVu Sans" font-size="16" fill="#6E8C9C" font-weight="bold" text-anchor="middle" letter-spacing="2">REQUESTS</text>
+<text x="461" y="40" font-family="DejaVu Sans" font-size="16" fill="#6E8C9C" font-weight="bold" text-anchor="middle" letter-spacing="2">ORCHESTRATION</text>
+<text x="934" y="40" font-family="DejaVu Sans" font-size="16" fill="#6E8C9C" font-weight="bold" text-anchor="middle" letter-spacing="2">SHARED TRUSTWORTHY SPINE</text>
+<text x="1478" y="40" font-family="DejaVu Sans" font-size="16" fill="#6E8C9C" font-weight="bold" text-anchor="middle" letter-spacing="2">DATA SOURCES</text>
+<rect x="24" y="96" width="226" height="150" rx="14" ry="14" fill="#102E41" stroke="#5BA8C8" stroke-width="2"/>
+<path d="M38,96 h198 a14,14 0 0 1 14,14 v122 a14,14 0 0 1 -14,14 h-198 a14,14 0 0 1 -14,-14 v-122 a14,14 0 0 1 14,-14 z" fill="none"/><rect x="24" y="96" width="6" height="150" rx="3" fill="#5BA8C8"/>
+<text x="40" y="132" font-family="DejaVu Sans" font-size="18" fill="#95C5D9" font-weight="bold" text-anchor="start">Trip Planner</text>
+<text x="40" y="162" font-family="DejaVu Sans" font-size="14" fill="#EAF2F6" font-weight="normal" text-anchor="start">“Where should I fish</text>
+<text x="40" y="184" font-family="DejaVu Sans" font-size="14" fill="#EAF2F6" font-weight="normal" text-anchor="start">this weekend — and is</text>
+<text x="40" y="206" font-family="DejaVu Sans" font-size="14" fill="#EAF2F6" font-weight="normal" text-anchor="start">it worth the drive?”</text>
+<rect x="24" y="356" width="226" height="150" rx="14" ry="14" fill="#102E41" stroke="#7A3DB8" stroke-width="2"/>
+<path d="M38,356 h198 a14,14 0 0 1 14,14 v122 a14,14 0 0 1 -14,14 h-198 a14,14 0 0 1 -14,-14 v-122 a14,14 0 0 1 14,-14 z" fill="none"/><rect x="24" y="356" width="6" height="150" rx="3" fill="#7A3DB8"/>
+<text x="40" y="392" font-family="DejaVu Sans" font-size="18" fill="#A878DA" font-weight="bold" text-anchor="start">Prospector</text>
+<text x="40" y="422" font-family="DejaVu Sans" font-size="14" fill="#EAF2F6" font-weight="normal" text-anchor="start">“Find undesignated</text>
+<text x="40" y="444" font-family="DejaVu Sans" font-size="14" fill="#EAF2F6" font-weight="normal" text-anchor="start">but fishable</text>
+<text x="40" y="466" font-family="DejaVu Sans" font-size="14" fill="#EAF2F6" font-weight="normal" text-anchor="start">trout water”</text>
+<rect x="274" y="82" width="374" height="212" rx="14" ry="14" fill="#102E41" stroke="#5BA8C8" stroke-width="2"/>
+<path d="M288,82 h346 a14,14 0 0 1 14,14 v184 a14,14 0 0 1 -14,14 h-346 a14,14 0 0 1 -14,-14 v-184 a14,14 0 0 1 14,-14 z" fill="none"/><rect x="274" y="82" width="6" height="212" rx="3" fill="#5BA8C8"/>
+<text x="296" y="120" font-family="DejaVu Sans" font-size="20" fill="#95C5D9" font-weight="bold" text-anchor="start">Trip Planner</text>
+<text x="296" y="146" font-family="DejaVu Sans" font-size="15" fill="#9DB6C2" font-weight="normal" text-anchor="start">hand-written tool loop</text>
+<text x="296" y="184" font-family="DejaVu Sans Mono" font-size="15" fill="#EAF2F6" font-weight="normal" text-anchor="start">Haiku  →  cheap, tool-heavy</text>
+<text x="296" y="208" font-family="DejaVu Sans Mono" font-size="15" fill="#EAF2F6" font-weight="normal" text-anchor="start">             retrieval loop</text>
+<text x="296" y="232" font-family="DejaVu Sans Mono" font-size="15" fill="#EAF2F6" font-weight="normal" text-anchor="start">Sonnet →  final ranking</text>
+<rect x="296" y="252" width="168" height="28" rx="14" ry="14" fill="#0C2535" stroke="#5BA8C8" stroke-width="1"/>
+<text x="380" y="271" font-family="DejaVu Sans" font-size="13" fill="#95C5D9" font-weight="normal" text-anchor="middle">17 lines orchestration</text>
+<rect x="274" y="338" width="374" height="236" rx="14" ry="14" fill="#102E41" stroke="#7A3DB8" stroke-width="2"/>
+<path d="M288,338 h346 a14,14 0 0 1 14,14 v208 a14,14 0 0 1 -14,14 h-346 a14,14 0 0 1 -14,-14 v-208 a14,14 0 0 1 14,-14 z" fill="none"/><rect x="274" y="338" width="6" height="236" rx="3" fill="#7A3DB8"/>
+<text x="296" y="376" font-family="DejaVu Sans" font-size="20" fill="#A878DA" font-weight="bold" text-anchor="start">Prospector</text>
+<text x="296" y="402" font-family="DejaVu Sans" font-size="15" fill="#9DB6C2" font-weight="normal" text-anchor="start">LangGraph</text>
+<text x="296" y="440" font-family="DejaVu Sans" font-size="15" fill="#EAF2F6" font-weight="normal" text-anchor="start">branching state machine</text>
+<text x="296" y="464" font-family="DejaVu Sans" font-size="15" fill="#EAF2F6" font-weight="normal" text-anchor="start">human-in-the-loop confirm</text>
+<text x="296" y="488" font-family="DejaVu Sans" font-size="15" fill="#EAF2F6" font-weight="normal" text-anchor="start">durable checkpoints · interrupt</text>
+<rect x="296" y="528" width="150" height="28" rx="14" ry="14" fill="#0C2535" stroke="#7A3DB8" stroke-width="1"/>
+<text x="371" y="547" font-family="DejaVu Sans" font-size="13" fill="#A878DA" font-weight="normal" text-anchor="middle">38 lines (2.2×)</text>
+<rect x="672" y="60" width="524" height="580" rx="18" ry="18" fill="#0E3144" stroke="#5BA8C8" stroke-width="2"/>
+<rect x="692" y="118" width="484" height="86" rx="12" ry="12" fill="#102E41" stroke="#5BA8C8" stroke-width="2"/>
+<rect x="692" y="118" width="6" height="86" rx="3" ry="3" fill="#5BA8C8"/>
+<text x="714" y="148" font-family="DejaVu Sans" font-size="17" fill="#EAF2F6" font-weight="bold" text-anchor="start">MCP tool belt</text>
+<text x="714" y="172" font-family="DejaVu Sans" font-size="13.5" fill="#9DB6C2" font-weight="normal" text-anchor="start">conditions · gauges · 30-yr medians</text>
+<text x="714" y="191" font-family="DejaVu Sans" font-size="13.5" fill="#9DB6C2" font-weight="normal" text-anchor="start">trout designations · access · catch-log memory</text>
+<text x="1160" y="148" font-family="DejaVu Sans" font-size="12.5" fill="#5BA8C8" font-weight="bold" text-anchor="end">retrieval</text>
+<line x1="934" y1="204" x2="934" y2="222" stroke="#9DB6C2" stroke-width="2.4" marker-end="url(#arrowm)"/>
+<rect x="692" y="224" width="484" height="104" rx="12" ry="12" fill="#143A50" stroke="#4A8C5C" stroke-width="3"/>
+<rect x="692" y="224" width="6" height="104" rx="3" ry="3" fill="#4A8C5C"/>
+<text x="714" y="254" font-family="DejaVu Sans" font-size="17" fill="#EAF2F6" font-weight="bold" text-anchor="start">Deterministic scorer</text>
+<text x="714" y="278" font-family="DejaVu Sans" font-size="13.5" fill="#9DB6C2" font-weight="normal" text-anchor="start">single source of truth</text>
+<text x="714" y="297" font-family="DejaVu Sans" font-size="13.5" fill="#9DB6C2" font-weight="normal" text-anchor="start">water-temp band  +  flow-vs-median</text>
+<text x="1160" y="254" font-family="DejaVu Sans" font-size="12.5" fill="#4A8C5C" font-weight="bold" text-anchor="end">the oracle</text>
+<text x="714" y="320" font-family="DejaVu Sans" font-size="12" fill="#7FBE8E" font-weight="normal" text-anchor="start">parity-tested 840 cases against production</text>
+<line x1="934" y1="328" x2="934" y2="346" stroke="#9DB6C2" stroke-width="2.4" marker-end="url(#arrowm)"/>
+<rect x="692" y="348" width="484" height="86" rx="12" ry="12" fill="#102E41" stroke="#B7892F" stroke-width="2"/>
+<rect x="692" y="348" width="6" height="86" rx="3" ry="3" fill="#B7892F"/>
+<text x="714" y="378" font-family="DejaVu Sans" font-size="17" fill="#EAF2F6" font-weight="bold" text-anchor="start">Grounding contract</text>
+<text x="714" y="402" font-family="DejaVu Sans" font-size="13.5" fill="#9DB6C2" font-weight="normal" text-anchor="start">every number must trace to a tool result —</text>
+<text x="714" y="421" font-family="DejaVu Sans" font-size="13.5" fill="#9DB6C2" font-weight="normal" text-anchor="start">else regenerate once, then strip it</text>
+<line x1="934" y1="434" x2="934" y2="452" stroke="#9DB6C2" stroke-width="2.4" marker-end="url(#arrowm)"/>
+<rect x="692" y="452" width="484" height="122" rx="12" ry="12" fill="#102E41" stroke="#B3473B" stroke-width="2"/>
+<rect x="692" y="452" width="6" height="122" rx="3" ry="3" fill="#B3473B"/>
+<text x="714" y="482" font-family="DejaVu Sans" font-size="17" fill="#EAF2F6" font-weight="bold" text-anchor="start">Guardrail veto</text>
+<text x="714" y="506" font-family="DejaVu Sans" font-size="13.5" fill="#9DB6C2" font-weight="normal" text-anchor="start">flood (flow &gt;3× median) · trout-ethics temp band</text>
+<text x="714" y="525" font-family="DejaVu Sans" font-size="13.5" fill="#9DB6C2" font-weight="normal" text-anchor="start">private-access block · staleness demotion</text>
+<text x="1160" y="482" font-family="DejaVu Sans" font-size="12.5" fill="#B3473B" font-weight="bold" text-anchor="end">rules decide</text>
+<text x="714" y="560" font-family="DejaVu Sans" font-size="12" fill="#E0A59B" font-weight="normal" text-anchor="start">IDs canonicalized before the veto — the bug fix</text>
+<text x="934" y="624" font-family="DejaVu Sans" font-size="14" fill="#95C5D9" font-weight="bold" text-anchor="middle">the model advises  ·  the rules decide</text>
+<rect x="1220" y="70" width="250" height="74" rx="12" ry="12" fill="#102E41" stroke="#3E5C6E" stroke-width="1.5"/>
+<rect x="1220" y="70" width="6" height="74" rx="3" ry="3" fill="#5BA8C8"/>
+<text x="1240" y="101" font-family="DejaVu Sans" font-size="14.5" fill="#EAF2F6" font-weight="bold" text-anchor="start">USGS NWIS</text>
+<text x="1240" y="124" font-family="DejaVu Sans" font-size="12" fill="#9DB6C2" font-weight="normal" text-anchor="start">flow + temp · IV + daily</text>
+<rect x="1486" y="70" width="250" height="74" rx="12" ry="12" fill="#102E41" stroke="#3E5C6E" stroke-width="1.5"/>
+<rect x="1486" y="70" width="6" height="74" rx="3" ry="3" fill="#5BA8C8"/>
+<text x="1506" y="101" font-family="DejaVu Sans" font-size="14.5" fill="#EAF2F6" font-weight="bold" text-anchor="start">USGS NLDI</text>
+<text x="1506" y="124" font-family="DejaVu Sans" font-size="12" fill="#9DB6C2" font-weight="normal" text-anchor="start">topology · COMID</text>
+<rect x="1220" y="156" width="250" height="74" rx="12" ry="12" fill="#102E41" stroke="#3E5C6E" stroke-width="1.5"/>
+<rect x="1220" y="156" width="6" height="74" rx="3" ry="3" fill="#5BA8C8"/>
+<text x="1240" y="187" font-family="DejaVu Sans" font-size="14.5" fill="#EAF2F6" font-weight="bold" text-anchor="start">NOAA</text>
+<text x="1240" y="210" font-family="DejaVu Sans" font-size="12" fill="#9DB6C2" font-weight="normal" text-anchor="start">weather enrichment</text>
+<rect x="1486" y="156" width="250" height="74" rx="12" ry="12" fill="#102E41" stroke="#3E5C6E" stroke-width="1.5"/>
+<rect x="1486" y="156" width="6" height="74" rx="3" ry="3" fill="#5BA8C8"/>
+<text x="1506" y="187" font-family="DejaVu Sans" font-size="14.5" fill="#EAF2F6" font-weight="bold" text-anchor="start">State ArcGIS</text>
+<text x="1506" y="210" font-family="DejaVu Sans" font-size="12" fill="#9DB6C2" font-weight="normal" text-anchor="start">trout designations</text>
+<rect x="1220" y="242" width="250" height="74" rx="12" ry="12" fill="#102E41" stroke="#3E5C6E" stroke-width="1.5"/>
+<rect x="1220" y="242" width="6" height="74" rx="3" ry="3" fill="#5BA8C8"/>
+<text x="1240" y="273" font-family="DejaVu Sans" font-size="14.5" fill="#EAF2F6" font-weight="bold" text-anchor="start">PAD-US</text>
+<text x="1240" y="296" font-family="DejaVu Sans" font-size="12" fill="#9DB6C2" font-weight="normal" text-anchor="start">public access / lands</text>
+<rect x="1486" y="242" width="250" height="74" rx="12" ry="12" fill="#102E41" stroke="#3E5C6E" stroke-width="1.5"/>
+<rect x="1486" y="242" width="6" height="74" rx="3" ry="3" fill="#5BA8C8"/>
+<text x="1506" y="273" font-family="DejaVu Sans" font-size="14.5" fill="#EAF2F6" font-weight="bold" text-anchor="start">Postgres</text>
+<text x="1506" y="296" font-family="DejaVu Sans" font-size="12" fill="#9DB6C2" font-weight="normal" text-anchor="start">catch-log memory</text>
+<line x1="1220" y1="178" x2="1180" y2="166" stroke="#5BA8C8" stroke-width="2.4" marker-end="url(#arrow)"/>
+<text x="1216" y="150" font-family="DejaVu Sans" font-size="11.5" fill="#95C5D9" font-weight="normal" text-anchor="end">fetch</text>
+<text x="1478" y="372" font-family="DejaVu Sans" font-size="16" fill="#6E8C9C" font-weight="bold" text-anchor="middle" letter-spacing="2">OUTPUT</text>
+<rect x="1220" y="388" width="250" height="212" rx="12" ry="12" fill="#102E41" stroke="#3E5C6E" stroke-width="1.5"/>
+<text x="1345" y="422" font-family="DejaVu Sans" font-size="16" fill="#EAF2F6" font-weight="bold" text-anchor="middle">Delivered</text>
+<text x="1345" y="456" font-family="DejaVu Sans" font-size="13.5" fill="#9DB6C2" font-weight="normal" text-anchor="middle">ranked recommendations</text>
+<text x="1345" y="483" font-family="DejaVu Sans" font-size="13.5" fill="#9DB6C2" font-weight="normal" text-anchor="middle">+ grounded citations</text>
+<text x="1345" y="510" font-family="DejaVu Sans" font-size="13.5" fill="#9DB6C2" font-weight="normal" text-anchor="middle">+ guardrail verdicts</text>
+<text x="1345" y="537" font-family="DejaVu Sans" font-size="13.5" fill="#9DB6C2" font-weight="normal" text-anchor="middle"></text>
+<text x="1345" y="564" font-family="DejaVu Sans" font-size="13.5" fill="#9DB6C2" font-weight="normal" text-anchor="middle">rendered on the map</text>
+<rect x="1486" y="388" width="250" height="100" rx="12" ry="12" fill="#102E41" stroke="#4A8C5C" stroke-width="2"/>
+<text x="1611" y="442" font-family="DejaVu Sans" font-size="40" fill="#7FBE8E" font-weight="bold" text-anchor="middle">$0.02</text>
+<text x="1611" y="470" font-family="DejaVu Sans" font-size="13" fill="#9DB6C2" font-weight="normal" text-anchor="middle">per decision</text>
+<rect x="1486" y="500" width="250" height="100" rx="12" ry="12" fill="#102E41" stroke="#5BA8C8" stroke-width="2"/>
+<text x="1611" y="554" font-family="DejaVu Sans" font-size="38" fill="#95C5D9" font-weight="bold" text-anchor="middle">17–18 s</text>
+<text x="1611" y="582" font-family="DejaVu Sans" font-size="13" fill="#9DB6C2" font-weight="normal" text-anchor="middle">end-to-end latency</text>
+<line x1="250" y1="168" x2="272" y2="178" stroke="#5BA8C8" stroke-width="2.4" marker-end="url(#arrow)"/>
+<line x1="250" y1="428" x2="272" y2="446" stroke="#7A3DB8" stroke-width="2.4" marker-end="url(#arrowp)"/>
+<line x1="648" y1="180" x2="670" y2="210" stroke="#5BA8C8" stroke-width="2.4" marker-end="url(#arrow)"/>
+<line x1="648" y1="452" x2="670" y2="360" stroke="#7A3DB8" stroke-width="2.4" marker-end="url(#arrowp)"/>
+<line x1="1196" y1="512" x2="1216" y2="486" stroke="#B3473B" stroke-width="2.6" marker-end="url(#arrow)"/>
+<rect x="24" y="648" width="1712" height="96" rx="14" ry="14" fill="#0C2535" stroke="#5BA8C8" stroke-width="1.6" stroke-dasharray="7 6"/>
+<text x="44" y="682" font-family="DejaVu Sans" font-size="15" fill="#95C5D9" font-weight="bold" text-anchor="start" letter-spacing="1">OFFLINE EVAL HARNESS</text>
+<text x="44" y="712" font-family="DejaVu Sans" font-size="13.5" fill="#9DB6C2" font-weight="normal" text-anchor="start">Planner — 25 scenarios: ideal · flood · too-warm · private · stale · adversarial · memory · ties · all-blocked</text>
+<text x="44" y="732" font-family="DejaVu Sans" font-size="13.5" fill="#9DB6C2" font-weight="normal" text-anchor="start">Discovery — flow-path masking · hard-negative AUC · positive-unlabeled (recall = lower bound)</text>
+<line x1="680" y1="644" x2="688" y2="298" stroke="#7FBE8E" stroke-width="2" stroke-dasharray="6 5" marker-end="url(#arrowg)"/>
+<text x="706" y="684" font-family="DejaVu Sans" font-size="12.5" fill="#7FBE8E" font-weight="normal" text-anchor="start">↑ the scorer here is the eval oracle — same code</text>
+<text x="454" y="768" font-family="DejaVu Sans" font-size="12" fill="#EAF2F6" font-weight="normal" text-anchor="start"></text>
+<rect x="470" y="758" width="16" height="16" rx="4" fill="#5BA8C8"/>
+<text x="492" y="771" font-family="DejaVu Sans" font-size="13" fill="#9DB6C2" font-weight="normal" text-anchor="start">Trip Planner</text>
+<rect x="613.2" y="758" width="16" height="16" rx="4" fill="#7A3DB8"/>
+<text x="635.2" y="771" font-family="DejaVu Sans" font-size="13" fill="#9DB6C2" font-weight="normal" text-anchor="start">Prospector</text>
+<rect x="741.2" y="758" width="16" height="16" rx="4" fill="#4A8C5C"/>
+<text x="763.2" y="771" font-family="DejaVu Sans" font-size="13" fill="#9DB6C2" font-weight="normal" text-anchor="start">trusted / oracle</text>
+<rect x="914.8000000000001" y="758" width="16" height="16" rx="4" fill="#B7892F"/>
+<text x="936.8000000000001" y="771" font-family="DejaVu Sans" font-size="13" fill="#9DB6C2" font-weight="normal" text-anchor="start">grounding</text>
+<rect x="1035.2" y="758" width="16" height="16" rx="4" fill="#B3473B"/>
+<text x="1057.2" y="771" font-family="DejaVu Sans" font-size="13" fill="#9DB6C2" font-weight="normal" text-anchor="start">guardrail / block</text></svg>
