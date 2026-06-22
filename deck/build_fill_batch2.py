@@ -118,19 +118,19 @@ def slide7(s):
 def inventory_card(s,ox,oy,W=812,H=576):
     A=lambda x:ox+x; B=lambda y:oy+y
     box(s,A(0),B(0),W,H,fill=PANEL,line=LINE,lw=1.5,radius=0.03)
-    label(s,A(24),B(16),W-40,20,[P("INVISIBLE INVENTORY",11.5,FAINT,b=True,font=HEAD)])
-    label(s,A(24),B(54),W-40,20,[P("Designated — shown on the official maps",12,MUTE)])
-    box(s,A(24),B(80),215,40,fill=GREEN,line=None,radius=0.25)
-    label(s,A(250),B(88),300,26,[P("36,378 reaches",15,GREEN,b=True,font=HEAD)])
-    label(s,A(24),B(140),W-40,20,[P("Undesignated — scanned by the Prospector",12,MUTE)])
-    box(s,A(24),B(166),600,40,fill=YEL,line=None,radius=0.25)
-    label(s,A(634),B(174),160,26,[P("100K+",15,YEL_LT,b=True,font=HEAD)])
-    box(s,A(24),B(238),W-48,86,fill=PANEL_DK,line=YEL,lw=1.4,radius=0.06,anchor=MID,ml=18,
-        paras=[P("The value is in qualifying inventory the market has mispriced.",14.5,FG,b=True,ls=1.25),
-               P("the Red Ventures parallel",11.5,YEL_LT,sb=3)])
-    conn(s,A(24),B(348),A(W-24),B(348),color=LINE)
-    label(s,A(24),B(364),W-48,24,[P("Official maps list only state-designated trout water; plenty of fishable trout",11.5,FAINT)])
-    label(s,A(24),B(386),W-48,24,[P("water is undesignated. The Prospector ranks that hidden pool.",11.5,FAINT)])
+    label(s,A(24),B(18),W-40,20,[P("INVISIBLE INVENTORY",11.5,FAINT,b=True,font=HEAD)])
+    label(s,A(24),B(60),W-40,20,[P("Designated — shown on the official maps",12,MUTE)])
+    box(s,A(24),B(86),215,42,fill=GREEN,line=None,radius=0.25)
+    label(s,A(250),B(95),300,26,[P("36,378 reaches",15,GREEN,b=True,font=HEAD)])
+    label(s,A(24),B(152),W-40,20,[P("Undesignated — scanned by the Prospector",12,MUTE)])
+    box(s,A(24),B(178),600,42,fill=YEL,line=None,radius=0.25)
+    label(s,A(634),B(187),160,26,[P("100K+",15,YEL_LT,b=True,font=HEAD)])
+    box(s,A(24),B(252),W-48,116,fill=PANEL_DK,line=YEL,lw=1.4,radius=0.06,anchor=TOP,ml=18,mt=16,
+        paras=[P("The value is in qualifying inventory the market has mispriced.",14.5,FG,b=True,ls=1.3),
+               P("the Red Ventures parallel",11.5,YEL_LT,sb=8)])
+    conn(s,A(24),B(404),A(W-24),B(404),color=LINE)
+    label(s,A(24),B(420),W-48,24,[P("Official maps list only state-designated trout water; plenty of fishable trout",11.5,FAINT)])
+    label(s,A(24),B(444),W-48,24,[P("water is undesignated. The Prospector ranks that hidden pool.",11.5,FAINT)])
 
 def slide11(s):
     text_chrome(s,"The Discovery Challenge","Finding water the maps miss",[
