@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="820" height="600" viewBox="0 0 820 600"><rect x="1" y="1" width="818" height="598" rx="18" ry="18" fill="#1F1E38" stroke="#55527E" stroke-width="1.5"/>
+<rect x="1" y="1" width="6" height="598" rx="3" ry="3" fill="#F0C84C"/>
+<text x="28" y="34.25" font-family="DejaVu Sans" font-size="12.5" fill="#8E8CAB" font-weight="bold" text-anchor="start" letter-spacing="1.5">ONE DECISION, FULLY TRACED</text>
+<text x="28" y="59.48" font-family="DejaVu Sans" font-size="14" fill="#FFFFFF" font-weight="normal" text-anchor="start">“Beaver Creek near Hagerstown - worth it this weekend?”</text>
+<text x="28" y="88.25" font-family="DejaVu Sans" font-size="12.5" fill="#C2C0D6" font-weight="normal" text-anchor="start">Haiku drives retrieval  ·  Sonnet writes the ranking</text>
+<line x1="28" y1="104" x2="794" y2="104" stroke="#55527E" stroke-width="1.2"/>
+<text x="28" y="125.02" font-family="DejaVu Sans" font-size="11" fill="#8E8CAB" font-weight="bold" text-anchor="start" letter-spacing="1">TOOLS CALLED, IN ORDER</text>
+<text x="36" y="144" font-family="DejaVu Sans Mono" font-size="13.5" fill="#F0C84C" font-weight="bold" text-anchor="start">1</text>
+<text x="70" y="144" font-family="DejaVu Sans Mono" font-size="13.5" fill="#FFFFFF" font-weight="normal" text-anchor="start">get_candidate_rivers</text>
+<text x="36" y="173" font-family="DejaVu Sans Mono" font-size="13.5" fill="#F0C84C" font-weight="bold" text-anchor="start">2</text>
+<text x="70" y="173" font-family="DejaVu Sans Mono" font-size="13.5" fill="#FFFFFF" font-weight="normal" text-anchor="start">get_forecast</text>
+<text x="360" y="173" font-family="DejaVu Sans Mono" font-size="12" fill="#C2C0D6" font-weight="normal" text-anchor="start">NOAA · live</text>
+<text x="36" y="202" font-family="DejaVu Sans Mono" font-size="13.5" fill="#F0C84C" font-weight="bold" text-anchor="start">3</text>
+<text x="70" y="202" font-family="DejaVu Sans Mono" font-size="13.5" fill="#FFFFFF" font-weight="normal" text-anchor="start">get_river_conditions</text>
+<text x="360" y="202" font-family="DejaVu Sans Mono" font-size="12" fill="#C2C0D6" font-weight="normal" text-anchor="start">2 rivers</text>
+<text x="36" y="231" font-family="DejaVu Sans Mono" font-size="13.5" fill="#F0C84C" font-weight="bold" text-anchor="start">4</text>
+<text x="70" y="231" font-family="DejaVu Sans Mono" font-size="13.5" fill="#FFFFFF" font-weight="normal" text-anchor="start">get_access</text>
+<text x="360" y="231" font-family="DejaVu Sans Mono" font-size="12" fill="#C2C0D6" font-weight="normal" text-anchor="start">2 rivers</text>
+<text x="36" y="260" font-family="DejaVu Sans Mono" font-size="13.5" fill="#F0C84C" font-weight="bold" text-anchor="start">5</text>
+<text x="70" y="260" font-family="DejaVu Sans Mono" font-size="13.5" fill="#FFFFFF" font-weight="normal" text-anchor="start">get_user_catch_history</text>
+<line x1="28" y1="300" x2="794" y2="300" stroke="#55527E" stroke-width="1.2"/>
+<text x="30" y="332" font-family="DejaVu Sans" font-size="15" fill="#E0685C" font-weight="bold" text-anchor="start">✗</text>
+<text x="56" y="332" font-family="DejaVu Sans" font-size="13" fill="#EBA59C" font-weight="normal" text-anchor="start">beaver-creek-md  blocked: private-only access, no public entry</text>
+<text x="30" y="372" font-family="DejaVu Sans" font-size="15" fill="#6BC598" font-weight="bold" text-anchor="start">✓</text>
+<text x="56" y="372" font-family="DejaVu Sans" font-size="14.5" fill="#6BC598" font-weight="bold" text-anchor="start">Gunpowder Falls  (green)</text>
+<text x="56" y="398" font-family="DejaVu Sans" font-size="12.5" fill="#C2C0D6" font-weight="normal" text-anchor="start">56°F  ·  flow 1.09x median  ·  6 public access points</text>
+<text x="56" y="422" font-family="DejaVu Sans" font-size="12" fill="#8E8CAB" font-weight="normal" text-anchor="start">within your proven brown + rainbow trout bands; fresh reading</text>
+<rect x="1" y="542" width="818" height="57" rx="18" ry="18" fill="#191830"/>
+<rect x="1" y="542" width="818" height="20" rx="0" ry="0" fill="#191830"/>
+<text x="410.0" y="578" font-family="DejaVu Sans Mono" font-size="13" fill="#C2C0D6" font-weight="normal" text-anchor="middle">grounding ok ✓    unsourced: none    ·    16.6 s    ·    $0.023</text></svg>
