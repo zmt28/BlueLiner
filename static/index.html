@@ -83,6 +83,15 @@
                 <i data-lucide="compass" aria-hidden="true"></i>
                 <span class="rail-tab-label">Map Legend</span>
             </button>
+            <!-- Agent (demo). Hidden by default and only revealed by
+                 agent-demo.js after /api/agent/health reports {enabled:true};
+                 the public deployment never mounts that route, so it stays
+                 hidden there. -->
+            <button class="rail-tab" data-tab="agent" type="button" id="rail-tab-agent"
+                    aria-controls="controls-panel" aria-expanded="false" title="Agent" hidden>
+                <i data-lucide="sparkles" aria-hidden="true"></i>
+                <span class="rail-tab-label">Agent</span>
+            </button>
             <div class="rail-tabs-spacer"></div>
         </nav>
         <div class="rail-account">
@@ -208,6 +217,11 @@
         </button>
         <button class="mobile-tab" data-tab="content" type="button" aria-controls="controls-panel">
             <i data-lucide="bookmark" aria-hidden="true"></i><span class="mobile-tab-label">Saved</span>
+        </button>
+        <!-- Agent (demo): revealed by agent-demo.js only when the gated
+             /api/agent/health endpoint reports enabled. -->
+        <button class="mobile-tab" data-tab="agent" type="button" id="mobile-tab-agent" aria-controls="controls-panel" hidden>
+            <i data-lucide="sparkles" aria-hidden="true"></i><span class="mobile-tab-label">Agent</span>
         </button>
     </nav>
 
@@ -567,6 +581,17 @@
                             </button>
                         </div>
                     </section>
+                </div>
+
+                <!-- ===== Agent (demo) =====
+                     Empty shell. agent-demo.js mounts the planner/prospector
+                     UI into #bl-agent-root and reveals the rail/mobile tabs
+                     above, but only after GET /api/agent/health returns
+                     {enabled:true} — which never happens on the public
+                     deployment (that router isn't mounted). So this pane and
+                     its tabs ship everywhere yet stay inert in production. -->
+                <div class="panel-pane" data-pane="agent">
+                    <div id="bl-agent-root"></div>
                 </div>
 
             </div>

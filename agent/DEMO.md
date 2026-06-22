@@ -3,7 +3,8 @@
 This shows the **trip-planner** and the **prospector** running live inside the
 real BlueLiner map — recommendations and discovered reaches light up on the map,
 and the agent's reasoning (evidence, guardrail vetoes, grounding, cost/latency)
-renders in a floating panel.
+renders in the left-rail **Agent** tab (alongside Map Layers / My Content /
+Map Filters / Map Legend).
 
 It is built so the **public deployment can never spend your Anthropic API key.**
 
@@ -59,7 +60,8 @@ npm run build
 export ANTHROPIC_API_KEY=sk-ant-...        # dedicated, capped, revocable key
 AGENT_DEMO_ENABLED=1 uvicorn agent.demo_server:app --port 8000
 
-# 4) open http://localhost:8000  → the 🎣 Agent panel appears bottom-right
+# 4) open http://localhost:8000  → an "Agent" tab appears in the left rail;
+#    click it to open the planner / prospector panel
 ```
 
 (`demo_server` defaults `AGENT_DEMO_ENABLED=1` for you, so you can omit it; an
@@ -113,5 +115,5 @@ so the demo never dead-ends if an upstream is slow.
 |---|---|---|
 | Gated API router | `agent/demo_api.py` | `/api/agent/health\|plan\|discover`, off unless `AGENT_DEMO_ENABLED=1`; lazy agent imports; sync handlers so `asyncio.run` works in the threadpool |
 | Local entry point | `agent/demo_server.py` | wraps `main:app`, includes the router — **never deployed** |
-| Self-gating panel | `static/agent-demo.js` | ships in the bundle but renders nothing unless `/api/agent/health` says `enabled:true` |
+| Self-gating panel | `static/agent-demo.js` | ships in the bundle but renders nothing unless `/api/agent/health` says `enabled:true`; when enabled it fills the `#bl-agent-root` pane and reveals the hidden left-rail **Agent** tab |
 | Script tag | `static/index.html` | one `<script defer>` before `</head>` |

@@ -70,6 +70,9 @@ html, body {
     transition: background var(--dur-fast) var(--ease-out),
                 color var(--dur-fast) var(--ease-out);
 }
+/* `.rail-tab` sets display:flex, which beats the UA [hidden] rule, so the
+   demo-only Agent tab needs this to stay hidden until agent-demo.js reveals it. */
+.rail-tab[hidden] { display: none; }
 .rail-tab i { width: 22px; height: 22px; stroke-width: 1.75; }
 .rail-tab-label {
     font-size: 11px;
@@ -1652,8 +1655,12 @@ html, body {
            area. Compact bar + reserve ~18px so labels sit just clear of the
            indicator line (going lower crowds it). */
         padding: 4px var(--space-3) max(8px, calc(env(safe-area-inset-bottom) - 16px));
+        /* Auto-flow columns size to the number of *visible* tabs (4 normally,
+           5 when the gated Agent tab is revealed) instead of a fixed 4-col
+           grid that would wrap the 5th tab to a second row. */
         display: grid;
-        grid-template-columns: repeat(4, 1fr);
+        grid-auto-flow: column;
+        grid-auto-columns: 1fr;
         gap: 2px;
         z-index: 20;
     }
@@ -1669,6 +1676,7 @@ html, body {
     .mobile-tab i { width: 20px; height: 20px; }
     .mobile-tab-label { font-size: 10px; font-weight: var(--fw-medium); }
     .mobile-tab.is-active, .mobile-tab.is-active i { color: var(--bl-river-700); }
+    .mobile-tab[hidden] { display: none; }
 
     /* Bottom-right controls float above the tab bar */
     .map-controls {
