@@ -10,7 +10,9 @@
  *
  * Plain JS, no bundler: it drives the live MapLibre map via window.map using
  * only addSource/addLayer/getSource (the maplibregl constructor isn't on
- * window), and renders the agent's reasoning in its own floating panel.
+ * window), and renders the agent's reasoning inside the shared left-rail panel
+ * (#controls-panel) — it fills the empty #bl-agent-root pane and reveals the
+ * hidden "Agent" rail/mobile tabs, which controls.ts has already wired.
  */
 (function () {
   "use strict";
@@ -291,17 +293,17 @@
     });
   }
 
+  // Mount into the shared left-rail panel (the same #controls-panel that holds
+  // Map Layers / My Content / Map Filters / Map Legend) rather than a separate
+  // floating tile. The "Agent" rail + mobile tabs and the empty #bl-agent-root
+  // pane ship hidden in index.html; controls.ts already wired their open/close.
+  // Here we fill the pane and reveal the tabs.
   function renderPanel(h) {
     injectStyles();
-    var wrap = document.createElement("div");
-    wrap.id = "bl-agent-panel";
-    wrap.innerHTML =
-      '<div class="bl-agent-head">'
-        + '<span class="bl-agent-title">🎣 Agent <span class="bl-agent-badge">demo</span></span>'
-        + '<button class="bl-agent-min" title="Minimize">–</button>'
-      + "</div>"
-      + '<div class="bl-agent-body">'
-        + '<div class="bl-agent-models">' + esc(h.models.cheap) + " + " + esc(h.models.strong)
+    var root = document.getElementById("bl-agent-root");
+    if (!root) return; // panel shell missing (older HTML) -> stay hidden
+    root.innerHTML =
+        '<div class="bl-agent-models">' + esc(h.models.cheap) + " + " + esc(h.models.strong)
           + (h.has_key ? "" : ' · <span class="bl-agent-flag">no API key set</span>') + "</div>"
         + '<div class="bl-agent-tabs">'
           + '<button class="bl-agent-tab on" data-tab="plan">Plan a trip</button>'
@@ -309,6 +311,10 @@
         + "</div>"
         + '<div class="bl-agent-pane" data-pane="plan">'
           + '<input id="bl-agent-prefs" placeholder="Preferences (e.g. dry flies, wadeable)" />'
+          // Orchestration toggle: the trip planner ships in TWO interchangeable
+          // forms (hand-written loop + LangGraph), so this radio runs that A/B
+          // live. The prospector has only a graph build, hence no toggle on the
+          // Discover tab (see the note there).
           + '<div class="bl-agent-orch">'
             + '<label><input type="radio" name="bl-agent-orch" value="hand" checked> hand loop</label>'
             + '<label><input type="radio" name="bl-agent-orch" value="graph"> LangGraph</label>'
@@ -317,27 +323,35 @@
         + "</div>"
         + '<div class="bl-agent-pane" data-pane="discover" hidden>'
           + '<div class="bl-agent-lede">Find undesignated-but-fishable trout water in the selected state.</div>'
+          + '<div class="bl-agent-orch-note">Orchestration: <b>LangGraph</b> — branching + '
+            + 'human-in-the-loop. No hand-loop toggle here: the prospector ships only as a '
+            + 'graph, so there is no second orchestrator to compare (the planner has both, '
+            + 'which is what its toggle exercises).</div>'
           + '<button class="bl-agent-run" id="bl-agent-discover">Discover in this state</button>'
         + "</div>"
         + '<div id="bl-agent-status" class="bl-agent-status" style="display:none"></div>'
-        + '<div id="bl-agent-results" class="bl-agent-results"></div>'
-      + "</div>";
-    document.body.appendChild(wrap);
+        + '<div id="bl-agent-results" class="bl-agent-results"></div>';
+
+    // Reveal the gated nav entries now that health says enabled. Their lucide
+    // icon was already hydrated at app boot (the <i> ships in the DOM), but
+    // refresh defensively in case boot ran before the CDN script loaded.
+    var railTab = document.getElementById("rail-tab-agent");
+    if (railTab) railTab.hidden = false;
+    var mobileTab = document.getElementById("mobile-tab-agent");
+    if (mobileTab) mobileTab.hidden = false;
+    if (window.refreshIcons) window.refreshIcons();
 
     if (h.token_required && !localStorage.getItem(TOKEN_KEY)) {
       var t = window.prompt("Agent demo token (set AGENT_DEMO_TOKEN on the server):");
       if (t) localStorage.setItem(TOKEN_KEY, t);
     }
 
-    wrap.querySelector(".bl-agent-min").addEventListener("click", function () {
-      wrap.classList.toggle("min");
-    });
-    wrap.querySelectorAll(".bl-agent-tab").forEach(function (tab) {
+    root.querySelectorAll(".bl-agent-tab").forEach(function (tab) {
       tab.addEventListener("click", function () {
-        wrap.querySelectorAll(".bl-agent-tab").forEach(function (x) { x.classList.remove("on"); });
+        root.querySelectorAll(".bl-agent-tab").forEach(function (x) { x.classList.remove("on"); });
         tab.classList.add("on");
         var name = tab.getAttribute("data-tab");
-        wrap.querySelectorAll(".bl-agent-pane").forEach(function (p) {
+        root.querySelectorAll(".bl-agent-pane").forEach(function (p) {
           p.hidden = p.getAttribute("data-pane") !== name;
         });
       });
@@ -348,26 +362,19 @@
 
   function injectStyles() {
     var css =
-      // Docked on the LEFT, just right of the 88px rail and below the top pills,
-      // running the full height of the map — a proper side panel, not a tile.
-      "#bl-agent-panel{position:fixed;left:104px;top:84px;bottom:18px;width:372px;max-width:calc(100vw - 124px);"
-        + "display:flex;flex-direction:column;background:#fff;border:1px solid #d8dde4;"
-        + "border-radius:14px;box-shadow:0 10px 34px rgba(11,42,58,.20);z-index:800;"
-        + "font:13.5px/1.5 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;color:#16202b;overflow:hidden}"
-      + "#bl-agent-panel.min{bottom:auto}"
-      + "#bl-agent-panel.min .bl-agent-body{display:none}"
-      + ".bl-agent-head{display:flex;align-items:center;justify-content:space-between;"
-        + "padding:12px 14px;background:#0B2A3A;color:#fff;cursor:default;flex:0 0 auto}"
-      + ".bl-agent-title{font-weight:600;font-size:15px}"
-      + ".bl-agent-badge{font-size:10px;background:#7A3DB8;padding:1px 6px;border-radius:8px;margin-left:4px}"
-      + ".bl-agent-min{background:transparent;border:0;color:#fff;font-size:20px;cursor:pointer;line-height:1}"
-      + ".bl-agent-body{padding:13px 14px;overflow-y:auto;flex:1 1 auto}"
+      // The panel frame (position, scroll, header/title) now comes from the
+      // shared #controls-panel; we only style the agent content mounted into
+      // its pane. A little top padding mirrors the other panes' first section.
+      "#bl-agent-root{padding-top:14px;font:13.5px/1.5 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;color:#16202b}"
       + ".bl-agent-models{font-size:11px;color:#647489;margin-bottom:8px}"
       + ".bl-agent-tabs{display:flex;gap:6px;margin-bottom:8px}"
       + ".bl-agent-tab{flex:1;padding:6px;border:1px solid #d8dde4;background:#f4f6f8;border-radius:7px;cursor:pointer;font-size:12px}"
       + ".bl-agent-tab.on{background:#0B2A3A;color:#fff;border-color:#0B2A3A}"
       + "#bl-agent-prefs{width:100%;box-sizing:border-box;padding:7px;border:1px solid #d8dde4;border-radius:7px;margin-bottom:6px}"
       + ".bl-agent-orch{display:flex;gap:12px;font-size:12px;color:#647489;margin-bottom:8px}"
+      + ".bl-agent-orch-note{font-size:11px;line-height:1.45;color:#647489;background:#F2EAFB;"
+        + "border-left:3px solid #7A3DB8;padding:7px 9px;border-radius:0 7px 7px 0;margin-bottom:8px}"
+      + ".bl-agent-orch-note b{color:#5B2C91}"
       + ".bl-agent-run{width:100%;padding:9px;background:#2F6B3D;color:#fff;border:0;border-radius:8px;cursor:pointer;font-weight:600}"
       + ".bl-agent-run:disabled{opacity:.55;cursor:wait}"
       + ".bl-agent-lede{font-size:12px;color:#647489;margin-bottom:8px}"
@@ -390,10 +397,7 @@
       + ".bl-agent-blocked{font-size:12px;color:#8A3327;margin:3px 0}"
       + ".bl-agent-notes{font-size:11px;color:#647489;margin-top:8px;font-style:italic}"
       + ".bl-agent-empty{font-size:12px;color:#647489;padding:8px 0}"
-      + ".bl-agent-error{font-size:12px;color:#8A3327;background:#F8E7E4;padding:8px;border-radius:7px}"
-      // < 760px the rail collapses to a bottom tab bar, so dock as a bottom sheet.
-      + "@media(max-width:760px){#bl-agent-panel{left:8px;right:8px;top:auto;bottom:70px;"
-        + "width:auto;max-width:none;height:auto;max-height:62vh}#bl-agent-panel.min{bottom:70px}}";
+      + ".bl-agent-error{font-size:12px;color:#8A3327;background:#F8E7E4;padding:8px;border-radius:7px}";
     var s = document.createElement("style");
     s.textContent = css;
     document.head.appendChild(s);

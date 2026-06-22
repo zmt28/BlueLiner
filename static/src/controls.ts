@@ -157,7 +157,7 @@ document.getElementById("cond-chip-clear")?.addEventListener("click", () => {
 // pane is visible at a time; re-tapping the active tab (or X / backdrop /
 // ESC) closes it.
 
-type PanelTab = "layers" | "filters" | "legend" | "content" | "profile";
+type PanelTab = "layers" | "filters" | "legend" | "content" | "profile" | "agent";
 
 const PANEL_TITLES: Record<PanelTab, string> = {
   layers: "Map Layers",
@@ -165,6 +165,10 @@ const PANEL_TITLES: Record<PanelTab, string> = {
   legend: "Map Legend",
   content: "My Content",
   profile: "My Profile",
+  // The agent rail/mobile tabs ship hidden and are revealed by
+  // agent-demo.js only on a gated demo build; controls.ts still wires them
+  // at init (they're in the DOM), so the shared open/close logic just works.
+  agent: "Agent",
 };
 
 const MOBILE_BP = "(max-width: 759px)";
