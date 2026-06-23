@@ -1,13 +1,13 @@
 # BlueLiner Agents — Speaking Notes
 
-**Talk:** Senior AI PM final round, Red Ventures · **Length:** target ~24 min talking + demo, leave room for Q&A · **Deck:** 20 slides
+**Talk:** Senior AI PM final round, Red Ventures · **Length:** target ~25 min talking + demo, leave room for Q&A · **Deck:** 21 slides
 
 ## Delivery cheat sheet
-- **One-sentence thesis:** "I shipped a real agentic system into a live product, and the interesting work wasn't the model — it was making it *trustworthy*: legible, grounded, guardrailed, and honestly evaluated."
+- **One-sentence thesis:** "I shipped a real agentic system into a live product, and the interesting work wasn't the model — it was making it *trustworthy*: legible, grounded, guardrailed, monitored, and honestly evaluated."
 - **Three themes to hammer** (every slide should ladder to one): (1) **Legibility over cleverness**, (2) **The eval is the product**, (3) **Bound the downside / be honest about limits**.
 - **Tone:** you're a PM who can go deep technically but always returns to the product/business decision and the tradeoff. Volunteer the caveats before they're asked — that's the credibility move.
-- **Pacing:** don't read the cards. The cards are receipts you *point at* ("you can see here…") while you talk. If you're over time, the compressible slides are 6, 9, 13, 19.
-- **Red Ventures throughline:** this is a recommendation/qualification engine over mispriced inventory with hard business guardrails — say that explicitly on slides 11 and 19.
+- **Pacing:** don't read the cards. The cards are receipts you *point at* ("you can see here…") while you talk. If you're over time, the compressible slides are 7, 10, 14, 20.
+- **Red Ventures throughline:** this is a recommendation/qualification engine over mispriced inventory with hard business guardrails — say that explicitly on slides 12 and 20.
 
 ---
 
@@ -51,13 +51,29 @@
 - "The tagline is **'the model advises; the rules decide.'** The LLM never has final say on anything safety-critical."
 - "Data sources on the right are all real — USGS, NOAA, state ArcGIS, PAD-US, Postgres. Output is a ranked, grounded recommendation at about two cents and ~17 seconds."
 - "And the dashed band at the bottom matters: the scorer in the spine is *also* the eval oracle. Same code grades the agent and grades my tests. I'll come back to that."
-**Transition:** "Before the mechanics, the principle that drove every choice."
+**Transition:** "That spine only works because of the context and contracts feeding it — here's what the agent actually needs to know."
 **If asked "why MCP?":** "Tool calls are a clean contract and let me reuse the exact same tools across both agents and the eval — no second implementation to drift."
 **If asked "is this multi-agent?":** "No — single agents. The Prospector is one agent expressed as a graph, not a swarm. I deliberately avoided agent-on-agent complexity I couldn't evaluate."
 
 ---
 
-### Slide 5 — Operating Principle: Clarity over complexity (~1:30) — trace card
+### Slide 5 — Context & Contracts (~1:30) — context card  *(NEW)*
+**Goal:** Answer the "what durable context, prompts, schemas, permissions, data, and business rules does the agent need" requirement. Show the agent's knowledge is explicit and inspectable — not vibes.
+**Say:**
+- "An agent is only as good as the context and the contracts you give it — the model is the smallest part."
+- "**Contracts:** a structured output schema — every recommendation must carry a verdict, a score, a confidence, its reasons, and its *sources* — plus typed MCP tool I/O. The grounding contract makes 'sources' non-optional, and that's what makes safety *checkable*."
+- "**Durable context:** per-user catch-log memory — your proven temperature and flow bands — 30-year medians for today's date, and the scorer's domain constants. Those thresholds are encoded domain knowledge, not numbers the model guesses."
+- "**Prompts as code:** the system, ranker, and prospector prompts are versioned files I can diff — not strings buried in a notebook."
+- "**Rules and permissions:** legality, ethics, flood, and staleness are deterministic rules; the whole thing runs under a gated, off-by-default permission model."
+- "The theme: I made the agent's knowledge explicit and inspectable — so when it's right I know why, and when it's wrong I know exactly where to look."
+**Transition:** "With that context in place, here's the principle that governed how I built on top of it."
+**If asked "where does memory live / how durable?":** "Per-user catch-log memory in Postgres, pulled via a tool at ranking time; it biases toward the bands you've actually caught fish in. Durable across sessions, not stuffed in the prompt."
+**If asked "why structured output instead of free text?":** "It makes grounding *enforceable* — I can scan every number in the rationale against the sourced tool results and reject anything unsourced. Free text would make that impossible to check."
+**If asked "what business rules?":** "The guardrails a few slides on are the business rules in code — legality, trout ethics, flood safety, staleness — plus the access/permission model for the deployment."
+
+---
+
+### Slide 6 — Operating Principle: Clarity over complexity (~1:30) — trace card
 **Goal:** Establish the value system; use the trace as proof of legibility.
 **Say:**
 - "My operating principle was legibility over cleverness — optimize for explainability end to end."
@@ -68,30 +84,33 @@
 
 ---
 
-### Slide 6 — Trip Planner: The v0 → v3 Staircase (~2:00)
+### Slide 7 — Trip Planner: The v0 → v3 Staircase (~2:00)
 **Goal:** Show iteration with numbers, including a regression you fixed.
 **Say:**
 - "Four versions, 25 scenarios, one variable at a time. **v0** is a naive prompt, no tools — it hallucinates readings. **v1** adds tool grounding. **v2** adds catch-log memory. **v3** adds guardrails and the grounding contract."
 - "Recommendation agreement goes 8% → 100%. Safety violations 16% → 0%. Hallucinated readings 100% → 0%."
 - "But be honest about the middle: **v2's hallucination rate got *worse*, 4% to 12%.** Adding memory made the model invent unsourced numbers. The v3 grounding contract is what drove it to zero. I show that because the regression is the most informative part."
-**Transition:** "So how did v3 actually achieve trust? Two mechanisms."
+**Transition:** "So how did v3 actually achieve trust? Two mechanisms — and a way to watch them."
 **If asked "what's 'agreement'?":** "The top pick is safe *and* in the oracle's best-rated tier — not exact-match, which would be brittle."
 
 ---
 
-### Slide 7 — How Trustworthiness Was Achieved (~1:45) — guardrail card
-**Goal:** The trust mechanism, concretely.
+### Slide 8 — How Trustworthiness Was Achieved (~1:50) — guardrail + monitoring card  *(REVISED: monitoring folded in)*
+**Goal:** The trust mechanism (grounding + guardrails) **and** that it's watched in production — this is now where you cover the *monitoring* half of "monitoring and evaluation."
 **Say:**
-- "Two mechanisms: grounding and hard guardrails."
+- "Two mechanisms build the trust: grounding and hard guardrails."
 - "**Grounding contract:** every number in the rationale must trace to a tool result this session. If it can't, regenerate once, then strip it. That's the 100%-to-0% hallucination drop."
-- "**Guardrails are deterministic code, not prompts** — that's the key design call." *(Point at the rulebook)* "Flood: flow over 3x median, block. Too warm over 68°F, block — that's a trout-ethics call, warm water kills released fish. Too cold, demote. Private access, block. Stale data, demote and label."
-- "Because they're code, v3 *cannot* recommend blocked water by construction. A prompt can be argued with; a veto can't."
-**Transition:** "Claims like 100%-to-0% are only worth anything if the measurement is honest. So let me show you how I measured."
-**If asked "why not just prompt the model to be safe?":** "Prompts are probabilistic and you can't unit-test them. Safety needs to be deterministic and regression-tested — which is exactly the bug on slide 10."
+- "**Guardrails are deterministic code, not prompts** — the key design call." *(Point at the rulebook)* "Flood over 3x median, block. Too warm over 68°F, block — trout ethics, warm water kills released fish. Too cold, demote. Private access, block. Stale data, demote. Because they're code, v3 *cannot* recommend blocked water by construction."
+- "The model advises; the rules decide."
+- "**And this is the part I added — we watch it in production.**" *(Point at the MONITORED band)* "Every veto is logged with its rule and reason. Every decision is traced — the tools it called, latency, cost, and whether grounding passed. And a proactive watch fires when conditions flip, like a river going from not-ideal to ideal. So trust isn't a one-time eval claim; it's grounding and guardrails I can prove are still firing live."
+**Transition:** "Those production numbers are only credible because of the offline evaluation behind them — here's how I measured."
+**If asked "monitoring vs. the eval slide?":** "This is *online* — what production is doing right now, logged and alertable. The next slide is *offline* — the 25-scenario eval that grades a change before it ships. You need both: the eval catches regressions pre-deploy, monitoring catches drift and surprises post-deploy."
+**If asked "is there a dashboard?":** "Today it's structured run-traces plus a violation log plus a scheduled alert tick — logging and alerting, not a Grafana board yet. Wiring those traces into a dashboard is the obvious next step."
+**If asked "why not just prompt the model to be safe?":** "Prompts are probabilistic and you can't unit-test them. Safety needs to be deterministic and regression-tested — which is exactly the bug on slide 11."
 
 ---
 
-### Slide 8 — How I Measured It: The Eval Is the Product (~2:00) — scoreboard
+### Slide 9 — How I Measured It: The Eval Is the Product (~2:00) — scoreboard
 **Goal:** This is your strongest PM slide — own evaluation methodology and its limits.
 **Say:**
 - "I evaluated against a deterministic oracle — BlueLiner's own scorer, parity-tested in 840 cases against production. So the grader is real product code, not vibes."
@@ -103,7 +122,7 @@
 
 ---
 
-### Slide 9 — Cost & Latency per decision (~1:00)
+### Slide 10 — Cost & Latency per decision (~1:00)
 **Goal:** Show you manage the economics and treat the model split as a lever.
 **Say:**
 - "Two cents and about 18 seconds per decision."
@@ -114,7 +133,7 @@
 
 ---
 
-### Slide 10 — Real Bug Discovery (~1:45) — code-diff card
+### Slide 11 — Real Bug Discovery (~1:45) — code-diff card
 **Goal:** Demonstrate engineering depth and a safety mindset under failure.
 **Say:**
 - "A safety control that fails *open* is worse than none, because it gives false confidence."
@@ -122,11 +141,11 @@
 - "**The fix** was one idea: canonicalize every ID *before* the veto — lowercase, normalize separators — so a format drift can never bypass safety. Plus a regression test that asserts blocked water stays blocked." *(Point at AFTER + green stamp)*
 - "The lesson is a PM one: safety controls need adversarial tests, not happy-path tests."
 **Transition:** "That's the Trip Planner. The second agent is a different and frankly harder problem — discovery."
-**If asked "how did you catch it?":** "It surfaced in an adversarial eval scenario where the model echoed a reformatted id — the eval is what caught it, which is the slide-8 point made concrete."
+**If asked "how did you catch it?":** "It surfaced in an adversarial eval scenario where the model echoed a reformatted id — the eval is what caught it, which is the slide-9 point made concrete."
 
 ---
 
-### Slide 11 — The Discovery Challenge (~1:30) — inventory card
+### Slide 12 — The Discovery Challenge (~1:30) — inventory card
 **Goal:** Reframe discovery as a business problem; land the Red Ventures parallel.
 **Say:**
 - "Discovery is really *finding undervalued inventory*."
@@ -138,7 +157,7 @@
 
 ---
 
-### Slide 12 — Prospector Mechanics (~1:45) — pipeline diagram
+### Slide 13 — Prospector Mechanics (~1:45) — pipeline diagram
 **Goal:** Show the cost-aware architecture and where the LLM earns its place.
 **Say:**
 - "The principle: cheap deterministic ranking at scale; the LLM *only* where it adds value."
@@ -146,11 +165,11 @@
 - *(Point at the pipeline)* "It's a LangGraph state machine: generate candidates, gather evidence, a conditional branch for ungauged reaches, score, verify, then *rank* — the only LLM call — then a **human-confirm** step, then update the flywheel."
 - "Confidence stays deterministic and calibrated; the model explains, it doesn't re-score. That keeps it cheap and auditable."
 **Transition:** "And does it actually work? I built an eval that refuses to flatter itself."
-**Honesty note (volunteer on slide 18 or if asked):** "The human-confirm step is wired as a durable interrupt and I've proven it end-to-end, but the live demo runs it headless — I'll be precise about that."
+**Honesty note (volunteer on slide 19 or if asked):** "The human-confirm step is wired as a durable interrupt and I've proven it end-to-end, but the live demo runs it headless — I'll be precise about that."
 
 ---
 
-### Slide 13 — Measuring Discovery (~2:00) — discovery scoreboard
+### Slide 14 — Measuring Discovery (~2:00) — discovery scoreboard
 **Goal:** Your methodology-integrity showpiece. The unflattering number is the hero.
 **Say:**
 - "An eval that refuses to flatter itself. First, **mask whole rivers by flow path**, not random segments — otherwise discovery is just trivial in-painting. My v1 scored a fake 0.999 AUC doing exactly that; masking is the fix."
@@ -163,7 +182,7 @@
 
 ---
 
-### Slide 14 — Defining Negative Space (~1:30) — exclusion card
+### Slide 15 — Defining Negative Space (~1:30) — exclusion card
 **Goal:** Show product judgment: deciding what to suppress.
 **Say:**
 - "Deciding what *not* to surface is half of product quality."
@@ -175,7 +194,7 @@
 
 ---
 
-### Slide 15 — Engineering Judgment: Right Tool for the Job (~1:30)
+### Slide 16 — Engineering Judgment: Right Tool for the Job (~1:30)
 **Goal:** Pre-empt the "did you just bolt on LangGraph" critique; show controlled comparison.
 **Say:**
 - "Same v3 planner, 25 scenarios, I changed *only* the orchestration — hand-written loop versus LangGraph."
@@ -187,7 +206,7 @@
 
 ---
 
-### Slide 16 — Shipping It Safely (~1:30) — four-layer card
+### Slide 17 — Shipping It Safely (~1:30) — four-layer card
 **Goal:** Show you think about blast radius, not just features.
 **Say:**
 - "The threat I cared about: the public app becoming a free, unmetered proxy to my API key."
@@ -198,28 +217,28 @@
 
 ---
 
-### Slide 17 — Live Demo (~2:00, flex)
+### Slide 18 — Live Demo (~2:00, flex)
 **Goal:** Prove it's real. Keep it tight and pre-narrated so a hiccup doesn't sink you.
 **Say (before you click):** "I'll run one Trip Planner decision: you'll see grounded recommendations, a guardrail-blocked river, and the real cost and latency."
 **During:** narrate the three beats — "tools gathering live data… the guardrail blocking the private water… the grounded pick with its reasons, and the cost/latency in the corner."
-**Safety net:** "If the network's unkind, I have the captured trace from slide 5 that shows the identical path."
+**Safety net:** "If the network's unkind, I have the captured trace from the Operating Principle slide that shows the identical path."
 **On the Prospector/HITL, be precise:** "The Discover tab runs the graph headless, so it won't pause live. The human-in-the-loop interrupt is wired and I've proven it end-to-end with a captured resume trace — I can show that artifact rather than fake a pause."
 **Transition:** "If I had more time, here's where I'd take it."
 
 ---
 
-### Slide 18 — Roadmap: What I'd Do Next (~1:15) — ladder
+### Slide 19 — Roadmap: What I'd Do Next (~1:15) — ladder
 **Goal:** Show prioritization tied to evidence, not a wish list.
 **Say:**
 - "Four moves." *(Point at ladder)* "First, pull the human-in-the-loop into the UI — make that headless confirm interactive, since the mechanism already exists."
-- "Second — and this is the **highest-leverage** one — close the access data gap by wiring PAD-US public-land polygons. Remember slide 13: access is the binding constraint, 139 of my top 250 leads are flagged 'access unverified.' That's a data-coverage problem, not a model problem."
+- "Second — and this is the **highest-leverage** one — close the access data gap by wiring PAD-US public-land polygons. Remember slide 14: access is the binding constraint, 139 of my top 250 leads are flagged 'access unverified.' That's a data-coverage problem, not a model problem."
 - "Third, exact flow-network topology via NLDI for sharper shortlisting. Fourth, grow the confirm/deny flywheel so calibration improves as anglers confirm."
 - "The point: **the eval pointed me at the roadmap — not at a better model.** That's the whole philosophy in one line."
 **Transition:** "Which is really how I work as a PM."
 
 ---
 
-### Slide 19 — How I Work (~1:00)
+### Slide 20 — How I Work (~1:00)
 **Goal:** Convert the project into transferable PM principles. This is the "hire me" slide.
 **Say:**
 - "Five principles this talk demonstrated, and they transfer directly to Red Ventures."
@@ -229,7 +248,7 @@
 
 ---
 
-### Slide 20 — Thank you / Questions (~0:30)
+### Slide 21 — Thank you / Questions (~0:30)
 **Say:** "Thank you — I'd love to dig into any of it: the eval design, the guardrails, the discovery methodology, or how I'd adapt this to a Red Ventures surface."
 
 ---
@@ -237,6 +256,7 @@
 ## Q&A prep — the hard ones (rehearse these)
 - **"Your trace is an eval scenario, not the live UI — isn't that cheating?"** → "It's reproducible by design. The live UI takes a map pin and a preferences string; the scenario harness lets me show the *exact same code path* deterministically. Nothing in the path is faked — the guardrail and grounding logic are identical."
 - **"The human-in-the-loop isn't in the demo."** → "Correct, and I'll be precise: it's implemented as a LangGraph interrupt with durable SqliteSaver checkpointing, and I've verified it end-to-end — the graph pauses, a resume command comes back later, state restores, the flywheel records the decision. The web demo runs headless because I didn't build the confirm-UI round-trip; that's roadmap item #1. The mechanism is real; the UI isn't."
+- **"How do you monitor it in production vs. just eval it?"** → "Two different jobs. Offline: the 25-scenario eval gates changes before they ship. Online: every decision emits a structured trace (tools, latency, cost, grounding result), every guardrail veto is logged with its reason, and a scheduled watch alerts on condition flips. Eval catches regressions pre-deploy; monitoring catches drift and surprises post-deploy."
 - **"Discovery AUC collapses to 0.512 with access — so it doesn't work?"** → "Lead-gen works — 0.986. Actionability is gated by access data I can't verify at scale yet. I'd rather show you the honest 0.512 and a data roadmap than a flattering number that breaks in the field."
 - **"Personalization?"** → "Confounded, n=4. I won't defend it as a number. Qualitatively the catch-log memory biases toward a user's proven temp/flow bands; proving it needs more users, which is a data problem."
 - **"Why not a bigger model / fine-tune?"** → "The eval didn't point at the model — it pointed at data coverage and grounding. Spending on a model wouldn't move the binding constraint."
@@ -245,4 +265,4 @@
 - **"What would you cut if you had half the time?"** → "I'd keep the spine and the eval and cut a second agent. Trust infrastructure first, surface area second."
 
 ## Timing summary
-Core narrative ≈ 24 min; demo 2 min flex; the compressible slides if you're long are 6, 9, 13(trim to two numbers), 19. If you're short, expand slide 13 (methodology) and the Q&A on generalization.
+Core narrative ≈ 25 min; demo 2 min flex; the compressible slides if you're long are 7, 10, 14 (trim to two numbers), 20. If you're short, expand slide 14 (methodology) and the Q&A on generalization.
