@@ -1,6 +1,6 @@
 # Endpoint watch
 
-_Run: 2026-06-23 02:46 UTC -- 15/16 reachable, **7 READY TO PROMOTE**._
+_Run: 2026-06-23 09:31 UTC -- 15/16 reachable, **7 READY TO PROMOTE**._
 
 | id | state | kind | status | captured |
 |----|-------|------|--------|----------|
@@ -136,6 +136,7 @@ _Run: 2026-06-23 02:46 UTC -- 15/16 reachable, **7 READY TO PROMOTE**._
   - _folder_ `EPSServices`
   - _folder_ `FEMA`
   - _folder_ `FWE`
+  - _folder_ `GeocodeServices`
   - _folder_ `GeocodeServicesArcMap`
   - _folder_ `HealthConnector`
   - _folder_ `Legislature`
