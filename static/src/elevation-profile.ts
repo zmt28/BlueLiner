@@ -205,14 +205,21 @@ export async function autoLoadElevation(
 ): Promise<void> {
   const box = root.querySelector<HTMLElement>(".bl-elev");
   if (!box) return;
+  // Drop the whole "Elevation profile" section when there's no data, so
+  // the Conditions tab doesn't carry an empty stub (the common case until
+  // the national VAA rebuild). Falls back to clearing the box.
+  const drop = () => {
+    const section = box.closest(".bl-elev-section");
+    if (section) section.remove();
+    else box.innerHTML = "";
+  };
   const seq = ++_elevSeq;
   const q = new URLSearchParams();
   if (keys.comid != null) q.set("comid", String(keys.comid));
   if (keys.levelpathid != null) q.set("levelpathid", String(keys.levelpathid));
   if (keys.name) q.set("name", keys.name);
   if (![...q.keys()].length) {
-    box.innerHTML =
-      '<div class="bl-reach-msg">No elevation profile for this stream.</div>';
+    drop();
     return;
   }
   let data: ElevationProfile | null = null;
@@ -226,9 +233,7 @@ export async function autoLoadElevation(
   }
   if (seq !== _elevSeq) return; // superseded by a newer open
   if (!ok || !data) {
-    box.innerHTML =
-      '<div class="bl-reach-msg">No elevation profile available for this ' +
-      "stream yet.</div>";
+    drop();
     return;
   }
   box.innerHTML = renderElevationProfile(data);

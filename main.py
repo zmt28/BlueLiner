@@ -794,18 +794,22 @@ def _panel_tabs_html(river: dict, chart_html: str,
         '<div class="bl-reach-msg">No USGS gauge on this reach &mdash; no '
         'live flow or temperature here. Tap a nearby gauged river for '
         'current conditions.</div>')
+    # Elevation/gradient profile lives INSIDE the Conditions tab, below
+    # the flow chart + gauges (or the no-gauge note). It's an empty
+    # placeholder the client fills on panel open (autoLoadElevation fetches
+    # /api/elevation_profile by comid or levelpathid+name); the client
+    # removes the whole section when there's no profile (e.g. a region not
+    # yet in the national VAA), so Conditions stays clean.
+    elev_section = (
+        '<div class="bl-elev-section">'
+        '<div class="bl-elev-title">Elevation profile</div>'
+        '<div class="bl-elev"><div class="bl-reach-msg">'
+        'Loading elevation&hellip;</div></div>'
+        '</div>')
     conditions_panel = f"""
         <div class="bl-tab-panel" data-tab="conditions">
             {conditions_body}
-        </div>"""
-    # Gradient tab: an empty placeholder the client fills on panel open
-    # (autoLoadElevation fetches /api/elevation_profile by comid or
-    # levelpathid+name). Server-rendered empty so it works for both the
-    # gauged-river and ungauged-reach panels without threading the NHD
-    # keys through here.
-    gradient_panel = """
-        <div class="bl-tab-panel" data-tab="gradient">
-            <div class="bl-elev"><div class="bl-reach-msg">Loading elevation&hellip;</div></div>
+            {elev_section}
         </div>"""
     hatches_panel = f"""
         <div class="bl-tab-panel" data-tab="hatches">
@@ -826,19 +830,17 @@ def _panel_tabs_html(river: dict, chart_html: str,
     tab_bar = f"""
         <div class="bl-tabs" role="tablist">
             <input type="radio" name="bl-tab" id="bl-tab-conditions"{_chk("conditions")}>
-            <input type="radio" name="bl-tab" id="bl-tab-gradient"{_chk("gradient")}>
             <input type="radio" name="bl-tab" id="bl-tab-hatches"{_chk("hatches")}>
             <input type="radio" name="bl-tab" id="bl-tab-stocking"{_chk("stocking")}>
             <input type="radio" name="bl-tab" id="bl-tab-catch"{_chk("catch")}>
             <div class="bl-tab-bar">
                 <label for="bl-tab-conditions" class="bl-tab" data-tab="conditions">Conditions</label>
-                <label for="bl-tab-gradient" class="bl-tab" data-tab="gradient">Gradient</label>
                 <label for="bl-tab-hatches" class="bl-tab" data-tab="hatches">Hatches</label>
                 <label for="bl-tab-stocking" class="bl-tab" data-tab="stocking">Stocking</label>
                 <label for="bl-tab-catch" class="bl-tab" data-tab="catch">Log catch</label>
             </div>
             <div class="bl-tab-panels">
-                """ + conditions_panel + gradient_panel + hatches_panel + stocking_panel + catch_panel + """
+                """ + conditions_panel + hatches_panel + stocking_panel + catch_panel + """
             </div>
         </div>"""
     return tab_bar
