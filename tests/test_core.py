@@ -1133,6 +1133,32 @@ def test_nldi_gauge_meta_includes_levelpath_when_vaa_loaded(tmp_path, monkeypatc
     assert meta["levelpathid"] == 5000
 
 
+def test_nldi_gauge_meta_reresolves_null_levelpath_from_vaa(tmp_path, monkeypatch):
+    """A row persisted with levelpathid=None (written while the national VAA
+    was empty) is re-resolved from the VAA off its stored comid -- no NLDI
+    call. This is what re-populates a river's levelpathids so a clicked
+    reach matches its gauge by levelpath, not name alone."""
+    _seed_vaa(tmp_path, monkeypatch, [
+        {"comid": 12345, "levelpathid": 5000, "gnis_name": "North Platte River"},
+    ])
+    main._gauge_meta_cache.clear()
+    # Simulate the empty-VAA-window row: comid known, levelpathid null.
+    db.put_gauge_meta("06620000",
+                      {"comid": "12345", "gnis_name": "North Platte River",
+                       "levelpathid": None})
+
+    # Any NLDI call would blow up -- proving the re-resolve is VAA-only.
+    class Boom:
+        def __init__(self, *a, **k): raise AssertionError("must not hit NLDI")
+
+    monkeypatch.setattr(main.httpx, "Client", Boom)
+    meta = main._nldi_gauge_meta("06620000")
+    assert meta["levelpathid"] == 5000          # filled from the VAA
+    assert meta["comid"] == "12345"
+    # Persisted, so the next read short-circuits.
+    assert db.get_gauge_meta("06620000")["levelpathid"] == 5000
+
+
 def test_shell_no_cache_middleware():
     """App-shell paths get no-cache so a CDN can't strand clients on a
     stale build; immutable vendored assets are unaffected."""
