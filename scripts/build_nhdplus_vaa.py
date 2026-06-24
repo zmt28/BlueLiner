@@ -194,15 +194,39 @@ def extract_dbf(archive: str, workdir: str, name: str) -> str:
         return os.path.join(workdir, targets[0])
 
 
+def _open_dbf(dbf_path: str):
+    """Open an NHDPlus DBF tolerantly for a national build:
+
+    - `lowernames=True` normalizes field-name casing, which is NOT uniform
+      across NHDPlusV2 vintages (some regions ship `COMID`/`GNIS_NAME`,
+      others `ComID`/`GNIS_Name`). Callers access fields by lowercase name.
+    - A `FieldParser` that yields None instead of raising on a malformed
+      cell. Some regional DBFs carry null-byte-filled numeric fields
+      (e.g. RG_13's NHDFlowline.dbf) that crash dbfread's default parser
+      mid-iteration and would abort the whole build. A junk numeric cell
+      becomes None; the row is skipped downstream if its key is missing.
+    """
+    from dbfread import DBF, FieldParser
+
+    class _TolerantParser(FieldParser):
+        def parse(self, field, data):
+            try:
+                return super().parse(field, data)
+            except Exception:  # noqa: BLE001 - degrade a bad cell to None
+                return None
+
+    return DBF(dbf_path, ignore_missing_memofile=True, lowernames=True,
+               parserclass=_TolerantParser, char_decode_errors="ignore")
+
+
 def gnis_names_from_flowline(dbf_path: str) -> dict[int, str]:
     """COMID -> GNIS_Name (empties dropped)."""
-    from dbfread import DBF
     out: dict[int, str] = {}
-    for rec in DBF(dbf_path, ignore_missing_memofile=True):
-        comid = rec.get("COMID")
+    for rec in _open_dbf(dbf_path):
+        comid = rec.get("comid")
         if comid is None:
             continue
-        name = rec.get("GNIS_NAME")
+        name = rec.get("gnis_name")
         if name:
             out[int(comid)] = str(name).strip()
     return out
@@ -223,34 +247,32 @@ def _clean_elev(v) -> int | None:
 def elev_from_elevslope(dbf_path: str) -> dict[int, tuple]:
     """COMID -> (maxelevsmo, minelevsmo) in cm, from elevslope.dbf.
     Either value may be None when NHDPlus has no smoothed elevation."""
-    from dbfread import DBF
     out: dict[int, tuple] = {}
-    for rec in DBF(dbf_path, ignore_missing_memofile=True):
-        comid = rec.get("COMID")
+    for rec in _open_dbf(dbf_path):
+        comid = rec.get("comid")
         if comid is None:
             continue
-        out[int(comid)] = (_clean_elev(rec.get("MAXELEVSMO")),
-                           _clean_elev(rec.get("MINELEVSMO")))
+        out[int(comid)] = (_clean_elev(rec.get("maxelevsmo")),
+                           _clean_elev(rec.get("minelevsmo")))
     return out
 
 
 def vaa_rows(dbf_path: str, gnis: dict[int, str], elev: dict[int, tuple]):
     """Yield projected VAA dicts joined with GNIS_Name from the snapshot
     and the smoothed reach-end elevations from elevslope."""
-    from dbfread import DBF
-    for rec in DBF(dbf_path, ignore_missing_memofile=True):
-        comid = rec.get("ComID")
+    for rec in _open_dbf(dbf_path):
+        comid = rec.get("comid")
         if comid is None:
             continue
         comid = int(comid)
         maxe, mine = elev.get(comid, (None, None))
         yield {
             "comid":       comid,
-            "hydroseq":    int(rec["Hydroseq"]) if rec.get("Hydroseq") else None,
-            "levelpathid": int(rec["LevelPathI"]) if rec.get("LevelPathI") else None,
-            "streamlevel": int(rec["StreamLeve"]) if rec.get("StreamLeve") else None,
+            "hydroseq":    int(rec["hydroseq"]) if rec.get("hydroseq") else None,
+            "levelpathid": int(rec["levelpathi"]) if rec.get("levelpathi") else None,
+            "streamlevel": int(rec["streamleve"]) if rec.get("streamleve") else None,
             "gnis_name":   gnis.get(comid),
-            "lengthkm":    float(rec["LengthKM"]) if rec.get("LengthKM") else None,
+            "lengthkm":    float(rec["lengthkm"]) if rec.get("lengthkm") else None,
             "maxelevsmo":  maxe,
             "minelevsmo":  mine,
         }
