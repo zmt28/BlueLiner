@@ -936,6 +936,16 @@ html, body {
   white-space: nowrap; box-shadow: var(--elev-1);
 }
 .bl-spark-tip[hidden] { display: none; }
+/* Elevation/gradient profile -- a section inside the Conditions tab,
+   below the flow chart. Summary reuses .bl-stats; the chart mirrors
+   .bl-spark sizing + hover. The client removes .bl-elev-section entirely
+   when there's no profile, so it never shows an empty stub. */
+.bl-elev-section { margin-top: var(--space-4); padding-top: var(--space-3); border-top: 1px solid var(--border-1); }
+.bl-elev-title { font-size: var(--fs-body); font-weight: var(--fw-semibold); color: var(--fg-1); margin-bottom: var(--space-2); }
+.bl-elev-stats { margin-top: var(--space-2); }
+.bl-elev-unit { font-size: var(--fs-caption); font-weight: var(--fw-regular); color: var(--fg-3); margin-left: 2px; }
+.bl-elev-chart { position: relative; margin-top: var(--space-3); }
+.bl-elev-chart svg { display: block; width: 100%; height: auto; touch-action: none; }
 .pin-popup { font-family: var(--font-sans); min-width: 180px; }
 .pin-popup .pin-note { font-size: var(--fs-body); color: var(--fg-1); white-space: pre-wrap; }
 .pin-popup .pin-meta { font-size: var(--fs-caption); color: var(--fg-3); margin: 6px 0 8px; }

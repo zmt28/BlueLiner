@@ -152,8 +152,26 @@ def init_db() -> None:
             " levelpathid BIGINT,"
             " streamlevel INTEGER,"
             " gnis_name TEXT,"
-            " lengthkm REAL)"
+            " lengthkm REAL,"
+            # Smoothed reach-end elevations (cm) from NHDPlus elevslope.dbf;
+            # drive the stream elevation/gradient profile. Added after the
+            # original 6-col table shipped -> the ALTER below backfills the
+            # columns on existing deployments (the next VAA reload populates
+            # them; until then they're NULL and the profile endpoint 404s).
+            " maxelevsmo INTEGER,"
+            " minelevsmo INTEGER)"
         )
+        for _col in ("maxelevsmo", "minelevsmo"):
+            if _IS_PG:
+                cur.execute(
+                    f"ALTER TABLE nhdplus_vaa ADD COLUMN IF NOT EXISTS "
+                    f"{_col} INTEGER")
+            else:
+                try:
+                    cur.execute(
+                        f"ALTER TABLE nhdplus_vaa ADD COLUMN {_col} INTEGER")
+                except Exception:
+                    pass   # SQLite: column already exists -> ignore
         cur.execute(
             "CREATE INDEX IF NOT EXISTS idx_vaa_levelpath "
             "ON nhdplus_vaa(levelpathid)"
@@ -407,8 +425,10 @@ def put_gauge_meta(site_no: str, meta: dict) -> None:
     _upsert("gauge_meta", site_no, "payload", json.dumps(meta))
 
 
+# Order MUST match data/nhdplus/vaa.csv.gz's header (build_nhdplus_vaa.py
+# OUT_COLUMNS) -- the Postgres COPY maps columns positionally, not by name.
 _VAA_COLS = ("comid", "hydroseq", "levelpathid", "streamlevel",
-             "gnis_name", "lengthkm")
+             "gnis_name", "lengthkm", "maxelevsmo", "minelevsmo")
 
 
 def get_vaa(comid: int) -> dict | None:
@@ -423,6 +443,25 @@ def get_vaa(comid: int) -> dict | None:
     if not row:
         return None
     return {k: row[k] for k in _VAA_COLS}
+
+
+_VAA_PROFILE_COLS = ("comid", "hydroseq", "gnis_name", "lengthkm",
+                     "maxelevsmo", "minelevsmo")
+
+
+def vaa_levelpath_reaches(levelpathid: int) -> list[dict]:
+    """Every reach on a levelpath, ordered upstream -> downstream
+    (NHDPlus hydroseq DESCending = headwaters first), with the fields the
+    stream elevation/gradient profile needs. Empty list if none / not
+    loaded."""
+    with _conn() as conn:
+        cur = conn.cursor()
+        cur.execute(
+            _ph(f"SELECT {','.join(_VAA_PROFILE_COLS)} FROM nhdplus_vaa "
+                "WHERE levelpathid = ? ORDER BY hydroseq DESC"),
+            (int(levelpathid),))
+        rows = cur.fetchall()
+    return [{k: r[k] for k in _VAA_PROFILE_COLS} for r in rows]
 
 
 def vaa_loaded() -> bool:
@@ -453,11 +492,19 @@ def bulk_load_vaa(csv_gz_path: str) -> int:
 def _bulk_load_vaa_pg(csv_gz_path: str) -> int:
     import csv
     import gzip
+    # COPY maps columns POSITIONALLY to the listed column names, so the
+    # column list must match the CSV's header order. Read the header to
+    # tolerate an older CSV that predates the elevation columns (the
+    # bundled dev file) as well as the national 8-column file.
+    with gzip.open(csv_gz_path, "rt") as hf:
+        header = next(csv.reader(hf))
+    known = set(_VAA_COLS)
+    cols = [c for c in header if c in known]
     with _conn() as conn, conn.cursor() as cur, \
             gzip.open(csv_gz_path, "rt") as f:
         # psycopg COPY: feed CSV directly, no row-by-row roundtrip
         with cur.copy(
-                f"COPY nhdplus_vaa ({','.join(_VAA_COLS)}) "
+                f"COPY nhdplus_vaa ({','.join(cols)}) "
                 "FROM STDIN WITH (FORMAT CSV, HEADER TRUE, NULL '')") as copy:
             for chunk in iter(lambda: f.read(65536), ""):
                 copy.write(chunk)
@@ -481,19 +528,26 @@ def _bulk_load_vaa_sqlite(csv_gz_path: str) -> int:
                 return
             conn.executemany(
                 f"INSERT OR IGNORE INTO nhdplus_vaa "
-                f"({','.join(_VAA_COLS)}) VALUES (?,?,?,?,?,?)",
+                f"({','.join(_VAA_COLS)}) "
+                f"VALUES ({','.join('?' * len(_VAA_COLS))})",
                 batch)
             total += len(batch)
             batch.clear()
 
+        def _i(v):
+            return int(v) if v not in (None, "") else None
+
         for row in reader:
             batch.append((
                 int(row["comid"]),
-                int(row["hydroseq"]) if row["hydroseq"] else None,
-                int(row["levelpathid"]) if row["levelpathid"] else None,
-                int(row["streamlevel"]) if row["streamlevel"] else None,
-                row["gnis_name"] or None,
-                float(row["lengthkm"]) if row["lengthkm"] else None,
+                _i(row.get("hydroseq")),
+                _i(row.get("levelpathid")),
+                _i(row.get("streamlevel")),
+                row.get("gnis_name") or None,
+                float(row["lengthkm"]) if row.get("lengthkm") else None,
+                # Tolerate an old CSV that predates the elevation columns.
+                _i(row.get("maxelevsmo")),
+                _i(row.get("minelevsmo")),
             ))
             if len(batch) >= 5000:
                 _flush()
