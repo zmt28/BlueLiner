@@ -76,25 +76,40 @@ loader picks it up.
 
 This is the routing-attribute table that drives the LevelPathID-based
 flowline filter -- it's what stops a tributary gauge's clickable river
-from extending past the confluence onto the receiving river. Bundled
-in the repo; loaded into Postgres once at first boot.
+from extending past the confluence onto the receiving river -- AND the
+per-reach smoothed elevations (`maxelevsmo` / `minelevsmo`, cm) that
+back the **stream gradient / elevation profile** (the panel's "Gradient"
+tab, `/api/elevation_profile`). Bundled in the repo; loaded into
+Postgres once at first boot.
 
 Don't hand-edit. Regenerate by running:
 
 ```sh
 pip install dbfread py7zr httpx       # dev-only deps
-python scripts/build_nhdplus_vaa.py
+python scripts/build_nhdplus_vaa.py            # national (CONUS)
+python scripts/build_nhdplus_vaa.py --vpu MA_02,MS_05   # fast regional
+python scripts/build_nhdplus_vaa.py --list     # show discovered VPUs
 ```
 
-The script downloads NHDPlusV2 `NHDPlusAttributes` + `NHDSnapshot`
-archives for the configured regions (HUC-02 + HUC-05 today), extracts
-`PlusFlowlineVAA.dbf` and `NHDFlowline.dbf`, joins on ComID, and
-writes the gzipped CSV. Re-run only when expanding coverage to new
-regions -- the data itself is frozen at NHDPlusV2's release.
+The script **discovers** every CONUS Vector Processing Unit (VPU 01-18)
+by listing the EPA NHDPlusV21 S3 bucket and picking the latest vintage
+of each component archive -- no hand-maintained URL list (the old
+hardcoded `REGIONS` was brittle because the `_<nn>` vintage suffixes are
+not uniform across regions). For each VPU it downloads the
+`NHDPlusAttributes` + `NHDSnapshot` archives, extracts
+`PlusFlowlineVAA.dbf` (routing), `elevslope.dbf` (elevations), and
+`NHDFlowline.dbf` (GNIS name), joins on ComID, and writes the gzipped
+CSV. AK/HI/PR (VPU 19-21) are out of scope. The data is frozen at
+NHDPlusV2's release, so re-run only to change coverage or the schema.
 
-To add a region, edit `REGIONS` at the top of
-`scripts/build_nhdplus_vaa.py` (entries are `(id, label, vaa_url,
-snap_url)`), rerun the script, and commit the new CSV.
+The `elevation_profile` feature needs a region's reaches present in this
+table to work -- so a **national VAA rebuild + R2 republish (new version
+prefix, see below) is required before the Gradient tab lights up outside
+the bundled dev regions.** The schema added `maxelevsmo` / `minelevsmo`
+after the original 6-column table shipped; `db.init_db` ALTERs the
+columns in on existing deployments, and the Postgres COPY reads the CSV
+header so it tolerates an older elevation-less file (the columns stay
+NULL and the endpoint 404s until the new CSV is loaded).
 
 ## Clickable-streams network (`data/nhdplus/clickable_streams.geojson.gz`)
 

@@ -188,6 +188,8 @@ interface TroutFeatureProps {
 interface ClickableStreamProps {
   gnis_name?: string | null;
   levelpathid?: number;
+  /** NHDPlus COMID of the reach; anchors the elevation-profile lookup. */
+  comid?: number;
   /** Raw per-state agency designation baked into the tiles, e.g. "class_a",
       "wilderness", "wild_reproduction", "stocked", "designated", or null. The
       client names it on the reach card; coloring is by `tier`. */
@@ -236,6 +238,24 @@ interface ReachDetail {
     river_class?: string | null;
     river_label?: string | null;
   };
+}
+
+/** /api/elevation_profile response: the NHDPlus-derived gradient profile
+    for the named river section containing a clicked reach. */
+interface ElevationProfile {
+  name: string;
+  length_mi: number;
+  elev_change_ft: number;
+  high_ft: number;
+  low_ft: number;
+  grade_ft_per_mi: number;
+  grade_pct: number;
+  grade_deg: number;
+  reach_count: number;
+  /** Profile polyline: distance (mi) vs elevation (ft), upstream-first. */
+  points: Array<{ d: number; e: number }>;
+  /** The clicked reach's position on the axis, for the cursor marker. */
+  focus: { d: number; e: number } | null;
 }
 
 /** Nationwide quality tier -- the stream color axis. The raw per-state

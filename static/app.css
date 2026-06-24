@@ -936,6 +936,12 @@ html, body {
   white-space: nowrap; box-shadow: var(--elev-1);
 }
 .bl-spark-tip[hidden] { display: none; }
+/* Elevation/gradient profile (Gradient tab). Summary reuses .bl-stats;
+   the chart mirrors .bl-spark sizing + hover. */
+.bl-elev-stats { margin-top: var(--space-2); }
+.bl-elev-unit { font-size: var(--fs-caption); font-weight: var(--fw-regular); color: var(--fg-3); margin-left: 2px; }
+.bl-elev-chart { position: relative; margin-top: var(--space-3); }
+.bl-elev-chart svg { display: block; width: 100%; height: auto; touch-action: none; }
 .pin-popup { font-family: var(--font-sans); min-width: 180px; }
 .pin-popup .pin-note { font-size: var(--fs-body); color: var(--fg-1); white-space: pre-wrap; }
 .pin-popup .pin-meta { font-size: var(--fs-caption); color: var(--fg-3); margin: 6px 0 8px; }
@@ -1299,6 +1305,7 @@ html, body {
    type to wire each radio to its tab + panel without per-tab IDs in
    the selector. */
 #bl-tab-conditions:checked ~ .bl-tab-bar > label[for="bl-tab-conditions"],
+#bl-tab-gradient:checked   ~ .bl-tab-bar > label[for="bl-tab-gradient"],
 #bl-tab-hatches:checked    ~ .bl-tab-bar > label[for="bl-tab-hatches"],
 #bl-tab-stocking:checked   ~ .bl-tab-bar > label[for="bl-tab-stocking"],
 #bl-tab-catch:checked      ~ .bl-tab-bar > label[for="bl-tab-catch"] {
@@ -1306,6 +1313,7 @@ html, body {
     border-bottom-color: var(--fg-1);
 }
 #bl-tab-conditions:checked ~ .bl-tab-panels > [data-tab="conditions"],
+#bl-tab-gradient:checked   ~ .bl-tab-panels > [data-tab="gradient"],
 #bl-tab-hatches:checked    ~ .bl-tab-panels > [data-tab="hatches"],
 #bl-tab-stocking:checked   ~ .bl-tab-panels > [data-tab="stocking"],
 #bl-tab-catch:checked      ~ .bl-tab-panels > [data-tab="catch"] {

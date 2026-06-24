@@ -29,6 +29,7 @@ import { ensurePmtilesProtocol } from "./tiles";
 import { prepareRiverPanel, commitRiverPanelOpen } from "./river-panel";
 import { selectRiver } from "./selection";
 import { refreshIcons } from "./util";
+import { autoLoadElevation } from "./elevation-profile";
 
 // -- Stream tier coloring (the nationwide quality axis) --------------
 // Tiles carry `tier` (gold/class1/class2/class3 or null), normalized in the
@@ -614,7 +615,8 @@ export function onStreamClick(
     `<div class="bl-reach-msg">Loading&hellip;</div>` +
     `</div></div>`;
   commitRiverPanelOpen(panel, body, "auto");
-  loadReachPanel(body, lngLat, name, streamTier(p) !== "unclassified", p.levelpathid ?? null);
+  loadReachPanel(body, lngLat, name, streamTier(p) !== "unclassified",
+    p.levelpathid ?? null, p.comid ?? null);
 }
 
 // -- Ungauged-panel load ---------------------------------------------
@@ -632,6 +634,7 @@ async function loadReachPanel(
   name: string | null,
   trout: boolean,
   levelpathid: number | null,
+  comid: number | null,
 ): Promise<void> {
   const seq = ++_reachSeq;
   if (!lngLat) {
@@ -675,6 +678,9 @@ async function loadReachPanel(
       lon: lngLat.lng,
     });
   }
+  // Gradient tab: anchor on the clicked reach's comid (most precise),
+  // with levelpathid + name as the fallback key.
+  autoLoadElevation(body, { comid, levelpathid, name });
   refreshIcons();
 }
 

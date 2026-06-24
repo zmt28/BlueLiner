@@ -15,6 +15,7 @@ import asyncio
 import hashlib
 import json
 import logging
+import math
 import os
 import random
 import re
@@ -797,6 +798,15 @@ def _panel_tabs_html(river: dict, chart_html: str,
         <div class="bl-tab-panel" data-tab="conditions">
             {conditions_body}
         </div>"""
+    # Gradient tab: an empty placeholder the client fills on panel open
+    # (autoLoadElevation fetches /api/elevation_profile by comid or
+    # levelpathid+name). Server-rendered empty so it works for both the
+    # gauged-river and ungauged-reach panels without threading the NHD
+    # keys through here.
+    gradient_panel = """
+        <div class="bl-tab-panel" data-tab="gradient">
+            <div class="bl-elev"><div class="bl-reach-msg">Loading elevation&hellip;</div></div>
+        </div>"""
     hatches_panel = f"""
         <div class="bl-tab-panel" data-tab="hatches">
             {_hatch_section_html(river["hatch_zone"], river["active"], river["month"])}
@@ -816,17 +826,19 @@ def _panel_tabs_html(river: dict, chart_html: str,
     tab_bar = f"""
         <div class="bl-tabs" role="tablist">
             <input type="radio" name="bl-tab" id="bl-tab-conditions"{_chk("conditions")}>
+            <input type="radio" name="bl-tab" id="bl-tab-gradient"{_chk("gradient")}>
             <input type="radio" name="bl-tab" id="bl-tab-hatches"{_chk("hatches")}>
             <input type="radio" name="bl-tab" id="bl-tab-stocking"{_chk("stocking")}>
             <input type="radio" name="bl-tab" id="bl-tab-catch"{_chk("catch")}>
             <div class="bl-tab-bar">
                 <label for="bl-tab-conditions" class="bl-tab" data-tab="conditions">Conditions</label>
+                <label for="bl-tab-gradient" class="bl-tab" data-tab="gradient">Gradient</label>
                 <label for="bl-tab-hatches" class="bl-tab" data-tab="hatches">Hatches</label>
                 <label for="bl-tab-stocking" class="bl-tab" data-tab="stocking">Stocking</label>
                 <label for="bl-tab-catch" class="bl-tab" data-tab="catch">Log catch</label>
             </div>
             <div class="bl-tab-panels">
-                """ + conditions_panel + hatches_panel + stocking_panel + catch_panel + """
+                """ + conditions_panel + gradient_panel + hatches_panel + stocking_panel + catch_panel + """
             </div>
         </div>"""
     return tab_bar
@@ -1627,6 +1639,143 @@ async def api_reach_detail(
     )
     payload["popup_html"] = popup_html
     return _cached_json(request, payload, max_age=300)
+
+
+# -- Stream elevation / gradient profile -------------------------------
+# Built from NHDPlus per-reach smoothed elevations (elevslope MAX/MINELEVSMO,
+# in cm) walked along a levelpath. The "named section" is the contiguous run
+# of reaches sharing the clicked reach's GNIS name -- TroutRoutes' "14 mi of
+# Morgan Run" -- so the profile is "this stream's gradient," not the whole
+# 100-mi flow path to the sea. An unnamed reach falls back to the contiguous
+# unnamed block around it.
+
+_CM_TO_FT = 0.0328084
+_KM_TO_MI = 0.6213711922
+_PROFILE_MAX_POINTS = 300
+
+
+def _pf_name(s) -> str:
+    return (s or "").strip().lower()
+
+
+def _section_reaches(reaches: list[dict], name: str | None,
+                     focus_comid: int | None) -> list[dict]:
+    """Pick the named section from one levelpath's reaches (already ordered
+    upstream -> downstream). With `focus_comid`: the contiguous block around
+    it sharing its name (handles unnamed reaches too -- empty == empty).
+    Else: every reach whose name matches `name`. Pure."""
+    if focus_comid is not None:
+        idx = next((i for i, r in enumerate(reaches)
+                    if r["comid"] == focus_comid), None)
+        if idx is None:
+            return []
+        key = _pf_name(reaches[idx].get("gnis_name"))
+        lo = hi = idx
+        while lo - 1 >= 0 and _pf_name(reaches[lo - 1].get("gnis_name")) == key:
+            lo -= 1
+        while hi + 1 < len(reaches) and \
+                _pf_name(reaches[hi + 1].get("gnis_name")) == key:
+            hi += 1
+        return reaches[lo:hi + 1]
+    key = _pf_name(name)
+    if not key:
+        return []
+    return [r for r in reaches if _pf_name(r.get("gnis_name")) == key]
+
+
+def _decimate(pts: list, max_n: int) -> list:
+    """Evenly thin a point list to <= max_n, always keeping first + last."""
+    n = len(pts)
+    if n <= max_n:
+        return pts
+    step = n / max_n
+    out = [pts[int(i * step)] for i in range(max_n)]
+    out[-1] = pts[-1]
+    return out
+
+
+def build_elevation_profile(reaches: list[dict], *, name: str | None = None,
+                            focus_comid: int | None = None) -> dict | None:
+    """Assemble the stream elevation/gradient profile for the named section
+    from a levelpath's reaches (ordered upstream -> downstream). Returns the
+    summary stats + chart series, or None when there isn't enough elevation
+    data (e.g. a region not yet in the national VAA). Pure -- the endpoint
+    does the DB read, this does the math, so it's unit-testable."""
+    section = _section_reaches(reaches, name, focus_comid)
+    # Need both reach-end elevations + a length to place a reach on the axis.
+    usable = [r for r in section
+              if r.get("maxelevsmo") is not None
+              and r.get("minelevsmo") is not None
+              and r.get("lengthkm")]
+    if len(usable) < 2:
+        return None
+    pts: list[tuple[float, float]] = [(0.0, usable[0]["maxelevsmo"] * _CM_TO_FT)]
+    cum = 0.0
+    focus = None
+    for r in usable:
+        seg_mi = r["lengthkm"] * _KM_TO_MI
+        if focus_comid is not None and r["comid"] == focus_comid:
+            focus = (cum + seg_mi / 2.0,
+                     (r["maxelevsmo"] + r["minelevsmo"]) / 2.0 * _CM_TO_FT)
+        cum += seg_mi
+        pts.append((cum, r["minelevsmo"] * _CM_TO_FT))
+    length_mi = cum
+    elevs = [e for _, e in pts]
+    high, low = max(elevs), min(elevs)
+    drop = high - low
+    run_ft = length_mi * 5280.0
+    return {
+        "name": usable[0].get("gnis_name") or "Unnamed stream",
+        "length_mi": round(length_mi, 1),
+        "elev_change_ft": round(drop),
+        "high_ft": round(high),
+        "low_ft": round(low),
+        "grade_ft_per_mi": round(drop / length_mi, 1) if length_mi else 0.0,
+        "grade_pct": round(drop / run_ft * 100, 2) if run_ft else 0.0,
+        "grade_deg": round(math.degrees(math.atan(drop / run_ft)), 1)
+        if run_ft else 0.0,
+        "reach_count": len(usable),
+        "points": [{"d": round(d, 2), "e": round(e)}
+                   for d, e in _decimate(pts, _PROFILE_MAX_POINTS)],
+        "focus": ({"d": round(focus[0], 2), "e": round(focus[1])}
+                  if focus else None),
+    }
+
+
+@app.get("/api/elevation_profile")
+async def api_elevation_profile(
+    request: Request,
+    comid: int | None = Query(default=None, ge=0),
+    levelpathid: int | None = Query(default=None, ge=0),
+    name: str | None = Query(default=None, max_length=120),
+):
+    """Elevation/gradient profile for the named river section containing a
+    clicked reach. Pass `comid` (preferred -- the clicked NHD reach, which
+    anchors the section) or `levelpathid` + `name` (the gauged-river panel,
+    which has no single comid). Reads the NHDPlus VAA table; 404s when the
+    reach/levelpath isn't loaded or carries no elevation (a region not yet
+    in the national VAA). Profiles are frozen NHD data -> long cache."""
+    def _work() -> dict | None:
+        lpid, nm = levelpathid, name
+        if lpid is None and comid is not None:
+            v = db.get_vaa(comid)
+            if not v:
+                return None
+            lpid = v.get("levelpathid")
+            if nm is None:
+                nm = v.get("gnis_name")
+        if lpid is None:
+            return None
+        reaches = db.vaa_levelpath_reaches(lpid)
+        if not reaches:
+            return None
+        return build_elevation_profile(reaches, name=nm, focus_comid=comid)
+
+    profile = await asyncio.to_thread(_work)
+    if not profile:
+        raise HTTPException(status_code=404,
+                            detail="No elevation profile available here")
+    return _cached_json(request, profile, max_age=86400)
 
 
 _NLDI_BASE = "https://api.water.usgs.gov/nldi/linked-data"
