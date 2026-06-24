@@ -161,6 +161,43 @@ def _species_from_props(props: dict, src: dict) -> list[str]:
     return [s.strip() for s in re.split(r"[,/;&]", str(raw)) if s.strip()]
 
 
+def _clean_coords(c):
+    """Recursively normalize a GeoJSON `coordinates` structure to 2D.
+
+    Truncates every position to its first two ordinates -- some agency
+    feeds publish XYZM (4D) geometries that shapely's `shape()` rejects
+    outright ("ordinate dimension should be 2 or 3, got 4"). Returns None
+    if any position is missing or carries a non-numeric (e.g. null) X/Y,
+    which `shape()` would otherwise blow up on (`float(None)`). Pure.
+    """
+    if isinstance(c, (list, tuple)) and c and isinstance(c[0], (int, float)) \
+            and not isinstance(c[0], bool):
+        xy = c[:2]
+        if len(xy) < 2 or any(not isinstance(v, (int, float))
+                              or isinstance(v, bool) for v in xy):
+            return None
+        return [float(xy[0]), float(xy[1])]
+    if isinstance(c, (list, tuple)):
+        out = []
+        for sub in c:
+            cleaned = _clean_coords(sub)
+            if cleaned is None:
+                return None
+            out.append(cleaned)
+        return out
+    return None
+
+
+def _geom_2d(g):
+    """A 2D copy of a GeoJSON geometry, or None if it can't be salvaged."""
+    if not isinstance(g, dict) or not g.get("coordinates"):
+        return None
+    cleaned = _clean_coords(g.get("coordinates"))
+    if cleaned is None:
+        return None
+    return {"type": g.get("type"), "coordinates": cleaned}
+
+
 def _features_to_points(features: list[dict], src: dict) -> list[dict]:
     agency_url = src.get("agency_url") or src.get("url")
     name_field = src.get("name_field")
@@ -170,8 +207,12 @@ def _features_to_points(features: list[dict], src: dict) -> list[dict]:
     skipped = 0
     for f in features:
         try:
-            g = f.get("geometry")
-            if not g:
+            # Normalize to 2D first: XYZM geometries and null-coordinate
+            # features are common feed-schema drift that `shape()` raises
+            # on. Cleaning them here recovers the points (and avoids a
+            # warning-per-feature storm) instead of dropping the layer.
+            g = _geom_2d(f.get("geometry"))
+            if g is None:
                 skipped += 1
                 continue
             geom = shape(g)
@@ -217,7 +258,8 @@ def _features_to_points(features: list[dict], src: dict) -> list[dict]:
             skipped += 1
             logger.warning("stocking feature skipped: %s", exc)
     if skipped:
-        logger.info("stocking live feed: kept %d, skipped %d",
+        logger.info("stocking live feed [%s]: kept %d, skipped %d",
+                    src.get("state") or agency_url or "?",
                     len(points), skipped)
     return points
 

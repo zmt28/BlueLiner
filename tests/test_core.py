@@ -1163,6 +1163,54 @@ def test_shell_no_cache_middleware():
         assert cc(p) is None, p
 
 
+def test_collapse_slashes_middleware():
+    """`//api/x` is rewritten to `/api/x` before routing, so a stray double
+    slash resolves to the real endpoint instead of FastAPI's default
+    `{"detail":"Not Found"}`."""
+    import asyncio
+
+    seen = {}
+
+    async def _inner(scope, receive, send):
+        seen["path"] = scope["path"]
+        seen["raw_path"] = scope.get("raw_path")
+
+    mw = main._CollapseSlashesMiddleware(_inner)
+    asyncio.run(mw({"type": "http", "path": "//api//elevation_profile",
+                    "raw_path": b"//api//elevation_profile"}, None, None))
+    assert seen["path"] == "/api/elevation_profile"
+    assert seen["raw_path"] == b"/api/elevation_profile"
+    # A clean path passes through untouched.
+    seen.clear()
+    asyncio.run(mw({"type": "http", "path": "/api/rivers",
+                    "raw_path": b"/api/rivers"}, None, None))
+    assert seen["path"] == "/api/rivers"
+
+
+def test_stocking_geometry_cleaning():
+    """XYZM (4D) geometries are trimmed to 2D and null-coordinate features
+    dropped, so a feed that publishes either doesn't blank the whole
+    overlay (the `kept 0, skipped N` live-feed regression)."""
+    assert stocking._clean_coords([-78.5, 38.1, 600.0, 12.3]) == [-78.5, 38.1]
+    assert stocking._clean_coords([-78.6, None]) is None
+    assert stocking._geom_2d({"type": "Point", "coordinates": [1, 2, 3, 4]}) == \
+        {"type": "Point", "coordinates": [1.0, 2.0]}
+    feats = [
+        {"geometry": {"type": "Point", "coordinates": [-78.5, 38.1, 600.0, 12.3]},
+         "properties": {"WATER": "Trout Run"}},          # 4D -> trimmed, kept
+        {"geometry": {"type": "Point", "coordinates": [-78.6, None]},
+         "properties": {"WATER": "Bad Coord"}},          # null X/Y -> dropped
+        {"geometry": {"type": "Point", "coordinates": [-78.7, 38.2]},
+         "properties": {"WATER": "Clean Creek"}},        # normal -> kept
+        {"geometry": None, "properties": {"WATER": "No Geom"}},  # dropped
+    ]
+    pts = stocking._features_to_points(
+        feats, {"state": "VA", "name_field": "WATER"})
+    assert {p["water"] for p in pts} == {"Trout Run", "Clean Creek"}
+    tp = next(p for p in pts if p["water"] == "Trout Run")
+    assert round(tp["lon"], 1) == -78.5 and round(tp["lat"], 1) == 38.1
+
+
 # -- geopandas-trim: shapely-only trout proximity + data-download seam --
 
 def test_trout_layer_proximity_shapely():
