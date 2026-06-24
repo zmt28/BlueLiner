@@ -62,7 +62,14 @@ async def _backfill_gauge_meta(site_nos: list[str]) -> None:
         have_meta = await asyncio.to_thread(db.get_gauge_metas, site_nos)
     except Exception:
         have_meta = {}
-    todo_meta = [sn for sn in site_nos if sn not in have_meta]
+    # Re-process gauges with no row AND those whose row has a null
+    # levelpathid (written while the national VAA was empty -- the COPY
+    # timeout). _nldi_gauge_meta re-resolves the levelpathid from the now
+    # populated VAA off the stored comid, so a river's levelpathids fill in
+    # and a clicked reach matches the gauge by levelpath, not name alone.
+    todo_meta = [sn for sn in site_nos
+                 if sn not in have_meta
+                 or have_meta[sn].get("levelpathid") is None]
     if not todo_meta:
         return
 

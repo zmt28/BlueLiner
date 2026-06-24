@@ -1874,29 +1874,41 @@ def _nldi_gauge_meta(site_no: str) -> dict:
     Process LRU -> Postgres -> NLDI/VAA with write-through. Empties
     (network/lookup failures) are NOT persisted so they retry, but
     stay briefly in the process cache to throttle re-attempts."""
-    if site_no in _gauge_meta_cache:
-        return _gauge_meta_cache[site_no]
+    cached = _gauge_meta_cache.get(site_no)
+    # Serve from cache UNLESS it's a row still needing its levelpathid
+    # backfilled (comid known, levelpathid null -- written before the VAA
+    # was populated). Those fall through so the cheap VAA re-resolve runs;
+    # a resolved row or a throttled NLDI failure ({}) is served as-is.
+    if cached is not None and not (
+            cached.get("levelpathid") is None and cached.get("comid")):
+        return cached
     try:
         stored = db.get_gauge_meta(site_no)
     except Exception as exc:
         logger.warning("gauge_meta read failed for %s: %s", site_no, exc)
         stored = None
+    if stored is None:
+        stored = cached
     if stored is not None:
-        # Backfill levelpathid on older rows (written before VAA landed)
-        # without an extra NLDI roundtrip. Cheap local lookup; persist
-        # so the next read short-circuits.
-        if "levelpathid" not in stored and stored.get("comid"):
+        # Re-resolve a null levelpathid from the VAA off the stored comid
+        # (cheap, no NLDI roundtrip). Rows written while the national VAA
+        # was empty persisted levelpathid=None; now that the table has data
+        # this fills them in. Persist so the next read short-circuits.
+        # (Gauges that never resolved a comid have no stored row at all and
+        # take the full NLDI path below -- the fallback.)
+        if stored.get("levelpathid") is None and stored.get("comid"):
             try:
                 vaa = db.get_vaa(int(stored["comid"]))
             except Exception:
                 vaa = None
-            stored = dict(stored,
-                          levelpathid=(vaa or {}).get("levelpathid"))
-            try:
-                db.put_gauge_meta(site_no, stored)
-            except Exception as exc:
-                logger.warning("gauge_meta backfill failed for %s: %s",
-                               site_no, exc)
+            lpid = (vaa or {}).get("levelpathid")
+            if lpid is not None:
+                stored = dict(stored, levelpathid=lpid)
+                try:
+                    db.put_gauge_meta(site_no, stored)
+                except Exception as exc:
+                    logger.warning("gauge_meta levelpath backfill failed "
+                                   "for %s: %s", site_no, exc)
         _gauge_meta_cache[site_no] = stored
         return stored
 
