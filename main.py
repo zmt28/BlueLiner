@@ -135,7 +135,34 @@ async def lifespan(app: FastAPI):
     refresh_task.cancel()
 
 
+class _CollapseSlashesMiddleware:
+    """Collapse duplicate slashes in the request path before routing.
+
+    Starlette matches paths literally, so `//api/elevation_profile` does
+    NOT resolve to `/api/elevation_profile` -- it misses every route and
+    returns FastAPI's default `{"detail":"Not Found"}`. A stray double
+    slash is easy to introduce (a hand-typed URL, or a client that joins a
+    base ending in `/` with a leading-`/` path) and shouldn't 404 a real
+    endpoint. Rewrite the path in-place so the router sees the canonical
+    single-slash form; everything downstream is unaffected.
+    """
+
+    def __init__(self, app):
+        self.app = app
+
+    async def __call__(self, scope, receive, send):
+        if scope["type"] == "http" and "//" in scope.get("path", ""):
+            scope = dict(scope)
+            scope["path"] = re.sub(r"/{2,}", "/", scope["path"])
+            raw = scope.get("raw_path")
+            if raw:
+                scope["raw_path"] = re.sub(rb"/{2,}", b"/", raw)
+        await self.app(scope, receive, send)
+
+
 app = FastAPI(lifespan=lifespan)
+# Normalize `//foo` -> `/foo` before routing (see class docstring).
+app.add_middleware(_CollapseSlashesMiddleware)
 # Snapshot/line payloads are large and highly compressible JSON; gzip
 # them (also lets a CDN/Cloudflare cache the compressed bytes).
 app.add_middleware(GZipMiddleware, minimum_size=1024)
