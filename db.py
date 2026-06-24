@@ -525,18 +525,24 @@ def bulk_load_vaa(csv_gz_path: str) -> int:
 
     if not os.path.exists(csv_gz_path):
         return 0
+    reload = False
     if vaa_loaded():
         # Reload ONLY to upgrade a pre-elevation table to an
         # elevation-bearing CSV. Any other warm boot short-circuits.
         if vaa_has_elevation() or not _csv_has_elevation(csv_gz_path):
             return 0
-        _truncate_vaa()
+        reload = True
     if _IS_PG:
-        return _bulk_load_vaa_pg(csv_gz_path)
+        # Truncate + COPY happen in ONE transaction (see _bulk_load_vaa_pg)
+        # so a failed national load rolls back to the existing rows instead
+        # of leaving the table empty.
+        return _bulk_load_vaa_pg(csv_gz_path, truncate_first=reload)
+    if reload:
+        _truncate_vaa()
     return _bulk_load_vaa_sqlite(csv_gz_path)
 
 
-def _bulk_load_vaa_pg(csv_gz_path: str) -> int:
+def _bulk_load_vaa_pg(csv_gz_path: str, truncate_first: bool = False) -> int:
     import csv
     import gzip
     # COPY maps columns POSITIONALLY to the listed column names, so the
@@ -549,6 +555,18 @@ def _bulk_load_vaa_pg(csv_gz_path: str) -> int:
     cols = [c for c in header if c in known]
     with _conn() as conn, conn.cursor() as cur, \
             gzip.open(csv_gz_path, "rt") as f:
+        # The national table is ~2.7M rows; that single COPY runs well past
+        # the server's default statement_timeout (~15-30s on Render's free
+        # tier), which cancels it mid-load and -- because the truncate
+        # below shares this transaction -- would otherwise leave the table
+        # empty. Lift the cap for THIS transaction only (SET LOCAL reverts
+        # at COMMIT); bounded, not disabled, so a wedged load can't hang
+        # boot forever.
+        cur.execute("SET LOCAL statement_timeout = '600s'")
+        if truncate_first:
+            # Same transaction as the COPY: if the load fails, the wipe
+            # rolls back with it, so the table is never left empty.
+            cur.execute("TRUNCATE nhdplus_vaa")
         # psycopg COPY: feed CSV directly, no row-by-row roundtrip
         with cur.copy(
                 f"COPY nhdplus_vaa ({','.join(cols)}) "
