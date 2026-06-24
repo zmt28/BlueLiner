@@ -1,0 +1,161 @@
+name: Data build — NHDPlus VAA
+
+# Rebuilds the NHDPlusV2 routing-attribute + elevation table
+# (data/nhdplus/vaa.csv.gz) and optionally publishes it to R2. This is the
+# table that drives the LevelPathID flowline filter AND the per-reach
+# smoothed elevations (maxelevsmo/minelevsmo) behind the elevation/gradient
+# profile in the river panel's Conditions tab (/api/elevation_profile).
+#
+# Why a workflow (not a local run): scripts/build_nhdplus_vaa.py lists the
+# EPA NHDPlusV21 S3 bucket and downloads multi-GB per-VPU archives. The
+# Claude Code sandbox can't reach those hosts; a GitHub-hosted runner has
+# open egress, the dev deps install in seconds, and the R2 secrets already
+# live in this repo. Manually triggered: VAA is static reference data,
+# rebuilt on a coverage/vintage/schema change, not per-PR.
+#
+# Runner/disk: the builder processes one VPU at a time and deletes each
+# region's archives + extracts after emitting its rows, so peak disk stays
+# at ~one region. VAA is attribute-only (no geometry), so the national
+# CSV is smaller than the clickable-streams build that already runs on the
+# standard ubuntu-latest runner — no larger runner needed.
+#
+# Required repo/org secrets (R2, S3-compatible) — same set data-build.yml uses:
+#   R2_BUCKET             bucket name (this project's bucket is `bluelines-data`)
+#   R2_ENDPOINT           https://<acct>.r2.cloudflarestorage.com
+#   R2_ACCESS_KEY_ID      R2 access key id
+#   R2_SECRET_ACCESS_KEY  R2 secret access key
+#
+# Rollout once published (upload: true): the app self-upgrades. db.bulk_load_vaa
+# detects a warm pre-elevation table and reloads it from the new CSV, so you
+# only need to point DATA_BASE_URL at the new prefix and redeploy — no manual
+# `TRUNCATE nhdplus_vaa`.
+
+on:
+  workflow_dispatch:
+    inputs:
+      vpu:
+        description: "VPU ids, comma-separated (blank = all CONUS 01–18)"
+        required: false
+        default: ""
+      r2_prefix:
+        description: "R2 version prefix to publish under (e.g. v2)"
+        required: false
+        default: "v2"
+      upload:
+        description: "Publish vaa.csv.gz to R2 (uncheck for a dry run)"
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+# Serialize: two concurrent national builds would double-publish to R2.
+concurrency:
+  group: vaa-build
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 240
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install build dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install dbfread py7zr httpx
+
+      # Sanity-list the discovered VPUs before the heavy download, so a
+      # bucket-layout change (vintage suffixes, missing archive) shows up
+      # in the log immediately rather than mid-build.
+      - name: Discover VPUs
+        run: python scripts/build_nhdplus_vaa.py --list
+
+      - name: Build VAA
+        env:
+          VPU: ${{ inputs.vpu }}
+        run: |
+          args=()
+          if [ -n "$VPU" ]; then args+=(--vpu "$VPU"); fi
+          python scripts/build_nhdplus_vaa.py "${args[@]}"
+
+      # Guard against a silently truncated build (a VPU that returned no
+      # rows, or an elevslope.dbf that didn't extract). Confirms the CSV has
+      # the elevation columns AND a substantial row count for a national run.
+      - name: Sanity gate
+        env:
+          VPU: ${{ inputs.vpu }}
+        run: |
+          python - <<'PY'
+          import csv, gzip, os, sys
+          p = "data/nhdplus/vaa.csv.gz"
+          with gzip.open(p, "rt") as f:
+              r = csv.DictReader(f)
+              header = r.fieldnames or []
+              rows = elev = 0
+              for row in r:
+                  rows += 1
+                  if row.get("maxelevsmo"):
+                      elev += 1
+          size = os.path.getsize(p) / 1e6
+          print(f"rows={rows:,} with_elev={elev:,} size={size:.1f}MB cols={header}")
+          for c in ("maxelevsmo", "minelevsmo"):
+              if c not in header:
+                  sys.exit(f"CSV missing elevation column {c!r} — build is stale")
+          if elev == 0:
+              sys.exit("no rows carry elevation — elevslope.dbf likely didn't extract")
+          # A full CONUS run should be substantial; guard a truncated build.
+          if os.environ.get("VPU", "") == "" and rows < 2_000_000:
+              sys.exit(f"national build only {rows:,} rows — looks truncated")
+          PY
+
+      - name: Publish to R2
+        if: ${{ inputs.upload }}
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          R2_ENDPOINT: ${{ secrets.R2_ENDPOINT }}
+          R2_BUCKET: ${{ secrets.R2_BUCKET }}
+          R2_PREFIX: ${{ inputs.r2_prefix }}
+        run: |
+          base="s3://$R2_BUCKET/$R2_PREFIX"
+          aws s3 cp data/nhdplus/vaa.csv.gz "$base/vaa.csv.gz" \
+            --endpoint-url "$R2_ENDPOINT"
+          echo "Published to $base/vaa.csv.gz"
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: nhdplus-vaa
+          path: data/nhdplus/vaa.csv.gz
+          if-no-files-found: error
+
+      - name: Job summary
+        if: always()
+        env:
+          UPLOADED: ${{ inputs.upload }}
+          R2_PREFIX: ${{ inputs.r2_prefix }}
+          VPU: ${{ inputs.vpu }}
+        run: |
+          {
+            echo "### NHDPlus VAA build"
+            echo "- scope: \`${VPU:-all CONUS (01–18)}\`"
+            if [ -f data/nhdplus/vaa.csv.gz ]; then
+              size=$(du -h data/nhdplus/vaa.csv.gz | cut -f1)
+              echo "- artifact: \`vaa.csv.gz\` ($size)"
+            else
+              echo "- _no artifact produced (build failed before emitting one)._"
+            fi
+            if [ "$UPLOADED" = "true" ]; then
+              echo "- published to R2 prefix \`$R2_PREFIX\`."
+              echo ""
+              echo "**Cut over:** set \`DATA_BASE_URL\` to the \`$R2_PREFIX\` prefix on Render and redeploy. The app reloads the elevation-bearing table automatically (no manual \`TRUNCATE\`)."
+            else
+              echo "- _dry run — nothing published. Re-run with **upload** checked to publish._"
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"

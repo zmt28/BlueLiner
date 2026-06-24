@@ -473,17 +473,64 @@ def vaa_loaded() -> bool:
         return cur.fetchone() is not None
 
 
+def vaa_has_elevation() -> bool:
+    """True iff the table holds at least one row with a non-NULL
+    `maxelevsmo`. Distinguishes a table loaded from the original
+    6-column (elevation-less) CSV from one loaded from the national
+    8-column file that backs the elevation profile."""
+    with _conn() as conn:
+        cur = conn.cursor()
+        try:
+            cur.execute(
+                "SELECT 1 FROM nhdplus_vaa "
+                "WHERE maxelevsmo IS NOT NULL LIMIT 1")
+        except Exception:
+            return False
+        return cur.fetchone() is not None
+
+
+def _csv_has_elevation(csv_gz_path: str) -> bool:
+    """True iff the gzipped CSV's header declares the elevation columns."""
+    import csv
+    import gzip
+    try:
+        with gzip.open(csv_gz_path, "rt") as f:
+            return "maxelevsmo" in next(csv.reader(f))
+    except Exception:
+        return False
+
+
+def _truncate_vaa() -> None:
+    """Empty `nhdplus_vaa`. DELETE (not TRUNCATE) for SQLite portability;
+    only ever called for the one-time elevation reload below."""
+    with _conn() as conn:
+        cur = conn.cursor()
+        cur.execute("DELETE FROM nhdplus_vaa")
+        conn.commit()
+
+
 def bulk_load_vaa(csv_gz_path: str) -> int:
     """Ingest NHDPlusV2 VAA rows from the bundled gzipped CSV. Skips
     silently if already loaded. Postgres uses COPY (~5s for 300K rows);
-    SQLite falls back to batched executemany. Returns rows inserted."""
+    SQLite falls back to batched executemany. Returns rows inserted.
+
+    Self-upgrading reload: a warm table that predates the elevation
+    columns is wiped and reloaded when the incoming CSV carries elevation
+    (the national rollout). This lets a fresh `DATA_BASE_URL` cut over
+    with just a redeploy -- no manual `TRUNCATE nhdplus_vaa`. Once the
+    table holds elevation, subsequent boots short-circuit as before.
+    """
     import csv
     import gzip
 
-    if vaa_loaded():
-        return 0
     if not os.path.exists(csv_gz_path):
         return 0
+    if vaa_loaded():
+        # Reload ONLY to upgrade a pre-elevation table to an
+        # elevation-bearing CSV. Any other warm boot short-circuits.
+        if vaa_has_elevation() or not _csv_has_elevation(csv_gz_path):
+            return 0
+        _truncate_vaa()
     if _IS_PG:
         return _bulk_load_vaa_pg(csv_gz_path)
     return _bulk_load_vaa_sqlite(csv_gz_path)
