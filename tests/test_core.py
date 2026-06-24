@@ -1063,6 +1063,50 @@ def test_bulk_load_vaa_idempotent(tmp_path, monkeypatch):
     assert db.get_vaa(100)["gnis_name"] == "Gunpowder Falls"
 
 
+def test_bulk_load_vaa_upgrades_to_elevation(tmp_path, monkeypatch):
+    """A warm table loaded from the old 6-column CSV is auto-reloaded when
+    an elevation-bearing CSV arrives (the national rollout) -- no manual
+    TRUNCATE. A same-schema reload still short-circuits."""
+    import csv
+    import gzip
+    monkeypatch.setattr(db, "DB_PATH", str(tmp_path / "t.db"))
+    db.init_db()
+
+    old = tmp_path / "vaa_old.csv.gz"
+    with gzip.open(old, "wt", newline="") as f:
+        w = csv.DictWriter(f, fieldnames=["comid", "hydroseq", "levelpathid",
+                                          "streamlevel", "gnis_name",
+                                          "lengthkm"])
+        w.writeheader()
+        w.writerow({"comid": 100, "hydroseq": 1, "levelpathid": 5000,
+                    "streamlevel": 3, "gnis_name": "Gunpowder Falls",
+                    "lengthkm": 1.5})
+    assert db.bulk_load_vaa(str(old)) == 1
+    assert db.vaa_has_elevation() is False
+    # Re-running the same elevation-less CSV must NOT reload.
+    assert db.bulk_load_vaa(str(old)) == 0
+
+    new = tmp_path / "vaa_new.csv.gz"
+    with gzip.open(new, "wt", newline="") as f:
+        w = csv.DictWriter(f, fieldnames=["comid", "hydroseq", "levelpathid",
+                                          "streamlevel", "gnis_name",
+                                          "lengthkm", "maxelevsmo",
+                                          "minelevsmo"])
+        w.writeheader()
+        w.writerow({"comid": 100, "hydroseq": 1, "levelpathid": 5000,
+                    "streamlevel": 3, "gnis_name": "Gunpowder Falls",
+                    "lengthkm": 1.5, "maxelevsmo": 21000, "minelevsmo": 18000})
+        w.writerow({"comid": 200, "hydroseq": 2, "levelpathid": 5000,
+                    "streamlevel": 3, "gnis_name": "Gunpowder Falls",
+                    "lengthkm": 0.8, "maxelevsmo": 18000, "minelevsmo": 15000})
+    # Elevation-bearing CSV: table is wiped and reloaded.
+    assert db.bulk_load_vaa(str(new)) == 2
+    assert db.vaa_has_elevation() is True
+    assert db.get_vaa(200)["maxelevsmo"] == 18000
+    # Now warm WITH elevation -> short-circuits again.
+    assert db.bulk_load_vaa(str(new)) == 0
+
+
 def test_nldi_gauge_meta_includes_levelpath_when_vaa_loaded(tmp_path, monkeypatch):
     """gauge_meta carries `levelpathid` pulled from the local VAA when
     the gauge's COMID is present."""
