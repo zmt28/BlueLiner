@@ -1,0 +1,109 @@
+name: Data build — river POI (access)
+
+# Phase 1 of docs/river-poi-coverage-plan.md: build the national, river-clipped
+# angler-ACCESS overlay from authoritative coordinate sources (OSM via Overpass,
+# RIDB, state agency ArcGIS feeds), replacing the hand-curated baselines.
+#
+# Runs in Actions because the Claude Code sandbox egress blocks Overpass / RIDB /
+# state hosts. Manually triggered. Start with `probe: true` to validate that each
+# source is reachable and see per-source counts WITHOUT clipping/writing; then a
+# full run; then `upload: true` to publish to R2.
+#
+# Secrets: RIDB_API_KEY (optional; RIDB skipped without it) + the R2 set
+# (R2_BUCKET / R2_ENDPOINT / R2_ACCESS_KEY_ID / R2_SECRET_ACCESS_KEY) for upload.
+
+on:
+  workflow_dispatch:
+    inputs:
+      sources:
+        description: "comma list: osm,ridb,agency"
+        required: false
+        default: "osm,ridb,agency"
+      probe:
+        description: "Fetch + count only (no clip/write)"
+        type: boolean
+        default: true
+      buffer_m:
+        description: "keep points within this many metres of a reach"
+        required: false
+        default: "75"
+      r2_prefix:
+        description: "R2 version prefix to publish under (e.g. v4)"
+        required: false
+        default: "v4"
+      upload:
+        description: "Publish access.geojson.gz to R2 (uncheck for a dry run)"
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: river-poi-build
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install build dependencies
+        run: |
+          python -m pip install --upgrade pip
+          # geopandas pulls shapely + pyproj with bundled GDAL wheels.
+          pip install httpx geopandas shapely pyproj
+
+      - name: Build river-POI access overlay
+        env:
+          RIDB_API_KEY: ${{ secrets.RIDB_API_KEY }}
+          SOURCES: ${{ inputs.sources }}
+          BUFFER_M: ${{ inputs.buffer_m }}
+          PROBE: ${{ inputs.probe }}
+        run: |
+          args=(--sources "$SOURCES" --buffer-m "$BUFFER_M")
+          if [ "$PROBE" = "true" ]; then args+=(--probe); fi
+          python scripts/build_river_poi.py "${args[@]}"
+
+      - name: Sanity gate
+        if: ${{ inputs.probe == false }}
+        run: |
+          python - <<'PY'
+          import gzip, json, os, sys
+          p = "data/access_points/access.geojson.gz"
+          n = sum(1 for _ in json.load(gzip.open(p, "rt"))["features"])
+          m = json.load(open("data/access_points/access.manifest.json"))
+          print(f"features={n:,} by_source={m['by_source']} by_type={m['by_type']}")
+          if n < 1000:
+              sys.exit(f"only {n} access points — build looks broken/empty")
+          PY
+
+      - name: Publish to R2
+        if: ${{ inputs.upload && inputs.probe == false }}
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          R2_ENDPOINT: ${{ secrets.R2_ENDPOINT }}
+          R2_BUCKET: ${{ secrets.R2_BUCKET }}
+          R2_PREFIX: ${{ inputs.r2_prefix }}
+        run: |
+          base="s3://$R2_BUCKET/$R2_PREFIX"
+          aws s3 cp data/access_points/access.geojson.gz "$base/access.geojson.gz" \
+            --endpoint-url "$R2_ENDPOINT"
+          aws s3 cp data/access_points/access.manifest.json "$base/access.manifest.json" \
+            --endpoint-url "$R2_ENDPOINT"
+          echo "Published to $base"
+
+      - name: Upload build artifact
+        if: ${{ inputs.probe == false }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: river-poi-access
+          path: |
+            data/access_points/access.geojson.gz
+            data/access_points/access.manifest.json
+          if-no-files-found: error
