@@ -1,6 +1,6 @@
 # Endpoint watch
 
-_Run: 2026-06-25 14:21 UTC -- 15/16 reachable, **7 READY TO PROMOTE**._
+_Run: 2026-06-25 19:52 UTC -- 15/15 reachable, **7 READY TO PROMOTE**._
 
 | id | state | kind | status | captured |
 |----|-------|------|--------|----------|
@@ -12,7 +12,6 @@ _Run: 2026-06-25 14:21 UTC -- 15/16 reachable, **7 READY TO PROMOTE**._
 | wv-wild-trout-discover | WV | discover | UP | yes |
 | ca-trout-only-stocked-discover | CA | discover | UP | yes |
 | ut-trout-streams-beyond-blueribbon | UT | discover | UP | yes |
-| cand-stocking-ma-massgis-dfg-trout-stocking--official-item | MA | verify | DOWN | - |
 | cand-access_points-de-dnrec-public-fishing-ponds | DE | verify | UP | PROMOTE |
 | cand-access_points-ca-cdfw-fishing-guide-boating-facilities | CA | verify | UP | PROMOTE |
 | cand-access_points-ut-ut-dwr-community-fisheries | UT | verify | UP | PROMOTE |
