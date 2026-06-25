@@ -1,12 +1,9 @@
-# POI Phase 2 -- NID dam layer FULL field dump.
-#
-# Rounds 1-2 confirmed the live dam source is the NID_v1 hosted FeatureServer
-# (services2.arcgis.com/FiaPA4ga0iQKduv3/.../NID_v1/FeatureServer/0, 92,469
-# pts, public domain). The search-mode probe only printed the first 30 fields
-# (NAME / RIVER_OR_STREAM / OWNER_TYPES / PRIMARY_OWNER_TYPE / STATE / NIDID
-# confirmed). This explicit line does a FULL field dump (all fields + types +
-# coded domains + 3 full samples) so the build_dams normalizer can wire the
-# height / purpose / storage / year fields by their REAL names instead of
-# guessing.
+# MA stocking pilot -- FULL field dump for the two MassWildlife 2025 stocking
+# point layers discovered by the coverage survey (StockedLakesandPonds = 239,
+# StockedRiversandStreams = 352). The dump (all fields + types + 3 samples)
+# lets me wire the stocking source field_map (name_field / species_field vs
+# species_flags / category / season_months / dedupe) by the REAL column names
+# instead of guessing, before promoting to data/stocking/sources.json.
 
-US|https://services2.arcgis.com/FiaPA4ga0iQKduv3/arcgis/rest/services/NID_v1/FeatureServer/0
+MA|https://services6.arcgis.com/nfm1OKvfdpRP0081/arcgis/rest/services/2025_Fish_Stocking_Locations_WFL1/FeatureServer/0
+MA|https://services6.arcgis.com/nfm1OKvfdpRP0081/arcgis/rest/services/2025_Fish_Stocking_Locations_WFL1/FeatureServer/1
