@@ -18,16 +18,23 @@ and optional ("trailer parking", "no motors", "permit required").
 
 import json
 import logging
+import gzip
 import os
 
 from shapely.geometry import shape
 
+import data_source
 from arcgis import fetch_geojson_features
 from cache import LruTtl
+from states import point_in_state
 
 logger = logging.getLogger("blueliner.access")
 
 _DATA_DIR = os.path.join(os.path.dirname(__file__), "data", "access_points")
+# Pre-built national, river-clipped access overlay (scripts/build_river_poi.py
+# -> R2). When present it supersedes the curated per-state baselines + the
+# runtime live feeds, which it already incorporates with accurate coordinates.
+_OVERLAY_BUNDLED = os.path.join(_DATA_DIR, "access.geojson.gz")
 
 
 def _baseline_states() -> list[str]:
@@ -199,23 +206,72 @@ def _features_to_points(features: list[dict], src: dict) -> list[dict]:
     return points
 
 
+_overlay_by_state: dict[str, list[dict]] | None = None
+_overlay_loaded = False
+
+
+def _national_overlay() -> dict[str, list[dict]] | None:
+    """The pre-built national river-clipped access overlay, grouped by state
+    (each point state-tagged via point_in_state). None when unavailable -- e.g.
+    a dev box without DATA_BASE_URL -- so the caller falls back to the curated
+    baselines. Loaded + indexed once."""
+    global _overlay_by_state, _overlay_loaded
+    if _overlay_loaded:
+        return _overlay_by_state
+    _overlay_loaded = True
+    path = data_source.resolve_data_file(_OVERLAY_BUNDLED, "access.geojson.gz")
+    if not os.path.exists(path):
+        return None
+    try:
+        with gzip.open(path, "rt", encoding="utf-8") as f:
+            fc = json.load(f)
+    except Exception as exc:                           # noqa: BLE001
+        logger.warning("access overlay load failed: %s", exc)
+        return None
+    by_state: dict[str, list[dict]] = {}
+    for ft in fc.get("features", []):
+        geom = ft.get("geometry") or {}
+        if geom.get("type") != "Point":
+            continue
+        coords = (geom.get("coordinates") or [None, None])
+        lon, lat = coords[0], coords[1]
+        if lat is None or lon is None:
+            continue
+        st = point_in_state(lat, lon)
+        if not st:
+            continue
+        p = dict(ft.get("properties") or {})
+        p["lat"], p["lon"] = lat, lon
+        by_state.setdefault(st, []).append(p)
+    logger.info("access overlay: %d points across %d states",
+                sum(len(v) for v in by_state.values()), len(by_state))
+    _overlay_by_state = by_state
+    return by_state
+
+
 def load_access_points(state: str) -> list[dict]:
-    """Baseline points for the state, plus any live overlays that
-    respond. Cached per state."""
+    """Access points for a state. Prefers the pre-built national overlay
+    (accurate, river-clipped, sourced); falls back to the curated baseline +
+    runtime live feeds only when the overlay is unavailable. Cached per state."""
     if state in _access_cache and _access_cache[state] is not None:
         return _access_cache[state]
 
-    points = [dict(p, source="baseline")
-              for p in ACCESS_BASELINE.get(state, [])]
-
-    for src in ACCESS_SOURCES.get(state, []):
-        features = fetch_geojson_features(src["url"])
-        if features:
-            for p in _features_to_points(features, src):
-                points.append(dict(p, source="live"))
-        else:
-            logger.info("access live feed unreachable: %s",
-                        src.get("label", src["url"]))
+    overlay = _national_overlay()
+    if overlay is not None:
+        points = overlay.get(state, [])
+    else:
+        # Transitional fallback (retired once the overlay is published +
+        # verified live): curated baseline + live agency feeds.
+        points = [dict(p, source="baseline")
+                  for p in ACCESS_BASELINE.get(state, [])]
+        for src in ACCESS_SOURCES.get(state, []):
+            features = fetch_geojson_features(src["url"])
+            if features:
+                for p in _features_to_points(features, src):
+                    points.append(dict(p, source="live"))
+            else:
+                logger.info("access live feed unreachable: %s",
+                            src.get("label", src["url"]))
 
     _access_cache[state] = points
     return points
