@@ -1421,13 +1421,13 @@ def main(argv: list[str] | None = None) -> int:
                 a = attrs.get(comid)
                 order = a.get("streamorder") if a else None
                 native = comid in region_native
-                resolved = _harmonized(comid, name)
+                resolved_trout = _harmonized(comid, name)
                 clickable = (order is not None and order >= MIN_ORDER) \
-                    or resolved is not None or native
+                    or resolved_trout is not None or native
                 if not clickable:
                     continue
                 feat = build_feature(comid, row, gnis_col, attrs, None,
-                                     native, resolved=resolved)
+                                     native, resolved=resolved_trout)
                 if not feat:
                     continue
                 # Count classes/tiers from EMITTED features (not raw join
@@ -1449,7 +1449,7 @@ def main(argv: list[str] | None = None) -> int:
                 emitted_here += 1
                 if name in val_names:
                     val_clickable.add(comid)
-                    if resolved is not None:
+                    if resolved_trout is not None:
                         val_trout.add(comid)
             print(f"  [{region['id']}] {emitted_here:,} features"
                   f" ({len(region_trout):,} trout)")
