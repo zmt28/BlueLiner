@@ -1422,3 +1422,54 @@ def test_root_state_unknown_region_code_falls_back_to_default():
     broken state."""
     req = _req(headers={"CF-IPCountry": "US", "CF-Region-Code": "XX"})
     assert main._root_state(req) == "MD"
+
+
+def test_stocked_block_html_empty_states():
+    """An empty Stocking tab renders a clear message, not a blank panel --
+    and distinguishes 'none near this river' from 'no data for the state'."""
+    near = main._stocked_block_html([], has_state_data=True)
+    assert "No stocked waters" in near and "bl-reach-msg" in near
+    none = main._stocked_block_html([], has_state_data=False)
+    assert "No stocking data for this state" in none
+    block = main._stocked_block_html(
+        [{"water": "Test Run", "species": ["Brown"], "category": "Stocked",
+          "season_months": (3, 6), "agency_url": "http://x"}])
+    assert "Test Run" in block and "No stocked waters" not in block
+
+
+def test_assemble_rivers_stocking_probes_each_gauge(monkeypatch):
+    """Stocking is matched near ANY of a river's gauges, not just the
+    centroid -- so a stocked water by an end gauge of a long river isn't
+    lost when the centroid sits >2 km away (the Gunpowder false-'0' case)."""
+    import asyncio
+
+    async def no_medians(nos):
+        return None
+
+    monkeypatch.setattr(main, "_ensure_medians_cached", no_medians)
+    monkeypatch.setattr(db, "get_gauge_metas", lambda nos: {
+        "01": {"comid": "1", "gnis_name": "Test River"},
+        "02": {"comid": "2", "gnis_name": "Test River"},
+    })
+    main._stats_cache.clear()
+
+    def site(code, lat):
+        return {
+            "sourceInfo": {"siteName": f"Test River gauge {code}",
+                           "siteCode": [{"value": code}],
+                           "geoLocation": {"geogLocation": {
+                               "latitude": lat, "longitude": -76.0}}},
+            "variable": {"variableDescription": "Streamflow, ft3/s"},
+            "values": [{"value": [{"value": "9",
+                                   "dateTime": "2026-05-19T08:00:00"}]}],
+        }
+    ts = [site("01", 40.0), site("02", 40.10)]   # centroid ~40.05
+    # Stocked water right by the northern gauge, ~6 km from the centroid:
+    # a centroid-only probe (0.02 deg) misses it; per-gauge catches it.
+    stocked = [{"water": "North Stock", "lat": 40.105, "lon": -76.0,
+                "species": ["Rainbow"], "category": "Stocked",
+                "season_months": (1, 12), "agency_url": "http://x"}]
+    rivers = asyncio.run(main._assemble_rivers(ts, [None], stocked))
+    assert len(rivers) == 1
+    assert rivers[0]["near_stocked"] is True
+    assert "North Stock" in rivers[0]["popup_html"]
