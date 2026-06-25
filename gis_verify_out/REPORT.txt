@@ -1,89 +1,27 @@
 
-======== US explicit ========
-  LAYER https://services2.arcgis.com/FiaPA4ga0iQKduv3/arcgis/rest/services/NID_v1/FeatureServer/0
-    PASS name='Dams' geom=esriGeometryPoint count=92469 geojson_ok=True in_state=True
+======== MA explicit ========
+  LAYER https://services6.arcgis.com/nfm1OKvfdpRP0081/arcgis/rest/services/2025_Fish_Stocking_Locations_WFL1/FeatureServer/0
+    PASS name='StockedLakesandPonds' geom=esriGeometryPoint count=239 geojson_ok=True in_state=True
     fields:
-      OBJECTID | OID | 'Object ID'
-      NIDID | String | 'National Inventory of Dams ID (NID ID)'
-      OTHER_STRUCTURE_ID | String | 'Other Structure ID'
-      FEDERAL_ID | String | 'Federal ID'
-      DATA_UPDATED | Date | 'Data Last Updated'
-      NAME | String | 'Dam Name'
-      OTHER_NAMES | String | 'Other Names'
-      OWNER_TYPES | String | 'Owner Types'
-      PRIMARY_OWNER_TYPE | String | 'Primary Owner Type'
-      STATE_FED_AGENCY | String | 'State or Federal Agency ID'
-      NUMBER_ASSOCIATED_STRUCTURES | Integer | 'Number of Associated Structures'
-      DESIGNER_NAMES | String | 'Designer Names'
-      NON_FED_ON_FED | String | 'Non-Federal Dam on Federal Property'
-      STATE_REGULATED | String | 'State Regulated Dam'
-      STATE_JURISDICTION | String | 'State Jurisdictional Dam'
-      STATE_REGULATORY_AGENCY | String | 'State Regulatory Agency'
-      STATE_PERMITTING | String | 'State Permitting Authority'
-      STATE_INSPECTION | String | 'State Inspection Authority'
-      STATE_ENFORCEMENT | String | 'State Enforcement Authority'
-      PRIMARY_SOURCE_AGENCY | String | 'Source Agency'
-      LATITUDE | Double | 'Latitude (North–South)'
-      LONGITUDE | Double | 'Longitude (East–West)'
-      STATE | String | 'State or Territory'
-      COUNTYSTATE | String | 'County and State'
-      CITY | String | 'Nearest City or Town'
-      DISTANCE | Double | 'Distance to Nearest City/Town (Miles)'
-      RIVER_OR_STREAM | String | 'River or Stream'
-      CONGDIST | String | 'Congressional Representative District'
-      CONG_REPRESNTATIVE | String | 'Congressional Representative'
-      FED_AGENCY_OWNERS | String | 'Federal Agency Owner'
-      FED_AGENCY_FUNDINGS | String | 'Federal Agency Involvement in Funding'
-      FED_AGENCY_DESIGNERS | String | 'Federal Agency Involvement in Design'
-      FED_AGENCY_CONSTRUCTIONS | String | 'Federal Agency Involvement in Construction'
-      FED_AGENCY_REGULATORIES | String | 'Federal Agency Involvement in Regulatory'
-      FED_AGENCY_INSPECTIONS | String | 'Federal Agency Involvement in Inspection'
-      FED_AGENCY_OPERATIONS | String | 'Federal Agency Involvement in Operation'
-      FED_AGENCY_OTHERS | String | 'Federal Agency Involvement – Other'
-      PRIMARY_PURPOSE | String | 'Primary Purpose'
-      PURPOSES | String | 'Purposes'
-      PRIMARY_DAM_TYPE | String | 'Primary Dam Type'
-      DAM_TYPES | String | 'Dam Types'
-      CORE_TYPES | String | 'Core Types'
-      FOUNDATIONS | String | 'The material upon which dam is founded'
-      DAM_HEIGHT | Double | 'Dam Height (feet)'
-      HYDRAULIC_HEIGHT | Double | 'Hydraulic Height (feet)'
-      STRUCTURAL_HEIGHT | Double | 'Structural Height (feet)'
-      NID_HEIGHT | Integer | 'National Inventory of Dams (NID) Height'
-      DAM_LENGTH | Double | 'Dam Length (feet)'
-      DAM_VOLUME | Integer | 'Dam Volume (cubic yards)'
-      YEAR_COMPLETED | Integer | 'Year Completed'
-      NID_STORAGE | Double | 'National Inventory of Dams (NID) Storage'
-      MAX_STORAGE | Double | 'Maximum Storage'
-      NORMAL_STORAGE | Double | 'Normal Storage (acre feet)'
-      SURFACE_AREA | Double | 'Surface Area (acres)'
-      DRAINAGE_AREA | Double | 'Drainage Area (Square Miles)'
-      MAX_DISCHARGE | Double | 'Maximum Discharge'
-      SPILLWAY_TYPE | String | 'Spillway Type'
-      SPILLWAY_WIDTH | Integer | 'Spillway Width (feet)'
-      NUMBER_OF_LOCKS | Integer | 'Number of Locks'
-      LENGTH_OF_LOCKS | Double | 'Length of Locks (feet)'
-      WIDTH_OF_LOCKS | Double | 'Lock Width (feet)'
-      YEARS_MODIFIED | String | 'Year Modified'
-      OUTLET_GATES | String | 'Outlet Gates'
-      ASSOCIATED_STRUCTURES | String | 'Number of Associated Structures'
-      LAST_INSPECTION_DATE | Date | 'Last Inspection Date'
-      INSPECTION_FREQUENCY | Integer | 'Inspection Frequency'
-      HAZARD_POTENTIAL | String | 'Hazard Potential Classification'
-      CONDITION_ASSESSMENT | String | 'Dam Condition Assessment'
-      CONDITION_ASSESS_DATE | Date | 'Recent Dam Assessment Date'
-      EAP_PREPARED | String | 'Emergency Action Plan (EAP) Prepared'
-      EAP_LAST_REV_DATE | Date | 'Emergency Action Plan (EAP) Last Reviewed Date'
-      SE_ANNO_CAD_DATA | Blob | 'SE_ANNO_CAD_DATA'
-      FORMER_NAMES | String | 'Former Names'
-      IS_ASSOCIATED_STRUCTURE | String | 'Is Associated Structure?'
-      AIANNH | String | 'American Indian/Alaska Native/Native Hawaiian'
-      FEDERALLY_REGULATED_DAM | String | 'Federally Regulated Dam'
-      BUILT_UNDER_SEC_OF_AG_AUTH | String | 'Built Under the Authority of the Secretary of Agriculture'
-      NRCS_WATERSHED_DAM_AUTH | String | 'Natural Resources Conservation Service (NRCS) Watershed Dam Authorization'
-      OPERATIONAL_STATUS | String | 'Operational Status'
-      OPERATIONAL_STATUS_DATE | Date | 'Operational Status Date'
-      WEBSITE_URL | String | 'Website URL'
-    sample={"OBJECTID": 1, "NIDID": "CA00821", "OTHER_STRUCTURE_ID": "S001", "FEDERAL_ID": "CA00821S001", "DATA_UPDATED": 1745928000000, "NAME": "Buck Island Auxiliary", "OTHER_NAMES": null, "OWNER_TYPES": "Public Utility", "PRIMARY_OWNER_TYPE": "Public Utility", "STATE_FED_AGENCY": "02101-03-02", "NUMBER_ASSOCIATED_STRUCTURES": 1, "DESIGNER_NAMES": "Bechtel", "NON_FED_ON_FED": "No", "STATE_REGULATED": null, "STATE_JURISDICTION": "No", "STATE_REGULATORY_AGENCY": null, "STATE_PERMITTING": "No", "STATE_INSPECTION": "No", "STATE_ENFORCEMENT": "No", "PRIMARY_SOURCE_AGENCY": "FERC", "LATITUDE": 39.005, "LONGITUDE": -120.25580000000001, "STATE": "California", "COUNTYSTATE": "El Dorado, California", "CITY": "Coloma                                            ", "DISTANCE": 45, "RIVER_OR_STREAM": "Rockbound Creek               ", "CONGDIST": "Congressional District 03, California", "CONG_REPRESNTATIVE": "Tom McClintock (R)", "FED_AGENCY_OWNERS": null, "FED_AGENCY_FUNDINGS": null, "FED_AGENCY_DESIGNERS": null, "FED_AGENCY_CONSTRUCTIONS": null, "FED_AGENCY_REGULATORIES": "Federal Energy Regulatory Commission", "FED_AGENCY_INSPECTIONS": "Federal Energy Regulatory Commission", "FED_AGENCY_OPERATIONS": null, "FED_AGENCY_OTHERS": null, "PRIMARY_PURPOSE": "Hydroelectric", "PURPOSES": "Hydroelectric, Recreation", "PRIMARY_DAM_TYPE": "Concrete", "DAM_TYPES": "Concrete, Gravity", "CORE_TYPES": null, "FOUNDA
-    sample={"OBJECTID": 2, "NIDID": "AL01415", "OTHER_STRUCTURE_ID": "S001", "FEDERAL_ID": "AL01415S001", "DATA_UPDATED": 1681300800000, "NAME": "Weiss - Spillway Diversion Dam                                   ", "OTHER_NAMES": null, "OWNER_TYPES": "Public Utility", "PRIMARY_OWNER_TYPE": "Public Utility", "STATE_FED_AGENCY": "02146-05-02", "NUMBER_ASSOCIATED_STRUCTURES": 5, "DESIGNER_NAMES": "SOUTHERN COMPANY SERVICES", "NON_FED_ON_FED": "No", "STATE_REGULATED": "No", "STATE_JURISDICTION": "No", "STATE_REGULATORY_AGENCY": null, "STATE_PERMITTING": "No", "STATE_INSPECTION": "No", "STATE_ENFORCEMENT": "No", "PRIMARY_SOURCE_AGENCY": "FERC", "LATITUDE": 34.171994999999995, "LONGITUDE": -85.753935, "STATE": "Alabama", "COUNTYSTATE": "Cherokee, Alabama", "CITY": "Centre                                            ", "DISTANCE": 2, "RIVER_OR_STREAM": "Coosa                         ", "CONGDIST": "Congressional District 03, Alabama", "CONG_REPRESNTATIVE": "Mike Rogers (R)", "FED_AGENCY_OWNERS": null, "FED_AGENCY_FUNDINGS": null, "FED_AGENCY_DESIGNERS": null, "FED_AGENCY_CONSTRUCTIONS": null, "FED_AGENCY_REGULATORIES": "Federal Energy Regulatory Commission", "FED_AGENCY_INSPECTIONS": "Federal Energy Regulatory Commission", "FED_AGENCY_OPERATIONS": null, "FED_AGENCY_OTHERS": null, "PRIMARY_PURPOSE": "Hydroelectric", "PURPOSES": "Hydroelectric, Recreation", "PRIMARY_DAM_TYPE": "Earth", "DAM_TYPES": 
-    sample={"OBJECTID": 3, "NIDID": "CA00245", "OTHER_STRUCTURE_ID": "S001", "FEDERAL_ID": "CA00245S001", "DATA_UPDATED": 1745928000000, "NAME": "Bowman Arch", "OTHER_NAMES": null, "OWNER_TYPES": "Public Utility", "PRIMARY_OWNER_TYPE": "Public Utility", "STATE_FED_AGENCY": "02266-02-02", "NUMBER_ASSOCIATED_STRUCTURES": 1, "DESIGNER_NAMES": "Fred Tibbits, State Engineer", "NON_FED_ON_FED": "No", "STATE_REGULATED": null, "STATE_JURISDICTION": "No", "STATE_REGULATORY_AGENCY": null, "STATE_PERMITTING": "No", "STATE_INSPECTION": "No", "STATE_ENFORCEMENT": "No", "PRIMARY_SOURCE_AGENCY": "FERC", "LATITUDE": 39.4436, "LONGITUDE": -120.65400000000001, "STATE": "California", "COUNTYSTATE": "Nevada, California", "CITY": "Washington", "DISTANCE": 10, "RIVER_OR_STREAM": "Canyon Creek                  ", "CONGDIST": "Congressional District 03, California", "CONG_REPRESNTATIVE": "Doug LaMalfa (R)", "FED_AGENCY_OWNERS": null, "FED_AGENCY_FUNDINGS": null, "FED_AGENCY_DESIGNERS": null, "FED_AGENCY_CONSTRUCTIONS": null, "FED_AGENCY_REGULATORIES": "Federal Energy Regulatory Commission", "FED_AGENCY_INSPECTIONS": "Federal Energy Regulatory Commission", "FED_AGENCY_OPERATIONS": null, "FED_AGENCY_OTHERS": null, "PRIMARY_PURPOSE": "Irrigation", "PURPOSES": "Hydroelectric, Irrigation, Recreation, Water Supply", "PRIMARY_DAM_TYPE": "Arch", "DAM_TYPES": "Arch, Concrete", "CORE_TYPES": "Multi-Arch", "FOUNDATIONS": "
+      OBJECTID | OID | 'OBJECTID'
+      NAME | String | 'NAME'
+      Town | String | 'Town'
+      District | String | 'District'
+      Season | String | 'Season'
+    sample={"OBJECTID": 1, "NAME": "Massapoag Pond", "Town": "Dunstable", "District": "Northeast", "Season": "Spring"}
+    sample={"OBJECTID": 2, "NAME": "Long Pond", "Town": "Rutland", "District": "Central", "Season": "Spring and Fall"}
+    sample={"OBJECTID": 3, "NAME": "Mirror Lake", "Town": "Harvard", "District": "Northeast", "Season": "Spring"}
+
+======== MA explicit ========
+  LAYER https://services6.arcgis.com/nfm1OKvfdpRP0081/arcgis/rest/services/2025_Fish_Stocking_Locations_WFL1/FeatureServer/1
+    PASS name='StockedRiversandStreams' geom=esriGeometryPoint count=352 geojson_ok=True in_state=True
+    fields:
+      OID | OID | 'OID'
+      NAME | String | 'NAME'
+      Town_1 | String | 'Town'
+      COUNTY | String | 'COUNTY'
+      District | String | 'District'
+      Season | String | 'Season'
+    sample={"OID": 12, "NAME": "Powwow River", "Town_1": "Amesbury", "COUNTY": "ESSEX", "District": "Northeast", "Season": "Spring"}
+    sample={"OID": 13, "NAME": "Little River", "Town_1": "Haverhill", "COUNTY": "ESSEX", "District": "Northeast", "Season": "Spring"}
+    sample={"OID": 22, "NAME": "Shawsheen River", "Town_1": "Andover", "COUNTY": "ESSEX", "District": "Northeast", "Season": "Spring"}
