@@ -574,9 +574,15 @@ def _season_label(months: tuple) -> str:
     return f"{_MONTH_FULL[s - 1][:3]}–{_MONTH_FULL[e - 1][:3]}"
 
 
-def _stocked_block_html(waters: list[dict]) -> str:
+def _stocked_block_html(waters: list[dict], has_state_data: bool = True) -> str:
     if not waters:
-        return ""
+        # Render a clear empty state instead of a blank tab, and say WHY:
+        # the state has stocking data but none is near this river, vs. we
+        # have no stocking source for this state at all.
+        msg = ("No stocked waters within ~2&nbsp;km of this river."
+               if has_state_data
+               else "No stocking data for this state yet.")
+        return f'<div class="bl-reach-msg">{msg}</div>'
     items = ""
     for w in waters[:6]:
         species = ", ".join(w.get("species", []))
@@ -844,7 +850,7 @@ def _panel_tabs_html(river: dict, chart_html: str,
         </div>"""
     stocking_panel = f"""
         <div class="bl-tab-panel" data-tab="stocking">
-            {_stocked_block_html(river["stocked_waters"])}
+            {_stocked_block_html(river["stocked_waters"], river.get("state_has_stocking", True))}
         </div>"""
     catch_panel = """
         <div class="bl-tab-panel" data-tab="catch">
@@ -914,9 +920,11 @@ def build_reach_popup_html(lat: float, lon: float, name: str | None,
     state = point_in_state(lat, lon)
     access_count = 0
     stocked_waters: list[dict] = []
+    state_has_stocking = False
     if state:
         apts = access_points.load_access_points(state)
         spts = stocking.stocked_points(state)
+        state_has_stocking = bool(spts)
         access_count = len(access_points.nearby_access(
             lat, lon, apts, buffer_deg=0.03))
         stocked_waters = stocking.nearby_stocked(lat, lon, spts, buffer_deg=0.03)
@@ -930,6 +938,7 @@ def build_reach_popup_html(lat: float, lon: float, name: str | None,
         "near_stocked": bool(stocked_waters),
         "hatch_zone": zone, "active": active, "month": month_now,
         "stocked_waters": stocked_waters,
+        "state_has_stocking": state_has_stocking,
         "access_count": access_count,
         "gauges": [],
     }
@@ -1137,7 +1146,20 @@ async def _assemble_rivers(time_series: list, trout_layers: list,
         # sees as markers around the river.
         access_count = len(access_points.nearby_access(
             clat, clon, access_pts, buffer_deg=0.03))
-        stocked_waters = stocking.nearby_stocked(clat, clon, stocked_pts)
+        # Probe stocking near the centroid AND each gauge, not just the
+        # centroid: a long river's centroid (the mean of its gauges) can
+        # sit >2 km from its stocking points -- e.g. the Gunpowder, gauged
+        # at three spots ~50 mi apart -- which falsely read "0 stocked
+        # nearby". Dedupe across probes by water name + rounded coords.
+        stocked_waters = []
+        _stk_seen: set = set()
+        for _plat, _plon in [(clat, clon),
+                             *((gg["lat"], gg["lon"]) for gg in g["gauges"])]:
+            for w in stocking.nearby_stocked(_plat, _plon, stocked_pts):
+                _k = (w["water"], round(w["lat"], 4), round(w["lon"], 4))
+                if _k not in _stk_seen:
+                    _stk_seen.add(_k)
+                    stocked_waters.append(w)
         # W3: the "Trout water" chip describes the RIVER -- strongest
         # trout_class on any flowline sharing the river's levelpath
         # group (name fallback when the gauges carry no levelpathid).
@@ -1152,6 +1174,7 @@ async def _assemble_rivers(time_series: list, trout_layers: list,
             "near_stocked": bool(stocked_waters),
             "hatch_zone": zone, "active": active, "month": month_now,
             "stocked_waters": stocked_waters,
+            "state_has_stocking": bool(stocked_pts),
             "access_count": access_count,
             "gauges": sorted(g["gauges"], key=lambda x: x["site_name"]),
         }
