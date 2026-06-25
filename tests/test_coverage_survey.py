@@ -184,9 +184,10 @@ def test_main_exits_zero(monkeypatch, tmp_path):
 
 def test_real_registry_gaps_match_known_worklist():
     """Sanity: the live registries reproduce the worklist's stated gap counts
-    (27 trout / 31 stocking / 20 access with no source)."""
+    (27 trout / 30 stocking / 20 access with no source). Stocking dropped
+    31->30 when MA was promoted (MassWildlife 2025 feed)."""
     m = cs.compute_gaps()
-    for dt, expect in (("trout", 27), ("stocking", 31), ("access", 20)):
+    for dt, expect in (("trout", 27), ("stocking", 30), ("access", 20)):
         no_source = sum(1 for st in cs.LOWER_48
                         if m[st][dt] in ("gap", "expected none"))
         assert no_source == expect, (dt, no_source)

@@ -82,8 +82,9 @@ def test_load_entries_includes_watchlist_and_candidates():
     # candidates folded in as verify-kind, flagged _is_candidate
     cands = [e for e in entries if e.get("_is_candidate")]
     assert cands and all(e["kind"] == "verify" for e in cands)
-    # the 1 stocking + 7 access candidates seeded in the repo
-    assert len(cands) == 8
+    # 7 access candidates seeded in the repo (the 1 stocking candidate was
+    # promoted to sources.json when MA's MassWildlife feed landed)
+    assert len(cands) == 7
     assert not warnings
 
 

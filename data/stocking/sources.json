@@ -237,6 +237,22 @@
       "category": "Recently stocked trout stream (GA WRD)",
       "name_field": "Name",
       "dedupe": true
+    },
+    {
+      "state": "MA",
+      "label": "MassWildlife Stocked Lakes & Ponds (2025)",
+      "url": "https://services6.arcgis.com/nfm1OKvfdpRP0081/arcgis/rest/services/2025_Fish_Stocking_Locations_WFL1/FeatureServer/0/query?where=1%3D1",
+      "agency_url": "https://www.mass.gov/info-details/trout-stocking-report",
+      "category": "Stocked lake/pond (MassWildlife)",
+      "name_field": "NAME"
+    },
+    {
+      "state": "MA",
+      "label": "MassWildlife Stocked Rivers & Streams (2025)",
+      "url": "https://services6.arcgis.com/nfm1OKvfdpRP0081/arcgis/rest/services/2025_Fish_Stocking_Locations_WFL1/FeatureServer/1/query?where=1%3D1",
+      "agency_url": "https://www.mass.gov/info-details/trout-stocking-report",
+      "category": "Stocked river/stream (MassWildlife)",
+      "name_field": "NAME"
     }
   ]
 }
