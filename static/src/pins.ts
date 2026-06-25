@@ -39,7 +39,7 @@ export function addPinMarker(p: Pin): void {
   const popup = makePopup().setHTML(
     `<div class="pin-popup"><div class="pin-note">${esc(p.note || "(no note)")}</div>` +
       `<div class="pin-meta">${esc(p.created_at)}</div>` +
-      directionsLinkHtml(p.lat, p.lon) +
+      directionsLinkHtml(p.lat, p.lon, p.note) +
       `<button class="pin-del" type="button">Delete</button></div>`,
   );
   // Selecting a pin is a POI click -> close the rail panel.

@@ -9,11 +9,19 @@
  * same two links directly.
  */
 
-export function appleMapsUrl(lat: number, lon: number): string {
-  return `https://maps.apple.com/?daddr=${lat.toFixed(6)},${lon.toFixed(6)}&dirflg=d`;
+export function appleMapsUrl(lat: number, lon: number, name?: string): string {
+  // `daddr` is the routing destination (always the exact coordinate), so
+  // navigation is unchanged. `q` is the destination LABEL: without it Apple
+  // reverse-geocodes the coordinate to the nearest postal address -- e.g. a
+  // river access point shows a neighbor's house. With it Apple shows the POI
+  // name. If Apple ignores `q` it just falls back to today's behavior.
+  const q = name ? `&q=${encodeURIComponent(name)}` : "";
+  return `https://maps.apple.com/?daddr=${lat.toFixed(6)},${lon.toFixed(6)}&dirflg=d${q}`;
 }
 
 export function googleMapsUrl(lat: number, lon: number): string {
+  // Google's dir URL can't label a bare coordinate without a place_id, so the
+  // displayed name stays reverse-geocoded; routing is still to the coordinate.
   return `https://www.google.com/maps/dir/?api=1&destination=${lat.toFixed(6)},${lon.toFixed(6)}`;
 }
 
@@ -29,12 +37,16 @@ const _ATTRS = 'target="_blank" rel="noopener noreferrer"';
 
 /** A compact Directions row offering both map apps, for client-built popups
  *  (access / stocked / dam / public-land / trail / pin). */
-export function directionsLinkHtml(lat: number, lon: number): string {
+export function directionsLinkHtml(
+  lat: number,
+  lon: number,
+  name?: string,
+): string {
   if (!Number.isFinite(lat) || !Number.isFinite(lon)) return "";
   return (
     `<div class="ap-dir">` +
     `<span class="ap-dir-label">${NAV_SVG} Directions</span>` +
-    `<a href="${appleMapsUrl(lat, lon)}" ${_ATTRS}>Apple Maps</a>` +
+    `<a href="${appleMapsUrl(lat, lon, name)}" ${_ATTRS}>Apple Maps</a>` +
     `<a href="${googleMapsUrl(lat, lon)}" ${_ATTRS}>Google Maps</a>` +
     `</div>`
   );
