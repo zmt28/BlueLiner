@@ -1,8 +1,8 @@
 # Coverage Survey
 
-_Generated 2026-06-22 13:11 UTC._ Report-only standing worklist -- feeds the candidate-promotion pipeline; never auto-edits any registry.
+_Generated 2026-06-25 16:36 UTC._ Report-only standing worklist -- feeds the candidate-promotion pipeline; never auto-edits any registry.
 
-**Summary:** 57 fillable gaps across the lower 48; 16 produced candidate layers this run. Of 37 gap states, 24 have a known agency host (rest fall back to ArcGIS-Online search).
+**Summary:** 57 fillable gaps across the lower 48; 19 produced candidate layers this run. Of 37 gap states, 24 have a known agency host (rest fall back to ArcGIS-Online search).
 
 Legend: **Y** = a source exists; **gap** = fillable (discovery runs); **expected none** = non-trout state, no coldwater fishery to source. Western trout states (ID/MT/OR/WA/NM/NV) already get baseline wild-trout coverage from the range-wide NATIVE overlays (WCT/BULL/RBT/YCT/BCT/RGCT/GILA) even without a state trout source -- a state source would ADD management tiers.
 
@@ -179,10 +179,21 @@ Discovered candidate layers (light probe -- a human picks one and designs its fi
 
 | name | geometryType | count | url |
 |------|--------------|-------|-----|
-|  |  | ? | https://programs.iowadnr.gov/geospatial/rest/services/Recreation/Fishing/MapServer/4 |
+| Wastewater Treatment Plant | esriGeometryPoint | 1849 | https://programs.iowadnr.gov/geospatial/rest/services/OneStop/IaFmFacilities/MapServer/13 |
+| Water Treatment Plant | esriGeometryPoint | 5132 | https://programs.iowadnr.gov/geospatial/rest/services/OneStop/IaFmFacilities/MapServer/23 |
+| Wastewater Treatment Plant | esriGeometryPoint | 1849 | https://programs.iowadnr.gov/geospatial/rest/services/OneStop/QueryEnvFacs/MapServer/13 |
+| Water Treatment Plants | esriGeometryPoint | 5132 | https://programs.iowadnr.gov/geospatial/rest/services/OneStop/QueryEnvFacs/MapServer/23 |
+| Trout Streams | esriGeometryPolyline | 133 | https://programs.iowadnr.gov/geospatial/rest/services/Recreation/fishing/MapServer/4 |
 
 ### IA / access
-_no candidate found_
+Discovered candidate layers (light probe -- a human picks one and designs its field mapping):
+
+| name | geometryType | count | url |
+|------|--------------|-------|-----|
+| Iowa DNR Fishing Report Waterbodies | esriGeometryPoint | 1271 | https://programs.iowadnr.gov/geospatial/rest/services/fisheries/fishingreports/MapServer/0 |
+| Iowa DNR Fishing Report Rivers | esriGeometryPolyline | 73 | https://programs.iowadnr.gov/geospatial/rest/services/fisheries/fishingreports/MapServer/1 |
+| Fishing Amenities | esriGeometryPoint | 6099 | https://programs.iowadnr.gov/geospatial/rest/services/Recreation/fishing/MapServer/3 |
+| Paddling Access Sites | esriGeometryPoint | 8250 | https://programs.iowadnr.gov/geospatial/rest/services/Recreation/Recreation/MapServer/4 |
 
 ### KS / access
 Discovered candidate layers (light probe -- a human picks one and designs its field mapping):
@@ -235,10 +246,26 @@ Discovered candidate layers (light probe -- a human picks one and designs its fi
 | MCD_Waterfront_Access_Tremont | esriGeometryPoint | 18 | https://services9.arcgis.com/04Mfke8TEc0Pvqvt/arcgis/rest/services/MCD_Waterfront_Access_Tremont/FeatureServer/0 |
 
 ### MA / stocking
-_host unreachable (retry next run)_
+Discovered candidate layers (light probe -- a human picks one and designs its field mapping):
+
+| name | geometryType | count | url |
+|------|--------------|-------|-----|
+| StockedLakesandPonds | esriGeometryPoint | 239 | https://services6.arcgis.com/nfm1OKvfdpRP0081/arcgis/rest/services/2025_Fish_Stocking_Locations_WFL1/FeatureServer/0 |
+| StockedRiversandStreams | esriGeometryPoint | 352 | https://services6.arcgis.com/nfm1OKvfdpRP0081/arcgis/rest/services/2025_Fish_Stocking_Locations_WFL1/FeatureServer/1 |
+| Stocked Lakes and Ponds | esriGeometryPolygon | 239 | https://services6.arcgis.com/nfm1OKvfdpRP0081/arcgis/rest/services/2025_Fish_Stocking_Locations_WFL1/FeatureServer/2 |
+| Stocked Rivers and Streams | esriGeometryPolyline | 3135 | https://services6.arcgis.com/nfm1OKvfdpRP0081/arcgis/rest/services/2025_Fish_Stocking_Locations_WFL1/FeatureServer/3 |
+| StockedLakesandPonds | esriGeometryPoint | 239 | https://services6.arcgis.com/nfm1OKvfdpRP0081/arcgis/rest/services/MA_Fish_Stocking_Locations_2025_WFL1/FeatureServer/0 |
 
 ### MA / access
-_host unreachable (retry next run)_
+Discovered candidate layers (light probe -- a human picks one and designs its field mapping):
+
+| name | geometryType | count | url |
+|------|--------------|-------|-----|
+| Office of Fishing and Boating Access Sites | esriGeometryPoint | 282 | https://services1.arcgis.com/hGdibHYSPO59RG1h/arcgis/rest/services/Office_of_Fishing_and_Boating_Access_Sites/FeatureServer/0 |
+| MA_Office_of_Fishing_and_Boating_Access_Sites | esriGeometryPoint | 282 | https://services.arcgis.com/2gdL2gxYNFY2TOUb/arcgis/rest/services/MA_Office_of_Fishing_and_Boating_Access_Sites/FeatureServer/0 |
+| VISITATION_CSTLPUBACCESS_PT_2019_NBEP2021 | esriGeometryPoint | 344 | https://services6.arcgis.com/aknZhNpfQunD2p0u/arcgis/rest/services/VISITATION_CSTLPUBACCESS_PT_2019_NBEP2021/FeatureServer/0 |
+| VISITATION_CSTLPUBACCESS_POLY_2019_NBEP2021 | esriGeometryPolygon | 344 | https://services6.arcgis.com/aknZhNpfQunD2p0u/arcgis/rest/services/VISITATION_CSTLPUBACCESS_POLY_2019_NBEP2021/FeatureServer/0 |
+| Office_of_Fisheries_Boat_Launch_Sites | esriGeometryPoint | 282 | https://services3.arcgis.com/wid5AQd6BHjWWq1h/arcgis/rest/services/Office_of_Fisheries_Boat_Launch_Sites/FeatureServer/0 |
 
 ### MI / stocking
 _host unreachable (retry next run)_
