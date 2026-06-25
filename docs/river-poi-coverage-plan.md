@@ -176,10 +176,24 @@ inaccuracy lives:
 - **Ongoing:** the existing weekly survey keeps expanding agency access feeds;
   periodic re-verify catches drift.
 
-## Open decisions for the human
+## Resolved decisions (2026-06-25)
 
-1. OSM ODbL share-alike — acceptable for the published POI DB? (gates Phase 2+)
-2. Bridges: derive from TIGER/Line vs OSM highways? (PD vs ODbL; both viable)
-3. Curated baselines: fully retire, or keep a tiny flagged "editor's picks"
-   layer (on corrected coordinates) for marquee waters?
-4. Fly shops: OSM-only for v1, or budget a commercial POI source for completeness?
+1. **OSM ODbL share-alike — approved** for the published POI DB. Add
+   "© OpenStreetMap contributors" attribution. Phase 2+ unblocked.
+2. **Bridges — derive from Census TIGER/Line (public domain)**, not OSM
+   highways. Recommended: keeps the bridge layer free of ODbL share-alike,
+   authoritative + complete for US roads, and the crossing coordinate is still
+   geometry-derived (road × flowline) so it's exact by construction.
+3. **Curated baselines — fully retire.** No "editor's picks" layer. The 176
+   hand-placed points are replaced by sourced coordinates; editorial notes only
+   survive if re-attached to a sourced, accurate coordinate.
+4. **Fly shops — OSM-only for v1.** No commercial POI source for now; revisit if
+   OSM coverage proves too thin.
+
+### Phase 0 status
+
+- ✅ **Directions deep-link label fix** shipped (`directions.ts` +
+  `_directions_row_html`): Apple Maps gets the POI name as `q=` so it stops
+  reverse-geocoding the coordinate to a house. Routing unchanged.
+- ~~Repair MD's 6 baseline coordinates~~ — **dropped**, superseded by decision 3
+  (full retire); Phase 1's sourced access layer replaces them wholesale.
