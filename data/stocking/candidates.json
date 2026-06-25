@@ -1,12 +1,4 @@
 {
   "_comment": "UNVERIFIED stocking-feed leads -- same shape as sources.json. The Claude Code sandbox egress allowlist blocks these hosts, so the end-to-end check couldn't run when they were researched (2026-06). Run `python scripts/verify_feed_sources.py --candidates` from a dev machine or CI (open egress), fill in the field mappings from the dump, and promote passing entries into sources.json. NJ/WV/NY were promoted 2026-06-09 after CI field dumps. Leads without a confirmed layer id: TN TWRA (tnmap.tn.gov/arcgis/rest/services/ENVIRONMENTAL/TWRA/MapServer -- has a 'Stocked Trout Fisheries' dataset per tn-tnmap.opendata.arcgis.com), WI DNR (dnrmaps.wi.gov FM_Trout/FM_TROUT_REGS_WTM_Ext + FM_TROUT_HAB_SITES_WTM_Ext MapServers), ND Game & Fish (ndgishub.nd.gov Applications/GNF_FishingWaters/MapServer carries stocking attributes per gf.nd.gov/maps/data), MI DNR (stocking is a tabular database at www2.dnr.state.mi.us/fishstock, no known ArcGIS layer). CONFIRMED NO-GIS (2026-06 CI crawl; don't re-hunt): ID, WY, NM, NV, OR, AZ (statewide) publish stocking as HTML/PDF only; WA's only stocked layer (FishWA_2014_AllLakes_PROD/MapServer/24, 874 pts) rejects f=geojson so the runtime fetcher can't use it. MT alternative if the fishViewer history layer misbehaves: services3.arcgis.com/Cdxz8r11hT0MGzg1 FISH_PLANTS_6YR_PLAN/FeatureServer/0 (13,234 pts, YEAR/SPECIES/WATERBODY, verified PASS).",
-  "sources": [
-    {
-      "state": "MA",
-      "label": "MassGIS DFG Trout Stocking (official item)",
-      "url": "https://gis.data.mass.gov/items/3f4c74c56a924d39882723498e8080e0",
-      "agency_url": "https://www.mass.gov/info-details/trout-stocking-report",
-      "note": "The official MassGIS-hosted DFG Trout Stocking dataset (item 3f4c74c56a924d39882723498e8080e0) -- resolve its FeatureServer URL and promote. A passing copy exists at services6.arcgis.com/nfm1OKvfdpRP0081 (MA_Fish_Stocking_Locations_2025, owner eliadelmolino, 239 ponds + 352 streams) but the owner couldn't be confirmed as MassWildlife; prefer the MassGIS original."
-    }
-  ]
+  "sources": []
 }
