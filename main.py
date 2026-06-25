@@ -701,10 +701,16 @@ def _directions_row_html(river: dict) -> str:
     Maps and lets the user pick (no platform guessing). Each link routes to
     the river's coordinate with the device's current location as the origin.
     Empty when coords are absent."""
+    from urllib.parse import quote
     lat, lon = river.get("lat"), river.get("lon")
     if lat is None or lon is None:
         return ""
-    apple = f"https://maps.apple.com/?daddr={lat},{lon}&dirflg=d"
+    # `q` labels the Apple Maps destination with the river name so it shows the
+    # river instead of reverse-geocoding the coordinate to a nearby address;
+    # `daddr` still routes to the exact coordinate. Google can't label a bare
+    # coordinate, so it stays as-is.
+    label = f"&q={quote(river['name'])}" if river.get("name") else ""
+    apple = f"https://maps.apple.com/?daddr={lat},{lon}&dirflg=d{label}"
     google = f"https://www.google.com/maps/dir/?api=1&destination={lat},{lon}"
     nav = ('<svg width="13" height="13" viewBox="0 0 24 24" fill="none" '
            'stroke="currentColor" stroke-width="2" stroke-linecap="round" '

@@ -509,6 +509,18 @@ def test_directions_row_html_requires_coords():
     assert main._directions_row_html({}) == ""
 
 
+def test_directions_row_html_labels_apple_with_name():
+    """Apple Maps link carries the name as `q=` so it shows the river instead
+    of reverse-geocoding the coordinate to a nearby address; `daddr` still
+    routes to the exact coordinate, and Google stays unlabeled."""
+    row = main._directions_row_html(
+        {"name": "Gunpowder Falls", "lat": 39.6, "lon": -76.7})
+    assert "daddr=39.6,-76.7" in row          # routes to the exact coordinate
+    assert "q=Gunpowder%20Falls" in row       # Apple destination label
+    # No name -> no label (no regression from prior behavior).
+    assert "q=" not in main._directions_row_html({"lat": 39.6, "lon": -76.7})
+
+
 def test_build_reach_popup_html_unified():
     # Ungauged reach -> the SAME full panel as a gauged river, but with
     # no gauges: Conditions tab carries a "no gauge" note, Hatches is the

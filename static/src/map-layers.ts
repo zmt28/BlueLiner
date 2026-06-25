@@ -93,7 +93,7 @@ export function accessPopupHtml(
     ? `<div class="ap-link"><a href="${esc(p.agency_url)}" target="_blank" ` +
       `rel="noopener noreferrer">Agency info &rarr;</a></div>`
     : "";
-  const dir = lngLat ? directionsLinkHtml(lngLat[1], lngLat[0]) : "";
+  const dir = lngLat ? directionsLinkHtml(lngLat[1], lngLat[0], p.name) : "";
   return (
     `<div class="ap-popup">` +
     `<div class="ap-name">${esc(p.name || "Access point")}</div>` +
@@ -219,7 +219,7 @@ export function stockedPopupHtml(
     ? `<div class="ap-link"><a href="${esc(p.agency_url)}" target="_blank" ` +
       `rel="noopener noreferrer">Stocking schedule &rarr;</a></div>`
     : "";
-  const dir = lngLat ? directionsLinkHtml(lngLat[1], lngLat[0]) : "";
+  const dir = lngLat ? directionsLinkHtml(lngLat[1], lngLat[0], p.water) : "";
   return (
     `<div class="ap-popup">` +
     `<div class="ap-name">${esc(p.water || "Stocked water")}</div>` +
@@ -332,7 +332,7 @@ export function damPopupHtml(
     ? `<div class="ap-link"><a href="${esc(p.agency_url)}" target="_blank" ` +
       `rel="noopener noreferrer">NID record &rarr;</a></div>`
     : "";
-  const dir = lngLat ? directionsLinkHtml(lngLat[1], lngLat[0]) : "";
+  const dir = lngLat ? directionsLinkHtml(lngLat[1], lngLat[0], p.name) : "";
   return (
     `<div class="ap-popup">` +
     `<div class="ap-name">${esc(p.name || "Dam")}</div>` +
@@ -436,7 +436,7 @@ export function publicLandsPopupHtml(
   lines.push(`<div class="ap-meta" style="margin-top:6px">${tierChip}</div>`);
   const stateNm = (p as { state_nm?: string }).state_nm;
   if (stateNm) lines.push(`<div class="ap-notes">${esc(stateNm)}</div>`);
-  if (lngLat) lines.push(directionsLinkHtml(lngLat[1], lngLat[0]));
+  if (lngLat) lines.push(directionsLinkHtml(lngLat[1], lngLat[0], p.unit_name));
   return `<div class="ap-popup">${lines.join("")}</div>`;
 }
 
@@ -535,7 +535,7 @@ export function trailPopupHtml(
   ]
     .filter(Boolean)
     .join(" &middot; ");
-  const dir = lngLat ? directionsLinkHtml(lngLat[1], lngLat[0]) : "";
+  const dir = lngLat ? directionsLinkHtml(lngLat[1], lngLat[0], p.name) : "";
   return (
     `<div class="ap-popup">` +
     `<div class="ap-name">${esc(p.name || "Trail")}</div>` +
