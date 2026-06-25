@@ -27,6 +27,10 @@ on:
         description: "keep points within this many metres of a reach"
         required: false
         default: "75"
+      streams_url:
+        description: "National clickable-streams geojson.gz for the river-clip"
+        required: false
+        default: "https://data.blueliner.app/v4/clickable_streams.geojson.gz"
       r2_prefix:
         description: "R2 version prefix to publish under (e.g. v4)"
         required: false
@@ -57,6 +61,18 @@ jobs:
           python -m pip install --upgrade pip
           # geopandas pulls shapely + pyproj with bundled GDAL wheels.
           pip install httpx geopandas shapely pyproj
+
+      - name: Fetch national stream network (river-clip target)
+        if: ${{ inputs.probe == false }}
+        env:
+          STREAMS_URL: ${{ inputs.streams_url }}
+        run: |
+          # The repo bundles only the mid-Atlantic dev subset; a NATIONAL clip
+          # needs the full network published to R2. Overwrite the bundled file
+          # so build_river_poi.py's default --streams path picks it up.
+          echo "Downloading $STREAMS_URL ..."
+          curl -fsSL "$STREAMS_URL" -o data/nhdplus/clickable_streams.geojson.gz
+          ls -la data/nhdplus/clickable_streams.geojson.gz
 
       - name: Build river-POI access overlay
         env:

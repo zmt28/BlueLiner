@@ -301,7 +301,10 @@ def fetch_agency_access():
         if not src.get("url"):
             continue
         try:
-            feats = fetch_geojson_features(src["url"])
+            # fetch_geojson_features returns None (not []) on an empty or
+            # flapping feed; the runtime loader degrades the same way. Coerce
+            # so a transiently-down state feed contributes 0, not a crash.
+            feats = fetch_geojson_features(src["url"]) or []
             out += normalize_agency(feats, src)
         except Exception as exc:                       # noqa: BLE001
             print(f"[agency] {src.get('state')} {src.get('label')}: {exc}")
