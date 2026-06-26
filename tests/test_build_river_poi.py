@@ -159,6 +159,57 @@ def test_dedupe_prefers_authoritative_source():
     assert len(out) == 3
 
 
+def test_dedupe_collapses_across_a_cell_boundary():
+    """A pair within radius but straddling a grid-cell boundary must still
+    collapse -- the 3x3 neighbourhood scan is what guarantees the grid result
+    matches the brute-force one."""
+    g = bp.DEDUPE_M / 73000.0
+    boundary = g * 50000           # an exact cell edge in latitude
+    pts = [
+        {"lat": boundary + 1e-7, "lon": -76.6, "type": "pier", "source": "osm"},
+        {"lat": boundary - 1e-7, "lon": -76.6, "type": "pier", "source": "osm"},
+    ]
+    assert int(pts[0]["lat"] // g) != int(pts[1]["lat"] // g)  # different cells
+    assert len(bp.dedupe(pts)) == 1                            # still collapse
+
+
+def _bruteforce_dedupe(points, radius_m):
+    """Reference O(n^2) greedy dedupe (the pre-grid implementation)."""
+    order = sorted(points, key=lambda p: bp.SOURCE_PRECEDENCE.index(
+        p.get("source", "osm")) if p.get("source") in bp.SOURCE_PRECEDENCE else 9)
+    kept = []
+    for p in order:
+        if not any(p["type"] == k["type"] and bp._haversine_m(
+                p["lat"], p["lon"], k["lat"], k["lon"]) <= radius_m for k in kept):
+            kept.append(p)
+    return kept
+
+
+def test_dedupe_grid_matches_bruteforce_on_a_cloud():
+    """The grid dedupe is identical to the brute-force greedy result on a
+    deterministic mixed-type point cloud (incl. clusters that collapse)."""
+    types = ("boat_ramp", "pier", "parking", "walk_in")
+    pts = []
+    # a lattice of points ~30 m apart (inside DEDUPE_M=40 m) so many collapse,
+    # plus far-apart anchors that must all survive -- deterministic, no RNG.
+    for i in range(12):
+        for j in range(12):
+            lat = 39.0 + i * 0.0003          # ~33 m steps
+            lon = -77.0 + j * 0.0003
+            t = types[(i + j) % len(types)]
+            src = ("osm", "agency", "ridb")[(i * j) % 3]
+            pts.append({"lat": lat, "lon": lon, "type": t, "source": src,
+                        "source_id": f"{i}-{j}"})
+    for k in range(5):
+        pts.append({"lat": 40.0 + k, "lon": -80.0 - k, "type": "parking",
+                    "source": "osm", "source_id": f"far{k}"})
+    grid_out = bp.dedupe(pts)
+    brute_out = _bruteforce_dedupe(pts, bp.DEDUPE_M)
+    assert len(grid_out) == len(brute_out)
+    key = lambda p: (p["source_id"], p["type"])
+    assert {key(p) for p in grid_out} == {key(p) for p in brute_out}
+
+
 def test_fast_lonlat_point_line_and_ring_mean():
     assert bp._fast_lonlat({"type": "Point", "coordinates": [-76.6, 39.4]}) == \
         (-76.6, 39.4)
