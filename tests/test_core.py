@@ -80,24 +80,31 @@ def test_stocked_points_wv_baseline_only():
     assert pts and all("water" in p for p in pts)
 
 
-# -- access points --
+# -- access points (served from the national river-POI overlay) --
 
-def test_access_baseline_covers_seed_states():
-    """All four seed states ship with non-empty access baselines so
-    /api/access?state=<MD|VA|WV|PA> always returns something even when
-    the live ArcGIS overlay is unconfigured / unreachable."""
-    for state in ("MD", "VA", "WV", "PA"):
-        pts = access_points.ACCESS_BASELINE[state]
-        assert pts, f"{state} access baseline is empty"
-        for p in pts:
-            assert "name" in p and "lat" in p and "lon" in p
-            assert p["type"] in {"boat_ramp", "walk_in", "pier",
-                                 "parking", "wading_access"}
-            assert p["access"] in {"public", "permit", "fee",
-                                   "private_easement"}
+@pytest.fixture
+def stub_access_overlay(monkeypatch):
+    """Stub the pre-built national overlay so the access tests don't need the
+    R2 file. monkeypatch restores the originals; we clear the per-state cache
+    on both sides so nothing leaks between tests."""
+    by_state = {
+        "MD": [
+            {"name": "MD Ramp", "type": "boat_ramp", "access": "public",
+             "source": "agency", "precision": "surveyed",
+             "agency_url": "https://md.gov", "lat": 39.576, "lon": -76.613},
+            {"name": "MD Walk", "type": "walk_in", "access": "public",
+             "source": "osm", "precision": "mapped",
+             "lat": 39.600, "lon": -76.600},
+        ],
+    }
+    monkeypatch.setattr(access_points, "_overlay_loaded", True)
+    monkeypatch.setattr(access_points, "_overlay_by_state", by_state)
+    access_points._access_cache.clear()
+    yield by_state
+    access_points._access_cache.clear()
 
 
-def test_access_points_geojson_shape():
+def test_access_points_geojson_shape(stub_access_overlay):
     """The /api/access response shape: GeoJSON FeatureCollection of
     Points with the canonical attrs travelling in properties so the
     client can render type-coded icons and popups without a second
@@ -110,19 +117,17 @@ def test_access_points_geojson_shape():
     lon, lat = f0["geometry"]["coordinates"]
     assert -180 <= lon <= 180 and -90 <= lat <= 90
     props = f0["properties"]
-    for k in ("name", "type", "access", "agency_url"):
+    for k in ("name", "type", "access", "source", "precision"):
         assert k in props
     # The {lat, lon} keys are folded into geometry; not duplicated in
     # properties (would confuse downstream consumers).
     assert "lat" not in props and "lon" not in props
 
 
-def test_access_unsupported_state_is_empty():
-    """States without baseline + without configured ArcGIS source --
-    e.g. Kansas today -- yield an empty FeatureCollection. The
-    client-side checkbox still works; the layer simply has no markers."""
-    assert "KS" not in access_points.ACCESS_BASELINE
-    assert "KS" not in access_points.ACCESS_SOURCES
+def test_access_unsupported_state_is_empty(stub_access_overlay):
+    """A state the overlay has no points for -- e.g. Kansas today -- yields an
+    empty FeatureCollection. The client-side checkbox still works; the layer
+    simply has no markers."""
     fc = access_points.access_points_geojson("KS")
     assert fc == {"type": "FeatureCollection", "features": []}
 
@@ -176,34 +181,21 @@ def test_stocking_season_from_props():
     assert stocking._season_from_props({"SEASON_MONTHS": "99-6"}) == (1, 12)  # bad
 
 
-def test_nearby_access_proximity_and_ordering():
+def test_nearby_access_proximity_and_ordering(stub_access_overlay):
     """Spatial query mirrors stocking.nearby_stocked: nearest-first,
     bounded by ~buffer_deg. Used for any future 'nearby access' popup
     section parallel to 'stocked nearby'."""
     pts = access_points.load_access_points("MD")
-    # Gunpowder Falls Glencoe centroid; should pull in the nearby
-    # walk-in entries seeded in MD.json.
+    # Query at the MD Ramp coordinate; both stubbed MD points fall inside
+    # ~0.05 deg, the ramp first (distance 0).
     hits = access_points.nearby_access(39.576, -76.613, pts, buffer_deg=0.05)
-    assert hits, "Glencoe should return at least one nearby access"
+    assert hits, "should return at least one nearby access"
     # Nearest-first: each successive hit is at least as far as the prior.
     def d2(p):
         return (p["lat"] - 39.576) ** 2 + (p["lon"] + 76.613) ** 2
     distances = [d2(p) for p in hits]
     assert distances == sorted(distances)
-
-
-def test_access_normalize_type_maps_strings_onto_enum():
-    """Live ArcGIS feeds emit free-form strings ('Boat Ramp', 'Wade
-    Access', etc.). _normalize_type collapses them to the canonical
-    enum so the client never has to handle string surprises."""
-    n = access_points._normalize_type
-    assert n("Boat Ramp") == "boat_ramp"
-    assert n("BOAT LAUNCH") == "boat_ramp"
-    assert n("Fishing Pier") == "pier"
-    assert n("Wading Access") == "wading_access"
-    assert n("Parking Lot") == "parking"
-    assert n("Trail to river") == "walk_in"
-    assert n(None) == "walk_in"
+    assert hits[0]["name"] == "MD Ramp"
 
 
 # -- db (temp file) --
@@ -1290,6 +1282,31 @@ def test_resolve_data_file_local_first(tmp_path, monkeypatch):
     # missing local + no base URL -> returns the (absent) local path unchanged
     missing = str(tmp_path / "nope.gz")
     assert data_source.resolve_data_file(missing, "nope.gz") == missing
+
+
+def test_shell_injects_data_version_meta(tmp_path, monkeypatch):
+    import data_source
+    shell = tmp_path / "index.html"
+    shell.write_text("<!doctype html><head><title>BL</title></head><body></body>")
+    monkeypatch.setattr(data_source, "DATA_BASE_URL", "https://data.example/v7")
+    main._shell_cache.clear()
+    out = main._shell_with_data_version(str(shell)).decode()
+    assert '<meta name="bl-data-version" content="v7">' in out
+    # injected right after <head> so it parses before the client scripts run
+    assert out.index("bl-data-version") < out.index("<title>")
+    main._shell_cache.clear()
+
+
+def test_data_version_from_base_url(monkeypatch):
+    import data_source
+    # The R2 version prefix is the cache-buster the client appends as ?v=.
+    monkeypatch.setattr(data_source, "DATA_BASE_URL", "https://data.example/v4")
+    assert data_source.data_version() == "v4"
+    monkeypatch.setattr(data_source, "DATA_BASE_URL", "https://data.example/v12")
+    assert data_source.data_version() == "v12"
+    # Unset -> bundled files -> a stable sentinel (never an empty ?v=).
+    monkeypatch.setattr(data_source, "DATA_BASE_URL", "")
+    assert data_source.data_version() == "local"
 
 
 def test_resolve_data_file_downloads_when_configured(tmp_path, monkeypatch):

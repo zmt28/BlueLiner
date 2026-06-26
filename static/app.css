@@ -874,6 +874,7 @@ html, body {
 .pa-chip-XA              { background: var(--bl-cond-poor-100); color: var(--bl-cond-poor-700); }
 .pa-chip-UK              { background: var(--bg-pressed); color: var(--fg-2); }
 .ap-notes { color: var(--fg-2); margin-bottom: 6px; }
+.ap-source { color: var(--fg-2); font-size: var(--fs-caption, 11px); opacity: 0.85; margin-bottom: 6px; text-transform: capitalize; }
 .ap-link a { color: var(--fg-link); text-decoration: none; font-weight: var(--fw-semibold); }
 .ap-link a:hover { text-decoration: underline; }
 

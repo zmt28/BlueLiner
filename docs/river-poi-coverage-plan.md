@@ -1,6 +1,6 @@
 # River POI coverage — accuracy-first national plan
 
-_Last updated: 2026-06-25._
+_Last updated: 2026-06-26._
 
 ## The problem this fixes
 
@@ -83,7 +83,7 @@ Buffers are the river-clip distance (smaller = "on the water", larger =
 | POI type | Primary source (real coords) | Buffer | License | Notes |
 | --- | --- | --- | --- | --- |
 | **Boat ramps / launches** | State agency ArcGIS (have, 33) + OSM `leisure=slipway` + RIDB (federal rec) | ~50 m | mixed / ODbL / PD | water-edge; high confidence |
-| **Fishing / wading access** | State agency ArcGIS + OSM `leisure=fishing` | ~75 m | mixed / ODbL | replaces curated baselines |
+| **Fishing / wading access** | State agency ArcGIS + OSM `leisure=fishing` | ~150 m | mixed / ODbL | replaces curated baselines |
 | **Fly shops** | OSM `shop=fishing` | ~2 km (drive-to, not on-water) | ODbL | sparse in OSM; supplement later |
 | **Parking along rivers** | OSM `amenity=parking` clipped tight to water/trailheads | ~150 m | ODbL | only keep near access/trailheads |
 | **Bridges over rivers** | **Derived: road × flowline intersection** (TIGER/Line or OSM highways × clickable-streams); NBI/OSM `bridge` for labels | exact | PD / ODbL | coordinate exact by construction |
@@ -197,3 +197,34 @@ inaccuracy lives:
   reverse-geocoding the coordinate to a house. Routing unchanged.
 - ~~Repair MD's 6 baseline coordinates~~ — **dropped**, superseded by decision 3
   (full retire); Phase 1's sourced access layer replaces them wholesale.
+
+### Cutover (2026-06-26)
+
+The national overlay went live (11,251 points / 49 states from R2 `v4`) and the
+stale-CDN purge surfaced the tradeoff in decision 3: a baseline-only spot (the
+Monkton/Glencoe NCR-Trail walk-in) had no OSM/RIDB/agency feature within the clip
+buffer and dropped out. This cutover both finishes the retirement and widens what
+the overlay catches:
+
+1. **Curated baselines fully retired in code.** Deleted the 32
+   `data/access_points/<ST>.json` files, `ACCESS_BASELINE`, and the request-time
+   live-feed fetch. `access_points.py` serves the overlay only (the live-feed
+   *registry* `sources.json` lives on as a build input). The per-source field
+   mapping (`type_flags`/`fixed_type`/`type_field`/`dedupe`/`notes`) moved into
+   `build_river_poi.normalize_agency`, so the agency layer is no worse than the
+   live feeds it replaces.
+2. **Buffer widened 75 m → 150 m** (a river-bank parking lot / trailhead sits a
+   lot's depth back from the water; 75 m clipped them out).
+3. **OSM parking + trailheads added** (`amenity=parking`, `highway=trailhead`),
+   so spots like Monkton return through an authoritative source. Trailheads ride
+   the `walk_in` bucket (no trailhead glyph).
+4. **OSM source switched to the national Geofabrik extract** (osmium streams the
+   ~10 GB pbf in bounded memory). Overpass can't serve national `amenity=parking`
+   and throttled the CONUS sweep to ~80 min; `--osm-mode overpass` is kept as a
+   quick-check fallback (slipway/fishing only).
+5. **Overlay endpoints cache-versioned.** `/api/access` + `/api/stocking` carry
+   `?v=<data_version>` (the R2 prefix, injected into the shell as
+   `<meta name="bl-data-version">`), so a refreshed overlay published under a new
+   prefix busts the day-long Cloudflare cache without a manual purge.
+6. **Popup provenance.** The access popup shows `source` + `precision`
+   (e.g. "OpenStreetMap · mapped", "State agency · surveyed").

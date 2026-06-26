@@ -34,7 +34,7 @@ def _write_overlay(tmp_path, pts):
     return str(f)
 
 
-def test_overlay_supersedes_baseline_and_groups_by_state(tmp_path, monkeypatch):
+def test_overlay_serves_points_grouped_by_state(tmp_path, monkeypatch):
     pts = [
         {"lat": 39.45, "lon": -76.62, "name": "MD River Ramp", "type": "boat_ramp"},
         {"lat": 37.50, "lon": -78.50, "name": "VA Access", "type": "walk_in"},
@@ -46,16 +46,13 @@ def test_overlay_supersedes_baseline_and_groups_by_state(tmp_path, monkeypatch):
         st = point_in_state(p["lat"], p["lon"])
         assert st, f"{p['name']} is not inside any state bbox"
         got = ap.load_access_points(st)
-        # the overlay point is served (source 'osm'), NOT the curated baseline
         assert any(g["name"] == p["name"] and g["source"] == "osm" for g in got)
 
 
-def test_falls_back_to_baseline_without_overlay(monkeypatch):
-    # No overlay file -> resolve returns a nonexistent path -> baseline path.
+def test_empty_without_overlay(monkeypatch):
+    # No overlay file -> resolve returns a nonexistent path. Baselines are
+    # retired, so there's nothing to fall back to: an empty list (dev only;
+    # production always has the R2 overlay).
     monkeypatch.setattr(ap.data_source, "resolve_data_file",
                         lambda local, fn: "/nonexistent/access.geojson.gz")
-    # keep the fallback network-free: live feeds return nothing -> baseline only
-    monkeypatch.setattr(ap, "fetch_geojson_features", lambda url: None)
-    md = ap.load_access_points("MD")
-    assert md, "MD has a curated baseline to fall back to"
-    assert any(p.get("source") == "baseline" for p in md)
+    assert ap.load_access_points("MD") == []

@@ -1399,6 +1399,29 @@ async def get_streams(state: str = Query(default="MD", description="Two-letter s
     return await _usgs_iv({"stateCd": STATES[state]["usgs_code"]}, state)
 
 
+_shell_cache: dict[str, tuple[float, bytes]] = {}
+
+
+def _shell_with_data_version(path: str) -> bytes:
+    """Read the built shell and inject the runtime data version as a meta tag
+    (`<meta name="bl-data-version" content="v4">`) so the client can cache-bust
+    the R2-backed overlay endpoints (/api/access, /api/stocking) on a data
+    refresh without a frontend rebuild. Cached by file mtime; DATA_BASE_URL is
+    fixed for the process, so the injected value is stable per deploy."""
+    mtime = os.path.getmtime(path)
+    cached = _shell_cache.get(path)
+    if cached and cached[0] == mtime:
+        return cached[1]
+    with open(path, "rb") as f:
+        html = f.read()
+    tag = (f'<meta name="bl-data-version" '
+           f'content="{data_source.data_version()}">').encode()
+    if b"<head>" in html:
+        html = html.replace(b"<head>", b"<head>" + tag, 1)
+    _shell_cache[path] = (mtime, html)
+    return html
+
+
 @app.get("/map")
 async def map_shell():
     """Serves the static client shell; state/filters are resolved client-side.
@@ -1409,11 +1432,14 @@ async def map_shell():
     no build has been run -- the dev path, where Vite's dev server
     serves the shell itself on :5173 and this route is only hit by
     direct curls / health checks.
+
+    The shell is served with the data version injected so the client can
+    version its overlay-endpoint requests (see `_shell_with_data_version`).
     """
     dist_index = os.path.join(STATIC_DIR, "dist", "index.html")
-    if os.path.exists(dist_index):
-        return FileResponse(dist_index)
-    return FileResponse(os.path.join(STATIC_DIR, "index.html"))
+    path = dist_index if os.path.exists(dist_index) \
+        else os.path.join(STATIC_DIR, "index.html")
+    return HTMLResponse(_shell_with_data_version(path))
 
 
 @app.get("/sw.js")
@@ -1546,14 +1572,13 @@ async def api_access(request: Request,
                      state: str = Query(default="MD",
                                         description="Two-letter state code.")):
     """Angler access points (boat ramps, walk-ins, piers, parking, wading
-    spots) as GeoJSON. Bundled per-state baseline + a state-DNR live
-    overlay for any state whose ArcGIS endpoint has been verified
-    (`access_points.ACCESS_SOURCES`)."""
+    spots) as GeoJSON, served from the pre-built national river-clipped
+    overlay (`scripts/build_river_poi.py` -> R2)."""
     states_to_load = _resolve_states(state)
     if states_to_load is None:
         raise HTTPException(status_code=400, detail=f"Unsupported state: {state}")
-    # Build the FeatureCollection in a thread so a slow live overlay
-    # fetch doesn't block the request handler.
+    # Build the FeatureCollection off-thread so the overlay's first-touch
+    # load/index doesn't block the request handler.
     fcs = await asyncio.to_thread(
         lambda: [access_points.access_points_geojson(st)
                  for st in states_to_load])
@@ -1562,9 +1587,10 @@ async def api_access(request: Request,
         features.extend(fc.get("features", []))
     body = json.dumps({"type": "FeatureCollection", "features": features},
                       separators=(",", ":"))
-    # Baseline data is in-memory + stable across deploys; live overlay
-    # changes rarely. Long browser cache + day-long CDN cache like
-    # /api/trout.
+    # The overlay is immutable for a data release; the client cache-busts via
+    # the ?v=<data_version> query param (see _data_version), so a refreshed
+    # overlay published under a new R2 prefix lands without a manual CDN purge.
+    # Long browser cache + day-long CDN cache like /api/trout.
     return _cached_response(request, body, max_age=3600, s_max_age=86400)
 
 

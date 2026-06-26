@@ -29,6 +29,105 @@ def test_normalize_osm_types_and_ids():
     assert all(p["source"] == "osm" for p in pts)
 
 
+def test_normalize_osm_parking_and_trailhead():
+    pts = bp.normalize_osm([
+        {"type": "way", "id": 20, "center": {"lat": 39.5, "lon": -76.6},
+         "tags": {"amenity": "parking", "name": "River Lot"}},
+        {"type": "node", "id": 21, "lat": 39.6, "lon": -76.7,
+         "tags": {"highway": "trailhead", "name": "NCR Trailhead"}},
+        {"type": "node", "id": 22, "lat": 39.7, "lon": -76.8,
+         "tags": {"man_made": "pier"}},
+        {"type": "node", "id": 23, "lat": 39.8, "lon": -76.9,
+         "tags": {"highway": "residential"}},   # not an access tag -> dropped
+    ])
+    by_id = {p["source_id"]: p["type"] for p in pts}
+    assert by_id == {"w20": "parking", "n21": "walk_in", "n22": "pier"}
+
+
+def test_normalize_osm_geojson_centroids_ways():
+    # osmium export emits ways/areas as Line/Polygon; we take the centroid.
+    p = bp.normalize_osm_geojson({
+        "type": "Feature", "id": "w99",
+        "geometry": {"type": "LineString",
+                     "coordinates": [[-76.60, 39.40], [-76.62, 39.42]]},
+        "properties": {"amenity": "parking", "name": "Lot"}})
+    assert p["type"] == "parking" and p["source"] == "osm"
+    assert abs(p["lon"] - -76.61) < 1e-6 and abs(p["lat"] - 39.41) < 1e-6
+    # A feature with none of our tags is dropped, not mis-bucketed.
+    assert bp.normalize_osm_geojson({
+        "type": "Feature", "id": "n1",
+        "geometry": {"type": "Point", "coordinates": [-76.6, 39.4]},
+        "properties": {"highway": "residential"}}) is None
+
+
+def _agency_feat(props, lon=-77.5, lat=38.5):
+    return {"type": "Feature",
+            "geometry": {"type": "Point", "coordinates": [lon, lat]},
+            "properties": props}
+
+
+def test_normalize_agency_type_flags_first_truthy_wins():
+    src = {"state": "MD", "agency_url": "https://x.gov", "name_field": "N",
+           "type_flags": {"RAMP": "boat_ramp", "PIER": "pier",
+                          "SHORE_FISH": "walk_in"}}
+    pts = bp.normalize_agency([
+        _agency_feat({"N": "Ramp+Pier", "RAMP": "Y", "PIER": "Y"}),
+        _agency_feat({"N": "Pier only", "RAMP": "N", "PIER": "Y"}),
+        _agency_feat({"N": "Nothing", "RAMP": "N", "PIER": "N"}),
+    ], src)
+    assert [p["type"] for p in pts] == ["boat_ramp", "pier", "walk_in"]
+    assert all(p["source"] == "agency" for p in pts)
+
+
+def test_normalize_agency_fixed_type_notes_and_keyword():
+    src = {"state": "VA", "agency_url": "https://x.gov",
+           "name_field": "Facility_N", "fixed_type": "pier",
+           "notes_field": "Body_of_Wa"}
+    (p,) = bp.normalize_agency(
+        [_agency_feat({"Facility_N": "Cameron Run", "Body_of_Wa": "Lake Cook"})],
+        src)
+    assert p["type"] == "pier" and p["notes"] == "Lake Cook"
+    assert p["access"] == "public" and p["agency_url"] == "https://x.gov"
+    # type_field free text -> keyword normalizer (KY "Any Boat" etc.)
+    kt = {"state": "KY", "name_field": "N", "type_field": "AccessType"}
+    got = [bp.normalize_agency([_agency_feat({"N": "x", "AccessType": v})], kt)[0]
+           ["type"] for v in ("Any Boat", "Small Boat Only", "Bank Access")]
+    assert got == ["boat_ramp", "boat_ramp", "walk_in"]
+
+
+def test_normalize_agency_dedupe_collapses_parcels():
+    # NY PFR publishes thousands of tiny bank parcels; dedupe keeps one pin
+    # per named water per ~1 km cell.
+    src = {"state": "NY", "agency_url": "https://x.gov", "name_field": "W",
+           "fixed_type": "walk_in", "dedupe": True}
+    feats = [
+        _agency_feat({"W": "Beaver Kill"}, lon=-74.9012, lat=41.9501),
+        _agency_feat({"W": "Beaver Kill"}, lon=-74.9014, lat=41.9503),  # same cell
+        _agency_feat({"W": "Beaver Kill"}, lon=-74.93, lat=41.96),      # next cell
+    ]
+    assert len(bp.normalize_agency(feats, src)) == 2
+
+
+def test_normalize_type_maps_strings_onto_enum():
+    n = bp._normalize_type
+    assert n("Boat Ramp") == "boat_ramp"
+    assert n("BOAT LAUNCH") == "boat_ramp"
+    assert n("Fishing Pier") == "pier"
+    assert n("Wading Access") == "wading_access"
+    assert n("Parking Lot") == "parking"
+    assert n("Trail to river") == "walk_in"
+    assert n(None) == "walk_in"
+
+
+def test_normalize_agency_centroids_non_point_geometry():
+    feat = {"type": "Feature",
+            "geometry": {"type": "LineString",
+                         "coordinates": [[-77.0, 38.0], [-77.2, 38.2]]},
+            "properties": {"N": "Reach"}}
+    (p,) = bp.normalize_agency([feat], {"state": "X", "name_field": "N"})
+    assert abs(p["lon"] - -77.1) < 1e-6 and abs(p["lat"] - 38.1) < 1e-6
+
+
 def test_normalize_ridb_drops_null_island_and_types_launches():
     pts = bp.normalize_ridb([
         {"FacilityID": 10, "FacilityName": "Smith Boat Launch",

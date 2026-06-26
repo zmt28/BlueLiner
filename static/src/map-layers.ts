@@ -34,6 +34,7 @@ import {
   TRAILS_TILES_ENABLED,
   TRAILS_TILES_URL,
   TRAILS_SOURCE_LAYER,
+  DATA_VERSION,
 } from "./config";
 import { ensurePmtilesProtocol } from "./tiles";
 import { makePoiElement } from "./poi-icons";
@@ -80,6 +81,14 @@ const _accessTypeVisible: Record<AccessType, boolean> = {
   parking: false,
 };
 
+// Provenance label for the overlay's `source` -- tells the user where the
+// coordinate came from (and, with `precision`, how trustworthy it is).
+const _ACCESS_SOURCE_LABEL: Record<string, string> = {
+  osm: "OpenStreetMap",
+  ridb: "Recreation.gov",
+  agency: "State agency",
+};
+
 export function accessPopupHtml(
   p: AccessFeatureProps,
   lngLat?: [number, number],
@@ -93,6 +102,14 @@ export function accessPopupHtml(
     ? `<div class="ap-link"><a href="${esc(p.agency_url)}" target="_blank" ` +
       `rel="noopener noreferrer">Agency info &rarr;</a></div>`
     : "";
+  // Provenance: "OpenStreetMap · mapped" / "State agency · surveyed". Helps the
+  // angler weigh a mapped (OSM, community) vs surveyed (agency/RIDB) coordinate.
+  const srcLabel = p.source ? _ACCESS_SOURCE_LABEL[p.source] || p.source : "";
+  const src = srcLabel
+    ? `<div class="ap-source">${esc(srcLabel)}` +
+      (p.precision ? ` &middot; ${esc(p.precision)}` : "") +
+      `</div>`
+    : "";
   const dir = lngLat ? directionsLinkHtml(lngLat[1], lngLat[0], p.name) : "";
   return (
     `<div class="ap-popup">` +
@@ -100,6 +117,7 @@ export function accessPopupHtml(
     `<div class="ap-meta">${esc(typeLabel)}${accessChip}</div>` +
     notes +
     link +
+    src +
     dir +
     `</div>`
   );
@@ -162,7 +180,7 @@ export async function ensureAccess(state: string): Promise<void> {
   accessLoading = true;
   try {
     const fc: GeoJsonFeatureCollection<AccessFeatureProps> = await fetch(
-      `/api/access?state=${state}`,
+      `/api/access?state=${state}&v=${DATA_VERSION}`,
     ).then((r) => r.json());
     for (const am of accessMarkers) am.marker.remove();
     accessMarkers = [];
@@ -268,7 +286,7 @@ export async function ensureStocked(state: string): Promise<void> {
   stockedLoading = true;
   try {
     const fc: GeoJsonFeatureCollection<StockedFeatureProps> = await fetch(
-      `/api/stocking?state=${state}`,
+      `/api/stocking?state=${state}&v=${DATA_VERSION}`,
     ).then((r) => r.json());
     for (const m of stockedMarkers) m.remove();
     stockedMarkers = [];

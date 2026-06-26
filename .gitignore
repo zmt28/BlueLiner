@@ -21,3 +21,8 @@ gis_verify_out/
 # Agent runtime artifacts
 agent/logs/
 agent/**/__pycache__/
+
+# river-POI build scratch (Geofabrik pbf + osmium output, multi-GB) and the
+# built overlay (published to R2, not committed)
+data/access_points/_osm/
+data/access_points/access.geojson.gz

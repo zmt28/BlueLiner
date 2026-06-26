@@ -291,7 +291,13 @@ interface AccessFeatureProps {
   type?: AccessType;
   agency_url?: string | null;
   notes?: string | null;
-  access?: "public" | "permit" | "fee" | "private_easement" | string;
+  access?: "public" | "private" | "permit" | "fee" | "private_easement" | string;
+  /** National river-POI overlay provenance. */
+  source?: "osm" | "ridb" | "agency" | string;
+  /** How the coordinate was sourced: surveyed (agency/RIDB) vs mapped (OSM). */
+  precision?: "surveyed" | "mapped" | string;
+  source_id?: string | null;
+  levelpathid?: number | string | null;
   [key: string]: unknown;
 }
 
