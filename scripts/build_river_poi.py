@@ -320,16 +320,39 @@ def _haversine_m(a_lat, a_lon, b_lat, b_lon) -> float:
 
 def dedupe(points: list[dict], radius_m: float = DEDUPE_M) -> list[dict]:
     """Greedy spatial dedupe within `type`: process by source precedence, drop
-    a later point if an already-kept point of the same type is within radius."""
+    a later point if an already-kept point of the same type is within radius.
+
+    Spatial-grid bucketed so it stays near-linear -- the old O(n^2) all-pairs
+    scan took ~90 min once OSM parking pushed the input past 200k points. Each
+    kept point is bucketed by (type, lat-cell, lon-cell); a candidate only
+    compares against kept points in its 3x3 cell neighbourhood. The cell size
+    (in degrees) is >= radius in metres on BOTH axes anywhere in CONUS, so any
+    two points within radius necessarily share a cell or an adjacent one -- the
+    neighbourhood scan is therefore exact, and the kept set is identical to the
+    greedy all-pairs result. 73 km/deg is the longitude metres-per-degree at
+    ~49N (CONUS's northern edge), the tightest (smallest-cell) case."""
     order = sorted(points, key=lambda p: SOURCE_PRECEDENCE.index(
         p.get("source", "osm")) if p.get("source") in SOURCE_PRECEDENCE else 9)
+    g = radius_m / 73000.0
+    grid: dict[tuple, list[dict]] = {}
     kept: list[dict] = []
     for p in order:
-        dup = any(p["type"] == k["type"] and
-                  _haversine_m(p["lat"], p["lon"], k["lat"], k["lon"]) <= radius_m
-                  for k in kept)
+        t, lat, lon = p["type"], p["lat"], p["lon"]
+        ci, cj = int(lat // g), int(lon // g)
+        dup = False
+        for di in (-1, 0, 1):
+            for dj in (-1, 0, 1):
+                for k in grid.get((t, ci + di, cj + dj), ()):
+                    if _haversine_m(lat, lon, k["lat"], k["lon"]) <= radius_m:
+                        dup = True
+                        break
+                if dup:
+                    break
+            if dup:
+                break
         if not dup:
             kept.append(p)
+            grid.setdefault((t, ci, cj), []).append(p)
     return kept
 
 
