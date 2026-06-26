@@ -159,6 +159,43 @@ def test_dedupe_prefers_authoritative_source():
     assert len(out) == 3
 
 
+def test_fast_lonlat_point_line_and_ring_mean():
+    assert bp._fast_lonlat({"type": "Point", "coordinates": [-76.6, 39.4]}) == \
+        (-76.6, 39.4)
+    # a 2-vertex line's ring-mean is its midpoint (matches the old centroid)
+    lon, lat = bp._fast_lonlat(
+        {"type": "LineString", "coordinates": [[-76.60, 39.40], [-76.62, 39.42]]})
+    assert abs(lon - -76.61) < 1e-9 and abs(lat - 39.41) < 1e-9
+    # polygon ring descends one level; mean of the 4 corners
+    lon, lat = bp._fast_lonlat({"type": "Polygon", "coordinates": [
+        [[-76.6, 39.4], [-76.6, 39.5], [-76.5, 39.5], [-76.5, 39.4]]]})
+    assert abs(lon - -76.55) < 1e-9 and abs(lat - 39.45) < 1e-9
+    assert bp._fast_lonlat({"type": "Polygon", "coordinates": []}) is None
+
+
+def test_clip_records_vectorized_keeps_near_drops_far():
+    """The build's chunked, vectorized clip: projects lon/lat to EPSG:5070,
+    keeps points within buffer of a reach, stamps the nearest levelpathid.
+    Exercised across a chunk boundary (chunk=2)."""
+    from shapely import STRtree, LineString
+    from pyproj import Transformer
+    tf = Transformer.from_crs("EPSG:4326", "EPSG:5070", always_xy=True)
+
+    def P(lon, lat):
+        return tf.transform(lon, lat)
+    reach0 = LineString([P(-76.600, 39.400), P(-76.601, 39.405)])
+    reach1 = LineString([P(-78.500, 37.500), P(-78.501, 37.505)])
+    tree = STRtree([reach0, reach1])
+    recs = [
+        {"lon": -76.6001, "lat": 39.4001, "name": "near0", "type": "parking"},
+        {"lon": -78.5001, "lat": 37.5001, "name": "near1", "type": "walk_in"},
+        {"lon": -80.0, "lat": 35.0, "name": "far", "type": "parking"},
+    ]
+    out = bp.clip_records(recs, tree, [5000, 6000], tf, buffer_m=150.0, chunk=2)
+    assert {(r["name"], r["levelpathid"]) for r in out} == {
+        ("near0", 5000), ("near1", 6000)}
+
+
 def test_clip_and_associate_keeps_near_drops_far():
     from shapely.geometry import LineString
     streams = [LineString([(0, 0), (1000, 0)])]   # planar metres (EPSG:5070-ish)

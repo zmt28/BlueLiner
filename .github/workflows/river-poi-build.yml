@@ -56,7 +56,10 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
-    timeout-minutes: 120
+    # The national OSM sweep (12 GB Geofabrik download + osmium filter/export +
+    # river-clip of millions of parking features) needs more than the default;
+    # the vectorized clip keeps the compute in minutes, the download dominates.
+    timeout-minutes: 330
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -96,7 +99,10 @@ jobs:
           args=(--sources "$SOURCES" --buffer-m "$BUFFER_M" \
                 --osm-mode "$OSM_MODE" --osm-workdir "$RUNNER_TEMP/osm")
           if [ "$PROBE" = "true" ]; then args+=(--probe); fi
-          python scripts/build_river_poi.py "${args[@]}"
+          # -u: unbuffered so the per-stage progress/timing lines stream live
+          # (a killed buffered run shows nothing); the national parking sweep
+          # is long, so visibility matters.
+          python -u scripts/build_river_poi.py "${args[@]}"
 
       - name: Sanity gate
         if: ${{ inputs.probe == false }}

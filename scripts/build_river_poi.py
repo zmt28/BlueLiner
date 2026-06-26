@@ -133,20 +133,47 @@ def normalize_osm(elements: list[dict]) -> list[dict]:
     return out
 
 
+def _fast_lonlat(geom: dict):
+    """(lon, lat) for an `osmium export` geometry WITHOUT building a shapely
+    object -- the parking sweep is millions of features, so shape().centroid
+    per feature is the build's hot loop. Point -> its coord; line/area -> the
+    mean of the first ring's vertices (a parking lot / slipway is small, so the
+    ring mean is an apt marker anchor). None on malformed geometry."""
+    coords = geom.get("coordinates")
+    if not coords:
+        return None
+    if geom.get("type") == "Point":
+        try:
+            return float(coords[0]), float(coords[1])
+        except (TypeError, ValueError, IndexError):
+            return None
+    ring = coords
+    try:
+        # descend nested rings (LineString/Polygon/MultiPolygon) to a flat list
+        # of [lon, lat] pairs.
+        while ring and isinstance(ring[0][0], (list, tuple)):
+            ring = ring[0]
+        n = len(ring)
+        if not n:
+            return None
+        return sum(p[0] for p in ring) / n, sum(p[1] for p in ring) / n
+    except (TypeError, ValueError, IndexError):
+        return None
+
+
 def normalize_osm_geojson(feat: dict) -> dict | None:
     """One GeoJSON feature from `osmium export` (Geofabrik path) -> point.
-    Ways/areas export as Line/Polygon geometry; we take the centroid so a
-    parking lot or slipway way lands as a single marker."""
-    from shapely.geometry import shape
+    Ways/areas export as Line/Polygon geometry; we anchor them at the ring
+    mean so a parking lot or slipway way lands as a single marker."""
     geom = feat.get("geometry")
     if not geom:
         return None
-    try:
-        c = shape(geom).centroid
-    except Exception:                                  # noqa: BLE001
+    ll = _fast_lonlat(geom)
+    if ll is None:
         return None
+    lon, lat = ll
     props = feat.get("properties") or {}
-    return _osm_point(props, c.y, c.x, _clean(feat.get("id")))
+    return _osm_point(props, lat, lon, _clean(feat.get("id")))
 
 
 def normalize_ridb(facilities: list[dict]) -> list[dict]:
@@ -323,7 +350,11 @@ def _associate_idx(tree, x, y, buffer_m):
 
 def clip_and_associate(points_xy, stream_geoms, levelpathids, buffer_m):
     """Keep points within buffer_m of a reach; stamp the nearest reach's
-    levelpathid onto the record. Returns the kept records."""
+    levelpathid onto the record. Returns the kept records.
+
+    Per-point reference implementation (used by the unit tests); the build
+    itself uses the chunked, vectorized `clip_records` over the millions of OSM
+    parking features."""
     from shapely import STRtree
     tree = STRtree(stream_geoms)
     out = []
@@ -333,6 +364,49 @@ def clip_and_associate(points_xy, stream_geoms, levelpathids, buffer_m):
             continue
         out.append(dict(rec, levelpathid=levelpathids[i]))
     return out
+
+
+def clip_records(records, tree, levelpathids, transformer, buffer_m,
+                 chunk=250_000, label=""):
+    """Project (EPSG:5070) + river-clip an iterable of {lon,lat,...} records,
+    stamping the nearest reach's levelpathid. Vectorized in chunks: each chunk
+    is one bulk pyproj projection + one `STRtree.query_nearest` over the whole
+    point array (C-level), instead of a Python call per point -- the difference
+    between minutes and hours once OSM `amenity=parking` is in the mix. Chunking
+    keeps the multi-million parking set out of memory; only survivors are kept."""
+    import time
+    import numpy as np
+    import shapely
+    survivors: list[dict] = []
+    lons: list[float] = []
+    lats: list[float] = []
+    recs: list[dict] = []
+    seen = 0
+    t0 = time.monotonic()
+
+    def _flush():
+        if not lons:
+            return
+        xs, ys = transformer.transform(lons, lats)
+        pts = shapely.points(np.asarray(xs, dtype="float64"),
+                             np.asarray(ys, dtype="float64"))
+        res = tree.query_nearest(pts, max_distance=buffer_m,
+                                 all_matches=False, return_distance=False)
+        # res is (2, K): row 0 = input index, row 1 = reach index.
+        for in_i, reach_i in zip(res[0].tolist(), res[1].tolist()):
+            survivors.append(dict(recs[in_i], levelpathid=levelpathids[reach_i]))
+        lons.clear(); lats.clear(); recs.clear()
+
+    for r in records:
+        lons.append(r["lon"]); lats.append(r["lat"]); recs.append(r)
+        seen += 1
+        if len(lons) >= chunk:
+            _flush()
+            print(f"[clip{' ' + label if label else ''}] {seen:,} seen, "
+                  f"{len(survivors):,} kept, {time.monotonic() - t0:.0f}s",
+                  flush=True)
+    _flush()
+    return survivors
 
 
 # --------------------------------------------------------------------------
@@ -389,18 +463,31 @@ OSM_TAG_FILTER = [
 
 
 def _download(url: str, dest: str) -> None:
-    """Stream a (possibly multi-GB) file to `dest`, atomic on success."""
+    """Stream a (possibly multi-GB) file to `dest`, atomic on success. Logs
+    throughput periodically so a slow/throttled mirror is visible in CI."""
     import httpx
+    import time
     tmp = dest + ".part"
-    print(f"[osm] downloading {url} -> {dest}")
+    print(f"[osm] downloading {url} -> {dest}", flush=True)
+    t0 = time.monotonic()
+    got = 0
+    next_mark = 1 << 30                                 # log every ~1 GB
     with httpx.stream("GET", url, timeout=None, follow_redirects=True,
                       headers=UA) as r:
         r.raise_for_status()
         with open(tmp, "wb") as f:
-            for chunk in r.iter_bytes(chunk_size=1 << 20):
+            for chunk in r.iter_bytes(chunk_size=4 << 20):
                 f.write(chunk)
+                got += len(chunk)
+                if got >= next_mark:
+                    el = time.monotonic() - t0
+                    print(f"[osm]   {got/1e9:.1f} GB in {el:.0f}s "
+                          f"({got/1e6/max(el,1):.1f} MB/s)", flush=True)
+                    next_mark += 1 << 30
     os.replace(tmp, dest)
-    print(f"[osm] downloaded {os.path.getsize(dest) / 1e9:.1f} GB")
+    el = time.monotonic() - t0
+    print(f"[osm] downloaded {os.path.getsize(dest)/1e9:.1f} GB in {el:.0f}s",
+          flush=True)
 
 
 def osm_geojsonseq_path(workdir: str, pbf_path: str | None = None) -> str:
@@ -409,6 +496,7 @@ def osm_geojsonseq_path(workdir: str, pbf_path: str | None = None) -> str:
     Requires the `osmium` CLI (osmium-tool); raises if it's missing."""
     import shutil
     import subprocess
+    import time
     if shutil.which("osmium") is None:
         raise RuntimeError(
             "osmium CLI not found -- install osmium-tool (apt-get install "
@@ -418,14 +506,20 @@ def osm_geojsonseq_path(workdir: str, pbf_path: str | None = None) -> str:
     if not os.path.exists(pbf):
         _download(GEOFABRIK_US, pbf)
     filtered = os.path.join(workdir, "access-filtered.osm.pbf")
-    print(f"[osm] osmium tags-filter -> {filtered}")
+    print(f"[osm] osmium tags-filter -> {filtered}", flush=True)
+    t0 = time.monotonic()
     subprocess.run(["osmium", "tags-filter", "--overwrite", "-o", filtered,
                     pbf, *OSM_TAG_FILTER], check=True)
+    print(f"[osm] tags-filter done in {time.monotonic()-t0:.0f}s "
+          f"({os.path.getsize(filtered)/1e6:.0f} MB)", flush=True)
     seq = os.path.join(workdir, "access-filtered.geojsonseq")
-    print(f"[osm] osmium export -> {seq}")
+    print(f"[osm] osmium export -> {seq}", flush=True)
+    t0 = time.monotonic()
     # -u type_id gives each feature a stable "n123"/"w456" id (our source_id).
     subprocess.run(["osmium", "export", "--overwrite", "-f", "geojsonseq",
                     "-u", "type_id", "-o", seq, filtered], check=True)
+    print(f"[osm] export done in {time.monotonic()-t0:.0f}s "
+          f"({os.path.getsize(seq)/1e9:.1f} GB)", flush=True)
     return seq
 
 
@@ -572,57 +666,57 @@ def main() -> int:
     # Small, authoritative sources are pulled into memory and batch-clipped.
     raw: list[dict] = []
     if "agency" in want:
-        a = fetch_agency_access(); print(f"[agency] {len(a):,} points"); raw += a
+        a = fetch_agency_access()
+        print(f"[agency] {len(a):,} points", flush=True); raw += a
     if "ridb" in want:
         r = normalize_ridb(fetch_ridb_access())
-        print(f"[ridb]   {len(r):,} points"); raw += r
+        print(f"[ridb]   {len(r):,} points", flush=True); raw += r
 
     if args.probe:
         if "osm" in want:
             if args.osm_mode == "overpass":
                 o = normalize_osm(fetch_osm_access())
-                print(f"[osm]    {len(o):,} points (overpass)")
+                print(f"[osm]    {len(o):,} points (overpass)", flush=True)
             else:
                 _probe_geofabrik_osm()
-        print(f"[raw] {len(raw):,} non-OSM points before clip/dedupe")
+        print(f"[raw] {len(raw):,} non-OSM points before clip/dedupe",
+              flush=True)
         return 0
 
     if not os.path.exists(args.streams):
         print(f"ERROR: stream network not found at {args.streams}",
               file=sys.stderr)
         return 1
-    geoms, lpids = load_stream_geoms(args.streams)
-    print(f"[streams] {len(geoms):,} reaches (EPSG:5070)")
-
+    import time as _time
     from shapely import STRtree
     from pyproj import Transformer
+    t0 = _time.monotonic()
+    geoms, lpids = load_stream_geoms(args.streams)
     tree = STRtree(geoms)
     tf = Transformer.from_crs("EPSG:4326", "EPSG:5070", always_xy=True)
+    print(f"[streams] {len(geoms):,} reaches (EPSG:5070) + STRtree in "
+          f"{_time.monotonic() - t0:.0f}s", flush=True)
 
-    def _clip_stream(points):
-        """Project + clip an iterable of records, stamping levelpathid. Streams
-        so OSM's millions of parking rows never all sit in memory at once."""
-        for p in points:
-            x, y = tf.transform(p["lon"], p["lat"])
-            i = _associate_idx(tree, x, y, args.buffer_m)
-            if i is not None:
-                yield dict(p, levelpathid=lpids[i])
-
-    kept: list[dict] = list(_clip_stream(raw))
-    print(f"[clip] {len(kept):,} non-OSM within {args.buffer_m:.0f} m")
+    kept = clip_records(raw, tree, lpids, tf, args.buffer_m, label="non-osm")
+    print(f"[clip] {len(kept):,} non-OSM within {args.buffer_m:.0f} m",
+          flush=True)
     if "osm" in want:
         if args.osm_mode == "overpass":
             osm_pts = normalize_osm(fetch_osm_access())
-            print(f"[osm]    {len(osm_pts):,} points (overpass)")
-            osm_kept = list(_clip_stream(osm_pts))
+            print(f"[osm]    {len(osm_pts):,} points (overpass)", flush=True)
+            osm_kept = clip_records(osm_pts, tree, lpids, tf, args.buffer_m,
+                                    label="osm")
         else:
             seq = osm_geojsonseq_path(args.osm_workdir, args.osm_pbf)
-            osm_kept = list(_clip_stream(stream_osm_geojsonseq(seq)))
-        print(f"[clip] {len(osm_kept):,} OSM within {args.buffer_m:.0f} m")
+            osm_kept = clip_records(stream_osm_geojsonseq(seq), tree, lpids, tf,
+                                    args.buffer_m, label="osm")
+        print(f"[clip] {len(osm_kept):,} OSM within {args.buffer_m:.0f} m",
+              flush=True)
         kept += osm_kept
-    print(f"[clip] {len(kept):,} total within {args.buffer_m:.0f} m of a reach")
+    print(f"[clip] {len(kept):,} total within {args.buffer_m:.0f} m of a reach",
+          flush=True)
     final = dedupe(kept)
-    print(f"[dedupe] {len(final):,} after cross-source dedupe")
+    print(f"[dedupe] {len(final):,} after cross-source dedupe", flush=True)
 
     os.makedirs(os.path.dirname(args.out) or ".", exist_ok=True)
     with gzip.open(args.out, "wt", encoding="utf-8") as out:
