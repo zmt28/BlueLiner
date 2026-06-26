@@ -1,13 +1,15 @@
 name: Data build — river POI (access)
 
 # Phase 1 of docs/river-poi-coverage-plan.md: build the national, river-clipped
-# angler-ACCESS overlay from authoritative coordinate sources (OSM via Overpass,
-# RIDB, state agency ArcGIS feeds), replacing the hand-curated baselines.
+# angler-ACCESS overlay from authoritative coordinate sources (OSM from the
+# national Geofabrik extract, RIDB, state agency ArcGIS feeds), replacing the
+# hand-curated baselines.
 #
-# Runs in Actions because the Claude Code sandbox egress blocks Overpass / RIDB /
-# state hosts. Manually triggered. Start with `probe: true` to validate that each
-# source is reachable and see per-source counts WITHOUT clipping/writing; then a
-# full run; then `upload: true` to publish to R2.
+# Runs in Actions because the Claude Code sandbox egress blocks Geofabrik /
+# Overpass / RIDB / state hosts. Manually triggered. Start with `probe: true` to
+# validate that each source is reachable (the Geofabrik path just HEAD-checks the
+# extract -- no 10 GB download) WITHOUT clipping/writing; then a full run; then
+# `upload: true` to publish to R2.
 #
 # Secrets: RIDB_API_KEY (optional; RIDB skipped without it) + the R2 set
 # (R2_BUCKET / R2_ENDPOINT / R2_ACCESS_KEY_ID / R2_SECRET_ACCESS_KEY) for upload.
@@ -26,7 +28,11 @@ on:
       buffer_m:
         description: "keep points within this many metres of a reach"
         required: false
-        default: "75"
+        default: "150"
+      osm_mode:
+        description: "OSM source: geofabrik (national, scales to parking) or overpass"
+        required: false
+        default: "geofabrik"
       streams_url:
         description: "National clickable-streams geojson.gz for the river-clip"
         required: false
@@ -62,6 +68,9 @@ jobs:
           # geopandas pulls shapely + pyproj with bundled GDAL wheels.
           pip install httpx geopandas shapely pyproj
 
+      - name: Install osmium-tool (Geofabrik OSM path)
+        run: sudo apt-get update && sudo apt-get install -y osmium-tool
+
       - name: Fetch national stream network (river-clip target)
         if: ${{ inputs.probe == false }}
         env:
@@ -79,9 +88,13 @@ jobs:
           RIDB_API_KEY: ${{ secrets.RIDB_API_KEY }}
           SOURCES: ${{ inputs.sources }}
           BUFFER_M: ${{ inputs.buffer_m }}
+          OSM_MODE: ${{ inputs.osm_mode }}
           PROBE: ${{ inputs.probe }}
         run: |
-          args=(--sources "$SOURCES" --buffer-m "$BUFFER_M")
+          # Keep the ~10 GB Geofabrik pbf + osmium scratch off the small repo
+          # disk (RUNNER_TEMP has the room); it's never an artifact.
+          args=(--sources "$SOURCES" --buffer-m "$BUFFER_M" \
+                --osm-mode "$OSM_MODE" --osm-workdir "$RUNNER_TEMP/osm")
           if [ "$PROBE" = "true" ]; then args+=(--probe); fi
           python scripts/build_river_poi.py "${args[@]}"
 

@@ -4,7 +4,8 @@ Everything here comes from BUNDLED Blueliner data (no network):
   - candidate reaches + designation labels: data/nhdplus/clickable_streams.geojson.gz
     (103.6K reaches; properties comid/levelpathid/gnis_name/streamorder/lengthkm/
      trout_class). trout_class != null  ==>  a designated/known trout reach.
-  - access tier: data/access_points/<ST>.json via the app's access_points module.
+  - access tier: the app's access_points module (the national river-POI overlay;
+    empty offline when neither a bundled overlay nor DATA_BASE_URL is present).
 
 Topology note (documented limitation): the bundled NHDPlus VAA keeps no downstream
 pointers, so we can't walk the flow network to prove "tributary of a trout

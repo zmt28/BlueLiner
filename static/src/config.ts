@@ -13,6 +13,22 @@
 // import.meta.env isn't typed (tsconfig `types: []`), so read it defensively.
 const _env = (import.meta as unknown as { env?: Record<string, string | undefined> }).env || {};
 
+/**
+ * Runtime data-release token, injected into the shell `<head>` by the server
+ * (`<meta name="bl-data-version" content="v4">`, see main.py). The R2-backed
+ * overlay endpoints (/api/access, /api/stocking) carry it as `?v=<token>` so a
+ * data-only refresh published under a new R2 prefix busts the URL-keyed CDN
+ * cache without a manual Cloudflare purge. Falls back to "local" in dev (Vite
+ * serves the raw shell, so the meta tag isn't present).
+ */
+export const DATA_VERSION: string =
+  (typeof document !== "undefined"
+    ? document
+        .querySelector('meta[name="bl-data-version"]')
+        ?.getAttribute("content")
+    : null
+  )?.trim() || "local";
+
 export const STREAM_TILES_URL: string = (_env.VITE_STREAM_TILES_URL || "").trim();
 export const STREAM_TILES_ENABLED: boolean = STREAM_TILES_URL.length > 0;
 

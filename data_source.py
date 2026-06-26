@@ -21,6 +21,21 @@ DATA_BASE_URL = os.environ.get("DATA_BASE_URL", "").strip().rstrip("/")
 _CACHE_DIR = os.environ.get("DATA_CACHE_DIR", "/tmp/blueliner-data")
 
 
+def data_version() -> str:
+    """A short token identifying the current data release -- the last path
+    segment of DATA_BASE_URL (the R2 version prefix, e.g. 'v4'), or 'local'
+    when bundled files are used.
+
+    This is the cache-buster for the URL-keyed CDN entries of the R2-backed
+    overlay endpoints (/api/access, /api/stocking): the client appends it as
+    `?v=<token>`. A data-only refresh is published under a new prefix and
+    DATA_BASE_URL is cut over, so this token changes, the request URL changes,
+    and Cloudflare serves the fresh overlay without a manual purge."""
+    if not DATA_BASE_URL:
+        return "local"
+    return DATA_BASE_URL.rsplit("/", 1)[-1] or "local"
+
+
 def resolve_data_file(local_path: str, filename: str) -> str:
     """Return a usable path for `filename`:
       1. the bundled `local_path` if it exists (dev + today's small files);

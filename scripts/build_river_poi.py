@@ -7,9 +7,12 @@ Replaces the hand-curated, approximate data/access_points/<ST>.json baselines
 (which reverse-geocode to houses) with points carrying REAL, sourced
 coordinates:
 
-  - OpenStreetMap via Overpass: leisure=slipway (boat ramps), leisure=fishing
-    (fishing/wading access). ODbL -- attribution "(c) OpenStreetMap
-    contributors" required.
+  - OpenStreetMap, by default from the national Geofabrik extract (osmium
+    streams the ~10 GB pbf in bounded memory; --osm-mode overpass keeps the
+    legacy tiled sweep for a quick check): leisure=slipway (boat ramps),
+    leisure=fishing (fishing/wading), man_made=pier (piers), amenity=parking
+    (river-bank lots), highway=trailhead (walk-in put-ins). ODbL -- attribution
+    "(c) OpenStreetMap contributors" required.
   - RIDB / Recreation.gov facilities (boat launches, fishing sites). Public
     domain. Needs RIDB_API_KEY (free); skipped if absent.
   - State agency ArcGIS feeds already declared in
@@ -22,7 +25,8 @@ is associated to that reach's levelpathid (panel placement) and normalized to:
 
     {lat, lon, name, type, access, source, source_id, precision, levelpathid}
 
-`type` in {boat_ramp, walk_in, wading_access, pier, parking}; `precision` in
+`type` in {boat_ramp, walk_in, wading_access, pier, parking} (trailheads ride
+the walk_in bucket -- the map has no trailhead glyph); `precision` in
 {surveyed, mapped} (agency/RIDB = surveyed, OSM = mapped). Cross-source dedupe
 keeps the most authoritative coordinate (agency > RIDB > OSM).
 
@@ -50,7 +54,8 @@ DEFAULT_MANIFEST = os.path.join(OUT_DIR, "access.manifest.json")
 DEFAULT_STREAMS = os.path.join(
     ROOT, "data", "nhdplus", "clickable_streams.geojson.gz")
 
-DEFAULT_BUFFER_M = 75.0     # ~half a typical riverside-lot depth; ramps hug water
+DEFAULT_BUFFER_M = 150.0    # river-bank lots/trailheads sit a parking-lot's
+                            # depth back from the water; 75 m clipped them out
 COORD_PRECISION = 5         # ~1.1 m
 DEDUPE_M = 40.0             # two points of the same type within this collapse
 
@@ -72,14 +77,44 @@ def _clean(v) -> str | None:
     return s or None
 
 
-def _osm_type(tags: dict) -> str:
-    """OSM tag bundle -> our access `type`."""
+def _osm_type(tags: dict) -> str | None:
+    """OSM tag bundle -> our access `type`, or None when the feature carries
+    none of the access tags we pull (so a stray element from a broad export is
+    dropped rather than mis-bucketed)."""
     if tags.get("leisure") == "slipway":
         return "boat_ramp"
     # leisure=fishing with a pier/platform structure -> pier, else wading.
     if tags.get("man_made") == "pier" or tags.get("pier"):
         return "pier"
-    return "wading_access"
+    if tags.get("amenity") == "parking":
+        return "parking"
+    # A trailhead is a walk-in put-in; the map has no trailhead glyph, so it
+    # rides the walk_in bucket (which is also makePoiElement's fallback).
+    if tags.get("highway") == "trailhead":
+        return "walk_in"
+    if tags.get("leisure") == "fishing":
+        return "wading_access"
+    return None
+
+
+def _osm_point(tags: dict, lat, lon, source_id: str | None) -> dict | None:
+    """Shared OSM -> canonical access point (used by both the Overpass and the
+    Geofabrik paths). None when the tags aren't an access type we keep, or the
+    coordinate is unusable."""
+    if not _finite(lat) or not _finite(lon):
+        return None
+    typ = _osm_type(tags)
+    if typ is None:
+        return None
+    return {
+        "lat": float(lat), "lon": float(lon),
+        "name": _clean(tags.get("name")),
+        "type": typ,
+        "access": "public" if tags.get("access") not in
+                  ("private", "no") else "private",
+        "source": "osm",
+        "source_id": source_id,
+    }
 
 
 def normalize_osm(elements: list[dict]) -> list[dict]:
@@ -91,19 +126,27 @@ def normalize_osm(elements: list[dict]) -> list[dict]:
         else:                                   # way / relation
             c = el.get("center") or {}
             lat, lon = c.get("lat"), c.get("lon")
-        if not _finite(lat) or not _finite(lon):
-            continue
-        tags = el.get("tags") or {}
-        out.append({
-            "lat": float(lat), "lon": float(lon),
-            "name": _clean(tags.get("name")),
-            "type": _osm_type(tags),
-            "access": "public" if tags.get("access") not in
-                      ("private", "no") else "private",
-            "source": "osm",
-            "source_id": f"{el.get('type','')[0]}{el.get('id')}",
-        })
+        sid = f"{el.get('type','')[:1]}{el.get('id')}"
+        p = _osm_point(el.get("tags") or {}, lat, lon, sid)
+        if p is not None:
+            out.append(p)
     return out
+
+
+def normalize_osm_geojson(feat: dict) -> dict | None:
+    """One GeoJSON feature from `osmium export` (Geofabrik path) -> point.
+    Ways/areas export as Line/Polygon geometry; we take the centroid so a
+    parking lot or slipway way lands as a single marker."""
+    from shapely.geometry import shape
+    geom = feat.get("geometry")
+    if not geom:
+        return None
+    try:
+        c = shape(geom).centroid
+    except Exception:                                  # noqa: BLE001
+        return None
+    props = feat.get("properties") or {}
+    return _osm_point(props, c.y, c.x, _clean(feat.get("id")))
 
 
 def normalize_ridb(facilities: list[dict]) -> list[dict]:
@@ -125,44 +168,106 @@ def normalize_ridb(facilities: list[dict]) -> list[dict]:
     return out
 
 
-def normalize_agency(features: list[dict], src: dict) -> list[dict]:
-    """ArcGIS GeoJSON point features from an access source.json entry."""
-    name_field = src.get("name_field")
-    type_field = src.get("type_field")
+_TRUTHY = (1, "1", True, "Yes", "YES", "yes", "Y", "y", "true", "True")
+
+
+def _truthy(v) -> bool:
+    """Flag-column truthiness: Y/Yes/1/true strings, plus positive numbers
+    (agencies like WDFW publish counts, e.g. BoatRamps=2)."""
+    if isinstance(v, bool):
+        return v
+    if isinstance(v, (int, float)):
+        return v > 0
+    return v in _TRUTHY
+
+
+def _agency_type(props: dict, src: dict) -> str:
+    """Resolve an agency feature's access type, honoring the source.json
+    field mappings (carried over from the retired runtime loader so the
+    overlay is no worse than the live feeds it replaces):
+      fixed_type   -- every row is one type
+      type_flags   -- ordered {Y/N column -> type}; first truthy wins
+      type_field   -- a free-text type string, keyword-normalized
+    """
     fixed_type = src.get("fixed_type")
-    out = []
+    if fixed_type:
+        return fixed_type
+    type_flags = src.get("type_flags")
+    if type_flags:
+        for field, t in type_flags.items():
+            if _truthy(props.get(field)):
+                return t
+        return "walk_in"
+    return _normalize_type(_clean(props.get(src.get("type_field"))))
+
+
+_TYPE_KEYWORDS = (
+    ("ramp", "boat_ramp"), ("launch", "boat_ramp"), ("boat", "boat_ramp"),
+    ("pier", "pier"), ("platform", "pier"),
+    ("wade", "wading_access"), ("wading", "wading_access"),
+)
+
+
+def _normalize_type(raw: str | None) -> str:
+    """Agency type string -> canonical enum. Unknown -> walk_in (the safest
+    assumption; the glyph doesn't promise a ramp the angler can't find)."""
+    if not raw:
+        return "walk_in"
+    s = raw.lower()
+    if "park" in s and "lot" in s:
+        return "parking"
+    for kw, t in _TYPE_KEYWORDS:
+        if kw in s:
+            return t
+    return "walk_in"
+
+
+def normalize_agency(features: list[dict], src: dict) -> list[dict]:
+    """ArcGIS GeoJSON features from an access source.json entry -> points.
+    Honors fixed_type/type_flags/type_field, notes_field, access, and the
+    per-source `dedupe` (one pin per named water per ~1 km cell -- collapses
+    parcel-per-row easement layers like NY PFR). Non-point geometry is coerced
+    to its centroid (agencies sometimes publish ramps as small polygons)."""
+    from shapely.geometry import shape
+    name_field = src.get("name_field")
+    notes_field = src.get("notes_field")
+    agency_url = src.get("agency_url") or src.get("url")
+    do_dedupe = bool(src.get("dedupe"))
+    out: list[dict] = []
+    seen: set[tuple] = set()
     for ft in features:
-        geom = (ft.get("geometry") or {})
-        if geom.get("type") != "Point":
+        geom = ft.get("geometry")
+        if not geom:
             continue
-        coords = geom.get("coordinates") or [None, None]
-        lon, lat = coords[0], coords[1]
+        try:
+            g = shape(geom)
+            if g.is_empty:
+                continue
+            c = g.centroid
+            lat, lon = float(c.y), float(c.x)
+        except Exception:                              # noqa: BLE001
+            continue
         if not _finite(lat) or not _finite(lon):
             continue
         props = ft.get("properties") or {}
+        name = (_clean(props.get(name_field)) if name_field else None) \
+            or "Access point"
+        if do_dedupe:
+            key = (name.strip().lower(), round(lat, 2), round(lon, 2))
+            if key in seen:
+                continue
+            seen.add(key)
         out.append({
-            "lat": float(lat), "lon": float(lon),
-            "name": _clean(props.get(name_field)) if name_field else None,
-            "type": fixed_type or _agency_type(props.get(type_field)),
-            "access": "public",
+            "lat": lat, "lon": lon,
+            "name": name,
+            "type": _agency_type(props, src),
+            "access": src.get("access", "public"),
+            "notes": _clean(props.get(notes_field)) if notes_field else None,
+            "agency_url": agency_url,
             "source": "agency",
             "source_id": f"{src.get('state','')}:{props.get('OBJECTID')}",
         })
     return out
-
-
-_AGENCY_TYPE = {
-    "ramp": "boat_ramp", "boat": "boat_ramp", "launch": "boat_ramp",
-    "pier": "pier", "walk": "walk_in", "wade": "wading_access",
-}
-
-
-def _agency_type(v) -> str:
-    s = (_clean(v) or "").lower()
-    for k, t in _AGENCY_TYPE.items():
-        if k in s:
-            return t
-    return "walk_in"
 
 
 def _finite(v) -> bool:
@@ -208,22 +313,25 @@ def dedupe(points: list[dict], radius_m: float = DEDUPE_M) -> list[dict]:
 # synthetic planar coordinates (no geopandas / pyproj needed).
 # --------------------------------------------------------------------------
 
+def _associate_idx(tree, x, y, buffer_m):
+    """Nearest reach index within buffer_m of (x, y), or None."""
+    from shapely.geometry import Point
+    idx = tree.query_nearest(Point(x, y), max_distance=buffer_m,
+                             return_distance=False, all_matches=False)
+    return int(idx[0]) if len(idx) else None
+
+
 def clip_and_associate(points_xy, stream_geoms, levelpathids, buffer_m):
     """Keep points within buffer_m of a reach; stamp the nearest reach's
     levelpathid onto the record. Returns the kept records."""
-    from shapely.geometry import Point
     from shapely import STRtree
     tree = STRtree(stream_geoms)
     out = []
     for x, y, rec in points_xy:
-        pt = Point(x, y)
-        idx = tree.query_nearest(pt, max_distance=buffer_m, return_distance=False,
-                                 all_matches=False)
-        if len(idx) == 0:
+        i = _associate_idx(tree, x, y, buffer_m)
+        if i is None:
             continue
-        i = int(idx[0])
-        rec = dict(rec, levelpathid=levelpathids[i])
-        out.append(rec)
+        out.append(dict(rec, levelpathid=levelpathids[i]))
     return out
 
 
@@ -263,6 +371,81 @@ def fetch_osm_access(rows=6, cols=8):
                     time.sleep(5 * (attempt + 1))
                 time.sleep(1)   # be polite to the public instance
     return elements
+
+
+# Geofabrik national extract -- the scalable OSM source. Overpass throttles a
+# CONUS sweep to ~80 min and can't serve `amenity=parking` nationwide at all;
+# osmium streams the ~10 GB pbf in bounded memory, so we filter to just the
+# access tags, export to GeoJSON-Seq, and stream-clip against the river network.
+GEOFABRIK_US = "https://download.geofabrik.de/north-america/us-latest.osm.pbf"
+
+# osmium tags-filter expressions. n/w/r = node/way/relation; bare key=val keeps
+# any object with that tag. Mirrors _osm_type's accepted tags.
+OSM_TAG_FILTER = [
+    "nwr/leisure=slipway", "nwr/leisure=fishing",
+    "nwr/man_made=pier", "nwr/amenity=parking",
+    "nwr/highway=trailhead",
+]
+
+
+def _download(url: str, dest: str) -> None:
+    """Stream a (possibly multi-GB) file to `dest`, atomic on success."""
+    import httpx
+    tmp = dest + ".part"
+    print(f"[osm] downloading {url} -> {dest}")
+    with httpx.stream("GET", url, timeout=None, follow_redirects=True,
+                      headers=UA) as r:
+        r.raise_for_status()
+        with open(tmp, "wb") as f:
+            for chunk in r.iter_bytes(chunk_size=1 << 20):
+                f.write(chunk)
+    os.replace(tmp, dest)
+    print(f"[osm] downloaded {os.path.getsize(dest) / 1e9:.1f} GB")
+
+
+def osm_geojsonseq_path(workdir: str, pbf_path: str | None = None) -> str:
+    """Download (if needed) the Geofabrik US extract, filter it to the access
+    tags with osmium, and export to a GeoJSON-Seq file. Returns its path.
+    Requires the `osmium` CLI (osmium-tool); raises if it's missing."""
+    import shutil
+    import subprocess
+    if shutil.which("osmium") is None:
+        raise RuntimeError(
+            "osmium CLI not found -- install osmium-tool (apt-get install "
+            "osmium-tool) in the data-build environment")
+    os.makedirs(workdir, exist_ok=True)
+    pbf = pbf_path or os.path.join(workdir, "us-latest.osm.pbf")
+    if not os.path.exists(pbf):
+        _download(GEOFABRIK_US, pbf)
+    filtered = os.path.join(workdir, "access-filtered.osm.pbf")
+    print(f"[osm] osmium tags-filter -> {filtered}")
+    subprocess.run(["osmium", "tags-filter", "--overwrite", "-o", filtered,
+                    pbf, *OSM_TAG_FILTER], check=True)
+    seq = os.path.join(workdir, "access-filtered.geojsonseq")
+    print(f"[osm] osmium export -> {seq}")
+    # -u type_id gives each feature a stable "n123"/"w456" id (our source_id).
+    subprocess.run(["osmium", "export", "--overwrite", "-f", "geojsonseq",
+                    "-u", "type_id", "-o", seq, filtered], check=True)
+    return seq
+
+
+def stream_osm_geojsonseq(seq_path: str):
+    """Yield normalized OSM access points from an `osmium export` GeoJSON-Seq
+    file, one feature at a time (RFC 8142: each record may be prefixed with a
+    RS control char). Streaming keeps the multi-million-feature parking set out
+    of memory -- the caller clips each point as it arrives."""
+    with open(seq_path, "r", encoding="utf-8") as fh:
+        for line in fh:
+            line = line.strip().lstrip("\x1e")
+            if not line:
+                continue
+            try:
+                feat = json.loads(line)
+            except ValueError:
+                continue
+            p = normalize_osm_geojson(feat)
+            if p is not None:
+                yield p
 
 
 def fetch_ridb_access():
@@ -347,6 +530,22 @@ def project_points(points: list[dict]):
     return out
 
 
+def _probe_geofabrik_osm() -> None:
+    """Reachability check for the Geofabrik path WITHOUT the ~10 GB download:
+    osmium present? Geofabrik extract reachable?"""
+    import shutil
+    import httpx
+    has_osmium = shutil.which("osmium") is not None
+    print(f"[osm] osmium CLI: {'present' if has_osmium else 'MISSING'}")
+    try:
+        r = httpx.head(GEOFABRIK_US, follow_redirects=True, timeout=30.0,
+                       headers=UA)
+        size = int(r.headers.get("content-length", 0)) / 1e9
+        print(f"[osm] {GEOFABRIK_US} -> HTTP {r.status_code} (~{size:.1f} GB)")
+    except Exception as exc:                               # noqa: BLE001
+        print(f"[osm] Geofabrik HEAD failed: {exc}")
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(
         description=__doc__, formatter_class=argparse.RawTextHelpFormatter)
@@ -356,22 +555,36 @@ def main() -> int:
     ap.add_argument("--buffer-m", type=float, default=DEFAULT_BUFFER_M)
     ap.add_argument("--sources", default="osm,ridb,agency",
                     help="comma list of sources to pull")
+    ap.add_argument("--osm-mode", choices=("geofabrik", "overpass"),
+                    default="geofabrik",
+                    help="OSM source: national Geofabrik extract (scales to "
+                         "parking/trailheads) or the legacy Overpass sweep")
+    ap.add_argument("--osm-workdir", default=os.path.join(OUT_DIR, "_osm"),
+                    help="scratch dir for the Geofabrik pbf + osmium output")
+    ap.add_argument("--osm-pbf", default=None,
+                    help="pre-downloaded Geofabrik .osm.pbf (skips the fetch)")
     ap.add_argument("--probe", action="store_true",
                     help="fetch + report per-source counts, do not clip/write")
     args = ap.parse_args()
 
     want = set(s.strip() for s in args.sources.split(",") if s.strip())
+
+    # Small, authoritative sources are pulled into memory and batch-clipped.
     raw: list[dict] = []
     if "agency" in want:
         a = fetch_agency_access(); print(f"[agency] {len(a):,} points"); raw += a
     if "ridb" in want:
         r = normalize_ridb(fetch_ridb_access())
         print(f"[ridb]   {len(r):,} points"); raw += r
-    if "osm" in want:
-        o = normalize_osm(fetch_osm_access())
-        print(f"[osm]    {len(o):,} points"); raw += o
-    print(f"[raw] {len(raw):,} points before clip/dedupe")
+
     if args.probe:
+        if "osm" in want:
+            if args.osm_mode == "overpass":
+                o = normalize_osm(fetch_osm_access())
+                print(f"[osm]    {len(o):,} points (overpass)")
+            else:
+                _probe_geofabrik_osm()
+        print(f"[raw] {len(raw):,} non-OSM points before clip/dedupe")
         return 0
 
     if not os.path.exists(args.streams):
@@ -380,8 +593,34 @@ def main() -> int:
         return 1
     geoms, lpids = load_stream_geoms(args.streams)
     print(f"[streams] {len(geoms):,} reaches (EPSG:5070)")
-    kept = clip_and_associate(project_points(raw), geoms, lpids, args.buffer_m)
-    print(f"[clip] {len(kept):,} within {args.buffer_m:.0f} m of a reach")
+
+    from shapely import STRtree
+    from pyproj import Transformer
+    tree = STRtree(geoms)
+    tf = Transformer.from_crs("EPSG:4326", "EPSG:5070", always_xy=True)
+
+    def _clip_stream(points):
+        """Project + clip an iterable of records, stamping levelpathid. Streams
+        so OSM's millions of parking rows never all sit in memory at once."""
+        for p in points:
+            x, y = tf.transform(p["lon"], p["lat"])
+            i = _associate_idx(tree, x, y, args.buffer_m)
+            if i is not None:
+                yield dict(p, levelpathid=lpids[i])
+
+    kept: list[dict] = list(_clip_stream(raw))
+    print(f"[clip] {len(kept):,} non-OSM within {args.buffer_m:.0f} m")
+    if "osm" in want:
+        if args.osm_mode == "overpass":
+            osm_pts = normalize_osm(fetch_osm_access())
+            print(f"[osm]    {len(osm_pts):,} points (overpass)")
+            osm_kept = list(_clip_stream(osm_pts))
+        else:
+            seq = osm_geojsonseq_path(args.osm_workdir, args.osm_pbf)
+            osm_kept = list(_clip_stream(stream_osm_geojsonseq(seq)))
+        print(f"[clip] {len(osm_kept):,} OSM within {args.buffer_m:.0f} m")
+        kept += osm_kept
+    print(f"[clip] {len(kept):,} total within {args.buffer_m:.0f} m of a reach")
     final = dedupe(kept)
     print(f"[dedupe] {len(final):,} after cross-source dedupe")
 
@@ -395,7 +634,8 @@ def main() -> int:
                                                  round(p["lat"], COORD_PRECISION)]},
                     "properties": {k: p.get(k) for k in
                                    ("name", "type", "access", "source",
-                                    "source_id", "precision", "levelpathid")}}
+                                    "source_id", "precision", "levelpathid",
+                                    "notes", "agency_url")}}
             feat["properties"]["precision"] = _PRECISION.get(p.get("source"))
             out.write(("," if i else "") + json.dumps(feat, separators=(",", ":")))
         out.write("]}")
