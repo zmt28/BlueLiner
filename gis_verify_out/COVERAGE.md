@@ -1,8 +1,8 @@
 # Coverage Survey
 
-_Generated 2026-06-25 16:36 UTC._ Report-only standing worklist -- feeds the candidate-promotion pipeline; never auto-edits any registry.
+_Generated 2026-06-29 12:20 UTC._ Report-only standing worklist -- feeds the candidate-promotion pipeline; never auto-edits any registry.
 
-**Summary:** 57 fillable gaps across the lower 48; 19 produced candidate layers this run. Of 37 gap states, 24 have a known agency host (rest fall back to ArcGIS-Online search).
+**Summary:** 56 fillable gaps across the lower 48; 19 produced candidate layers this run. Of 37 gap states, 24 have a known agency host (rest fall back to ArcGIS-Online search).
 
 Legend: **Y** = a source exists; **gap** = fillable (discovery runs); **expected none** = non-trout state, no coldwater fishery to source. Western trout states (ID/MT/OR/WA/NM/NV) already get baseline wild-trout coverage from the range-wide NATIVE overlays (WCT/BULL/RBT/YCT/BCT/RGCT/GILA) even without a state trout source -- a state source would ADD management tiers.
 
@@ -28,7 +28,7 @@ Legend: **Y** = a source exists; **gap** = fillable (discovery runs); **expected
 | LA | expected none | expected none | gap |
 | ME | Y | gap | gap |
 | MD | Y | Y | Y |
-| MA | Y | gap | gap |
+| MA | Y | Y | gap |
 | MI | Y | gap | Y |
 | MN | gap | gap | Y |
 | MS | expected none | expected none | gap |
@@ -113,7 +113,7 @@ Discovered candidate layers (light probe -- a human picks one and designs its fi
 | Steelhead Fishing Report and Restoration Card Zones _ ds1119 | esriGeometryPolygon | 20 | https://services2.arcgis.com/Uq9r85Potqm3MfRV/arcgis/rest/services/biosds1119_fpu/FeatureServer/0 |
 | Fishing License Sales Agents _ CDFW _ ds2797 | esriGeometryPoint | 1164 | https://services2.arcgis.com/Uq9r85Potqm3MfRV/arcgis/rest/services/biosds2797_fmu/FeatureServer/0 |
 | CDFW Public Access Lands _ ds3077 | esriGeometryPolygon | 295 | https://services2.arcgis.com/Uq9r85Potqm3MfRV/arcgis/rest/services/biosds3077_fpu/FeatureServer/0 |
-| Commercial Fishing Blocks _ Pre Jan 1 2025 _ R7 _ CDFW _ ds3093 | esriGeometryPolygon | 546 | https://services2.arcgis.com/Uq9r85Potqm3MfRV/arcgis/rest/services/biosds3093_fpu/FeatureServer/0 |
+| Public Piers and Jetties _ R7 _ CDFW _ ds3090 | esriGeometryPoint | 130 | https://services2.arcgis.com/Uq9r85Potqm3MfRV/arcgis/rest/services/biosds3090_fmu/FeatureServer/0 |
 
 ### DE / trout
 Discovered candidate layers (light probe -- a human picks one and designs its field mapping):
@@ -172,7 +172,7 @@ Discovered candidate layers (light probe -- a human picks one and designs its fi
 
 | name | geometryType | count | url |
 |------|--------------|-------|-----|
-| Fishing Access Sites | esriGeometryPoint | 1034 | https://gisdata.in.gov/server/rest/services/Hosted/Fish_Access_RO/FeatureServer/0 |
+| Fishing Access Sites | esriGeometryPoint | ? | https://gisdata.in.gov/server/rest/services/Hosted/Fish_Access_RO/FeatureServer/0 |
 
 ### IA / stocking
 Discovered candidate layers (light probe -- a human picks one and designs its field mapping):
@@ -239,22 +239,11 @@ Discovered candidate layers (light probe -- a human picks one and designs its fi
 
 | name | geometryType | count | url |
 |------|--------------|-------|-----|
-| Maine Boat Pumpout Stations | esriGeometryPoint | ? | https://gis.maine.gov/mapservices/rest/services/dep/AGO_MainePumpoutsNDA/MapServer/0 |
+| Maine Boat Pumpout Stations | esriGeometryPoint | 97 | https://gis.maine.gov/mapservices/rest/services/dep/AGO_MainePumpoutsNDA/MapServer/0 |
 | Lake_Access | esriGeometryPoint | 1035 | https://gis.maine.gov/mapservices/rest/services/dep/Lake_Vulnerability_Analysis_AGOL/MapServer/2 |
-| Marina/Boatyard | esriGeometryPoint | ? | https://gis.maine.gov/mapservices/rest/services/dep/MaineDEP_EGAD_Site_Types/MapServer/20 |
+| Marina/Boatyard | esriGeometryPoint | 218 | https://gis.maine.gov/mapservices/rest/services/dep/MaineDEP_EGAD_Site_Types/MapServer/20 |
 | Boat Launches & Ramps | esriGeometryPoint | 446 | https://services7.arcgis.com/DlE4MSUhoXlyq64t/arcgis/rest/services/Boat_Launches___Ramps/FeatureServer/0 |
 | MCD_Waterfront_Access_Tremont | esriGeometryPoint | 18 | https://services9.arcgis.com/04Mfke8TEc0Pvqvt/arcgis/rest/services/MCD_Waterfront_Access_Tremont/FeatureServer/0 |
-
-### MA / stocking
-Discovered candidate layers (light probe -- a human picks one and designs its field mapping):
-
-| name | geometryType | count | url |
-|------|--------------|-------|-----|
-| StockedLakesandPonds | esriGeometryPoint | 239 | https://services6.arcgis.com/nfm1OKvfdpRP0081/arcgis/rest/services/2025_Fish_Stocking_Locations_WFL1/FeatureServer/0 |
-| StockedRiversandStreams | esriGeometryPoint | 352 | https://services6.arcgis.com/nfm1OKvfdpRP0081/arcgis/rest/services/2025_Fish_Stocking_Locations_WFL1/FeatureServer/1 |
-| Stocked Lakes and Ponds | esriGeometryPolygon | 239 | https://services6.arcgis.com/nfm1OKvfdpRP0081/arcgis/rest/services/2025_Fish_Stocking_Locations_WFL1/FeatureServer/2 |
-| Stocked Rivers and Streams | esriGeometryPolyline | 3135 | https://services6.arcgis.com/nfm1OKvfdpRP0081/arcgis/rest/services/2025_Fish_Stocking_Locations_WFL1/FeatureServer/3 |
-| StockedLakesandPonds | esriGeometryPoint | 239 | https://services6.arcgis.com/nfm1OKvfdpRP0081/arcgis/rest/services/MA_Fish_Stocking_Locations_2025_WFL1/FeatureServer/0 |
 
 ### MA / access
 Discovered candidate layers (light probe -- a human picks one and designs its field mapping):
@@ -268,7 +257,15 @@ Discovered candidate layers (light probe -- a human picks one and designs its fi
 | Office_of_Fisheries_Boat_Launch_Sites | esriGeometryPoint | 282 | https://services3.arcgis.com/wid5AQd6BHjWWq1h/arcgis/rest/services/Office_of_Fisheries_Boat_Launch_Sites/FeatureServer/0 |
 
 ### MI / stocking
-_host unreachable (retry next run)_
+Discovered candidate layers (light probe -- a human picks one and designs its field mapping):
+
+| name | geometryType | count | url |
+|------|--------------|-------|-----|
+| Trout Trail Points | esriGeometryPoint | 334 | https://services3.arcgis.com/Jdnp1TjADvSDxMAX/arcgis/rest/services/dev_TroutTrails/FeatureServer/0 |
+| Trout Trail Search | esriGeometryPoint | 334 | https://services3.arcgis.com/Jdnp1TjADvSDxMAX/arcgis/rest/services/dev_TroutTrails/FeatureServer/1 |
+| MI Trout Salmon Regulations Stream Main 2021 | esriGeometryPolyline | 77427 | https://services3.arcgis.com/Jdnp1TjADvSDxMAX/arcgis/rest/services/dev_TroutTrails/FeatureServer/3 |
+| MI Trout Salmon Regulations Inland Lakes 2021 | esriGeometryPolygon | 212 | https://services3.arcgis.com/Jdnp1TjADvSDxMAX/arcgis/rest/services/dev_TroutTrails/FeatureServer/4 |
+| MI Trout Salmon Regulations Brook Trout Areas 2021 | esriGeometryPolygon | 0 | https://services3.arcgis.com/Jdnp1TjADvSDxMAX/arcgis/rest/services/dev_TroutTrails/FeatureServer/13 |
 
 ### MN / trout
 _host unreachable (retry next run)_
