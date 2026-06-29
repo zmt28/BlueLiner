@@ -1,6 +1,6 @@
 # Endpoint watch
 
-_Run: 2026-06-29 10:48 UTC -- 15/15 reachable, **7 READY TO PROMOTE**._
+_Run: 2026-06-29 15:38 UTC -- 15/15 reachable, **7 READY TO PROMOTE**._
 
 | id | state | kind | status | captured |
 |----|-------|------|--------|----------|
@@ -135,7 +135,6 @@ _Run: 2026-06-29 10:48 UTC -- 15/15 reachable, **7 READY TO PROMOTE**._
   - _folder_ `EPSServices`
   - _folder_ `FEMA`
   - _folder_ `FWE`
-  - _folder_ `GeocodeServices`
   - _folder_ `GeocodeServicesArcMap`
   - _folder_ `HealthConnector`
   - _folder_ `Legislature`
@@ -187,7 +186,6 @@ _Run: 2026-06-29 10:48 UTC -- 15/15 reachable, **7 READY TO PROMOTE**._
   - `Fish_Passage_updated_11_21` (FeatureServer)
   - `Fishing_Closures` (FeatureServer)
   - `FishingClosure` (FeatureServer)
-  - `FishingGuide` (FeatureServer)
   - `FishingRegulationsV1` (FeatureServer)
   - `Groundfish_Conservation_Area` (FeatureServer)
   - `Lake_Tahoe_Fish_Habitat` (FeatureServer)
@@ -203,6 +201,7 @@ _Run: 2026-06-29 10:48 UTC -- 15/15 reachable, **7 READY TO PROMOTE**._
   - `SLS_Fish_Distribution` (FeatureServer)
   - `SLS_FishDistribution` (FeatureServer)
   - `ago_launch_20190614` (MapServer)
+  - `FishingGuide` (FeatureServer)
 
 ### ut-trout-streams-beyond-blueribbon (UT / discover)
 > UT = Blue Ribbon premier rivers only (gold) + native cutthroat (UTCT overlay). No comprehensive UT trout-STREAM classification found in the UDWR org (services/ZzrwjTRez6FJiOq4); the UDWR_Fish_Stocking_Events VIEW is LAKES (polygons), not streams. Re-scan for a statewide sportfish-management / trout-stream classification, or a stocked-trout STREAM layer, to add tiers + a stocked dimension beyond the ~17 Blue Ribbon segments.
