@@ -1,6 +1,6 @@
 # Endpoint watch
 
-_Run: 2026-06-29 02:59 UTC -- 14/15 reachable, **6 READY TO PROMOTE**._
+_Run: 2026-06-29 10:48 UTC -- 15/15 reachable, **7 READY TO PROMOTE**._
 
 | id | state | kind | status | captured |
 |----|-------|------|--------|----------|
@@ -12,7 +12,7 @@ _Run: 2026-06-29 02:59 UTC -- 14/15 reachable, **6 READY TO PROMOTE**._
 | wv-wild-trout-discover | WV | discover | UP | yes |
 | ca-trout-only-stocked-discover | CA | discover | UP | yes |
 | ut-trout-streams-beyond-blueribbon | UT | discover | UP | yes |
-| cand-access_points-de-dnrec-public-fishing-ponds | DE | verify | DOWN | - |
+| cand-access_points-de-dnrec-public-fishing-ponds | DE | verify | UP | PROMOTE |
 | cand-access_points-ca-cdfw-fishing-guide-boating-facilities | CA | verify | UP | PROMOTE |
 | cand-access_points-ut-ut-dwr-community-fisheries | UT | verify | UP | PROMOTE |
 | cand-access_points-tx-tx-public-water-access---boat-ramps--owner-uncon | TX | verify | UP | PROMOTE |
@@ -135,6 +135,7 @@ _Run: 2026-06-29 02:59 UTC -- 14/15 reachable, **6 READY TO PROMOTE**._
   - _folder_ `EPSServices`
   - _folder_ `FEMA`
   - _folder_ `FWE`
+  - _folder_ `GeocodeServices`
   - _folder_ `GeocodeServicesArcMap`
   - _folder_ `HealthConnector`
   - _folder_ `Legislature`
@@ -186,6 +187,7 @@ _Run: 2026-06-29 02:59 UTC -- 14/15 reachable, **6 READY TO PROMOTE**._
   - `Fish_Passage_updated_11_21` (FeatureServer)
   - `Fishing_Closures` (FeatureServer)
   - `FishingClosure` (FeatureServer)
+  - `FishingGuide` (FeatureServer)
   - `FishingRegulationsV1` (FeatureServer)
   - `Groundfish_Conservation_Area` (FeatureServer)
   - `Lake_Tahoe_Fish_Habitat` (FeatureServer)
@@ -201,7 +203,6 @@ _Run: 2026-06-29 02:59 UTC -- 14/15 reachable, **6 READY TO PROMOTE**._
   - `SLS_Fish_Distribution` (FeatureServer)
   - `SLS_FishDistribution` (FeatureServer)
   - `ago_launch_20190614` (MapServer)
-  - `FishingGuide` (FeatureServer)
 
 ### ut-trout-streams-beyond-blueribbon (UT / discover)
 > UT = Blue Ribbon premier rivers only (gold) + native cutthroat (UTCT overlay). No comprehensive UT trout-STREAM classification found in the UDWR org (services/ZzrwjTRez6FJiOq4); the UDWR_Fish_Stocking_Events VIEW is LAKES (polygons), not streams. Re-scan for a statewide sportfish-management / trout-stream classification, or a stocked-trout STREAM layer, to add tiers + a stocked dimension beyond the ~17 Blue Ribbon segments.
@@ -278,6 +279,13 @@ _Run: 2026-06-29 02:59 UTC -- 14/15 reachable, **6 READY TO PROMOTE**._
   - `White_Sands_Launch_Complex` (FeatureServer)
   - `Wind_Power_Plants_view` (FeatureServer)
   - `Zip_Fish` (FeatureServer)
+
+### cand-access_points-de-dnrec-public-fishing-ponds (DE / verify)
+> [access_points candidate] DNREC Public Fishing Ponds
+
+- :rotating_light: **READY TO PROMOTE** -- candidate passes the 4-check. Review + add to sources.json (human-gated; the watcher does not auto-edit).
+- **verdict:** PASS  (`Depths`, geom `esriGeometryPoint`, count `51`)
+- **fields:** `["OBJECTID", "DEPTH", "POND", "SHAPE"]`
 
 ### cand-access_points-ca-cdfw-fishing-guide-boating-facilities (CA / verify)
 > [access_points candidate] CDFW Fishing Guide Boating Facilities
