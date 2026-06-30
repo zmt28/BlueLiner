@@ -1,6 +1,6 @@
 # Endpoint watch
 
-_Run: 2026-06-30 14:08 UTC -- 15/15 reachable, **7 READY TO PROMOTE**._
+_Run: 2026-06-30 19:49 UTC -- 15/15 reachable, **7 READY TO PROMOTE**._
 
 | id | state | kind | status | captured |
 |----|-------|------|--------|----------|
@@ -135,7 +135,6 @@ _Run: 2026-06-30 14:08 UTC -- 15/15 reachable, **7 READY TO PROMOTE**._
   - _folder_ `EPSServices`
   - _folder_ `FEMA`
   - _folder_ `FWE`
-  - _folder_ `GeocodeServices`
   - _folder_ `GeocodeServicesArcMap`
   - _folder_ `HealthConnector`
   - _folder_ `Legislature`
@@ -279,6 +278,7 @@ _Run: 2026-06-30 14:08 UTC -- 15/15 reachable, **7 READY TO PROMOTE**._
   - `White_Sands_Launch_Complex` (FeatureServer)
   - `Wind_Power_Plants_view` (FeatureServer)
   - `Zip_Fish` (FeatureServer)
+  - `Redear_Sunfish_Stocking_2026` (FeatureServer)
 
 ### cand-access_points-de-dnrec-public-fishing-ponds (DE / verify)
 > [access_points candidate] DNREC Public Fishing Ponds
