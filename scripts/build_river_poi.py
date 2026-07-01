@@ -25,8 +25,9 @@ is associated to that reach's levelpathid (panel placement) and normalized to:
 
     {lat, lon, name, type, access, source, source_id, precision, levelpathid}
 
-`type` in {boat_ramp, walk_in, wading_access, pier, parking} (trailheads ride
-the walk_in bucket -- the map has no trailhead glyph); `precision` in
+`type` in {boat_ramp, fishing_access, pier, parking} -- fishing/wading spots,
+trailheads and generic walk-ins all fold into one "Fishing Access" type (the
+old wading/walk-in split was OSM-tag-driven, not a real distinction); `precision` in
 {surveyed, mapped} (agency/RIDB = surveyed, OSM = mapped). Cross-source dedupe
 keeps the most authoritative coordinate (agency > RIDB > OSM).
 
@@ -89,11 +90,11 @@ def _osm_type(tags: dict) -> str | None:
     if tags.get("amenity") == "parking":
         return "parking"
     # A trailhead is a walk-in put-in; the map has no trailhead glyph, so it
-    # rides the walk_in bucket (which is also makePoiElement's fallback).
+    # rides the fishing_access bucket (which is also makePoiElement's fallback).
     if tags.get("highway") == "trailhead":
-        return "walk_in"
+        return "fishing_access"
     if tags.get("leisure") == "fishing":
-        return "wading_access"
+        return "fishing_access"
     return None
 
 
@@ -186,7 +187,7 @@ def normalize_ridb(facilities: list[dict]) -> list[dict]:
         name = _clean(f.get("FacilityName"))
         t = (name or "").lower()
         typ = "boat_ramp" if ("launch" in t or "ramp" in t or "boat" in t) \
-            else "walk_in"
+            else "fishing_access"
         out.append({
             "lat": float(lat), "lon": float(lon), "name": name,
             "type": typ, "access": "public", "source": "ridb",
@@ -218,35 +219,45 @@ def _agency_type(props: dict, src: dict) -> str:
     """
     fixed_type = src.get("fixed_type")
     if fixed_type:
-        return fixed_type
+        return _canon_type(fixed_type)
     type_flags = src.get("type_flags")
     if type_flags:
         for field, t in type_flags.items():
             if _truthy(props.get(field)):
-                return t
-        return "walk_in"
+                return _canon_type(t)
+        return "fishing_access"
     return _normalize_type(_clean(props.get(src.get("type_field"))))
+
+
+# The wading/walk-in split was OSM-tag-driven, not a real distinction, so both
+# fold into one "Fishing Access" type. Canonicalizes any legacy value that
+# still lingers in a source.json fixed_type/type_flags target.
+_CANON_TYPE = {"walk_in": "fishing_access", "wading_access": "fishing_access"}
+
+
+def _canon_type(t: str | None) -> str | None:
+    return _CANON_TYPE.get(t, t)
 
 
 _TYPE_KEYWORDS = (
     ("ramp", "boat_ramp"), ("launch", "boat_ramp"), ("boat", "boat_ramp"),
     ("pier", "pier"), ("platform", "pier"),
-    ("wade", "wading_access"), ("wading", "wading_access"),
+    ("wade", "fishing_access"), ("wading", "fishing_access"),
 )
 
 
 def _normalize_type(raw: str | None) -> str:
-    """Agency type string -> canonical enum. Unknown -> walk_in (the safest
+    """Agency type string -> canonical enum. Unknown -> fishing_access (the safest
     assumption; the glyph doesn't promise a ramp the angler can't find)."""
     if not raw:
-        return "walk_in"
+        return "fishing_access"
     s = raw.lower()
     if "park" in s and "lot" in s:
         return "parking"
     for kw, t in _TYPE_KEYWORDS:
         if kw in s:
             return t
-    return "walk_in"
+    return "fishing_access"
 
 
 def normalize_agency(features: list[dict], src: dict) -> list[dict]:

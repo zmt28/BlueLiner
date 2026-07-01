@@ -37,7 +37,7 @@ def _write_overlay(tmp_path, pts):
 def test_overlay_serves_points_grouped_by_state(tmp_path, monkeypatch):
     pts = [
         {"lat": 39.45, "lon": -76.62, "name": "MD River Ramp", "type": "boat_ramp"},
-        {"lat": 37.50, "lon": -78.50, "name": "VA Access", "type": "walk_in"},
+        {"lat": 37.50, "lon": -78.50, "name": "VA Access", "type": "fishing_access"},
     ]
     path = _write_overlay(tmp_path, pts)
     monkeypatch.setattr(ap.data_source, "resolve_data_file",

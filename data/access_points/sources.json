@@ -29,7 +29,7 @@
         "RAMP": "boat_ramp",
         "PIER": "pier",
         "PARKING": "parking",
-        "SHORE_FISH": "walk_in"
+        "SHORE_FISH": "fishing_access"
       },
       "notes_field": "WATERBODY"
     },
@@ -43,7 +43,7 @@
         "Ramp": "boat_ramp",
         "Piers": "pier",
         "KykCanoeLn": "boat_ramp",
-        "ShoreFishi": "walk_in"
+        "ShoreFishi": "fishing_access"
       },
       "notes_field": "Waterbody"
     },
@@ -150,7 +150,7 @@
       "agency_url": "https://ohiodnr.gov/discover-and-learn/safety-conservation/about-odnr/coastal-management",
       "name_field": "FishngSite",
       "type_flags": {
-        "WadeAccess": "wading_access"
+        "WadeAccess": "fishing_access"
       }
     },
     {
@@ -162,7 +162,7 @@
       "type_flags": {
         "RAMPS": "boat_ramp",
         "FISHING_PIER": "pier",
-        "SHORELINE_FISHING": "walk_in"
+        "SHORELINE_FISHING": "fishing_access"
       },
       "notes_field": "GNIS_NAME",
       "flaky": true,
@@ -185,7 +185,7 @@
       "url": "https://services6.arcgis.com/DZHaqZm9cxOD4CWM/arcgis/rest/services/Trout_Stream_Fishing_Access/FeatureServer/1/query?where=1%3D1",
       "agency_url": "https://dec.ny.gov/things-to-do/freshwater-fishing/places-to-fish/public-fishing-rights-streams",
       "name_field": "WATER",
-      "fixed_type": "walk_in",
+      "fixed_type": "fishing_access",
       "access": "private_easement",
       "notes_field": "AGENCY",
       "dedupe": true
@@ -216,7 +216,7 @@
       "url": "https://dnrmaps.wi.gov/arcgis/rest/services/LF_DML/AGOL_LF_DNR_BOAT_ACCESS_WTM_Ext/MapServer/2/query?where=1%3D1",
       "agency_url": "https://dnr.wisconsin.gov/topic/fishing",
       "name_field": "FACILITY_NAME_TEXT",
-      "fixed_type": "walk_in",
+      "fixed_type": "fishing_access",
       "notes_field": "WATERBODY_NAME_TEXT",
       "flaky": true,
       "note": "flaky host: dnrmaps.wi.gov passed the full 4-check protocol 2026-06-10 (discovery round E2) but timed out in two consecutive gate runs 2026-06-11 (attempts 1+2, with retries). Runtime degrades to the WI baseline while it's down."
@@ -253,7 +253,7 @@
       "url": "https://tpwd.texas.gov/server/rest/services/Inland/River_Access_and_Conservation_Areas/FeatureServer/0/query?where=Lease_Status%20%3D%20%27current%27",
       "agency_url": "https://tpwd.texas.gov/fishboat/fish/recreational/rivers/",
       "name_field": "RACA_site_name",
-      "fixed_type": "walk_in",
+      "fixed_type": "fishing_access",
       "notes_field": "River"
     },
     {

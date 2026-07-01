@@ -284,7 +284,7 @@ interface StockedFeatureProps {
 }
 
 /** /api/access feature properties. */
-type AccessType = "boat_ramp" | "walk_in" | "pier" | "parking" | string;
+type AccessType = "boat_ramp" | "fishing_access" | "pier" | "parking" | string;
 
 interface AccessFeatureProps {
   name?: string;

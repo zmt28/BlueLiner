@@ -88,7 +88,7 @@ def validate_stocking() -> int:
     return count
 
 
-_ACCESS_TYPES = {"boat_ramp", "walk_in", "pier", "parking", "wading_access"}
+_ACCESS_TYPES = {"boat_ramp", "fishing_access", "pier", "parking"}
 _ACCESS_LEVELS = {"public", "permit", "fee", "private_easement"}
 
 

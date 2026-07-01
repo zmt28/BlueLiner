@@ -493,7 +493,7 @@ wireLayerToggle("lyr-usgs", setHydroVisible);
 // flipping a second type doesn't refetch.
 // access / dams / stocked are national PMTiles layers now, so each toggle just
 // flips layer visibility (no per-state fetch on show), like trails.
-for (const t of ["boat_ramp", "walk_in", "wading_access", "pier", "parking"]) {
+for (const t of ["boat_ramp", "fishing_access", "pier", "parking"]) {
   wireLayerToggle(`lyr-access-${t}`, (on) => setAccessTypeVisible(t, on));
 }
 wireLayerToggle("lyr-stocked", setStockedVisible);
