@@ -125,13 +125,12 @@ def test_panel_trout_chip_labels_strongest_class():
 
 
 def test_panel_proximity_chips_say_nearby():
-    html = main.build_river_popup_html(_river(access_count=3))
-    assert "3 access points nearby" in html       # plural, click-proximity copy
-    assert "Public access" not in html            # old river-wide-sounding label
-    html = main.build_river_popup_html(_river(access_count=1))
-    assert "1 access point nearby" in html        # singular
+    # Access renders from the on-map PMTiles layer now, so the panel no longer
+    # shows an access chip or an "Access nearby" stat (the overlay that fed the
+    # count was retired to free the 512 MB app process).
+    html = main.build_river_popup_html(_river())
+    assert "access point" not in html
+    assert "Access nearby" not in html
     html = main.build_river_popup_html(_river(near_stocked=True))
     assert "Stocked water nearby" in html
     assert "Recently stocked" not in html
-    # Stat-grid label is proximity-honest too.
-    assert "Access nearby" in html

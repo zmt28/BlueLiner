@@ -31,8 +31,6 @@ import stocking
 import db
 import enrichment
 import data_source
-import access_points
-import dams
 import reach_trout
 
 
@@ -500,15 +498,6 @@ def _trout_chip_html(trout_class: str | None) -> str:
             f'<span class="pill-dot"></span>{label}</span>')
 
 
-def _access_chip_html(n: int) -> str:
-    # Honest copy: the count is click/centroid proximity (~3 km), not a
-    # river-wide inventory -- say "nearby" rather than implying the river
-    # itself has public access end to end.
-    noun = "access point" if n == 1 else "access points"
-    return ('<span class="pill pill--access">'
-            f'<span class="pill-dot"></span>{n} {noun} nearby</span>')
-
-
 _CHIP_STOCKED = (
     '<span class="pill pill--stocked">'
     '<span class="pill-dot"></span>Stocked water nearby</span>'
@@ -754,13 +743,10 @@ def _panel_header_html(river: dict) -> str:
         pills.append(_CHIP_STOCKED)
     if river.get("active"):
         pills.append(_CHIP_HATCH_NOW)
-    if river.get("access_count", 0):
-        pills.append(_access_chip_html(int(river["access_count"])))
     pills_row = f'<div class="bl-pills">{"".join(pills)}</div>'
     n_gauges = len(river.get("gauges") or [])
     n_active = len(river.get("active") or [])
     n_stocked = len(river.get("stocked_waters") or [])
-    n_access = int(river.get("access_count", 0))
     stats_html = (
         '<div class="bl-stats">'
         f'<div class="bl-stat"><div class="bl-stat-n bl-num">{n_gauges}</div>'
@@ -769,8 +755,6 @@ def _panel_header_html(river: dict) -> str:
         f'<div class="bl-stat-label">Active hatches</div></div>'
         f'<div class="bl-stat"><div class="bl-stat-n bl-num">{n_stocked}</div>'
         f'<div class="bl-stat-label">Stocked nearby</div></div>'
-        f'<div class="bl-stat"><div class="bl-stat-n bl-num">{n_access}</div>'
-        f'<div class="bl-stat-label">Access nearby</div></div>'
         '</div>'
     )
     return f"""
@@ -924,15 +908,11 @@ def build_reach_popup_html(lat: float, lon: float, name: str | None,
     zone = hatches.zone_for_river(name or "", lat, lon)
     active = hatches.active_hatches(zone, month_now)
     state = point_in_state(lat, lon)
-    access_count = 0
     stocked_waters: list[dict] = []
     state_has_stocking = False
     if state:
-        apts = access_points.load_access_points(state)
         spts = stocking.stocked_points(state)
         state_has_stocking = bool(spts)
-        access_count = len(access_points.nearby_access(
-            lat, lon, apts, buffer_deg=0.03))
         stocked_waters = stocking.nearby_stocked(lat, lon, spts, buffer_deg=0.03)
     river_cls = reach_trout.river_trout_class(
         [levelpathid] if levelpathid is not None else [], name)
@@ -945,7 +925,6 @@ def build_reach_popup_html(lat: float, lon: float, name: str | None,
         "hatch_zone": zone, "active": active, "month": month_now,
         "stocked_waters": stocked_waters,
         "state_has_stocking": state_has_stocking,
-        "access_count": access_count,
         "gauges": [],
     }
     # Default to Hatches when there's something hatching; otherwise the
@@ -1028,16 +1007,11 @@ def _trout_geojson_str(layers: list) -> str:
 
 
 async def _assemble_rivers(time_series: list, trout_layers: list,
-                           stocked_pts: list,
-                           access_pts: list | None = None) -> list[dict]:
+                           stocked_pts: list) -> list[dict]:
     """Shared core: aggregate USGS sites -> group into rivers -> popups.
     `trout_layers` is a list of TroutLayer|None (a gauge is on trout if
-    near ANY). `access_pts` is the bundled+live access-point list for
-    the state(s) being assembled; used to compute each river's
-    nearby-access count for the panel stat grid. Defaults to empty so
-    test callers that don't care about the count don't have to plumb
-    it through."""
-    access_pts = access_pts or []
+    near ANY). Access points render straight from the PMTiles map layer, so
+    the panel no longer computes a nearby-access count here."""
     today = datetime.now()
     today_key = (today.month, today.day)
     month_now = today.month
@@ -1146,12 +1120,6 @@ async def _assemble_rivers(time_series: list, trout_layers: list,
         # geographic zone for the centroid.
         zone = hatches.zone_for_river(g["name"], clat, clon)
         active = hatches.active_hatches(zone, month_now)
-        # ~0.03 degrees ≈ 3 km buffer for the panel stat-grid count.
-        # Reuses access_points.nearby_access (same helper that backs the
-        # on-map access layer) so the count agrees with what the user
-        # sees as markers around the river.
-        access_count = len(access_points.nearby_access(
-            clat, clon, access_pts, buffer_deg=0.03))
         # Probe stocking near the centroid AND each gauge, not just the
         # centroid: a long river's centroid (the mean of its gauges) can
         # sit >2 km from its stocking points -- e.g. the Gunpowder, gauged
@@ -1181,7 +1149,6 @@ async def _assemble_rivers(time_series: list, trout_layers: list,
             "hatch_zone": zone, "active": active, "month": month_now,
             "stocked_waters": stocked_waters,
             "state_has_stocking": bool(stocked_pts),
-            "access_count": access_count,
             "gauges": sorted(g["gauges"], key=lambda x: x["site_name"]),
         }
         site_no = next(
@@ -1548,96 +1515,11 @@ async def internal_refresh(request: Request):
     return {"status": "scheduled", "states": precompute.focused_states()}
 
 
-@app.get("/api/trout")
-async def api_trout(request: Request,
-                    state: str = Query(default="MD",
-                                       description="Two-letter state code.")):
-    states_to_load = _resolve_states(state)
-    if states_to_load is None:
-        raise HTTPException(status_code=400, detail=f"Unsupported state: {state}")
-    # Non-blocking: cached layer or empty until the background warm completes.
-    layers = [_trout_for_state(st) for st in states_to_load]
-    body = _trout_geojson_str(layers)
-    # While warming, the response is the empty FC string -- short TTL so
-    # Cloudflare doesn't pin an empty layer for the day. Real responses
-    # change rarely (upstream dataset refreshes), so cache them hard.
-    warming = all(layer is None for layer in layers)
-    if warming:
-        return _cached_response(request, body, max_age=60, s_max_age=300)
-    return _cached_response(request, body, max_age=3600, s_max_age=86400)
-
-
-@app.get("/api/access")
-async def api_access(request: Request,
-                     state: str = Query(default="MD",
-                                        description="Two-letter state code.")):
-    """Angler access points (boat ramps, walk-ins, piers, parking, wading
-    spots) as GeoJSON, served from the pre-built national river-clipped
-    overlay (`scripts/build_river_poi.py` -> R2)."""
-    states_to_load = _resolve_states(state)
-    if states_to_load is None:
-        raise HTTPException(status_code=400, detail=f"Unsupported state: {state}")
-    # Build the FeatureCollection off-thread so the overlay's first-touch
-    # load/index doesn't block the request handler.
-    fcs = await asyncio.to_thread(
-        lambda: [access_points.access_points_geojson(st)
-                 for st in states_to_load])
-    features: list[dict] = []
-    for fc in fcs:
-        features.extend(fc.get("features", []))
-    body = json.dumps({"type": "FeatureCollection", "features": features},
-                      separators=(",", ":"))
-    # The overlay is immutable for a data release; the client cache-busts via
-    # the ?v=<data_version> query param (see _data_version), so a refreshed
-    # overlay published under a new R2 prefix lands without a manual CDN purge.
-    # Long browser cache + day-long CDN cache like /api/trout.
-    return _cached_response(request, body, max_age=3600, s_max_age=86400)
-
-
-@app.get("/api/stocking")
-async def api_stocking(request: Request,
-                       state: str = Query(default="MD",
-                                          description="Two-letter state code.")):
-    """Stocked / specially-managed trout waters as GeoJSON points: the
-    per-state baseline plus the live agency overlay (VA today). Each point
-    carries water name, species, category, season, and an agency link. The
-    live overlay fetch can block, so it runs in a thread."""
-    states_to_load = _resolve_states(state)
-    if states_to_load is None:
-        raise HTTPException(status_code=400, detail=f"Unsupported state: {state}")
-    fcs = await asyncio.to_thread(
-        lambda: [stocking.stocking_geojson(st) for st in states_to_load])
-    features: list[dict] = []
-    for fc in fcs:
-        features.extend(fc.get("features", []))
-    body = json.dumps({"type": "FeatureCollection", "features": features},
-                      separators=(",", ":"))
-    # Baseline is in-memory + stable; the live overlay changes slowly. Same
-    # long browser + day-long CDN cache as /api/access.
-    return _cached_response(request, body, max_age=3600, s_max_age=86400)
-
-
-@app.get("/api/dams")
-async def api_dams(request: Request,
-                   state: str = Query(default="MD",
-                                      description="Two-letter state code.")):
-    """Dams on rivers (USACE National Inventory of Dams) as GeoJSON points
-    for the state. Single national public-domain source queried per state;
-    each point carries dam name, river, owner, purpose, height and year. The
-    live NID fetch can block, so it runs in a thread."""
-    states_to_load = _resolve_states(state)
-    if states_to_load is None:
-        raise HTTPException(status_code=400, detail=f"Unsupported state: {state}")
-    fcs = await asyncio.to_thread(
-        lambda: [dams.dams_geojson(st) for st in states_to_load])
-    features: list[dict] = []
-    for fc in fcs:
-        features.extend(fc.get("features", []))
-    body = json.dumps({"type": "FeatureCollection", "features": features},
-                      separators=(",", ":"))
-    # NID refreshes ~annually; long browser + day-long CDN cache like the
-    # other reference overlays.
-    return _cached_response(request, body, max_age=3600, s_max_age=86400)
+# access / stocking / dams / trout overlays are served as static PMTiles on R2
+# now (see static/src/map-layers.ts + the POI tile pipeline), so their dynamic
+# GeoJSON endpoints are retired -- along with the in-RAM access overlay that
+# loaded 104k points into the 512 MB app process. The map reads the tiles
+# straight from the CDN; the app only serves live conditions + user data.
 
 
 def _reach_hatch_block(name: str, lat: float, lon: float) -> dict:
@@ -1676,17 +1558,12 @@ def _reach_detail_payload(lat: float, lon: float, name: str | None,
         "river_label": reach_trout.CLASS_LABEL.get(river_cls or ""),
     }
     state = point_in_state(lat, lon)
+    # Access renders from the on-map PMTiles layer now (the app no longer loads
+    # the access overlay); `access` stays for response-shape compatibility.
     access: list[dict] = []
     stocked: list[dict] = []
     if state:
-        apts = access_points.load_access_points(state)
         spts = stocking.stocked_points(state)
-        access = [
-            {"name": a.get("name"), "type": a.get("type"),
-             "access": a.get("access"), "notes": a.get("notes"),
-             "agency_url": a.get("agency_url")}
-            for a in access_points.nearby_access(lat, lon, apts, buffer_deg=0.03)[:6]
-        ]
         stocked = [
             {"water": s.get("water"), "species": s.get("species") or [],
              "category": s.get("category"), "agency_url": s.get("agency_url")}
