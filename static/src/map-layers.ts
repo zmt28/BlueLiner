@@ -22,9 +22,8 @@
  * before `load`.
  */
 
-import maplibregl, { Marker, LayerSpecification } from "maplibre-gl";
+import { LayerSpecification, FilterSpecification } from "maplibre-gl";
 import { map, onMapReady } from "./map-setup";
-import { getCurrentSt } from "./state";
 import { esc } from "./util";
 import { makePopup } from "./popups";
 import {
@@ -34,10 +33,18 @@ import {
   TRAILS_TILES_ENABLED,
   TRAILS_TILES_URL,
   TRAILS_SOURCE_LAYER,
-  DATA_VERSION,
+  ACCESS_TILES_ENABLED,
+  ACCESS_TILES_URL,
+  ACCESS_SOURCE_LAYER,
+  DAMS_TILES_ENABLED,
+  DAMS_TILES_URL,
+  DAMS_SOURCE_LAYER,
+  STOCKING_TILES_ENABLED,
+  STOCKING_TILES_URL,
+  STOCKING_SOURCE_LAYER,
 } from "./config";
 import { ensurePmtilesProtocol } from "./tiles";
-import { makePoiElement } from "./poi-icons";
+import { registerPoiIcons } from "./poi-map-icons";
 import { directionsLinkHtml } from "./directions";
 
 // Desired visibility (matches the HTML checkbox defaults; controls.ts
@@ -50,11 +57,10 @@ function vis(on: boolean): "visible" | "none" {
 }
 
 // -- Access points ------------------------------------------------------
-// Markers are makePoiElement discs -- the access TYPE is the glyph
-// (sailboat / footprints / waves / dock / P). Each type is an independent
-// toggle (lyr-access-<type>), so we bucket markers by type and show only
-// the enabled buckets. A feature whose type isn't one of the five buckets
-// falls into walk_in (matching the glyph fallback in makePoiElement).
+// A vector-tile symbol layer -- the access TYPE is the glyph (sailboat /
+// footprints / waves / dock / P) via icon-image. Each type is an independent
+// toggle (lyr-access-<type>); the enabled set is a layer filter. A feature
+// whose type isn't one of the five buckets falls into walk_in.
 
 const ACCESS_TYPES = [
   "boat_ramp",
@@ -123,106 +129,121 @@ export function accessPopupHtml(
   );
 }
 
-interface AccessMarker {
-  marker: Marker;
-  type: AccessType;
-  shown: boolean; // currently added to the map
+// -- Generic point-tile layer -------------------------------------------
+// access / dams / stocking are now static PMTiles on R2 (the POI tile
+// pipeline), rendered as GPU symbol layers with the shared glyph icons
+// (poi-map-icons) instead of per-feature DOM markers fed by /api/*. National +
+// viewport-driven: no per-state fetch, no reload on state change, and the old
+// zoom/count marker gates are gone (the GPU handles density). An unset
+// VITE_*_TILES_URL just skips the layer, matching streams/trails/public-lands.
+
+interface PointTileOpts {
+  key: string; // "access" | "dams" | "stocking"
+  url: string;
+  sourceLayer: string;
+  iconImage: unknown; // icon-image expression or a literal image id
+  visible: boolean;
+  filter?: unknown;
+  popupHtml: (p: Record<string, unknown>, lngLat: [number, number]) => string;
 }
-let accessMarkers: AccessMarker[] = [];
-let accessLoadedState: string | null = null;
-let accessLoading = false;
 
-// Perf guard: live DNR feeds can deliver 1000+ access points per state.
-// Above this count the markers stay hidden until the user zooms in --
-// at state zoom that many HTML markers are decoration that janks panning.
-// The gate counts only markers whose type is currently enabled, so turning
-// on a single sparse type (e.g. boat ramps) isn't blocked by a dense one.
-const ACCESS_GATE_ZOOM = 10;
-const ACCESS_GATE_COUNT = 300;
+// Point overlays only matter once you're reading a river; keep them off the
+// low-zoom view (what the old marker zoom-gates approximated).
+const POI_MIN_ZOOM = 7;
 
-/** True if any access type is toggled on -- gates the lazy per-state load. */
+function addPointTileLayer(o: PointTileOpts): void {
+  ensurePmtilesProtocol();
+  const src = `${o.key}-src`;
+  const lyr = `${o.key}-pts`;
+  if (!map.getSource(src)) {
+    map.addSource(src, { type: "vector", url: `pmtiles://${o.url}` });
+  }
+  // Icons rasterize asynchronously; add the symbol layer only once they're
+  // registered so the first paint has glyphs (a missing icon renders nothing).
+  void registerPoiIcons().then(() => {
+    if (map.getLayer(lyr)) return;
+    map.addLayer({
+      id: lyr,
+      type: "symbol",
+      source: src,
+      "source-layer": o.sourceLayer,
+      minzoom: POI_MIN_ZOOM,
+      ...(o.filter ? { filter: o.filter as FilterSpecification } : {}),
+      layout: {
+        visibility: vis(o.visible),
+        "icon-image": o.iconImage,
+        "icon-size": ["interpolate", ["linear"], ["zoom"], 8, 0.75, 13, 1],
+        "icon-allow-overlap": true,
+        "icon-ignore-placement": true,
+      },
+    } as LayerSpecification);
+    const popup = makePopup();
+    map.on("click", lyr, (e) => {
+      const f = e.features && e.features[0];
+      if (!f) return;
+      // Selecting a POI click -> close the rail panel.
+      document.dispatchEvent(new Event("bl:poi-open"));
+      popup
+        .setLngLat(e.lngLat)
+        .setHTML(
+          o.popupHtml((f.properties || {}) as Record<string, unknown>, [
+            e.lngLat.lng,
+            e.lngLat.lat,
+          ]),
+        )
+        .addTo(map);
+    });
+    map.on("mouseenter", lyr, () => {
+      map.getCanvas().style.cursor = "pointer";
+    });
+    map.on("mouseleave", lyr, () => {
+      map.getCanvas().style.cursor = "";
+    });
+  });
+}
+
+// Per-type access visibility is a layer filter over the one symbol layer:
+// only the enabled types render, and the layer hides entirely when none are.
+function _accessFilter(): FilterSpecification {
+  const on = ACCESS_TYPES.filter((t) => _accessTypeVisible[t]);
+  return ["in", ["get", "type"], ["literal", on]] as unknown as FilterSpecification;
+}
+
+function _applyAccessVisibility(): void {
+  if (!map.getLayer("access-pts")) return;
+  map.setLayoutProperty("access-pts", "visibility", vis(anyAccessVisible()));
+  map.setFilter("access-pts", _accessFilter());
+}
+
+/** True if any access type is toggled on. */
 export function anyAccessVisible(): boolean {
   return ACCESS_TYPES.some((t) => _accessTypeVisible[t]);
 }
 
-function _enabledAccessCount(): number {
-  let n = 0;
-  for (const am of accessMarkers) if (_accessTypeVisible[am.type]) n++;
-  return n;
-}
-
-function _applyAccessVisibility(): void {
-  // One zoom gate for the whole enabled set: below it, a too-dense set stays
-  // hidden until the user zooms in.
-  const gatePass =
-    _enabledAccessCount() <= ACCESS_GATE_COUNT || map.getZoom() >= ACCESS_GATE_ZOOM;
-  for (const am of accessMarkers) {
-    const should = gatePass && _accessTypeVisible[am.type];
-    if (should === am.shown) continue;
-    if (should) am.marker.addTo(map);
-    else am.marker.remove();
-    am.shown = should;
-  }
-}
-
 /** Wired to each per-type lyr-access-<type> checkbox. */
 export function setAccessTypeVisible(type: string, on: boolean): void {
-  const bucket = _accessBucket(type);
-  _accessTypeVisible[bucket] = on;
+  _accessTypeVisible[_accessBucket(type)] = on;
   _applyAccessVisibility();
 }
 
-// Cross the zoom gate -> show/hide the large-set markers.
-map.on("zoomend", _applyAccessVisibility);
-
-export async function ensureAccess(state: string): Promise<void> {
-  if (accessLoadedState === state || accessLoading) return;
-  accessLoading = true;
-  try {
-    const fc: GeoJsonFeatureCollection<AccessFeatureProps> = await fetch(
-      `/api/access?state=${state}&v=${DATA_VERSION}`,
-    ).then((r) => r.json());
-    for (const am of accessMarkers) am.marker.remove();
-    accessMarkers = [];
-    for (const f of fc.features || []) {
-      const c =
-        f.geometry && "coordinates" in f.geometry
-          ? (f.geometry.coordinates as [number, number])
-          : null;
-      const p = f.properties || ({} as AccessFeatureProps);
-      if (!c || c.length < 2) continue;
-      const bucket = _accessBucket(p.type);
-      const el = makePoiElement(bucket);
-      // Selecting an access point is a POI click -> close the rail panel.
-      el.addEventListener("click", () =>
-        document.dispatchEvent(new Event("bl:poi-open")),
-      );
-      const m = new maplibregl.Marker({ element: el, anchor: "center" })
-        .setLngLat([c[0], c[1]]) // GeoJSON is already [lng, lat]
-        .setPopup(makePopup().setHTML(accessPopupHtml(p, [c[0], c[1]])));
-      accessMarkers.push({ marker: m, type: bucket, shown: false });
-    }
-    _applyAccessVisibility(); // adds enabled buckets if the zoom-gate passes
-    accessLoadedState = state;
-  } catch (_) {
-    /* leave empty; user can re-toggle to retry */
-  } finally {
-    accessLoading = false;
-  }
-}
-
-export function resetAccessLoadedState(): void {
-  accessLoadedState = null;
-}
+onMapReady(() => {
+  if (!ACCESS_TILES_ENABLED) return;
+  addPointTileLayer({
+    key: "access",
+    url: ACCESS_TILES_URL,
+    sourceLayer: ACCESS_SOURCE_LAYER,
+    iconImage: ["concat", "poi-", ["get", "type"]],
+    filter: _accessFilter(),
+    visible: anyAccessVisible(),
+    popupHtml: (p, ll) => accessPopupHtml(p as AccessFeatureProps, ll),
+  });
+});
 
 // -- Stocked waters -----------------------------------------------------
 // Curated + live stocking points (one pin each). Shown when EITHER the
 // "Stocked waters" toggle is on OR the Stocked map style is active -- so the
 // style surfaces real stocking locations on top of the stocked-stream color.
 
-let stockedMarkers: Marker[] = [];
-let stockedLoadedState: string | null = null;
-let stockedLoading = false;
 let _stockedToggle = false; // the lyr-stocked checkbox
 let _stockedStyleActive = false; // the Stocked map style
 
@@ -253,12 +274,9 @@ function _stockedShouldShow(): boolean {
 }
 
 function _applyStockedVisibility(): void {
-  const on = _stockedShouldShow();
-  for (const m of stockedMarkers) {
-    if (on) m.addTo(map);
-    else m.remove();
+  if (map.getLayer("stocking-pts")) {
+    map.setLayoutProperty("stocking-pts", "visibility", vis(_stockedShouldShow()));
   }
-  if (on) ensureStocked(getCurrentSt());
 }
 
 /** Wired to the lyr-stocked checkbox (the wireLayerToggle setter). */
@@ -275,61 +293,48 @@ export function setStockedStyleActive(on: boolean): void {
   _applyStockedVisibility();
 }
 
-/** State changed: drop the cache and reload only if the layer is showing. */
-export function refreshStockedForState(state: string): void {
-  stockedLoadedState = null;
-  if (_stockedShouldShow()) ensureStocked(state);
+/** Retained for the state-selector's call site. The layer is national tiles
+ *  (viewport-driven), so there's nothing to reload -- just re-apply visibility. */
+export function refreshStockedForState(_state: string): void {
+  _applyStockedVisibility();
 }
 
-export async function ensureStocked(state: string): Promise<void> {
-  if (stockedLoadedState === state || stockedLoading) return;
-  stockedLoading = true;
-  try {
-    const fc: GeoJsonFeatureCollection<StockedFeatureProps> = await fetch(
-      `/api/stocking?state=${state}&v=${DATA_VERSION}`,
-    ).then((r) => r.json());
-    for (const m of stockedMarkers) m.remove();
-    stockedMarkers = [];
-    const show = _stockedShouldShow();
-    for (const f of fc.features || []) {
-      const c =
-        f.geometry && "coordinates" in f.geometry
-          ? (f.geometry.coordinates as [number, number])
-          : null;
-      const p = f.properties || ({} as StockedFeatureProps);
-      if (!c || c.length < 2) continue;
-      const el = makePoiElement("stocked");
-      // Selecting a stocked water is a POI click -> close the rail panel.
-      el.addEventListener("click", () =>
-        document.dispatchEvent(new Event("bl:poi-open")),
-      );
-      const m = new maplibregl.Marker({ element: el, anchor: "center" })
-        .setLngLat([c[0], c[1]])
-        .setPopup(makePopup().setHTML(stockedPopupHtml(p, [c[0], c[1]])));
-      stockedMarkers.push(m);
-      if (show) m.addTo(map);
+// Vector-tile properties can't hold arrays, so tippecanoe serializes the
+// stocking `species` list to a JSON string; parse it back before the popup
+// joins it. Everything else on the tile is already scalar.
+function _stockedTilePopup(
+  p: Record<string, unknown>,
+  lngLat: [number, number],
+): string {
+  let species: unknown = p.species;
+  if (typeof species === "string") {
+    try {
+      species = JSON.parse(species);
+    } catch {
+      species = species ? [species] : [];
     }
-    stockedLoadedState = state;
-  } catch (_) {
-    /* leave empty; user can re-toggle to retry */
-  } finally {
-    stockedLoading = false;
   }
+  return stockedPopupHtml({ ...p, species } as StockedFeatureProps, lngLat);
 }
+
+onMapReady(() => {
+  if (!STOCKING_TILES_ENABLED) return;
+  addPointTileLayer({
+    key: "stocking",
+    url: STOCKING_TILES_URL,
+    sourceLayer: STOCKING_SOURCE_LAYER,
+    iconImage: "poi-stocked",
+    visible: _stockedShouldShow(),
+    popupHtml: _stockedTilePopup,
+  });
+});
 
 // -- Dams (NID) ---------------------------------------------------------
 // USACE National Inventory of Dams, one brand-blue disc with the dam glyph.
-// A single national source queried per state via /api/dams; some states
-// carry thousands of dams, so it uses the same zoom/count perf gate as the
-// access layer (hidden below the gate until the user zooms in).
+// National static PMTiles (built from the NID national layer); no per-state
+// fetch or zoom/count gate -- the GPU symbol layer handles the ~92k points.
 
 let _damsVisible = false;
-let damMarkers: Marker[] = [];
-let damsLoadedState: string | null = null;
-let damsLoading = false;
-let _damsShown = false;
-const DAMS_GATE_ZOOM = 10;
-const DAMS_GATE_COUNT = 300;
 
 export function damPopupHtml(
   p: DamFeatureProps,
@@ -362,21 +367,10 @@ export function damPopupHtml(
   );
 }
 
-function _damsShouldShow(): boolean {
-  return (
-    _damsVisible &&
-    (damMarkers.length <= DAMS_GATE_COUNT || map.getZoom() >= DAMS_GATE_ZOOM)
-  );
-}
-
 function _applyDamsVisibility(): void {
-  const on = _damsShouldShow();
-  if (on === _damsShown) return;
-  for (const m of damMarkers) {
-    if (on) m.addTo(map);
-    else m.remove();
+  if (map.getLayer("dams-pts")) {
+    map.setLayoutProperty("dams-pts", "visibility", vis(_damsVisible));
   }
-  _damsShown = on;
 }
 
 export function setDamsVisible(on: boolean): void {
@@ -384,46 +378,17 @@ export function setDamsVisible(on: boolean): void {
   _applyDamsVisibility();
 }
 
-map.on("zoomend", _applyDamsVisibility);
-
-export async function ensureDams(state: string): Promise<void> {
-  if (damsLoadedState === state || damsLoading) return;
-  damsLoading = true;
-  try {
-    const fc: GeoJsonFeatureCollection<DamFeatureProps> = await fetch(
-      `/api/dams?state=${state}`,
-    ).then((r) => r.json());
-    for (const m of damMarkers) m.remove();
-    damMarkers = [];
-    _damsShown = false;
-    for (const f of fc.features || []) {
-      const c =
-        f.geometry && "coordinates" in f.geometry
-          ? (f.geometry.coordinates as [number, number])
-          : null;
-      const p = f.properties || ({} as DamFeatureProps);
-      if (!c || c.length < 2) continue;
-      const el = makePoiElement("dam");
-      el.addEventListener("click", () =>
-        document.dispatchEvent(new Event("bl:poi-open")),
-      );
-      const m = new maplibregl.Marker({ element: el, anchor: "center" })
-        .setLngLat([c[0], c[1]])
-        .setPopup(makePopup().setHTML(damPopupHtml(p, [c[0], c[1]])));
-      damMarkers.push(m);
-    }
-    _applyDamsVisibility(); // adds them only if visible + zoom-gate passes
-    damsLoadedState = state;
-  } catch (_) {
-    /* leave empty; user can re-toggle to retry */
-  } finally {
-    damsLoading = false;
-  }
-}
-
-export function resetDamsLoadedState(): void {
-  damsLoadedState = null;
-}
+onMapReady(() => {
+  if (!DAMS_TILES_ENABLED) return;
+  addPointTileLayer({
+    key: "dams",
+    url: DAMS_TILES_URL,
+    sourceLayer: DAMS_SOURCE_LAYER,
+    iconImage: "poi-dam",
+    visible: _damsVisible,
+    popupHtml: (p, ll) => damPopupHtml(p as DamFeatureProps, ll),
+  });
+});
 
 // -- Public lands (PAD-US) ----------------------------------------------
 // Tier-keyed styling via `match` expressions on the public_access prop:

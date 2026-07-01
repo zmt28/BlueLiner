@@ -19,8 +19,8 @@
  * Cross-module deps:
  *   - state: getStates, setCurrentSt, STATE_ZOOM
  *   - map-setup: map, currentBaseKey, setBaseMap
- *   - map-layers: the layer visibility setters + ensureAccess
- *     + the reset helpers
+ *   - map-layers: the layer visibility setters (access/dams/stocked/trails/
+ *     public-lands are national tile layers now, so just visibility)
  *   - streams: loadClickableStreams, setStreamsVisible
  *   - rivers: loadRivers, renderRivers
  */
@@ -42,16 +42,10 @@ import {
   type BBox,
 } from "./offline-tiles";
 import {
-  ensureAccess,
-  resetAccessLoadedState,
   setAccessTypeVisible,
-  anyAccessVisible,
   setStockedVisible,
-  refreshStockedForState,
   setPublicLandsVisible,
   setTrailsVisible,
-  ensureDams,
-  resetDamsLoadedState,
   setDamsVisible,
 } from "./map-layers";
 import {
@@ -137,17 +131,9 @@ document.getElementById("cond-chip-clear")?.addEventListener("click", () => {
   const catalog = getStates();
   map.jumpTo({ center: centerLngLat(catalog[s].center), zoom: STATE_ZOOM });
   loadRivers(s);
-  // Refresh access for the new state only if the layer is currently
-  // shown (read the checkbox; the MapLibre layers always exist, only
-  // their visibility toggles).
-  resetAccessLoadedState();
-  if (anyAccessVisible()) ensureAccess(s);
-  // Dams reload for the new state only if the layer is currently shown.
-  resetDamsLoadedState();
-  if ((document.getElementById("lyr-dams") as HTMLInputElement).checked) ensureDams(s);
-  // Stocked markers reload for the new state if they're showing (toggle or
-  // the Stocked map style); refreshStockedForState owns that decision.
-  refreshStockedForState(s);
+  // access / dams / stocked are national PMTiles layers (viewport-driven), so
+  // switching state just re-centers the map -- their tiles re-render for the
+  // new view automatically, no per-state reload.
 };
 
 // -- Map chrome: rail (desktop) / tab bar (mobile) + side panel/sheet
@@ -505,20 +491,13 @@ wireLayerToggle("lyr-usgs", setHydroVisible);
 // the CURRENT state at show time via getCurrentSt() (state may have changed
 // since module-init). The markers are fetched once and bucketed by type, so
 // flipping a second type doesn't refetch.
+// access / dams / stocked are national PMTiles layers now, so each toggle just
+// flips layer visibility (no per-state fetch on show), like trails.
 for (const t of ["boat_ramp", "walk_in", "wading_access", "pier", "parking"]) {
-  wireLayerToggle(
-    `lyr-access-${t}`,
-    (on) => setAccessTypeVisible(t, on),
-    () => ensureAccess(window.getCurrentSt()),
-  );
+  wireLayerToggle(`lyr-access-${t}`, (on) => setAccessTypeVisible(t, on));
 }
-// setStockedVisible already triggers the lazy load via its visibility apply,
-// so no onShow callback is needed here.
 wireLayerToggle("lyr-stocked", setStockedVisible);
-// Dams: single national source, lazy-loaded per state on first show.
-wireLayerToggle("lyr-dams", setDamsVisible, () =>
-  ensureDams(window.getCurrentSt()),
-);
+wireLayerToggle("lyr-dams", setDamsVisible);
 wireLayerToggle("lyr-public-lands", setPublicLandsVisible);
 // Trails are a static PMTiles line layer (no per-state fetch); the layer is
 // only added when VITE_TRAILS_TILES_URL is configured, so the toggle just
