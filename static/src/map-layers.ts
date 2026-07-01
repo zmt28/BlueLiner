@@ -115,11 +115,18 @@ export function accessPopupHtml(
       (p.precision ? ` &middot; ${esc(p.precision)}` : "") +
       `</div>`
     : "";
+  // The containing public-land unit (PAD-US), when the point sits in one and it
+  // isn't already the name -- e.g. a named ramp inside "Gunpowder Falls SP".
+  const park =
+    p.park && p.park !== p.name
+      ? `<div class="ap-notes">${esc(p.park)}</div>`
+      : "";
   const dir = lngLat ? directionsLinkHtml(lngLat[1], lngLat[0], p.name) : "";
   return (
     `<div class="ap-popup">` +
     `<div class="ap-name">${esc(p.name || "Access point")}</div>` +
     `<div class="ap-meta">${esc(typeLabel)}${accessChip}</div>` +
+    park +
     notes +
     link +
     src +

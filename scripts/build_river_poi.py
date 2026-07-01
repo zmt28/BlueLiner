@@ -674,6 +674,57 @@ def _probe_geofabrik_osm() -> None:
         print(f"[osm] Geofabrik HEAD failed: {exc}")
 
 
+# --------------------------------------------------------------------------
+# Public-land naming (Phase B1b): stamp each access point with the PAD-US unit
+# it sits inside ("Gunpowder Falls SP"), and use that to fill a missing/generic
+# name -- the TroutRoutes-style "named by the park" label. Point-in-polygon in
+# lon/lat (both EPSG:4326), so no projection is needed.
+# --------------------------------------------------------------------------
+
+_GENERIC_NAMES = {"", "access point"}
+
+
+def load_public_land_polys(path: str | None):
+    """(geoms, names) from public_lands.geojson.gz -- unit polygons + unit_name."""
+    from shapely.geometry import shape
+    geoms: list = []
+    names: list = []
+    if not path or not os.path.exists(path):
+        return geoms, names
+    with gzip.open(path, "rt", encoding="utf-8") as f:
+        fc = json.load(f)
+    for ft in fc.get("features", []):
+        g = ft.get("geometry")
+        nm = _clean((ft.get("properties") or {}).get("unit_name"))
+        if not g or not nm:
+            continue
+        try:
+            geoms.append(shape(g))
+            names.append(nm)
+        except Exception:                                  # noqa: BLE001
+            continue
+    return geoms, names
+
+
+def name_points_by_public_land(points: list[dict], geoms, names) -> list[dict]:
+    """Stamp each point with the containing public-land unit as `park`, and fill
+    a missing/generic `name` with it. Mutates + returns points."""
+    if not geoms:
+        return points
+    from shapely.geometry import Point
+    from shapely import STRtree
+    tree = STRtree(geoms)
+    for p in points:
+        idx = tree.query(Point(p["lon"], p["lat"]), predicate="intersects")
+        if len(idx) == 0:
+            continue
+        unit = names[int(idx[0])]
+        p["park"] = unit
+        if (p.get("name") or "").strip().lower() in _GENERIC_NAMES:
+            p["name"] = unit
+    return points
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(
         description=__doc__, formatter_class=argparse.RawTextHelpFormatter)
@@ -691,6 +742,9 @@ def main() -> int:
                     help="scratch dir for the Geofabrik pbf + osmium output")
     ap.add_argument("--osm-pbf", default=None,
                     help="pre-downloaded Geofabrik .osm.pbf (skips the fetch)")
+    ap.add_argument("--public-lands", default=None,
+                    help="public_lands.geojson.gz -- name points by containing "
+                         "PAD-US unit (park) + fill missing/generic names")
     ap.add_argument("--probe", action="store_true",
                     help="fetch + report per-source counts, do not clip/write")
     args = ap.parse_args()
@@ -752,6 +806,13 @@ def main() -> int:
     final = dedupe(kept)
     print(f"[dedupe] {len(final):,} after cross-source dedupe", flush=True)
 
+    if args.public_lands:
+        pl_geoms, pl_names = load_public_land_polys(args.public_lands)
+        print(f"[parks] {len(pl_geoms):,} public-land units", flush=True)
+        name_points_by_public_land(final, pl_geoms, pl_names)
+        n_parked = sum(1 for p in final if p.get("park"))
+        print(f"[parks] {n_parked:,} points inside a public-land unit", flush=True)
+
     os.makedirs(os.path.dirname(args.out) or ".", exist_ok=True)
     with gzip.open(args.out, "wt", encoding="utf-8") as out:
         out.write('{"type":"FeatureCollection","features":[')
@@ -763,7 +824,7 @@ def main() -> int:
                     "properties": {k: p.get(k) for k in
                                    ("name", "type", "access", "source",
                                     "source_id", "precision", "levelpathid",
-                                    "notes", "agency_url")}}
+                                    "notes", "agency_url", "park")}}
             feat["properties"]["precision"] = _PRECISION.get(p.get("source"))
             out.write(("," if i else "") + json.dumps(feat, separators=(",", ":")))
         out.write("]}")

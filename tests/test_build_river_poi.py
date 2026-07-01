@@ -128,6 +128,28 @@ def test_normalize_agency_centroids_non_point_geometry():
     assert abs(p["lon"] - -77.1) < 1e-6 and abs(p["lat"] - 38.1) < 1e-6
 
 
+def test_name_points_by_public_land():
+    from shapely.geometry import Polygon
+    geoms = [Polygon([(-76.7, 39.4), (-76.7, 39.6), (-76.5, 39.6), (-76.5, 39.4)])]
+    names = ["Gunpowder Falls SP"]
+    pts = [
+        {"lon": -76.6, "lat": 39.5, "name": None},           # inside, no name
+        {"lon": -76.6, "lat": 39.5, "name": "Access point"},  # inside, generic
+        {"lon": -76.6, "lat": 39.5, "name": "Smith Ramp"},    # inside, real name
+        {"lon": -80.0, "lat": 35.0, "name": None},            # outside
+    ]
+    bp.name_points_by_public_land(pts, geoms, names)
+    # Missing/generic names get the park; a real name is kept but still tagged.
+    assert pts[0]["name"] == "Gunpowder Falls SP" and pts[0]["park"] == "Gunpowder Falls SP"
+    assert pts[1]["name"] == "Gunpowder Falls SP"
+    assert pts[2]["name"] == "Smith Ramp" and pts[2]["park"] == "Gunpowder Falls SP"
+    assert pts[3].get("name") is None and "park" not in pts[3]
+    # No polygons -> no-op (dev box without the public-lands file).
+    unchanged = [{"lon": -76.6, "lat": 39.5, "name": None}]
+    bp.name_points_by_public_land(unchanged, [], [])
+    assert unchanged[0].get("park") is None
+
+
 def test_normalize_ridb_drops_null_island_and_types_launches():
     pts = bp.normalize_ridb([
         {"FacilityID": 10, "FacilityName": "Smith Boat Launch",

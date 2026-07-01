@@ -298,6 +298,8 @@ interface AccessFeatureProps {
   precision?: "surveyed" | "mapped" | string;
   source_id?: string | null;
   levelpathid?: number | string | null;
+  /** Containing PAD-US public-land unit ("Gunpowder Falls SP"), if any. */
+  park?: string | null;
   [key: string]: unknown;
 }
 
