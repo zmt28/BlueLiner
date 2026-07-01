@@ -48,6 +48,25 @@ export const TRAILS_TILES_ENABLED: boolean = TRAILS_TILES_URL.length > 0;
 /** MVT layer name baked by tippecanoe (must match --layer in the build). */
 export const TRAILS_SOURCE_LAYER = "trails";
 
+// Point overlays (access / dams / stocking) as static PMTiles — the same
+// serverless pattern as streams/trails, replacing the in-RAM /api/{access,
+// dams,stocking} GeoJSON endpoints that OOMed the free instance. Built by the
+// GeoJSON producers (build_river_poi.py / build_overlay_geojson.py) +
+// scripts/build_poi_tiles.sh. Unset URL => that layer isn't added (the app
+// degrades to no overlay, never to a dynamic fetch). The MVT layer name MUST
+// match the tippecanoe --layer (== the key here).
+export const ACCESS_TILES_URL: string = (_env.VITE_ACCESS_TILES_URL || "").trim();
+export const ACCESS_TILES_ENABLED: boolean = ACCESS_TILES_URL.length > 0;
+export const ACCESS_SOURCE_LAYER = "access";
+
+export const DAMS_TILES_URL: string = (_env.VITE_DAMS_TILES_URL || "").trim();
+export const DAMS_TILES_ENABLED: boolean = DAMS_TILES_URL.length > 0;
+export const DAMS_SOURCE_LAYER = "dams";
+
+export const STOCKING_TILES_URL: string = (_env.VITE_STOCKING_TILES_URL || "").trim();
+export const STOCKING_TILES_ENABLED: boolean = STOCKING_TILES_URL.length > 0;
+export const STOCKING_SOURCE_LAYER = "stocking";
+
 // Self-hosted vector basemap (offline-ready basemap, Phase 0). Points at
 // `basemap.pmtiles` built + published by scripts/build_basemap_tiles.sh. The
 // companion style/glyphs/sprite live under the same versioned prefix, next to
