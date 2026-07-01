@@ -57,6 +57,20 @@ CLASS_LABEL = {
     "stocked": "Stocked trout",
 }
 
+# The nationwide quality TIER is the axis the map colors streams by (green =
+# class1, blue = class2, ...); it's a separate signal from the agency
+# trout_class. Strongest-first, mirroring ALL_TIERS / TIER_LABEL in streams.ts.
+TIER_PRECEDENCE = ["gold", "class1", "class2", "class3", "unclassified"]
+_TIER_RANK = {t: i for i, t in enumerate(TIER_PRECEDENCE)}
+_WEAKEST_TIER = len(TIER_PRECEDENCE)
+# Short chip labels (the map legend uses longer "Class 1 — high quality" copy).
+TIER_LABEL = {
+    "gold": "Gold",
+    "class1": "Class 1",
+    "class2": "Class 2",
+    "class3": "Class 3",
+}
+
 # Flat properties objects only (no nested braces), so non-greedy to the
 # first "}" is exact. DOTALL in case a writer ever pretty-prints.
 _PROPS_RE = re.compile(r'"properties"\s*:\s*(\{.*?\})', re.S)
@@ -66,6 +80,8 @@ _OVERLAP = 8 * 1024        # carry-over so no properties blob is split
 _lock = threading.Lock()
 # (by_levelpathid, by_norm_name) once built; None until first use.
 _index: tuple[dict[int, str], dict[str, str]] | None = None
+# Parallel tier index (by_levelpathid, by_norm_name), built in the same scan.
+_tier_index: tuple[dict[int, str], dict[str, str]] | None = None
 
 
 def _norm_name(s) -> str | None:
@@ -78,22 +94,26 @@ def _norm_name(s) -> str | None:
     return n
 
 
-def _note(table: dict, key, cls: str) -> None:
-    """Keep the strongest class seen for `key` (idempotent, so re-seeing a
-    feature in a chunk-overlap region is harmless)."""
-    if _CLASS_RANK.get(cls, _WEAKEST) < _CLASS_RANK.get(table.get(key), _WEAKEST):
-        table[key] = cls
+def _note(table: dict, key, val: str, rank: dict) -> None:
+    """Keep the strongest value seen for `key` under `rank` (idempotent, so
+    re-seeing a feature in a chunk-overlap region is harmless)."""
+    weakest = len(rank)
+    if rank.get(val, weakest) < rank.get(table.get(key), weakest):
+        table[key] = val
 
 
-def build_index(path: str) -> tuple[dict[int, str], dict[str, str]]:
-    """Scan a clickable-streams geojson.gz into the two lookup tables.
-    Pure with respect to module state (tests point it at synthetic files)."""
-    by_lpid: dict[int, str] = {}
-    by_name: dict[str, str] = {}
+def _scan(path: str):
+    """Scan a clickable-streams geojson.gz into the class + tier lookup tables:
+    (cls_by_lpid, cls_by_name, tier_by_lpid, tier_by_name). Pure w.r.t. module
+    state (tests point it at synthetic files)."""
+    cls_lpid: dict[int, str] = {}
+    cls_name: dict[str, str] = {}
+    tier_lpid: dict[int, str] = {}
+    tier_name: dict[str, str] = {}
     if not os.path.exists(path):
         logger.warning("clickable-streams bundle missing at %s; "
                        "river-level trout chip disabled", path)
-        return by_lpid, by_name
+        return cls_lpid, cls_name, tier_lpid, tier_name
     carry = ""
     with gzip.open(path, "rt", encoding="utf-8") as f:
         while True:
@@ -106,31 +126,64 @@ def build_index(path: str) -> tuple[dict[int, str], dict[str, str]]:
                     props = json.loads(m.group(1))
                 except ValueError:
                     continue
-                cls = props.get("trout_class")
-                if cls not in _CLASS_RANK:
-                    continue
                 lpid = props.get("levelpathid")
-                if isinstance(lpid, int):
-                    _note(by_lpid, lpid, cls)
+                lpid = lpid if isinstance(lpid, int) else None
                 name = _norm_name(props.get("gnis_name"))
-                if name:
-                    _note(by_name, name, cls)
+                cls = props.get("trout_class")
+                if cls in _CLASS_RANK:
+                    if lpid is not None:
+                        _note(cls_lpid, lpid, cls, _CLASS_RANK)
+                    if name:
+                        _note(cls_name, name, cls, _CLASS_RANK)
+                tier = props.get("tier")
+                if tier in _TIER_RANK:
+                    if lpid is not None:
+                        _note(tier_lpid, lpid, tier, _TIER_RANK)
+                    if name:
+                        _note(tier_name, name, tier, _TIER_RANK)
             carry = buf[-_OVERLAP:]
-    logger.info("river trout index: %d levelpaths, %d names",
-                len(by_lpid), len(by_name))
-    return by_lpid, by_name
+    logger.info("river trout index: %d levelpaths (%d tiered), %d names",
+                len(cls_lpid), len(tier_lpid), len(cls_name))
+    return cls_lpid, cls_name, tier_lpid, tier_name
+
+
+def build_index(path: str) -> tuple[dict[int, str], dict[str, str]]:
+    """Back-compat: just the trout_class tables (cls_by_lpid, cls_by_name)."""
+    cls_lpid, cls_name, _, _ = _scan(path)
+    return cls_lpid, cls_name
 
 
 def ensure_loaded() -> None:
-    """Build the index once (thread-safe). Call off the event loop -- the
-    scan takes a couple of seconds on first use; no-op afterwards."""
-    global _index
+    """Build the class + tier indexes once (thread-safe). Call off the event
+    loop -- the scan takes a couple of seconds on first use; no-op afterwards."""
+    global _index, _tier_index
     if _index is not None:
         return
     with _lock:
         if _index is None:
             path = data_source.resolve_data_file(_BUNDLED_PATH, _BUNDLE_NAME)
-            _index = build_index(path)
+            cls_lpid, cls_name, tier_lpid, tier_name = _scan(path)
+            _index = (cls_lpid, cls_name)
+            _tier_index = (tier_lpid, tier_name)
+
+
+def _strongest(index, rank, levelpathids, name):
+    """Strongest value in `index` (by_lpid, by_name) across the river's
+    levelpath group; falls back to the normalized name when the group has no
+    evidence. Shared by river_trout_class + river_tier."""
+    by_lpid, by_name = index
+    best = None
+    for lp in levelpathids or ():
+        try:
+            v = by_lpid.get(int(lp))
+        except (TypeError, ValueError):
+            continue
+        if v is not None and (best is None or rank[v] < rank[best]):
+            best = v
+    if best is not None:
+        return best
+    norm = _norm_name(name)
+    return by_name.get(norm) if norm else None
 
 
 def river_trout_class(levelpathids=None, name: str | None = None) -> str | None:
@@ -138,17 +191,11 @@ def river_trout_class(levelpathids=None, name: str | None = None) -> str | None:
     one of `levelpathids` wins; the normalized `name` is consulted only
     when the levelpath group carries no evidence."""
     ensure_loaded()
-    by_lpid, by_name = _index  # type: ignore[misc]
-    best = None
-    for lp in levelpathids or ():
-        try:
-            cls = by_lpid.get(int(lp))
-        except (TypeError, ValueError):
-            continue
-        if cls is not None and (
-                best is None or _CLASS_RANK[cls] < _CLASS_RANK[best]):
-            best = cls
-    if best is not None:
-        return best
-    norm = _norm_name(name)
-    return by_name.get(norm) if norm else None
+    return _strongest(_index, _CLASS_RANK, levelpathids, name)
+
+
+def river_tier(levelpathids=None, name: str | None = None) -> str | None:
+    """Strongest nationwide quality TIER on the river (the map's color axis) --
+    same levelpath-group-then-name lookup as river_trout_class."""
+    ensure_loaded()
+    return _strongest(_tier_index, _TIER_RANK, levelpathids, name)

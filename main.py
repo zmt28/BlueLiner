@@ -489,11 +489,14 @@ _TROUT_CHIP_QUALIFIER = {
 }
 
 
-def _trout_chip_html(trout_class: str | None) -> str:
-    label = "Trout water"
+def _trout_chip_html(trout_class: str | None, tier: str | None = None) -> str:
+    # Lead with the nationwide quality TIER (Class 1/2/3/Gold) so the chip names
+    # the color the user sees on the map; append the agency designation as
+    # detail. Falls back to plain "Trout water" when neither is indexed.
+    tier_label = reach_trout.TIER_LABEL.get(tier or "")
     qual = _TROUT_CHIP_QUALIFIER.get(trout_class or "")
-    if qual:
-        label += f" &middot; {qual}"
+    head = tier_label or "Trout water"
+    label = f"{head} &middot; {qual}" if qual else head
     return ('<span class="pill pill--trout">'
             f'<span class="pill-dot"></span>{label}</span>')
 
@@ -737,7 +740,7 @@ def _panel_header_html(river: dict) -> str:
     # River-level: trout_class is the strongest designation found on
     # ANY flowline in the river's levelpath group (reach_trout index),
     # so the chip describes the river, not one clicked/nearby segment.
-    pills = [_trout_chip_html(river.get("trout_class"))
+    pills = [_trout_chip_html(river.get("trout_class"), river.get("tier"))
              if river.get("on_trout") else _CHIP_NO_TROUT]
     if river.get("near_stocked"):
         pills.append(_CHIP_STOCKED)
@@ -914,13 +917,14 @@ def build_reach_popup_html(lat: float, lon: float, name: str | None,
         spts = stocking.stocked_points(state)
         state_has_stocking = bool(spts)
         stocked_waters = stocking.nearby_stocked(lat, lon, spts, buffer_deg=0.03)
-    river_cls = reach_trout.river_trout_class(
-        [levelpathid] if levelpathid is not None else [], name)
+    _lpids = [levelpathid] if levelpathid is not None else []
+    river_cls = reach_trout.river_trout_class(_lpids, name)
     river = {
         "name": name or "Unnamed stream",
         "overall": "gray",
         "on_trout": bool(on_trout) or bool(river_cls),
         "trout_class": river_cls,
+        "tier": reach_trout.river_tier(_lpids, name),
         "near_stocked": bool(stocked_waters),
         "hatch_zone": zone, "active": active, "month": month_now,
         "stocked_waters": stocked_waters,
@@ -1145,6 +1149,7 @@ async def _assemble_rivers(time_series: list, trout_layers: list,
             "name": g["name"], "lat": clat, "lon": clon, "overall": overall,
             "on_trout": g["on_trout"] or bool(river_trout_cls),
             "trout_class": river_trout_cls,
+            "tier": reach_trout.river_tier(g["levelpathids"], g["name"]),
             "near_stocked": bool(stocked_waters),
             "hatch_zone": zone, "active": active, "month": month_now,
             "stocked_waters": stocked_waters,

@@ -55,6 +55,43 @@ def test_build_index_missing_file(tmp_path):
     assert by_lpid == {} and by_name == {}
 
 
+def test_scan_indexes_class_and_tier_strongest(tmp_path):
+    path = _bundle(tmp_path, [
+        {"comid": 1, "levelpathid": 100, "gnis_name": "Fall Creek",
+         "trout_class": "wild_reproduction", "tier": "class2"},
+        # Same group, stronger tier (class1 > class2) but weaker/no class.
+        {"comid": 2, "levelpathid": 100, "gnis_name": "Fall Creek",
+         "trout_class": None, "tier": "class1"},
+        # A reach with no tier contributes only to the class index.
+        {"comid": 3, "levelpathid": 200, "gnis_name": "Dry Run",
+         "trout_class": "stocked", "tier": None},
+    ])
+    cls_lpid, cls_name, tier_lpid, tier_name = reach_trout._scan(path)
+    assert cls_lpid == {100: "wild_reproduction", 200: "stocked"}
+    assert tier_lpid == {100: "class1"}          # strongest tier wins
+    assert tier_name == {"fall creek": "class1"}
+    # build_index stays a 2-tuple of just the class tables (back-compat).
+    assert reach_trout.build_index(path) == (cls_lpid, cls_name)
+
+
+def _fake_tier_index(monkeypatch):
+    # _index set so ensure_loaded() early-returns; _tier_index feeds river_tier.
+    monkeypatch.setattr(reach_trout, "_index",
+                        ({100: "wild_reproduction"}, {}))
+    monkeypatch.setattr(reach_trout, "_tier_index", (
+        {100: "class1", 200: "class2"}, {"fall creek": "class2"}))
+
+
+def test_river_tier_levelpath_group(monkeypatch):
+    _fake_tier_index(monkeypatch)
+    assert reach_trout.river_tier([100]) == "class1"
+    # Strongest tier across the group wins (gold > class1 > class2 > class3).
+    assert reach_trout.river_tier([100, 200]) == "class1"
+    # Name fallback only when the levelpath group has no evidence.
+    assert reach_trout.river_tier([], "Fall Creek") == "class2"
+    assert reach_trout.river_tier([999], "Unknown Run") is None
+
+
 def _fake_index(monkeypatch):
     monkeypatch.setattr(reach_trout, "_index", (
         {100: "wild_reproduction", 200: "class_a"},
@@ -110,6 +147,16 @@ def _river(**overrides):
     }
     river.update(overrides)
     return river
+
+
+def test_panel_trout_chip_shows_tier():
+    # The chip leads with the map's quality tier (Class 1/2/3) when known, with
+    # the agency designation as detail -- so it names the color the user sees.
+    html = main.build_river_popup_html(
+        _river(trout_class="wild_reproduction", tier="class2"))
+    assert "Class 2 &middot; wild" in html
+    html = main.build_river_popup_html(_river(trout_class="class_a", tier="class1"))
+    assert "Class 1 &middot; Class A wild" in html
 
 
 def test_panel_trout_chip_labels_strongest_class():
