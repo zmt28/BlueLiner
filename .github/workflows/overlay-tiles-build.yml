@@ -49,6 +49,10 @@ jobs:
       R2_BUCKET: ${{ secrets.R2_BUCKET }}
       R2_PREFIX: ${{ inputs.r2_prefix }}
       LAYER: ${{ inputs.layer }}
+      # build_poi_tiles.sh writes <layer>.pmtiles under $TMPDIR; point it at the
+      # same dir the artifact-upload step reads so the run doesn't red-X *after*
+      # a successful R2 publish (the default $TMPDIR=/tmp != runner.temp).
+      TMPDIR: ${{ runner.temp }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
