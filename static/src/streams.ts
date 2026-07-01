@@ -363,7 +363,7 @@ export function loadClickableStreams(): void {
 
 interface SelStreamKey {
   name: string | null;
-  lpid: number | null;
+  lpids: Set<number>;
 }
 
 let _selStreamKey: SelStreamKey | null = null;
@@ -387,8 +387,14 @@ function _normName(s: string | null | undefined): string {
 }
 
 function _featMatchesKey(p: ClickableStreamProps, key: SelStreamKey): boolean {
-  if (key.name) return _normName(p.gnis_name) === key.name;
-  return p.levelpathid === key.lpid;
+  // Identity is the NHDPlus level path: reaches sharing a levelpathid are the
+  // same river's main stem. Match on lpid so distinct creeks that merely share
+  // a GNIS name -- e.g. the several unrelated "Rattling Run"s in PA -- don't all
+  // light up at once. Name is only a fallback for reaches with no levelpathid.
+  if (key.lpids.size) {
+    return p.levelpathid != null && key.lpids.has(p.levelpathid);
+  }
+  return key.name != null && _normName(p.gnis_name) === key.name;
 }
 
 function _applyHighlight(key: SelStreamKey): void {
@@ -411,14 +417,18 @@ function _applyHighlight(key: SelStreamKey): void {
 export function highlightStream(
   p: ClickableStreamProps,
   verdict: ConditionKey | null = null,
+  lpids?: (number | null | undefined)[],
 ): void {
   clearStreamHighlight();
   _selVerdict = verdict;
   const name = _normName(p && p.gnis_name);
-  _selStreamKey = {
-    name: name || null,
-    lpid: p && p.levelpathid != null ? p.levelpathid : null,
-  };
+  // A selected river passes its full levelpathids set (it may span more than
+  // one path across confluences / multiple gauges); a plain reach click falls
+  // back to just the clicked reach's levelpathid.
+  const ids = (lpids && lpids.length ? lpids : [p && p.levelpathid]).filter(
+    (v): v is number => typeof v === "number",
+  );
+  _selStreamKey = { name: name || null, lpids: new Set(ids) };
   _applyHighlight(_selStreamKey);
 }
 

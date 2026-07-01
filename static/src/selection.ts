@@ -67,6 +67,9 @@ export function selectRiver(river: River, streamProps?: ClickableStreamProps): v
     // (the same palette as the discs); streams.ts falls back to red
     // when this is null.
     river.conditions ? river.conditions.overall : null,
+    // Highlight identity is the level path, not the name -- pass the river's
+    // whole set (a reach click without a River passes just its own lpid).
+    streamProps ? undefined : river.levelpathids,
   );
   // Re-clicking a shown gauge disc re-selects the same River object;
   // skip the disc rebuild so the element under the cursor (and its
