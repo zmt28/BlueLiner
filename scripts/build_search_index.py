@@ -161,11 +161,20 @@ def fetch_gazetteer(kind: str) -> list[list]:
         if r is None:
             raise RuntimeError(f"no gazetteer vintage found for {kind}")
     zf = zipfile.ZipFile(io.BytesIO(r.content))
-    name = next(n for n in zf.namelist() if n.endswith(".txt"))
+    txts = [n for n in zf.namelist() if n.lower().endswith(".txt")]
+    if not txts:
+        raise RuntimeError(
+            f"no .txt member in {kind} gazetteer zip: {zf.namelist()}")
+    # Largest .txt = the data file (zips can also carry a small readme,
+    # which a naive first-match silently picked before).
+    name = max(txts, key=lambda n: zf.getinfo(n).file_size)
+    print(f"[{kind}] members {zf.namelist()} -> using {name}", flush=True)
     # utf-8-sig: the gazetteer files carry a UTF-8 BOM, which would
     # otherwise prefix the first header cell ("﻿USPS" != "USPS")
     # and silently zero the parse.
     tsv = zf.read(name).decode("utf-8-sig", errors="replace")
+    head = tsv.splitlines()[0] if tsv else ""
+    print(f"[{kind}] header: {head[:160]!r}", flush=True)
     rows = parse_gazetteer(tsv, "county" if kind == "counties" else "place")
     print(f"[{kind}] {len(rows):,} rows", flush=True)
     return rows
