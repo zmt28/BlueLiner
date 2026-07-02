@@ -1165,6 +1165,14 @@ html, body {
 .modal-actions button.danger { background: var(--bl-cond-poor-500); color: #fff; }
 .modal-actions button.danger:hover { background: var(--bl-cond-poor-700); }
 
+/* Locate button: pulse while a geolocation fix is being acquired (the
+   static blue alone read as "nothing happening" for up to 10s). */
+.locate-btn.is-active { animation: bl-locate-pulse 1s ease-in-out infinite; }
+@keyframes bl-locate-pulse {
+    0%, 100% { opacity: 1; }
+    50%      { opacity: 0.55; }
+}
+
 /* Toasts (toast.ts): bottom-centered stack above everything else. */
 .bl-toasts {
     position: fixed;

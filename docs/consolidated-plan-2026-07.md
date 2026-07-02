@@ -85,28 +85,29 @@ fill-in work. Items marked **[bug]** are behavior defects, not just polish.
 
 - [x] **M2.d1** Catch save: show "Catch saved ✓" toast before closing the modal — today it just
       vanishes (`catches.ts:215`).
-- [ ] **M2.d2** **[bug]** Magic-link login advances to "Check your inbox" even when the send
+- [x] **M2.d2** **[bug]** Magic-link login advances to "Check your inbox" even when the send
       failed (empty catch, `auth.ts:177-191`; no error element in the modal). Advance only on
       `r.ok`; add inline error.
 - [x] **M2.d3** Replace native `confirm()` in catch delete (`catches.ts:297`) and account delete
       (`auth.ts:314`) with M2.a2.
-- [ ] **M2.d4** Geolocation: pulse/spinner on `.locate-btn.is-active` while acquiring; toast on
+- [x] **M2.d4** Geolocation: pulse/spinner on `.locate-btn.is-active` while acquiring; toast on
       error/permission-denied; disabled state when unsupported (`controls.ts:329-346`).
-- [ ] **M2.d5** Elevation "Gradient" tab: render "Loading gradient…" placeholder before the fetch
+- [x] **M2.d5** Elevation "Gradient" tab: render "Loading gradient…" placeholder before the fetch
       (blank gap then pop today, `elevation-profile.ts:202-241`) — match the flow chart's pattern.
 
 ### M2.e Layers, basemap, map affordances (audit P2)
 
-- [ ] **M2.e1** Layer toggles: `.catch` on the icon/tile mount path — on failure, uncheck +
-      toast (today: checkbox stays checked with nothing shown, `map-layers.ts:163`). Optional
-      fade-in on first tile load.
+- [x] **M2.e1** Layer toggles: `.catch` on the icon/tile mount path — on failure, uncheck +
+      toast (today: checkbox stays checked with nothing shown, `map-layers.ts:163`). *(Done as:
+      mount failure flags the module; enabling any point layer afterward toasts once.)*
 - [ ] **M2.e2** Basemap switch flashes empty (vector switch shows *no base* for a full style
       round-trip): add the new base before removing the old; drop the old on the new source's
       first `idle`/`sourcedata` (`map-setup.ts:227-228`).
-- [ ] **M2.e3** Public-lands + trails layers: add pointer cursor on hover and `bl:poi-open`
+- [x] **M2.e3** Public-lands + trails layers: add pointer cursor on hover and `bl:poi-open`
       dispatch on click, matching every other POI layer (`map-layers.ts:481,556`).
-- [ ] **M2.e4** Condition-filter empty result: when the overlay index is empty, show a small
-      "No rivers match" chip instead of a silently dimmed map (`streams.ts:249-256`).
+- [x] **M2.e4** Condition-filter empty result: when the overlay index is empty, show a small
+      "No rivers match" chip instead of a silently dimmed map (`streams.ts:249-256`). *(Done as:
+      the filter chip appends "— no rivers match" when the result set is empty.)*
 
 ### M2.f Search quick fixes (audit P3 — distinct from M4's real-search project)
 

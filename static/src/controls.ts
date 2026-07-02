@@ -58,8 +58,10 @@ import {
 import {
   loadRivers,
   renderRivers,
+  riverPasses,
 } from "./rivers";
 import { setPinsVisible } from "./pins";
+import { showToast } from "./toast";
 import { getStates, setCurrentSt, STATE_ZOOM } from "./state";
 import { centerLngLat } from "./coords";
 import { refreshIcons } from "./util";
@@ -91,8 +93,13 @@ const COND_CHIP_VARIANT: Record<ConditionKey, string> = {
 };
 
 /** Reflect the active filters on the floating map chip. `extras` are
- *  the non-Condition filter descriptions (stocked / hatch). */
-function updateCondChip(cond: ConditionKey | null, extras: string[] = []): void {
+ *  the non-Condition filter descriptions (stocked / hatch); `noMatches`
+ *  flags an empty result set (otherwise the only signal is a dim map). */
+function updateCondChip(
+  cond: ConditionKey | null,
+  extras: string[] = [],
+  noMatches = false,
+): void {
   const chip = document.getElementById("cond-chip");
   if (!chip) return;
   const parts = [
@@ -104,7 +111,9 @@ function updateCondChip(cond: ConditionKey | null, extras: string[] = []): void 
     return;
   }
   const label = document.getElementById("cond-chip-label");
-  if (label) label.textContent = `Showing: ${parts.join(" + ")}`;
+  if (label)
+    label.textContent =
+      `Showing: ${parts.join(" + ")}` + (noMatches ? " — no rivers match" : "");
   const dot = document.getElementById("cond-chip-dot") as HTMLElement | null;
   if (dot) {
     // The colored dot describes the Condition verdict only; hide it for
@@ -128,7 +137,10 @@ function onFilterChange(): void {
   if (hatch === "active") extras.push("active hatches");
   else if (hatch !== "any")
     extras.push(`${hatchSel.selectedOptions[0]?.textContent || hatch} hatch`);
-  updateCondChip(cond, extras);
+  const filtering = !!cond || stocked || hatch !== "any";
+  const noMatches =
+    filtering && !((window.allRivers as River[]) || []).some(riverPasses);
+  updateCondChip(cond, extras, noMatches);
   renderRivers();
 }
 
@@ -350,8 +362,11 @@ if (compassBtn) {
 const locateBtn = document.getElementById("locate-btn") as HTMLButtonElement | null;
 if (locateBtn) {
   locateBtn.addEventListener("click", () => {
-    if (!navigator.geolocation) return;
-    locateBtn.classList.add("is-active");
+    if (!navigator.geolocation) {
+      showToast("Location isn't available in this browser.", "error");
+      return;
+    }
+    locateBtn.classList.add("is-active"); // pulses while acquiring (CSS)
     navigator.geolocation.getCurrentPosition(
       (pos) => {
         locateBtn.classList.remove("is-active");
@@ -360,7 +375,15 @@ if (locateBtn) {
           zoom: 13,
         });
       },
-      () => locateBtn.classList.remove("is-active"),
+      (err) => {
+        locateBtn.classList.remove("is-active");
+        showToast(
+          err.code === 1 // PERMISSION_DENIED
+            ? "Location permission denied — enable it in your browser settings."
+            : "Couldn't get your location — try again.",
+          "error",
+        );
+      },
       { enableHighAccuracy: true, timeout: 10000 },
     );
   });

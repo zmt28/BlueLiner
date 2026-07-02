@@ -54,6 +54,8 @@ export function openModal(id: string): void {
     (document.getElementById("login-step-2") as HTMLElement).hidden = true;
     const inp = document.getElementById("login-email") as HTMLInputElement | null;
     if (inp) inp.value = "";
+    const err = document.getElementById("login-error");
+    if (err) err.hidden = true;
     setTimeout(() => inp && inp.focus(), 30);
   }
   if (id === "settings-modal") loadSettings();
@@ -173,19 +175,34 @@ function wireAuthHandlers(): void {
         .value.trim();
       if (!email) return;
       const btn = document.getElementById("login-submit") as HTMLButtonElement;
+      const errEl = document.getElementById("login-error") as HTMLElement | null;
       btn.disabled = true;
       btn.textContent = "Sending…";
+      let sent = false;
       try {
-        await fetch("/api/auth/request-link", {
+        const r = await fetch("/api/auth/request-link", {
           method: "POST",
           headers: { "content-type": "application/json" },
           body: JSON.stringify({ email }),
         });
+        sent = r.ok;
       } catch {
-        /* ignore */
+        sent = false;
       }
       btn.disabled = false;
       btn.textContent = "Send sign-in link";
+      // Only advance to "Check your inbox" when the link actually went
+      // out -- a failed send used to strand the user waiting on an email
+      // that was never sent.
+      if (!sent) {
+        if (errEl) {
+          errEl.textContent =
+            "Couldn't send the link — check your connection and try again.";
+          errEl.hidden = false;
+        }
+        return;
+      }
+      if (errEl) errEl.hidden = true;
       (document.getElementById("login-sent-to") as HTMLElement).textContent = email;
       (document.getElementById("login-step-1") as HTMLElement).hidden = true;
       (document.getElementById("login-step-2") as HTMLElement).hidden = false;

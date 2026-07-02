@@ -47,6 +47,7 @@ import { ensurePmtilesProtocol } from "./tiles";
 import { registerPoiIcons } from "./poi-map-icons";
 import { directionsLinkHtml } from "./directions";
 import { isPinPlacementActive } from "./pins";
+import { showToast } from "./toast";
 
 // Desired visibility (matches the HTML checkbox defaults; controls.ts
 // overrides from saved prefs before the map `load` fires).
@@ -152,6 +153,18 @@ interface PointTileOpts {
 // low-zoom view (what the old marker zoom-gates approximated).
 const POI_MIN_ZOOM = 7;
 
+// Set when the async icon mount fails: the point layers never made it onto
+// the map, so a later toggle-on would silently show nothing. The visibility
+// setters check this and tell the user instead (once).
+let _poiMountFailed = false;
+let _poiFailToastShown = false;
+
+function warnIfPoiMountFailed(enabling: boolean): void {
+  if (!enabling || !_poiMountFailed || _poiFailToastShown) return;
+  _poiFailToastShown = true;
+  showToast("Point overlays couldn't load — reload the page to retry.", "error");
+}
+
 function addPointTileLayer(o: PointTileOpts): void {
   ensurePmtilesProtocol();
   const src = `${o.key}-src`;
@@ -161,7 +174,7 @@ function addPointTileLayer(o: PointTileOpts): void {
   }
   // Icons rasterize asynchronously; add the symbol layer only once they're
   // registered so the first paint has glyphs (a missing icon renders nothing).
-  void registerPoiIcons().then(() => {
+  registerPoiIcons().then(() => {
     if (map.getLayer(lyr)) return;
     map.addLayer({
       id: lyr,
@@ -203,6 +216,9 @@ function addPointTileLayer(o: PointTileOpts): void {
       if (isPinPlacementActive()) return;
       map.getCanvas().style.cursor = "";
     });
+  }).catch((err) => {
+    _poiMountFailed = true;
+    console.warn(`${o.key} point layer failed to mount:`, err);
   });
 }
 
@@ -226,6 +242,7 @@ export function anyAccessVisible(): boolean {
 
 /** Wired to each per-type lyr-access-<type> checkbox. */
 export function setAccessTypeVisible(type: string, on: boolean): void {
+  warnIfPoiMountFailed(on);
   _accessTypeVisible[_accessBucket(type)] = on;
   _applyAccessVisibility();
 }
@@ -285,6 +302,7 @@ function _applyStockedVisibility(): void {
 
 /** Wired to the lyr-stocked checkbox (the wireLayerToggle setter). */
 export function setStockedVisible(on: boolean): void {
+  warnIfPoiMountFailed(on);
   _stockedToggle = on;
   _applyStockedVisibility();
 }
@@ -378,6 +396,7 @@ function _applyDamsVisibility(): void {
 }
 
 export function setDamsVisible(on: boolean): void {
+  warnIfPoiMountFailed(on);
   _damsVisible = on;
   _applyDamsVisibility();
 }
@@ -486,6 +505,8 @@ onMapReady(() => {
     if (isPinPlacementActive()) return; // the click is placing a pin
     const f = e.features && e.features[0];
     if (!f) return;
+    // A POI click -> close the rail panel (matches the point layers).
+    document.dispatchEvent(new Event("bl:poi-open"));
     popup
       .setLngLat(e.lngLat)
       .setHTML(
@@ -495,6 +516,14 @@ onMapReady(() => {
         ]),
       )
       .addTo(map);
+  });
+  map.on("mouseenter", "public-lands-fill", () => {
+    if (isPinPlacementActive()) return; // keep the crosshair
+    map.getCanvas().style.cursor = "pointer";
+  });
+  map.on("mouseleave", "public-lands-fill", () => {
+    if (isPinPlacementActive()) return;
+    map.getCanvas().style.cursor = "";
   });
 });
 
@@ -562,6 +591,8 @@ onMapReady(() => {
     if (isPinPlacementActive()) return; // the click is placing a pin
     const f = e.features && e.features[0];
     if (!f) return;
+    // A POI click -> close the rail panel (matches the point layers).
+    document.dispatchEvent(new Event("bl:poi-open"));
     popup
       .setLngLat(e.lngLat)
       .setHTML(
@@ -571,6 +602,14 @@ onMapReady(() => {
         ]),
       )
       .addTo(map);
+  });
+  map.on("mouseenter", "trails-line", () => {
+    if (isPinPlacementActive()) return; // keep the crosshair
+    map.getCanvas().style.cursor = "pointer";
+  });
+  map.on("mouseleave", "trails-line", () => {
+    if (isPinPlacementActive()) return;
+    map.getCanvas().style.cursor = "";
   });
 });
 
