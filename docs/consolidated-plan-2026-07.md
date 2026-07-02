@@ -215,8 +215,11 @@ mode click-suppression, confirmed writes, input preservation) across every remai
       client-side; free geocoder fallback. (M2.f's keyboard/highlight work carries over.)
 - [ ] **M4.3** Perceived-speed pass: optimistic pin/catch writes (pairs with M2.b4/M2.d1 error
       handling), skeletons on panel loads.
-- [ ] **M4.4** Scoring depth: trend arrows ("rising fast") + simple fishable-window signal from
-      data already in the snapshot pipeline.
+- [x] **M4.4a** Scoring depth: trend arrows ("rising fast"). *(Done: each precompute pass diffs
+      per-gauge flow against the prior snapshot (zero extra USGS load), classifies %/hour into
+      rising fast/rising/steady/falling/dropping fast, persists it in the gauge conditions, and
+      renders an arrow chip in the popup's Flow context block.)*
+- [ ] **M4.4b** Fishable-window signal (project the trend + temp band forward a day).
 
 ---
 
