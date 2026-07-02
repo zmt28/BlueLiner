@@ -41,7 +41,29 @@ def test_to_feature_collection_skips_bad_coords():
 
 
 def test_layer_registry_and_defaults():
-    assert set(bog.LAYERS) == {"dams", "stocking"}
+    assert set(bog.LAYERS) == {"dams", "stocking", "flyshops"}
     assert bog.DEFAULT_OUT["dams"].endswith("data/dams/dams.geojson.gz")
     assert bog.DEFAULT_OUT["stocking"].endswith(
         "data/stocking/stocking.geojson.gz")
+    assert bog.DEFAULT_OUT["flyshops"].endswith(
+        "data/fly_shops/fly_shops.geojson.gz")
+
+
+def test_flyshop_elements_to_points():
+    pts = bog._flyshop_elements_to_points([
+        {"type": "node", "id": 1, "lat": 39.5, "lon": -76.6,
+         "tags": {"name": "Great Feathers", "website": "https://gf.example",
+                  "addr:housenumber": "14824", "addr:street": "York Rd",
+                  "addr:city": "Sparks"}},
+        # way/relation: coords resolve via `center`
+        {"type": "way", "id": 2, "center": {"lat": 40.1, "lon": -75.2},
+         "tags": {"shop": "fishing", "contact:phone": "555-1234"}},
+        {"type": "node", "id": 1, "lat": 39.5, "lon": -76.6,
+         "tags": {"name": "dupe id — dropped"}},
+        {"type": "node", "id": 3, "tags": {"name": "no coords — dropped"}},
+    ])
+    assert [p["name"] for p in pts] == ["Great Feathers", "Fishing shop"]
+    assert pts[0]["addr"] == "14824 York Rd, Sparks"
+    assert pts[0]["website"] == "https://gf.example"
+    assert pts[1]["phone"] == "555-1234"
+    assert pts[1]["lat"] == 40.1 and pts[1]["lon"] == -75.2
