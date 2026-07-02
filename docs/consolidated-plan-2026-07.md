@@ -229,7 +229,11 @@ mode click-suppression, confirmed writes, input preservation) across every remai
       per-gauge flow against the prior snapshot (zero extra USGS load), classifies %/hour into
       rising fast/rising/steady/falling/dropping fast, persists it in the gauge conditions, and
       renders an arrow chip in the popup's Flow context block.)*
-- [ ] **M4.4b** Fishable-window signal (project the trend + temp band forward a day).
+- [x] **M4.4b** Fishable-window signal (project the trend + temp band forward a day). *(Done as
+      flow-based v1: open/closing on good flow; blown-out-but-dropping projects re-entry to the
+      2x-median band from the current decay rate ("window later today / tomorrow / in a couple
+      of days"); silent when ambiguous. Temp projection deliberately left out — no temp trend is
+      persisted yet.)*
 
 ---
 
