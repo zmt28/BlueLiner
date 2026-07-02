@@ -18,10 +18,13 @@ import {
   registerGaugeRenderer,
   refreshSelectedRiver,
 } from "./selection";
-import { getCurrentSt } from "./state";
+import { getCurrentSt, getStates } from "./state";
 import { esc } from "./util";
 import { createMarkerTooltip } from "./popups";
-import { refreshConditionOverlay } from "./streams";
+import {
+  refreshConditionOverlay,
+  registerRiverFilterPredicate,
+} from "./streams";
 
 // -- State catalog ----------------------------------------------------
 
@@ -204,12 +207,48 @@ function scheduleLazyRetry(state: string): void {
   }, 20000);
 }
 
+// -- State-load feedback chip -----------------------------------------
+// Switching states used to be silent: the map jumped, then rivers popped
+// in whenever the fetch returned — and a not-yet-precomputed state showed
+// an empty map with a hidden 20s retry. The chip narrates both.
+
+let _stateChip: HTMLElement | null = null;
+
+function setStateChip(text: string | null): void {
+  if (text === null) {
+    _stateChip?.remove();
+    _stateChip = null;
+    return;
+  }
+  if (!_stateChip) {
+    _stateChip = document.createElement("div");
+    _stateChip.className = "bl-state-chip";
+    document.body.appendChild(_stateChip);
+  }
+  _stateChip.textContent = text;
+}
+
+function stateName(code: string): string {
+  return getStates()[code]?.name || code;
+}
+
 export async function loadRivers(state: string): Promise<void> {
-  const data = await fetch(`/api/rivers?state=${state}`).then((r) => r.json());
+  const name = stateName(state);
+  setStateChip(`Loading ${name}…`);
+  let data: { rivers?: River[] } | null = null;
+  try {
+    data = (await fetch(`/api/rivers?state=${state}`).then((r) => r.json())) as {
+      rivers?: River[];
+    };
+  } catch {
+    data = null; // network failure -> same retry path as "not computed yet"
+  }
+  if (getCurrentSt() !== state) return; // user switched again mid-flight
   stateRivers = ((data && data.rivers) || []) as River[];
   window.stateRivers = stateRivers;
   _viewportCache.clear();
   if (map.getZoom() >= VIEWPORT_MIN_ZOOM) {
+    setStateChip(null); // viewport mode narrates via its own fetch below
     loadViewportRivers();
   } else {
     viewportMode = false;
@@ -217,7 +256,14 @@ export async function loadRivers(state: string): Promise<void> {
     window.allRivers = allRivers;
     populateHatchOptions();
     renderRivers();
-    if (!stateRivers.length) scheduleLazyRetry(state); // not computed yet
+    if (!stateRivers.length) {
+      // Lazy state: the server assembles it on first visit. Say so
+      // instead of showing a silently empty map.
+      setStateChip(`Preparing ${name} — first visit can take a minute…`);
+      scheduleLazyRetry(state);
+    } else {
+      setStateChip(null);
+    }
   }
 }
 
@@ -227,6 +273,11 @@ export async function loadRivers(state: string): Promise<void> {
 // would be a cycle).
 
 registerGaugeRenderer({ show: showGaugesFor, hide: hideSelectedGauges });
+
+// Hand the Filters-pane predicate to the overlay index builder in
+// streams.ts (registration, not an import there: streams.ts is imported
+// by this module, so the reverse import would be a cycle).
+registerRiverFilterPredicate(riverPasses);
 
 // -- Window bridge ----------------------------------------------------
 

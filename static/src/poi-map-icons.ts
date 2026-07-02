@@ -29,6 +29,7 @@ const POI_ICON_TYPES = [
   "parking",
   "stocked",
   "dam",
+  "fly_shop",
 ] as const;
 
 function markerSvg(type: string): string {

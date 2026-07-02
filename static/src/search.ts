@@ -17,7 +17,8 @@
 
 import { map } from "./map-setup";
 import { selectRiver } from "./selection";
-import { activeConditionFilter } from "./streams";
+import { activeConditionFilter, filterOverlayActive } from "./streams";
+import { riverPasses } from "./rivers";
 import { riverLngLat } from "./coords";
 import { refreshIcons, esc } from "./util";
 
@@ -46,15 +47,15 @@ if (wrap && iconBtn && pill && input && results) {
     return (window.allRivers as River[] | undefined) || [];
   }
 
-  /** The searchable pool: the live catalog, scoped by the Condition
-   *  filter (the conditions overlay, streams.ts) when one is active --
-   *  the map fades non-matching rivers, so surfacing them here would
-   *  contradict the overlay. */
+  /** The searchable pool: the live catalog, scoped by the Filters pane
+   *  (the filter overlay, streams.ts) when any control is active -- the
+   *  map fades non-matching rivers, so surfacing them here would
+   *  contradict the overlay. riverPasses covers condition + stocked +
+   *  hatch in one predicate. */
   function pool(): River[] {
-    const cond = activeConditionFilter();
     const all = rivers();
-    if (!cond) return all;
-    return all.filter((r) => (r.conditions?.overall || "gray") === cond);
+    if (!filterOverlayActive()) return all;
+    return all.filter(riverPasses);
   }
 
   /** Collapse to the round icon button (mobile only, empty query). */
@@ -76,6 +77,61 @@ if (wrap && iconBtn && pill && input && results) {
     return v === "none" ? "No data" : v;
   }
 
+  // -- Recents (M2.f3) -- real recently-selected rivers, localStorage.
+  // The empty-query list used to show the first 5 catalog rivers under a
+  // clock icon, which read as recents but wasn't.
+  const RECENTS_KEY = "bl_recent_rivers";
+
+  function loadRecents(): { site_no: string | null; name: string }[] {
+    try {
+      return JSON.parse(localStorage.getItem(RECENTS_KEY) || "[]") as {
+        site_no: string | null;
+        name: string;
+      }[];
+    } catch {
+      return [];
+    }
+  }
+
+  function pushRecent(r: River): void {
+    try {
+      const cur = loadRecents().filter((x) => x.name !== r.name);
+      cur.unshift({ site_no: r.site_no || null, name: r.name });
+      localStorage.setItem(RECENTS_KEY, JSON.stringify(cur.slice(0, 6)));
+    } catch {
+      /* localStorage unavailable */
+    }
+  }
+
+  /** Escape + wrap the matched substring in <mark> (M2.f2). */
+  function hlName(name: string, q: string): string {
+    if (!q) return esc(name);
+    const i = name.toLowerCase().indexOf(q);
+    if (i < 0) return esc(name);
+    return (
+      esc(name.slice(0, i)) +
+      "<mark>" +
+      esc(name.slice(i, i + q.length)) +
+      "</mark>" +
+      esc(name.slice(i + q.length))
+    );
+  }
+
+  // -- Keyboard navigation (M2.f1) --------------------------------------
+  let activeIdx = -1;
+
+  function resultButtons(): HTMLButtonElement[] {
+    return [...results!.querySelectorAll<HTMLButtonElement>(".search-result")];
+  }
+
+  function setActive(idx: number): void {
+    const items = resultButtons();
+    if (!items.length) return;
+    activeIdx = ((idx % items.length) + items.length) % items.length;
+    items.forEach((el, i) => el.classList.toggle("is-active", i === activeIdx));
+    items[activeIdx].scrollIntoView({ block: "nearest" });
+  }
+
   function renderResults(): void {
     const q = input!.value.trim().toLowerCase();
     const all = rivers();
@@ -86,15 +142,27 @@ if (wrap && iconBtn && pill && input && results) {
     }
     let html = "";
     if (!q) {
-      const recent = scoped.slice(0, 5);
-      if (recent.length) {
+      // Real recents when we have them (matched into the current pool);
+      // otherwise a plain "Rivers" sampler -- no clock icon pretending.
+      const rec = loadRecents()
+        .map((x) =>
+          scoped.find(
+            (r) => (x.site_no && r.site_no === x.site_no) || r.name === x.name,
+          ),
+        )
+        .filter((r): r is River => !!r)
+        .slice(0, 5);
+      const list = rec.length ? rec : scoped.slice(0, 5);
+      const groupLabel = rec.length ? "Recent" : "Rivers";
+      const icon = rec.length ? "clock" : "waves";
+      if (list.length) {
         html =
-          '<div class="search-results-group"><div class="search-results-label">Rivers</div>' +
-          recent
+          `<div class="search-results-group"><div class="search-results-label">${groupLabel}</div>` +
+          list
             .map(
               (r) =>
                 `<button type="button" class="search-result" data-i="${all.indexOf(r)}">` +
-                `<span class="search-result-icon"><i data-lucide="clock"></i></span>` +
+                `<span class="search-result-icon"><i data-lucide="${icon}"></i></span>` +
                 `<span class="search-result-text"><span class="search-result-name">${esc(r.name)}</span>` +
                 `<span class="search-result-meta">${esc(r.label || "")}</span></span></button>`,
             )
@@ -107,7 +175,11 @@ if (wrap && iconBtn && pill && input && results) {
         .slice(0, 12);
       if (!matches.length) {
         const cond = activeConditionFilter();
-        const scope = cond ? ` with ${condLabel(cond)} conditions` : "";
+        const scope = cond
+          ? ` with ${condLabel(cond)} conditions`
+          : filterOverlayActive()
+            ? " matching the current filters"
+            : "";
         html = `<div class="search-empty">No matches for "${esc(input!.value.trim())}"${esc(scope)}</div>`;
       } else {
         html =
@@ -119,7 +191,7 @@ if (wrap && iconBtn && pill && input && results) {
               return (
                 `<button type="button" class="search-result" data-i="${idx}">` +
                 `<span class="search-result-icon"><i data-lucide="waves"></i></span>` +
-                `<span class="search-result-text"><span class="search-result-name">${esc(r.name)}</span>` +
+                `<span class="search-result-text"><span class="search-result-name">${hlName(r.name, q)}</span>` +
                 `<span class="search-result-meta">${esc(r.label || "")}</span></span>` +
                 `<span class="search-result-cond is-${cond}">${condLabel(r.conditions?.overall || "gray")}</span>` +
                 `</button>`
@@ -135,6 +207,7 @@ if (wrap && iconBtn && pill && input && results) {
     }
     results!.innerHTML = html;
     results!.hidden = false;
+    activeIdx = -1; // fresh list -> no keyboard selection yet
     refreshIcons();
     results!.querySelectorAll<HTMLButtonElement>(".search-result").forEach((b) =>
       b.addEventListener("click", () => {
@@ -146,6 +219,7 @@ if (wrap && iconBtn && pill && input && results) {
   }
 
   function selectResult(r: River): void {
+    pushRecent(r);
     map.flyTo({ center: riverLngLat(r), zoom: Math.max(map.getZoom(), 12) });
     // Central selection: opens the panel + highlights the reaches.
     selectRiver(r);
@@ -187,9 +261,17 @@ if (wrap && iconBtn && pill && input && results) {
       results!.hidden = true;
       input!.blur();
       applyCollapsedState();
+    } else if (e.key === "ArrowDown") {
+      e.preventDefault();
+      setActive(activeIdx + 1);
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      setActive(activeIdx - 1);
     } else if (e.key === "Enter") {
-      const first = results!.querySelector<HTMLButtonElement>(".search-result");
-      if (first) first.click();
+      const target =
+        results!.querySelector<HTMLButtonElement>(".search-result.is-active") ||
+        results!.querySelector<HTMLButtonElement>(".search-result");
+      if (target) target.click();
     }
   });
 

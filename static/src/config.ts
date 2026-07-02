@@ -67,6 +67,10 @@ export const STOCKING_TILES_URL: string = (_env.VITE_STOCKING_TILES_URL || "").t
 export const STOCKING_TILES_ENABLED: boolean = STOCKING_TILES_URL.length > 0;
 export const STOCKING_SOURCE_LAYER = "stocking";
 
+export const FLYSHOPS_TILES_URL: string = (_env.VITE_FLYSHOPS_TILES_URL || "").trim();
+export const FLYSHOPS_TILES_ENABLED: boolean = FLYSHOPS_TILES_URL.length > 0;
+export const FLYSHOPS_SOURCE_LAYER = "flyshops";
+
 // Self-hosted vector basemap (offline-ready basemap, Phase 0). Points at
 // `basemap.pmtiles` built + published by scripts/build_basemap_tiles.sh. The
 // companion style/glyphs/sprite live under the same versioned prefix, next to
@@ -75,8 +79,10 @@ export const STOCKING_SOURCE_LAYER = "stocking";
 //   <prefix>/basemap/style.json
 //   <prefix>/basemap/fonts/{fontstack}/{range}.pbf
 //   <prefix>/basemap/sprites/v4/<theme>.{png,json}
-// Unset (today) => no vector base is offered; the raster bases are unaffected.
-// Phase 1 wires this into map-setup.ts as a 4th base option.
+// SET IN PRODUCTION since 2026-06-08 (Render dashboard build env, not
+// render.yaml): https://data.blueliner.app/v5/basemap.pmtiles — the vector
+// base + offline downloads are LIVE. Unset (dev/CI default) => no vector
+// base is offered; the raster bases are unaffected.
 export const BASEMAP_TILES_URL: string = (_env.VITE_BASEMAP_TILES_URL || "").trim();
 export const BASEMAP_TILES_ENABLED: boolean = BASEMAP_TILES_URL.length > 0;
 /** Style.json sibling of the basemap archive (same versioned prefix). */

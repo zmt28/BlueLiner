@@ -222,6 +222,9 @@ export async function autoLoadElevation(
     drop();
     return;
   }
+  // Placeholder while the profile loads -- the box used to sit empty for
+  // the whole round-trip, then pop (or silently vanish via drop()).
+  box.innerHTML = '<div class="bl-trend-msg">Loading gradient&hellip;</div>';
   let data: ElevationProfile | null = null;
   let ok = false;
   try {

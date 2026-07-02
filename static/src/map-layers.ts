@@ -23,7 +23,7 @@
  */
 
 import { LayerSpecification, FilterSpecification } from "maplibre-gl";
-import { map, onMapReady } from "./map-setup";
+import { map, onMapReady, lineOverlayAnchor } from "./map-setup";
 import { esc } from "./util";
 import { makePopup } from "./popups";
 import {
@@ -39,6 +39,9 @@ import {
   DAMS_TILES_ENABLED,
   DAMS_TILES_URL,
   DAMS_SOURCE_LAYER,
+  FLYSHOPS_TILES_ENABLED,
+  FLYSHOPS_TILES_URL,
+  FLYSHOPS_SOURCE_LAYER,
   STOCKING_TILES_ENABLED,
   STOCKING_TILES_URL,
   STOCKING_SOURCE_LAYER,
@@ -46,6 +49,8 @@ import {
 import { ensurePmtilesProtocol } from "./tiles";
 import { registerPoiIcons } from "./poi-map-icons";
 import { directionsLinkHtml } from "./directions";
+import { mapClicksClaimed } from "./map-mode";
+import { showToast } from "./toast";
 
 // Desired visibility (matches the HTML checkbox defaults; controls.ts
 // overrides from saved prefs before the map `load` fires).
@@ -157,6 +162,18 @@ interface PointTileOpts {
 // low-zoom view (what the old marker zoom-gates approximated).
 const POI_MIN_ZOOM = 7;
 
+// Set when the async icon mount fails: the point layers never made it onto
+// the map, so a later toggle-on would silently show nothing. The visibility
+// setters check this and tell the user instead (once).
+let _poiMountFailed = false;
+let _poiFailToastShown = false;
+
+function warnIfPoiMountFailed(enabling: boolean): void {
+  if (!enabling || !_poiMountFailed || _poiFailToastShown) return;
+  _poiFailToastShown = true;
+  showToast("Point overlays couldn't load — reload the page to retry.", "error");
+}
+
 function addPointTileLayer(o: PointTileOpts): void {
   ensurePmtilesProtocol();
   const src = `${o.key}-src`;
@@ -166,7 +183,10 @@ function addPointTileLayer(o: PointTileOpts): void {
   }
   // Icons rasterize asynchronously; add the symbol layer only once they're
   // registered so the first paint has glyphs (a missing icon renders nothing).
-  void registerPoiIcons().then(() => {
+  // Z-order contract (M1.4): symbol layers append with no beforeId — above
+  // the bl-anchor-symbols anchor, and therefore above every line overlay,
+  // regardless of when this promise resolves.
+  registerPoiIcons().then(() => {
     if (map.getLayer(lyr)) return;
     map.addLayer({
       id: lyr,
@@ -179,12 +199,15 @@ function addPointTileLayer(o: PointTileOpts): void {
         visibility: vis(o.visible),
         "icon-image": o.iconImage,
         "icon-size": ["interpolate", ["linear"], ["zoom"], 8, 0.75, 13, 1],
-        "icon-allow-overlap": true,
-        "icon-ignore-placement": true,
+        // M3.4: let the collision engine thin dense clusters (~92k dams
+        // at mid-zoom were pure clutter with overlap forced on). Zoom in
+        // and everything places; every feature stays clickable.
+        "icon-padding": 2,
       },
     } as LayerSpecification);
     const popup = makePopup();
     map.on("click", lyr, (e) => {
+      if (mapClicksClaimed()) return; // a placement/framing mode owns clicks
       const f = e.features && e.features[0];
       if (!f) return;
       // Selecting a POI click -> close the rail panel.
@@ -200,11 +223,16 @@ function addPointTileLayer(o: PointTileOpts): void {
         .addTo(map);
     });
     map.on("mouseenter", lyr, () => {
+      if (mapClicksClaimed()) return; // keep the mode cursor
       map.getCanvas().style.cursor = "pointer";
     });
     map.on("mouseleave", lyr, () => {
+      if (mapClicksClaimed()) return;
       map.getCanvas().style.cursor = "";
     });
+  }).catch((err) => {
+    _poiMountFailed = true;
+    console.warn(`${o.key} point layer failed to mount:`, err);
   });
 }
 
@@ -228,6 +256,7 @@ export function anyAccessVisible(): boolean {
 
 /** Wired to each per-type lyr-access-<type> checkbox. */
 export function setAccessTypeVisible(type: string, on: boolean): void {
+  warnIfPoiMountFailed(on);
   _accessTypeVisible[_accessBucket(type)] = on;
   _applyAccessVisibility();
 }
@@ -287,6 +316,7 @@ function _applyStockedVisibility(): void {
 
 /** Wired to the lyr-stocked checkbox (the wireLayerToggle setter). */
 export function setStockedVisible(on: boolean): void {
+  warnIfPoiMountFailed(on);
   _stockedToggle = on;
   _applyStockedVisibility();
 }
@@ -380,6 +410,7 @@ function _applyDamsVisibility(): void {
 }
 
 export function setDamsVisible(on: boolean): void {
+  warnIfPoiMountFailed(on);
   _damsVisible = on;
   _applyDamsVisibility();
 }
@@ -393,6 +424,62 @@ onMapReady(() => {
     iconImage: "poi-dam",
     visible: _damsVisible,
     popupHtml: (p, ll) => damPopupHtml(p as DamFeatureProps, ll),
+  });
+});
+
+// -- Fly & tackle shops (OSM shop=fishing) --------------------------------
+// National static PMTiles built by scripts/build_overlay_geojson.py flyshops
+// (Overpass sweep) + build_poi_tiles.sh. OSM tagging doesn't reliably split
+// fly shops from bait & tackle, so the layer is honest about covering both.
+
+interface FlyShopProps {
+  name?: string;
+  website?: string;
+  phone?: string;
+  addr?: string;
+}
+
+let _flyshopsVisible = false;
+
+export function flyShopPopupHtml(
+  p: FlyShopProps,
+  lngLat?: [number, number],
+): string {
+  const meta = [p.addr ? esc(p.addr) : "", p.phone ? esc(p.phone) : ""]
+    .filter(Boolean)
+    .join(" &middot; ");
+  const link = p.website
+    ? `<div class="ap-link"><a href="${esc(p.website)}" target="_blank" ` +
+      `rel="noopener noreferrer">Website &rarr;</a></div>`
+    : "";
+  const dir = lngLat ? directionsLinkHtml(lngLat[1], lngLat[0], p.name) : "";
+  return (
+    `<div class="ap-popup">` +
+    `<div class="ap-name">${esc(p.name || "Fishing shop")}</div>` +
+    (meta ? `<div class="ap-meta">${meta}</div>` : "") +
+    link +
+    dir +
+    `</div>`
+  );
+}
+
+export function setFlyShopsVisible(on: boolean): void {
+  warnIfPoiMountFailed(on);
+  _flyshopsVisible = on;
+  if (map.getLayer("flyshops-pts")) {
+    map.setLayoutProperty("flyshops-pts", "visibility", vis(on));
+  }
+}
+
+onMapReady(() => {
+  if (!FLYSHOPS_TILES_ENABLED) return;
+  addPointTileLayer({
+    key: "flyshops",
+    url: FLYSHOPS_TILES_URL,
+    sourceLayer: FLYSHOPS_SOURCE_LAYER,
+    iconImage: "poi-fly_shop",
+    visible: _flyshopsVisible,
+    popupHtml: (p, ll) => flyShopPopupHtml(p as FlyShopProps, ll),
   });
 });
 
@@ -463,7 +550,7 @@ onMapReady(() => {
         0,
       ],
     },
-  } as LayerSpecification);
+  } as LayerSpecification, lineOverlayAnchor());
   map.addLayer({
     id: "public-lands-line",
     type: "line",
@@ -482,11 +569,14 @@ onMapReady(() => {
       "line-opacity": ["match", ["get", "public_access"], "OA", 1, "RA", 1, 0],
       "line-dasharray": ["match", ["get", "public_access"], "RA", ["literal", [4, 4]], ["literal", [1, 0]]],
     },
-  } as LayerSpecification);
+  } as LayerSpecification, lineOverlayAnchor());
   const popup = makePopup();
   map.on("click", "public-lands-fill", (e) => {
+    if (mapClicksClaimed()) return; // a placement/framing mode owns clicks
     const f = e.features && e.features[0];
     if (!f) return;
+    // A POI click -> close the rail panel (matches the point layers).
+    document.dispatchEvent(new Event("bl:poi-open"));
     popup
       .setLngLat(e.lngLat)
       .setHTML(
@@ -496,6 +586,14 @@ onMapReady(() => {
         ]),
       )
       .addTo(map);
+  });
+  map.on("mouseenter", "public-lands-fill", () => {
+    if (mapClicksClaimed()) return; // keep the mode cursor
+    map.getCanvas().style.cursor = "pointer";
+  });
+  map.on("mouseleave", "public-lands-fill", () => {
+    if (mapClicksClaimed()) return;
+    map.getCanvas().style.cursor = "";
   });
 });
 
@@ -557,11 +655,14 @@ onMapReady(() => {
       "line-opacity": 0.85,
       "line-dasharray": [2, 1.5],
     },
-  } as LayerSpecification);
+  } as LayerSpecification, lineOverlayAnchor());
   const popup = makePopup();
   map.on("click", "trails-line", (e) => {
+    if (mapClicksClaimed()) return; // a placement/framing mode owns clicks
     const f = e.features && e.features[0];
     if (!f) return;
+    // A POI click -> close the rail panel (matches the point layers).
+    document.dispatchEvent(new Event("bl:poi-open"));
     popup
       .setLngLat(e.lngLat)
       .setHTML(
@@ -571,6 +672,14 @@ onMapReady(() => {
         ]),
       )
       .addTo(map);
+  });
+  map.on("mouseenter", "trails-line", () => {
+    if (mapClicksClaimed()) return; // keep the mode cursor
+    map.getCanvas().style.cursor = "pointer";
+  });
+  map.on("mouseleave", "trails-line", () => {
+    if (mapClicksClaimed()) return;
+    map.getCanvas().style.cursor = "";
   });
 });
 

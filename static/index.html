@@ -25,12 +25,11 @@
          publishes window.L for the still-monolithic app.js. The old
          vendor <script> tag is gone (was loading Leaflet a second
          time when in head + body of index.html before B1d). -->
-    <!-- Lucide outline icons. Replaces the original emoji + unicode
-         glyphs (bug, fish, mailbox, arrow) used in popups and modals.
-         App calls window.lucide.createIcons() via a refreshIcons()
-         helper after any dynamic HTML injection so freshly-rendered
-         <i data-lucide="..."> nodes get hydrated to inline SVG. -->
-    <script src="https://unpkg.com/lucide@latest" defer></script>
+    <!-- Lucide outline icons are Vite-bundled (util.ts imports the exact
+         glyph set) — no CDN on the render path. refreshIcons() hydrates
+         <i data-lucide="..."> nodes to inline SVG after any dynamic HTML
+         injection. -->
+
     <!-- Agent demo panel (LOCAL ONLY). Ships in the static bundle but self-gates:
          on boot it GETs /api/agent/health and stays invisible unless the server
          reports {enabled:true}. The public deployment never mounts the agent
@@ -406,6 +405,12 @@
                             <input type="checkbox" id="lyr-usgs" checked>
                             <span class="filter-row-check"><i data-lucide="check" aria-hidden="true"></i></span>
                         </label>
+                        <label class="filter-row-toggle">
+                            <span class="filter-row-icon"><i data-lucide="mountain" aria-hidden="true"></i></span>
+                            <span class="filter-row-label">Terrain shading</span>
+                            <input type="checkbox" id="lyr-terrain" checked>
+                            <span class="filter-row-check"><i data-lucide="check" aria-hidden="true"></i></span>
+                        </label>
                     </section>
                     <section class="panel-section">
                         <div class="panel-section-label">Access &amp; facilities</div>
@@ -446,6 +451,12 @@
                             <span class="filter-row-icon" data-poi="dam"></span>
                             <span class="filter-row-label">Dams</span>
                             <input type="checkbox" id="lyr-dams">
+                            <span class="filter-row-check"><i data-lucide="check" aria-hidden="true"></i></span>
+                        </label>
+                        <label class="filter-row-toggle">
+                            <span class="filter-row-icon" data-poi="fly_shop"></span>
+                            <span class="filter-row-label">Fly &amp; tackle shops</span>
+                            <input type="checkbox" id="lyr-flyshops">
                             <span class="filter-row-check"><i data-lucide="check" aria-hidden="true"></i></span>
                         </label>
                     </section>
@@ -513,7 +524,7 @@
                     </section>
                     <section class="panel-section">
                         <div class="panel-section-label">Map data</div>
-                        <p class="panel-note">&copy; OpenStreetMap contributors &middot; CARTO &middot; USGS The National Map &middot; Esri (imagery). Stream &amp; trout data: NHDPlus + state agencies.</p>
+                        <p class="panel-note">&copy; OpenStreetMap contributors &middot; CARTO &middot; USGS The National Map &middot; Esri (imagery) &middot; Terrain: Mapzen / AWS Open Data. Stream &amp; trout data: NHDPlus + state agencies.</p>
                     </section>
                 </div>
 
@@ -621,6 +632,7 @@
                     <button id="login-submit" type="submit">
                         Send sign-in link</button>
                 </form>
+                <div id="login-error" class="cf-error" hidden></div>
                 <p class="modal-fine">No password needed. The link
                     expires in 15 minutes.</p>
             </div>
@@ -698,6 +710,11 @@
 
                 <div class="cf-enrich">
                     <div class="cf-enrich-title">Auto-captured</div>
+                    <div class="cf-loc-row">
+                        <span id="cf-loc-label" class="cf-loc-label"></span>
+                        <button id="cf-loc-adjust" type="button"
+                                class="cf-loc-adjust">Adjust on map</button>
+                    </div>
                     <div id="cf-enrich-body" class="cf-enrich-body"></div>
                     <div class="modal-fine">Saved automatically so you can spot
                         what conditions produce fish.</div>
@@ -748,6 +765,7 @@
     <div id="pin-form" class="pin-form" hidden>
         <div class="pin-form-title">New pin</div>
         <textarea id="pin-note" rows="3" maxlength="500" placeholder="Note (optional) -- e.g. parking, access, what was working"></textarea>
+        <div id="pin-error" class="pin-form-error" hidden></div>
         <div class="pin-form-actions">
             <button id="pin-save" type="button">Save pin</button>
             <button id="pin-cancel" type="button" class="secondary">Cancel</button>

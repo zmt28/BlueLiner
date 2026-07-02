@@ -29,6 +29,8 @@
 
 import { DEVICE_HEADER } from "./state";
 import { loadPins } from "./pins";
+import { confirmDialog } from "./confirm";
+import { showToast } from "./toast";
 
 // -- CURRENT_USER state --------------------------------------------
 // AuthMe-shaped value or null when signed out. Module-private; the
@@ -53,6 +55,8 @@ export function openModal(id: string): void {
     (document.getElementById("login-step-2") as HTMLElement).hidden = true;
     const inp = document.getElementById("login-email") as HTMLInputElement | null;
     if (inp) inp.value = "";
+    const err = document.getElementById("login-error");
+    if (err) err.hidden = true;
     setTimeout(() => inp && inp.focus(), 30);
   }
   if (id === "settings-modal") loadSettings();
@@ -129,12 +133,16 @@ async function onAccountAction(action: string | undefined): Promise<void> {
     return;
   }
   if (action === "logout") {
+    // Only reload once the server actually ended the session — reloading
+    // on a failed request left the server session live while the UI
+    // looked signed out.
     try {
-      await fetch("/api/auth/logout", { method: "POST" });
+      const r = await fetch("/api/auth/logout", { method: "POST" });
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      location.reload();
     } catch {
-      /* ignore */
+      showToast("Couldn't sign out — try again.", "error");
     }
-    location.reload();
   } else if (action === "settings") {
     openModal("settings-modal");
   } else if (action === "my-catches") {
@@ -172,19 +180,34 @@ function wireAuthHandlers(): void {
         .value.trim();
       if (!email) return;
       const btn = document.getElementById("login-submit") as HTMLButtonElement;
+      const errEl = document.getElementById("login-error") as HTMLElement | null;
       btn.disabled = true;
       btn.textContent = "Sending…";
+      let sent = false;
       try {
-        await fetch("/api/auth/request-link", {
+        const r = await fetch("/api/auth/request-link", {
           method: "POST",
           headers: { "content-type": "application/json" },
           body: JSON.stringify({ email }),
         });
+        sent = r.ok;
       } catch {
-        /* ignore */
+        sent = false;
       }
       btn.disabled = false;
       btn.textContent = "Send sign-in link";
+      // Only advance to "Check your inbox" when the link actually went
+      // out -- a failed send used to strand the user waiting on an email
+      // that was never sent.
+      if (!sent) {
+        if (errEl) {
+          errEl.textContent =
+            "Couldn't send the link — check your connection and try again.";
+          errEl.hidden = false;
+        }
+        return;
+      }
+      if (errEl) errEl.hidden = true;
       (document.getElementById("login-sent-to") as HTMLElement).textContent = email;
       (document.getElementById("login-step-1") as HTMLElement).hidden = true;
       (document.getElementById("login-step-2") as HTMLElement).hidden = false;
@@ -261,13 +284,27 @@ async function confirmClaim(): Promise<void> {
   const btn = document.getElementById("claim-confirm") as HTMLButtonElement;
   btn.disabled = true;
   btn.textContent = "Claiming…";
+  let ok = false;
   try {
-    await fetch("/api/pins/claim", { method: "POST", headers: DEVICE_HEADER });
-    localStorage.setItem("bl_claim_dismissed", "1");
+    const r = await fetch("/api/pins/claim", {
+      method: "POST",
+      headers: DEVICE_HEADER,
+    });
+    ok = r.ok;
   } catch {
-    /* ignore */
+    ok = false;
   }
+  btn.disabled = false;
+  btn.textContent = "Claim pins";
+  if (!ok) {
+    // Keep the modal open and DON'T set bl_claim_dismissed — a failed
+    // claim used to look identical to success and was never re-offered.
+    showToast("Couldn't claim your pins — try again.", "error");
+    return;
+  }
+  localStorage.setItem("bl_claim_dismissed", "1");
   closeModal("claim-modal");
+  showToast("Pins claimed", "success");
   loadPins();
 }
 
@@ -302,21 +339,25 @@ async function saveDisplayName(): Promise<void> {
       setTimeout(() => {
         t.style.opacity = "0";
       }, 1400);
+    } else {
+      showToast("Couldn't save your name — try again.", "error");
     }
   } catch {
-    /* ignore */
+    showToast("Couldn't save your name — check your connection.", "error");
   }
   btn.disabled = false;
 }
 
 async function deleteAccount(): Promise<void> {
-  if (
-    !confirm(
-      "Delete your account? Pins you've claimed will become anonymous " +
-        "again on this device. This cannot be undone.",
-    )
-  )
-    return;
+  const ok = await confirmDialog({
+    title: "Delete your account?",
+    message:
+      "Pins you've claimed will become anonymous again on this device. " +
+      "This cannot be undone.",
+    confirmLabel: "Delete account",
+    danger: true,
+  });
+  if (!ok) return;
   try {
     await fetch("/api/me", { method: "DELETE" });
   } catch {

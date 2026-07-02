@@ -25,7 +25,13 @@
  *   - rivers: loadRivers, renderRivers
  */
 
-import { map, currentBaseKey, setBaseMap, setHydroVisible } from "./map-setup";
+import {
+  map,
+  currentBaseKey,
+  setBaseMap,
+  setHydroVisible,
+  setTerrainVisible,
+} from "./map-setup";
 import {
   BASEMAP_TILES_ENABLED,
   BASEMAP_TILES_URL,
@@ -47,6 +53,7 @@ import {
   setPublicLandsVisible,
   setTrailsVisible,
   setDamsVisible,
+  setFlyShopsVisible,
 } from "./map-layers";
 import {
   loadClickableStreams,
@@ -58,8 +65,11 @@ import {
 import {
   loadRivers,
   renderRivers,
+  riverPasses,
 } from "./rivers";
 import { setPinsVisible } from "./pins";
+import { showToast } from "./toast";
+import { claimMapClicks, releaseMapClicks } from "./map-mode";
 import { getStates, setCurrentSt, STATE_ZOOM } from "./state";
 import { centerLngLat } from "./coords";
 import { refreshIcons } from "./util";
@@ -90,26 +100,55 @@ const COND_CHIP_VARIANT: Record<ConditionKey, string> = {
   gray: "none",
 };
 
-/** Reflect the active condition filter on the floating map chip. */
-function updateCondChip(cond: ConditionKey | null): void {
+/** Reflect the active filters on the floating map chip. `extras` are
+ *  the non-Condition filter descriptions (stocked / hatch); `noMatches`
+ *  flags an empty result set (otherwise the only signal is a dim map). */
+function updateCondChip(
+  cond: ConditionKey | null,
+  extras: string[] = [],
+  noMatches = false,
+): void {
   const chip = document.getElementById("cond-chip");
   if (!chip) return;
-  if (!cond) {
+  const parts = [
+    ...(cond ? [`${COND_CHIP_LABEL[cond]} conditions`] : []),
+    ...extras,
+  ];
+  if (!parts.length) {
     chip.hidden = true;
     return;
   }
   const label = document.getElementById("cond-chip-label");
-  if (label) label.textContent = `Showing: ${COND_CHIP_LABEL[cond]} conditions`;
-  const dot = document.getElementById("cond-chip-dot");
-  if (dot) dot.className = `cond-chip-dot is-${COND_CHIP_VARIANT[cond]}`;
+  if (label)
+    label.textContent =
+      `Showing: ${parts.join(" + ")}` + (noMatches ? " — no rivers match" : "");
+  const dot = document.getElementById("cond-chip-dot") as HTMLElement | null;
+  if (dot) {
+    // The colored dot describes the Condition verdict only; hide it for
+    // stocked/hatch-only filters.
+    dot.className = `cond-chip-dot is-${cond ? COND_CHIP_VARIANT[cond] : "none"}`;
+    dot.style.display = cond ? "" : "none";
+  }
   chip.hidden = false;
 }
 
 function onFilterChange(): void {
   const v = condSelect.value;
   const cond: ConditionKey | null = v === "any" ? null : (v as ConditionKey);
-  setConditionOverlay(cond);
-  updateCondChip(cond);
+  const stocked = (document.getElementById("stocked-only") as HTMLInputElement)
+    .checked;
+  const hatchSel = document.getElementById("hatch-select") as HTMLSelectElement;
+  const hatch = hatchSel.value;
+  setConditionOverlay(cond, stocked || hatch !== "any");
+  const extras: string[] = [];
+  if (stocked) extras.push("near stocked water");
+  if (hatch === "active") extras.push("active hatches");
+  else if (hatch !== "any")
+    extras.push(`${hatchSel.selectedOptions[0]?.textContent || hatch} hatch`);
+  const filtering = !!cond || stocked || hatch !== "any";
+  const noMatches =
+    filtering && !((window.allRivers as River[]) || []).some(riverPasses);
+  updateCondChip(cond, extras, noMatches);
   renderRivers();
 }
 
@@ -117,9 +156,11 @@ condSelect.onchange = onFilterChange;
 (document.getElementById("stocked-only") as HTMLInputElement).onchange = onFilterChange;
 (document.getElementById("hatch-select") as HTMLSelectElement).onchange = onFilterChange;
 
-// The chip's x resets the Condition filter back to Any.
+// The chip's x resets every Filters-pane control back to default.
 document.getElementById("cond-chip-clear")?.addEventListener("click", () => {
   condSelect.value = "any";
+  (document.getElementById("stocked-only") as HTMLInputElement).checked = false;
+  (document.getElementById("hatch-select") as HTMLSelectElement).value = "any";
   onFilterChange();
 });
 
@@ -329,8 +370,11 @@ if (compassBtn) {
 const locateBtn = document.getElementById("locate-btn") as HTMLButtonElement | null;
 if (locateBtn) {
   locateBtn.addEventListener("click", () => {
-    if (!navigator.geolocation) return;
-    locateBtn.classList.add("is-active");
+    if (!navigator.geolocation) {
+      showToast("Location isn't available in this browser.", "error");
+      return;
+    }
+    locateBtn.classList.add("is-active"); // pulses while acquiring (CSS)
     navigator.geolocation.getCurrentPosition(
       (pos) => {
         locateBtn.classList.remove("is-active");
@@ -339,7 +383,15 @@ if (locateBtn) {
           zoom: 13,
         });
       },
-      () => locateBtn.classList.remove("is-active"),
+      (err) => {
+        locateBtn.classList.remove("is-active");
+        showToast(
+          err.code === 1 // PERMISSION_DENIED
+            ? "Location permission denied — enable it in your browser settings."
+            : "Couldn't get your location — try again.",
+          "error",
+        );
+      },
       { enableHighAccuracy: true, timeout: 10000 },
     );
   });
@@ -486,6 +538,7 @@ function wireLayerToggle(
 
 wireLayerToggle("lyr-fishable", setStreamsVisible, loadClickableStreams);
 wireLayerToggle("lyr-usgs", setHydroVisible);
+wireLayerToggle("lyr-terrain", setTerrainVisible);
 // Access is split into per-type toggles (boat ramp / walk-in / wading /
 // pier / parking); each shares the one lazy per-state loader, which reads
 // the CURRENT state at show time via getCurrentSt() (state may have changed
@@ -498,6 +551,7 @@ for (const t of ["boat_ramp", "fishing_access", "pier", "parking"]) {
 }
 wireLayerToggle("lyr-stocked", setStockedVisible);
 wireLayerToggle("lyr-dams", setDamsVisible);
+wireLayerToggle("lyr-flyshops", setFlyShopsVisible);
 wireLayerToggle("lyr-public-lands", setPublicLandsVisible);
 // Trails are a static PMTiles line layer (no per-state fetch); the layer is
 // only added when VITE_TRAILS_TILES_URL is configured, so the toggle just
@@ -506,6 +560,22 @@ wireLayerToggle("lyr-trails", setTrailsVisible);
 wireLayerToggle("lyr-pins", setPinsVisible);
 
 // -- Base-map segmented control ------------------------------------
+
+// M1.2: hydro is suppressed by map-setup while the vector base is active
+// (the vector base carries its own hydrography). Reflect that on the
+// checkbox row so it doesn't read as a dead toggle.
+function syncHydroToggleForBase(key: string): void {
+  const cb = document.getElementById("lyr-usgs") as HTMLInputElement | null;
+  if (!cb) return;
+  const onVector = key === "vector";
+  cb.disabled = onVector;
+  const row = cb.closest("label");
+  if (row instanceof HTMLElement) {
+    row.title = onVector
+      ? "The vector base includes hydrography — this overlay applies to the raster bases."
+      : "";
+  }
+}
 
 const basemapSeg = document.getElementById("basemap-mode");
 if (basemapSeg) {
@@ -523,13 +593,24 @@ if (basemapSeg) {
     btn.addEventListener("click", () => {
       const key = btn.dataset.base as "street" | "satellite" | "topo" | "vector";
       setBaseMap(key);
-      for (const sib of basemapSeg.querySelectorAll<HTMLButtonElement>(
-        "button[data-base]",
-      )) {
-        sib.classList.toggle("on", sib.dataset.base === key);
-      }
+      reflectBase(key);
     });
   }
+  /** Sync the segment buttons + hydro toggle to the active base. */
+  const reflectBase = (key: string): void => {
+    for (const sib of basemapSeg.querySelectorAll<HTMLButtonElement>(
+      "button[data-base]",
+    )) {
+      sib.classList.toggle("on", sib.dataset.base === key);
+    }
+    syncHydroToggleForBase(key);
+  };
+  reflectBase(initialKey);
+  // Programmatic changes (boot fallback when a persisted vector base
+  // fails; failed-switch revert) announce themselves — resync the UI.
+  document.addEventListener("bl:base-changed", (e) => {
+    reflectBase(String((e as CustomEvent).detail));
+  });
 }
 
 // -- Connectivity badge --------------------------------------------
@@ -661,40 +742,71 @@ if (offlineSection && BASEMAP_TILES_ENABLED && "indexedDB" in window) {
     closePanel(); // so the map is visible for framing
     overlay.hidden = false;
     actionbar.hidden = false;
+    // Framing owns the map: tapping a stream/POI under the frame must not
+    // open panels over the framing UI (same guard as pin placement).
+    claimMapClicks("offline-frame");
     map.on("moveend", scheduleEstimate);
     void updateEstimate();
   }
   function exitDownloadMode(): void {
     overlay.hidden = true;
     actionbar.hidden = true;
+    releaseMapClicks("offline-frame");
     map.off("moveend", scheduleEstimate);
   }
 
   dlBtn.addEventListener("click", enterDownloadMode);
-  cancelBtn.addEventListener("click", exitDownloadMode);
+  // While a download runs, Cancel becomes "Stop" and aborts it (per-tile
+  // cancellation point in offline-tiles.ts); otherwise it exits framing.
+  let dlAbort: AbortController | null = null;
+  cancelBtn.addEventListener("click", () => {
+    if (busy) {
+      dlAbort?.abort();
+      return;
+    }
+    exitDownloadMode();
+  });
 
   goBtn.addEventListener("click", async () => {
     const bbox = boxBBox();
     const z = Math.floor(map.getZoom());
     busy = true;
     goBtn.disabled = true;
-    cancelBtn.disabled = true;
+    dlAbort = new AbortController();
+    const cancelLabel = cancelBtn.textContent;
+    cancelBtn.textContent = "Stop";
     try {
-      const r = await downloadArea(bbox, archives, z, BASEMAP_STYLE_URL, (p) => {
+      const r = await downloadArea(
+        bbox,
+        archives,
+        z,
+        BASEMAP_STYLE_URL,
+        (p) => {
+          estEl.textContent =
+            p.phase === "assets"
+              ? "Saving map style…"
+              : `Saving ${p.done.toLocaleString()}/${p.total.toLocaleString()}…`;
+        },
+        dlAbort.signal,
+      );
+      if (r.cancelled) {
+        // Partial coverage is still real coverage — say what was kept.
         estEl.textContent =
-          p.phase === "assets"
-            ? "Saving map style…"
-            : `Saving ${p.done.toLocaleString()}/${p.total.toLocaleString()}…`;
-      });
-      estEl.textContent = `Saved ${mb(r.bytes)} for offline use ✓`;
-      await refreshStatus();
-      setTimeout(exitDownloadMode, 1400);
+          `Stopped — kept ${r.done.toLocaleString()}/` +
+          `${r.total.toLocaleString()} tiles (${mb(r.bytes)})`;
+        await refreshStatus();
+      } else {
+        estEl.textContent = `Saved ${mb(r.bytes)} for offline use ✓`;
+        await refreshStatus();
+        setTimeout(exitDownloadMode, 1400);
+      }
     } catch (e) {
       estEl.textContent = `Download failed: ${(e as Error).message}`;
     } finally {
       busy = false;
-      cancelBtn.disabled = false;
-      void updateEstimate();
+      dlAbort = null;
+      goBtn.disabled = false; // was left disabled forever after a failure
+      cancelBtn.textContent = cancelLabel;
     }
   });
 

@@ -39,7 +39,12 @@
 
 import { esc } from "./util";
 import { sparkline, wireSparkHover } from "./sparkline";
+import maplibregl, { Marker } from "maplibre-gl";
+import { map } from "./map-setup";
 import { getCurrentUser, openModal, closeModal } from "./auth";
+import { showToast } from "./toast";
+import { confirmDialog } from "./confirm";
+import { claimMapClicks, releaseMapClicks } from "./map-mode";
 
 // -- Species datalist (filled into #cf-species-list on first open) -
 
@@ -106,9 +111,100 @@ export function openCatchForm(river: RiverLike): void {
   (document.getElementById("cf-river") as HTMLInputElement).value = catchCtx.river_name;
   (document.getElementById("cf-when") as HTMLInputElement).value = _toLocalInputValue(new Date());
   (document.getElementById("cf-error") as HTMLElement).textContent = "";
+  updateLocLabel();
   openModal("catch-modal");
   loadEnrichmentPreview();
 }
+
+// -- Catch location (the pin-flow ghost pattern) ---------------------
+// The form used to silently inherit the launch coordinate (a gauged
+// river's GAUGE position — possibly miles from where the user fished)
+// with no way to see or fix it. The location row names the coordinate,
+// and "Adjust on map" steps the modal aside for a draggable ghost
+// marker; Done commits it into catchCtx (feeding both the enrichment
+// preview and the saved catch), cancel/Esc restores the old spot.
+
+function updateLocLabel(): void {
+  const el = document.getElementById("cf-loc-label");
+  if (!el) return;
+  el.textContent =
+    catchCtx && catchCtx.lat != null && catchCtx.lon != null
+      ? `Location: ${catchCtx.lat.toFixed(4)}, ${catchCtx.lon.toFixed(4)}`
+      : "No location set";
+}
+
+let _locGhost: Marker | null = null;
+let _locBar: HTMLElement | null = null;
+let _locMapClick: ((e: maplibregl.MapMouseEvent) => void) | null = null;
+let _locEsc: ((e: KeyboardEvent) => void) | null = null;
+
+function endAdjustLocation(commit: boolean): void {
+  if (commit && _locGhost && catchCtx) {
+    const ll = _locGhost.getLngLat();
+    catchCtx.lat = ll.lat;
+    catchCtx.lon = ll.lng;
+  }
+  _locGhost?.remove();
+  _locGhost = null;
+  _locBar?.remove();
+  _locBar = null;
+  if (_locMapClick) map.off("click", _locMapClick);
+  _locMapClick = null;
+  if (_locEsc) document.removeEventListener("keydown", _locEsc);
+  _locEsc = null;
+  releaseMapClicks("catch-loc");
+  map.getCanvas().style.cursor = "";
+  openModal("catch-modal"); // unhide; form values persisted (no reset)
+  updateLocLabel();
+  if (commit) loadEnrichmentPreview(); // conditions follow the new spot
+}
+
+function beginAdjustLocation(): void {
+  if (_locGhost) return; // already adjusting
+  (document.getElementById("catch-modal") as HTMLElement).hidden = true;
+  claimMapClicks("catch-loc"); // feature click handlers stand down
+  map.getCanvas().style.cursor = "crosshair";
+
+  const start: [number, number] =
+    catchCtx && catchCtx.lat != null && catchCtx.lon != null
+      ? [catchCtx.lon, catchCtx.lat]
+      : [map.getCenter().lng, map.getCenter().lat];
+  const el = document.createElement("div");
+  el.className = "bl-pin bl-pin--ghost";
+  el.innerHTML = '<div class="bl-pin-dot"></div>';
+  _locGhost = new maplibregl.Marker({
+    element: el,
+    anchor: "bottom",
+    draggable: true,
+  })
+    .setLngLat(start)
+    .addTo(map);
+
+  _locMapClick = (e) => {
+    _locGhost?.setLngLat(e.lngLat);
+  };
+  map.on("click", _locMapClick);
+
+  _locBar = document.createElement("div");
+  _locBar.className = "bl-catchloc-bar";
+  _locBar.innerHTML =
+    "<span>Drag the pin (or tap the map) to where you caught it</span>" +
+    '<button type="button" class="bl-catchloc-done">Done</button>' +
+    '<button type="button" class="secondary bl-catchloc-cancel">Cancel</button>';
+  document.body.appendChild(_locBar);
+  (_locBar.querySelector(".bl-catchloc-done") as HTMLButtonElement).onclick =
+    () => endAdjustLocation(true);
+  (_locBar.querySelector(".bl-catchloc-cancel") as HTMLButtonElement).onclick =
+    () => endAdjustLocation(false);
+
+  _locEsc = (e) => {
+    if (e.key === "Escape") endAdjustLocation(false);
+  };
+  document.addEventListener("keydown", _locEsc);
+}
+
+const _locAdjustBtn = document.getElementById("cf-loc-adjust");
+if (_locAdjustBtn) _locAdjustBtn.addEventListener("click", beginAdjustLocation);
 
 async function loadEnrichmentPreview(): Promise<void> {
   const body = document.getElementById("cf-enrich-body") as HTMLElement;
@@ -213,6 +309,7 @@ async function submitCatch(ev: SubmitEvent): Promise<void> {
     });
     if (!r.ok) throw new Error("save failed");
     closeModal("catch-modal");
+    showToast("Catch saved", "success");
   } catch {
     err.textContent = "Could not save. Try again.";
   }
@@ -294,16 +391,21 @@ function renderCatchList(catches: Catch[]): void {
 }
 
 async function deleteCatch(id: number, rowEl: HTMLElement): Promise<void> {
-  if (!confirm("Delete this catch?")) return;
+  const ok = await confirmDialog({
+    title: "Delete catch?",
+    message: "This catch and its conditions snapshot will be permanently removed.",
+    confirmLabel: "Delete",
+    danger: true,
+  });
+  if (!ok) return;
   try {
     const r = await fetch(`/api/catches/${id}`, { method: "DELETE" });
-    if (r.ok || r.status === 204) {
-      rowEl.remove();
-      const list = document.getElementById("catches-list") as HTMLElement;
-      if (!list.children.length) renderCatchList([]);
-    }
+    if (!r.ok && r.status !== 204) throw new Error(`HTTP ${r.status}`);
+    rowEl.remove();
+    const list = document.getElementById("catches-list") as HTMLElement;
+    if (!list.children.length) renderCatchList([]);
   } catch {
-    /* ignore */
+    showToast("Couldn't delete the catch — try again.", "error");
   }
 }
 

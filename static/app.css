@@ -917,6 +917,37 @@ html, body {
 .pin-form button:hover { background: var(--accent-hover); }
 .pin-form button.secondary { background: var(--bg-sunken); color: var(--fg-2); }
 .pin-form button.secondary:hover { background: var(--bg-pressed); }
+.pin-form-error {
+    color: var(--bl-cond-poor-700);
+    font-size: var(--fs-caption);
+    margin-bottom: var(--space-3);
+}
+/* Ghost pin: the draggable provisional marker dropped at the click point
+   while the note form is open. Pulses so it reads as "not saved yet". */
+.bl-pin--ghost { opacity: 0.8; }
+.bl-pin--ghost .bl-pin-dot { animation: bl-pin-pulse 1.2s ease-in-out infinite; }
+@keyframes bl-pin-pulse {
+    0%, 100% { transform: rotate(-45deg) scale(1); }
+    50%      { transform: rotate(-45deg) scale(1.18); }
+}
+/* Pin-mode hint chip: touch has no crosshair cursor, so this is the only
+   signal that a tap will drop a pin. Top-center, below the app bar. */
+.bl-pin-hint {
+    position: fixed;
+    top: calc(64px + env(safe-area-inset-top, 0px));
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: var(--z-overlay);
+    background: rgba(255,255,255,0.97);
+    backdrop-filter: blur(8px);
+    color: var(--fg-1);
+    font-size: var(--fs-meta);
+    padding: var(--space-3) var(--space-5);
+    border-radius: var(--radius-3);
+    box-shadow: var(--elev-2);
+    pointer-events: none;
+    white-space: nowrap;
+}
 .bl-pin-dot {
     width: 16px;
     height: 16px;
@@ -1131,6 +1162,122 @@ html, body {
 
 .modal-actions { display: flex; gap: var(--space-3); margin-top: var(--space-4); }
 .modal-actions button { flex: 1; }
+.modal-actions button.danger { background: var(--bl-cond-poor-500); color: #fff; }
+.modal-actions button.danger:hover { background: var(--bl-cond-poor-700); }
+
+/* Locate button: pulse while a geolocation fix is being acquired (the
+   static blue alone read as "nothing happening" for up to 10s). */
+.locate-btn.is-active { animation: bl-locate-pulse 1s ease-in-out infinite; }
+@keyframes bl-locate-pulse {
+    0%, 100% { opacity: 1; }
+    50%      { opacity: 0.55; }
+}
+
+/* Catch-location row + adjust-on-map mode (catches.ts). */
+.cf-loc-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-3);
+    margin-bottom: var(--space-3);
+}
+.cf-loc-label { font-size: var(--fs-caption); color: var(--fg-3); }
+.cf-loc-adjust {
+    font-size: var(--fs-caption);
+    padding: 2px var(--space-3);
+    background: var(--bg-sunken);
+    color: var(--fg-2);
+    border-radius: var(--radius-2);
+}
+.cf-loc-adjust:hover { background: var(--bg-pressed); }
+.bl-catchloc-bar {
+    position: fixed;
+    bottom: calc(var(--space-7) + env(safe-area-inset-bottom, 0px));
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: var(--z-overlay);
+    display: flex;
+    align-items: center;
+    gap: var(--space-4);
+    background: rgba(255,255,255,0.97);
+    backdrop-filter: blur(8px);
+    color: var(--fg-1);
+    font-size: var(--fs-meta);
+    padding: var(--space-3) var(--space-5);
+    border-radius: var(--radius-3);
+    box-shadow: var(--elev-2);
+    max-width: calc(100vw - 24px);
+}
+.bl-catchloc-bar button { flex-shrink: 0; }
+.bl-catchloc-bar button.secondary { background: var(--bg-sunken); color: var(--fg-2); }
+
+/* State-load chip (rivers.ts): narrates the state switch / lazy first
+   compute, same placement as the pin-mode hint. */
+.bl-state-chip {
+    position: fixed;
+    top: calc(64px + env(safe-area-inset-top, 0px));
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: var(--z-overlay);
+    background: rgba(255,255,255,0.97);
+    backdrop-filter: blur(8px);
+    color: var(--fg-2);
+    font-size: var(--fs-meta);
+    padding: var(--space-3) var(--space-5);
+    border-radius: var(--radius-3);
+    box-shadow: var(--elev-2);
+    pointer-events: none;
+    white-space: nowrap;
+}
+
+/* Empty stream-filter chip (streams.ts): sits below the state chip slot. */
+.bl-filter-empty-chip {
+    position: fixed;
+    top: calc(112px + env(safe-area-inset-top, 0px));
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: var(--z-overlay);
+    background: rgba(255,255,255,0.97);
+    backdrop-filter: blur(8px);
+    color: var(--fg-3);
+    font-size: var(--fs-caption);
+    padding: var(--space-2) var(--space-4);
+    border-radius: var(--radius-3);
+    box-shadow: var(--elev-2);
+    pointer-events: none;
+    white-space: nowrap;
+}
+
+/* Toasts (toast.ts): bottom-centered stack above everything else. */
+.bl-toasts {
+    position: fixed;
+    bottom: calc(var(--space-7) + env(safe-area-inset-bottom, 0px));
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: var(--z-toast);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--space-3);
+    pointer-events: none;
+}
+.bl-toast {
+    pointer-events: auto;
+    background: var(--fg-1);
+    color: var(--bg-surface);
+    font-size: var(--fs-meta);
+    padding: var(--space-3) var(--space-5);
+    border-radius: var(--radius-3);
+    box-shadow: var(--elev-2);
+    border-left: 3px solid transparent;
+    max-width: min(420px, calc(100vw - 32px));
+    opacity: 0;
+    transform: translateY(8px);
+    transition: opacity 0.25s ease, transform 0.25s ease;
+}
+.bl-toast.is-in { opacity: 1; transform: none; }
+.bl-toast--success { border-left-color: var(--bl-cond-good-500); }
+.bl-toast--error { border-left-color: var(--bl-cond-poor-500); }
 
 .modal-row { margin: var(--space-4) 0 4px; }
 .modal-label { font-size: var(--fs-caption); color: var(--fg-3); margin-bottom: 4px; }
@@ -2103,3 +2250,80 @@ html, body {
 .class-chip .class-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
 .class-chip:has(input:not(:checked)) { opacity: 0.42; border-style: dashed; }
 .class-chip:has(input:focus-visible) { outline: 2px solid var(--bl-river-500, #2f93bd); outline-offset: 1px; }
+
+/* ==================================================================
+   Interaction polish pass (M2.g) — press states, keyboard focus,
+   reduced motion, panel scrollbars, popup truncation.
+   ================================================================== */
+
+/* Hydro toggle reads as inert while the vector base suppresses it (M1.2). */
+.filter-row-toggle:has(input:disabled) { opacity: 0.45; }
+
+/* g1: uniform, layout-stable press feedback. Buttons had :hover but no
+   :active, so taps felt dead on touch until the action completed. */
+button:not(:disabled):active,
+.filter-row-toggle:active,
+.search-result:active {
+    filter: brightness(0.92);
+}
+
+/* g2: keyboard focus ring. Several inputs kill their outline; the
+   token ring restores a visible keyboard-focus affordance app-wide
+   without touching mouse/touch focus. */
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+[tabindex]:focus-visible {
+    outline: none;
+    box-shadow: var(--ring-focus);
+}
+
+/* g3: honor the OS reduced-motion preference for all CSS-driven
+   animation (map easing is JS-driven and handled separately). */
+@media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+    }
+}
+
+/* g4: thin tinted scrollbars in panel scroll regions (default OS
+   scrollbars read heavy against the styled panels). */
+#river-panel-body,
+.panel-body,
+.catches-list,
+.search-results,
+.maplibregl-popup-content {
+    scrollbar-width: thin;
+    scrollbar-color: var(--border-strong) transparent;
+}
+#river-panel-body::-webkit-scrollbar,
+.panel-body::-webkit-scrollbar,
+.catches-list::-webkit-scrollbar,
+.search-results::-webkit-scrollbar,
+.maplibregl-popup-content::-webkit-scrollbar {
+    width: 8px;
+}
+#river-panel-body::-webkit-scrollbar-thumb,
+.panel-body::-webkit-scrollbar-thumb,
+.catches-list::-webkit-scrollbar-thumb,
+.search-results::-webkit-scrollbar-thumb,
+.maplibregl-popup-content::-webkit-scrollbar-thumb {
+    background: var(--border-strong);
+    border-radius: 4px;
+}
+
+/* g5: long POI names wrap instead of blowing out the fixed-width popup. */
+.ap-name { overflow-wrap: anywhere; }
+
+/* f2: matched-substring emphasis in search results — bold, not
+   highlighter-yellow (which clashes with the result rows). */
+.search-result-name mark {
+    background: none;
+    color: inherit;
+    font-weight: var(--fw-bold);
+}

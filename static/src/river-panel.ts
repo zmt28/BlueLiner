@@ -119,6 +119,36 @@ export function openRiverPanel(river: River): void {
   refreshIcons();
 }
 
+/**
+ * M2.c1: after the panel opens, nudge the map just enough that the
+ * clicked point isn't hidden under it — the desktop drawer is a fixed
+ * right-side slab (min(420px, 92vw)) and the mobile peek sheet covers
+ * the bottom ~38% (card translateY(62%)). Pans the minimum needed;
+ * no-op when the point is already in the uncovered area.
+ */
+export function panPointClearOfPanel(
+  lngLat: { lng: number; lat: number } | null,
+): void {
+  if (!lngLat) return;
+  const c = map.getContainer();
+  const w = c.clientWidth;
+  const h = c.clientHeight;
+  const p = map.project([lngLat.lng, lngLat.lat]);
+  const M = 48; // breathing room from edges/panel
+  let dx = 0;
+  let dy = 0;
+  if (window.matchMedia("(max-width: 700px)").matches) {
+    const visibleBottom = h * 0.62 - M; // peek covers the bottom ~38%
+    if (p.y > visibleBottom) dy = p.y - visibleBottom;
+    else if (p.y < M) dy = p.y - M;
+  } else {
+    const maxX = w - Math.min(420, w * 0.92) - M;
+    if (p.x > maxX) dx = p.x - maxX;
+    else if (p.x < M) dx = p.x - M;
+  }
+  if (dx || dy) map.panBy([dx, dy], { duration: 320 });
+}
+
 export function closeRiverPanel(): void {
   const panel = document.getElementById("river-panel");
   if (!panel || panel.hidden) return;
@@ -188,6 +218,7 @@ declare global {
   interface Window {
     openRiverPanel: typeof openRiverPanel;
     closeRiverPanel: typeof closeRiverPanel;
+    panPointClearOfPanel: typeof panPointClearOfPanel;
     prepareRiverPanel: typeof prepareRiverPanel;
     commitRiverPanelOpen: typeof commitRiverPanelOpen;
     autoLoadFlowChart: typeof autoLoadFlowChart;
@@ -203,6 +234,7 @@ declare global {
 
 window.openRiverPanel = openRiverPanel;
 window.closeRiverPanel = closeRiverPanel;
+window.panPointClearOfPanel = panPointClearOfPanel;
 window.prepareRiverPanel = prepareRiverPanel;
 window.commitRiverPanelOpen = commitRiverPanelOpen;
 window.autoLoadFlowChart = autoLoadFlowChart;

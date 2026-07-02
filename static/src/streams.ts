@@ -22,14 +22,19 @@
  */
 
 import maplibregl, { ExpressionSpecification, LayerSpecification } from "maplibre-gl";
-import { map, onMapReady } from "./map-setup";
+import { map, onMapReady, lineOverlayAnchor } from "./map-setup";
 import { esc } from "./util";
 import { STREAM_TILES_ENABLED, STREAM_TILES_URL, STREAM_SOURCE_LAYER } from "./config";
 import { ensurePmtilesProtocol } from "./tiles";
-import { prepareRiverPanel, commitRiverPanelOpen } from "./river-panel";
+import {
+  prepareRiverPanel,
+  commitRiverPanelOpen,
+  panPointClearOfPanel,
+} from "./river-panel";
 import { selectRiver } from "./selection";
 import { refreshIcons } from "./util";
 import { autoLoadElevation } from "./elevation-profile";
+import { mapClicksClaimed } from "./map-mode";
 
 // -- Stream tier coloring (the nationwide quality axis) --------------
 // Tiles carry `tier` (gold/class1/class2/class3 or null), normalized in the
@@ -158,12 +163,64 @@ function streamFilterExpr(): unknown[] | null {
   return clauses.length ? ["all", ...clauses] : null;
 }
 
+// Labels only make sense on named reaches; AND-ed with the active
+// class/wild/native filter so filtered-out water isn't labeled.
+const LABEL_BASE_FILTER: unknown[] = [
+  "!=",
+  ["coalesce", ["get", "gnis_name"], ""],
+  "",
+];
+
+function labelFilterExpr(): unknown[] {
+  const expr = streamFilterExpr();
+  return expr ? ["all", LABEL_BASE_FILTER, expr] : LABEL_BASE_FILTER;
+}
+
 function applyStreamFilter(): void {
   const expr = streamFilterExpr();
   for (const id of ["clickable-streams", "clickable-streams-hit"]) {
     if (map.getLayer(id)) map.setFilter(id, expr as never);
   }
+  if (map.getLayer("stream-labels")) {
+    map.setFilter("stream-labels", labelFilterExpr() as never);
+  }
 }
+
+// -- Empty-filter feedback (M2.h6) -------------------------------------
+// When the class/wild/native filters leave nothing in view, the map used
+// to just go blank with no signal. A small chip says so; re-checked on
+// idle (cheap: queryRenderedFeatures respects the layer filter).
+
+let _filterEmptyChip: HTMLElement | null = null;
+
+function _setFilterEmptyChip(on: boolean): void {
+  if (!on) {
+    _filterEmptyChip?.remove();
+    _filterEmptyChip = null;
+    return;
+  }
+  if (!_filterEmptyChip) {
+    _filterEmptyChip = document.createElement("div");
+    _filterEmptyChip.className = "bl-filter-empty-chip";
+    _filterEmptyChip.textContent = "No streams match these filters in view";
+    document.body.appendChild(_filterEmptyChip);
+  }
+}
+
+function _checkFilterEmpty(): void {
+  if (!streamFilterExpr() || !_streamsVisible || !map.getLayer("clickable-streams")) {
+    _setFilterEmptyChip(false);
+    return;
+  }
+  const feats = map.queryRenderedFeatures(undefined, {
+    layers: ["clickable-streams"],
+  });
+  _setFilterEmptyChip(feats.length === 0);
+}
+
+onMapReady(() => {
+  map.on("idle", _checkFilterEmpty);
+});
 
 type StreamFilterPatch = {
   wild?: boolean;
@@ -242,11 +299,11 @@ function colorExpr(): ExpressionSpecification {
 }
 
 function opacityExpr(): ExpressionSpecification {
-  // While a condition overlay is active, everything that isn't the
+  // While a filter overlay is active, everything that isn't the
   // selection or an overlay match fades to COND_FADE_OPACITY so the
   // matching reaches read at a glance. Swapped via setPaintProperty on
   // overlay toggle (paint-only; no refetch).
-  const rest: unknown = _condFilter
+  const rest: unknown = filterOverlayActive()
     ? [
         "case",
         ["boolean", ["feature-state", "cond"], false],
@@ -262,11 +319,26 @@ function opacityExpr(): ExpressionSpecification {
   ] as unknown as ExpressionSpecification;
 }
 
+// M3.2: tier is the hero — better water draws a visibly heavier line on
+// top of the base streamorder width, so gold/class1 reads at a glance.
+const TIER_WIDTH_BONUS: unknown = [
+  "match",
+  ["get", "tier"],
+  "gold", 1.6,
+  "class1", 0.9,
+  "class2", 0.4,
+  0,
+];
+
 const WIDTH_EXPR: ExpressionSpecification = [
   "case",
   ["boolean", ["feature-state", "selected"], false],
   8,
-  ["interpolate", ["linear"], ["coalesce", ["get", "streamorder"], 3], 1, 4, 7, 7],
+  [
+    "+",
+    ["interpolate", ["linear"], ["coalesce", ["get", "streamorder"], 3], 1, 4, 7, 7],
+    TIER_WIDTH_BONUS,
+  ],
 ] as unknown as ExpressionSpecification;
 
 function visStr(on: boolean): "visible" | "none" {
@@ -299,7 +371,7 @@ onMapReady(() => {
       "line-width": WIDTH_EXPR,
       "line-opacity": opacityExpr(),
     },
-  } as LayerSpecification);
+  } as LayerSpecification, lineOverlayAnchor());
   // Transparent fat casing for touch targets; clicks bind here.
   map.addLayer({
     id: "clickable-streams-hit",
@@ -308,34 +380,74 @@ onMapReady(() => {
     ...SRC_LAYER,
     layout: { visibility: visStr(_streamsVisible), "line-cap": "round" },
     paint: { "line-color": "#000", "line-opacity": 0, "line-width": 16 },
+  } as LayerSpecification, lineOverlayAnchor());
+  // M3.2: along-stream name labels. Symbol layer -> above the anchor
+  // (appended), self-hosted glyphs (map-setup EMPTY_STYLE). Water labels
+  // are conventionally italic; collision handles density.
+  map.addLayer({
+    id: "stream-labels",
+    type: "symbol",
+    source: "clickable-streams",
+    ...SRC_LAYER,
+    minzoom: 10,
+    filter: labelFilterExpr() as never,
+    layout: {
+      visibility: visStr(_streamsVisible),
+      "symbol-placement": "line",
+      "text-field": ["get", "gnis_name"],
+      "text-font": ["Noto Sans Italic"],
+      "text-size": ["interpolate", ["linear"], ["zoom"], 10, 10, 14, 13],
+      "symbol-spacing": 350,
+    },
+    paint: {
+      "text-color": "#33566b",
+      "text-halo-color": "rgba(255,255,255,0.9)",
+      "text-halo-width": 1.4,
+    },
   } as LayerSpecification);
   // Apply the persisted wild/native filter to the freshly-added layers.
   applyStreamFilter();
   // Re-apply the selection highlight (and, while a condition filter is
   // active, the conditions overlay) as new tiles arrive (pan/zoom) --
-  // fresh tiles carry no feature-state.
-  map.on("sourcedata", (e) => {
-    if (e.sourceId === "clickable-streams" && e.isSourceLoaded) {
+  // fresh tiles carry no feature-state. M3.3: the reapply is O(all
+  // loaded reaches) (querySourceFeatures + per-feature setFeatureState),
+  // and sourcedata fires repeatedly DURING a pan gesture — running it
+  // per tile batch was the main pan-time stutter. Coalesce to one pass
+  // on the next idle instead.
+  let _reapplyArmed = false;
+  const _scheduleFeatureStateReapply = (): void => {
+    if (_reapplyArmed) return;
+    _reapplyArmed = true;
+    map.once("idle", () => {
+      _reapplyArmed = false;
       reapplyStreamHighlight();
       _applyCondOverlay();
+    });
+  };
+  map.on("sourcedata", (e) => {
+    if (e.sourceId === "clickable-streams" && e.isSourceLoaded) {
+      _scheduleFeatureStateReapply();
     }
   });
   map.on("click", "clickable-streams-hit", (e) => {
+    if (mapClicksClaimed()) return; // a placement/framing mode owns clicks
     const f = e.features && e.features[0];
     if (!f) return;
     onStreamClick((f.properties || {}) as ClickableStreamProps, e.lngLat);
   });
   map.on("mouseenter", "clickable-streams-hit", () => {
+    if (mapClicksClaimed()) return; // keep the mode cursor
     map.getCanvas().style.cursor = "pointer";
   });
   map.on("mouseleave", "clickable-streams-hit", () => {
+    if (mapClicksClaimed()) return;
     map.getCanvas().style.cursor = "";
   });
 });
 
 export function setStreamsVisible(on: boolean): void {
   _streamsVisible = on;
-  for (const id of ["clickable-streams", "clickable-streams-hit"]) {
+  for (const id of ["clickable-streams", "clickable-streams-hit", "stream-labels"]) {
     if (map.getLayer(id)) map.setLayoutProperty(id, "visibility", visStr(on));
   }
 }
@@ -456,62 +568,88 @@ export function clearStreamHighlight(): void {
   _applyCondOverlay();
 }
 
-// -- Conditions overlay (the Condition filter) -------------------------
-// When the Filters pane's Condition dropdown is not "Any", the reaches of
-// every gauged river in the active catalog whose `conditions.overall`
-// matches are painted in that verdict's color (the same `verdict`
-// feature-state the selection highlight uses, plus a `cond` flag), and
-// everything else fades via opacityExpr(). Nothing is persisted; the
-// filter resets to Any on reload.
+// -- Filter overlay (the Filters pane: Condition + stocked + hatch) ----
+// When any Filters-pane control is active (Condition dropdown not "Any",
+// "Near stocked water" checked, or an Active-hatch selection), the reaches
+// of every gauged river in the active catalog passing the registered
+// filter predicate (riverPasses, rivers.ts) are painted in their own
+// verdict color (the same `verdict` feature-state the selection highlight
+// uses, plus a `cond` flag), and everything else fades via opacityExpr().
+// Nothing is persisted; the filters reset on reload.
 
-let _condFilter: ConditionKey | null = null;
-// Matching rivers indexed once per catalog refresh: O(1) lookups per
-// feature, so each tile-batch pass is O(features), not O(rivers x features).
-let _condIndex: { lpids: Set<number>; names: Set<string> } | null = null;
+let _condFilter: ConditionKey | null = null; // Condition dropdown value
+let _extraFilters = false; // stocked-only / hatch controls active
+// Matching rivers indexed once per catalog refresh (value = the river's
+// verdict color): O(1) lookups per feature, so each tile-batch pass is
+// O(features), not O(rivers x features).
+let _condIndex: {
+  lpids: Map<number, ConditionKey>;
+  names: Map<string, ConditionKey>;
+} | null = null;
+
+// The full Filters-pane predicate (riverPasses). Registered by rivers.ts
+// at module init -- an import here would be a cycle (rivers.ts imports
+// refreshConditionOverlay), same pattern as registerGaugeRenderer.
+let _filterPred: ((r: River) => boolean) | null = null;
+
+export function registerRiverFilterPredicate(fn: (r: River) => boolean): void {
+  _filterPred = fn;
+}
 
 export function activeConditionFilter(): ConditionKey | null {
   return _condFilter;
+}
+
+/** True while any Filters-pane control is active (the overlay is
+ *  fading non-matching reaches). Consumed by the search pool. */
+export function filterOverlayActive(): boolean {
+  return !!(_condFilter || _extraFilters);
 }
 
 /** Rebuild the matching-river index from the active catalog
  *  (window.allRivers -- rivers.ts keeps it pointed at whichever of
  *  viewport/state mode is current). */
 function _buildCondIndex(): void {
-  if (!_condFilter) {
+  if (!filterOverlayActive()) {
     _condIndex = null;
     return;
   }
-  const lpids = new Set<number>();
-  const names = new Set<string>();
+  const lpids = new Map<number, ConditionKey>();
+  const names = new Map<string, ConditionKey>();
   for (const r of window.allRivers || []) {
-    if (!r.conditions || r.conditions.overall !== _condFilter) continue;
-    for (const id of r.levelpathids || []) lpids.add(id);
+    // Fall back to the Condition-only match if the predicate hasn't
+    // registered yet (it lands at rivers.ts module init, before boot).
+    const hit = _filterPred
+      ? _filterPred(r)
+      : !!r.conditions && r.conditions.overall === _condFilter;
+    if (!hit) continue;
+    const verdict = (r.conditions?.overall || "gray") as ConditionKey;
+    for (const id of r.levelpathids || []) lpids.set(id, verdict);
     const n = _normName(r.name);
-    if (n) names.add(n);
+    if (n) names.set(n, verdict);
   }
   _condIndex = { lpids, names };
 }
 
 /** Set `cond` + `verdict` feature-state on every loaded reach matching
- *  the index -- levelpathid primary, normalized GNIS name fallback. All
- *  indexed rivers share the filter's verdict, so the state is uniform.
- *  No-op while no condition filter is active. */
+ *  the index -- levelpathid primary, normalized GNIS name fallback. Each
+ *  match paints in its own river's verdict color. No-op while no filter
+ *  is active. */
 function _applyCondOverlay(): void {
-  if (!_condFilter || !_condIndex) return;
+  if (!_condIndex) return;
   const src = "clickable-streams";
   if (!map.getSource(src)) return;
-  const state = { cond: true, verdict: _condFilter };
   const feats = map.querySourceFeatures(src, { sourceLayer: STREAM_SOURCE_LAYER });
   for (const f of feats) {
     if (f.id == null) continue;
     const p = (f.properties || {}) as ClickableStreamProps;
-    const hit =
-      (p.levelpathid != null && _condIndex.lpids.has(p.levelpathid)) ||
-      _condIndex.names.has(_normName(p.gnis_name));
-    if (hit) {
+    const verdict =
+      (p.levelpathid != null ? _condIndex.lpids.get(p.levelpathid) : undefined) ??
+      _condIndex.names.get(_normName(p.gnis_name));
+    if (verdict) {
       map.setFeatureState(
         { source: src, sourceLayer: STREAM_SOURCE_LAYER, id: f.id },
-        state,
+        { cond: true, verdict },
       );
     }
   }
@@ -530,15 +668,22 @@ function _resetFeatureState(): void {
   _applyCondOverlay();
 }
 
-/** Activate / switch / clear (null) the conditions overlay. Called from
- *  the Condition dropdown wiring in controls.ts. */
-export function setConditionOverlay(cond: ConditionKey | null): void {
-  if (cond === _condFilter) return;
+/** Activate / switch / clear the filter overlay. Called from the
+ *  Filters-pane wiring in controls.ts on any control change;
+ *  `extrasActive` = the stocked-only / hatch controls are non-default.
+ *  Always re-indexes (a hatch-to-hatch switch changes matches without
+ *  changing either flag). */
+export function setConditionOverlay(
+  cond: ConditionKey | null,
+  extrasActive = false,
+): void {
+  const wasActive = filterOverlayActive();
   _condFilter = cond;
+  _extraFilters = extrasActive;
   _buildCondIndex();
   // Swap the fade in/out (paint-only). Color needs no swap: the `cond`
   // branch of colorExpr is permanent but inert without feature-state.
-  if (map.getLayer("clickable-streams")) {
+  if (map.getLayer("clickable-streams") && wasActive !== filterOverlayActive()) {
     map.setPaintProperty("clickable-streams", "line-opacity", opacityExpr());
   }
   _resetFeatureState();
@@ -546,9 +691,9 @@ export function setConditionOverlay(cond: ConditionKey | null): void {
 
 /** Re-index + re-apply after the active catalog changes (state load,
  *  viewport load, the z9 mode swap -- renderRivers() calls this). Only
- *  does work while a condition filter is active. */
+ *  does work while a filter is active. */
 export function refreshConditionOverlay(): void {
-  if (!_condFilter) return;
+  if (!filterOverlayActive()) return;
   _buildCondIndex();
   _resetFeatureState();
 }
@@ -605,6 +750,7 @@ export function onStreamClick(
     // Gauged river: central selection opens the panel and highlights by
     // the clicked reach's identity.
     selectRiver(gauged, p);
+    panPointClearOfPanel(lngLat); // don't leave the clicked reach under the panel
     return;
   }
   // Ungauged reach: highlight it, but it's a stream selection, not a
@@ -625,6 +771,7 @@ export function onStreamClick(
     `<div class="bl-reach-msg">Loading&hellip;</div>` +
     `</div></div>`;
   commitRiverPanelOpen(panel, body, "auto");
+  panPointClearOfPanel(lngLat); // don't leave the clicked reach under the panel
   loadReachPanel(body, lngLat, name, streamTier(p) !== "unclassified",
     p.levelpathid ?? null, p.comid ?? null);
 }

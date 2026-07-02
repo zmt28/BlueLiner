@@ -31,7 +31,11 @@ import maplibregl, {
   StyleSpecification,
 } from "maplibre-gl";
 
-import { BASEMAP_TILES_ENABLED, BASEMAP_STYLE_URL } from "./config";
+import {
+  BASEMAP_TILES_ENABLED,
+  BASEMAP_TILES_URL,
+  BASEMAP_STYLE_URL,
+} from "./config";
 import { ensurePmtilesProtocol } from "./tiles";
 
 type BaseMapKey = "street" | "satellite" | "topo" | "vector";
@@ -93,18 +97,29 @@ function loadBaseMapPref(): BaseMapKey {
   } catch (_) {
     /* localStorage unavailable */
   }
-  return "street";
+  // M1.1b: the self-hosted vector base is the default wherever it's
+  // configured (sharper on HiDPI, self-hosted, offline-capable); the
+  // raster street base remains the fallback default when it isn't.
+  return BASEMAP_TILES_ENABLED ? "vector" : "street";
 }
 
 let _currentBaseKey: BaseMapKey = loadBaseMapPref();
 
 // Empty style at construction; base/hydro (and module overlays) are added
 // on the `load` event, where addSource/addLayer are legal.
+// Glyphs: self-hosted basemap fonts when configured (so text layers —
+// stream labels — work on EVERY base with zero third-party dependency);
+// the demotiles placeholder remains only for unconfigured dev builds.
 const EMPTY_STYLE: StyleSpecification = {
   version: 8,
   sources: {},
   layers: [],
-  glyphs: "https://demotiles.maplibre.org/font/{fontstack}/{range}.pbf",
+  glyphs: BASEMAP_TILES_ENABLED
+    ? BASEMAP_TILES_URL.replace(
+        /basemap\.pmtiles$/,
+        "basemap/fonts/{fontstack}/{range}.pbf",
+      )
+    : "https://demotiles.maplibre.org/font/{fontstack}/{range}.pbf",
 };
 
 export const map: MaplibreMap = new maplibregl.Map({
@@ -141,33 +156,39 @@ let _baseSourceIds: string[] = [];
 // style fetch so a rapid switch-away doesn't paint a now-stale base.
 let _baseGen = 0;
 
-/** The base always sits below the hydro overlay (and thus below every module
- *  overlay, which mount on top of hydro). */
+/** The base always sits below the hillshade + hydro overlays (and thus
+ *  below every module overlay, which mount on top of hydro). */
 function baseAnchor(): string | undefined {
+  if (map.getLayer("hillshade")) return "hillshade";
   return map.getLayer("hydro") ? "hydro" : undefined;
 }
 
-function addRasterBase(key: RasterBaseKey): void {
-  map.addSource("base", BASES[key]);
-  map.addLayer({ id: "base", type: "raster", source: "base" }, baseAnchor());
-  _baseLayerIds = ["base"];
-  _baseSourceIds = ["base"];
+function addRasterBase(key: RasterBaseKey, gen: number): void {
+  // Generation-unique ids so a crossfading old base and its replacement
+  // can coexist below hydro until the new one has painted (M2.e2).
+  const id = `base-${gen}`;
+  map.addSource(id, BASES[key]);
+  map.addLayer({ id, type: "raster", source: id }, baseAnchor());
+  _baseLayerIds = [id];
+  _baseSourceIds = [id];
 }
 
 /** Vector base: fetch the self-hosted Protomaps style.json, point glyphs +
  *  sprite at its R2-hosted assets, then inject its vector source + full layer
  *  stack below the hydro anchor. Async (style fetch), so it guards on _baseGen
  *  to stay correct if the user switches base again before it resolves. */
-async function addVectorBase(gen: number): Promise<void> {
+async function addVectorBase(
+  gen: number,
+): Promise<"ok" | "failed" | "superseded"> {
   ensurePmtilesProtocol();
   let style: StyleSpecification;
   try {
     style = (await (await fetch(BASEMAP_STYLE_URL)).json()) as StyleSpecification;
   } catch (err) {
     console.warn("vector basemap style failed to load:", err);
-    return;
+    return "failed";
   }
-  if (gen !== _baseGen) return; // superseded by a later base switch
+  if (gen !== _baseGen) return "superseded"; // a later base switch won
 
   // glyphs/sprite are style-document-level; set them without setStyle so the
   // Protomaps label fonts + icon atlas resolve (the map's default glyphs is a
@@ -195,19 +216,71 @@ async function addVectorBase(gen: number): Promise<void> {
   }
   _baseLayerIds = layerIds;
   _baseSourceIds = sourceIds;
+  return "ok";
 }
 
+/** Boot-time base add (no previous base to crossfade from). If the
+ *  persisted vector base fails its style fetch, fall back to the street
+ *  raster rather than booting with no base at all. */
 function addBase(key: BaseMapKey): void {
   const gen = ++_baseGen;
-  if (key === "vector") void addVectorBase(gen);
-  else addRasterBase(key);
+  if (key === "vector") {
+    void addVectorBase(gen).then((r) => {
+      if (r === "failed" && gen === _baseGen && !_baseLayerIds.length) {
+        _currentBaseKey = "street";
+        window.currentBaseKey = "street";
+        addRasterBase("street", gen);
+        applyHydroVisibility(); // raster base -> hydro follows the checkbox again
+        announceBase();
+      }
+    });
+  } else {
+    addRasterBase(key, gen);
+  }
 }
 
-function removeBase(): void {
-  for (const id of _baseLayerIds) if (map.getLayer(id)) map.removeLayer(id);
-  for (const id of _baseSourceIds) if (map.getSource(id)) map.removeSource(id);
-  _baseLayerIds = [];
-  _baseSourceIds = [];
+// -- Terrain hillshade (M3.1) -----------------------------------------
+// AWS Open Data Terrarium elevation tiles (keyless, free) rendered as a
+// subtle hillshade between the base and hydro. Anglers read gradient;
+// this is the single biggest "reads like a real topo product" addition
+// at zero cost. Toggled by the lyr-terrain checkbox (default on).
+
+const TERRAIN_DEM_TILES =
+  "https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png";
+
+let _terrainVisible = true; // lyr-terrain default checked
+
+function addHillshadeLayer(): void {
+  map.addSource("terrain-dem", {
+    type: "raster-dem",
+    tiles: [TERRAIN_DEM_TILES],
+    encoding: "terrarium",
+    tileSize: 256,
+    maxzoom: 15,
+    attribution: "Terrain: Mapzen (AWS Open Data)",
+  });
+  map.addLayer({
+    id: "hillshade",
+    type: "hillshade",
+    source: "terrain-dem",
+    layout: { visibility: _terrainVisible ? "visible" : "none" },
+    paint: {
+      // Subtle: shading should read as texture under the data layers,
+      // not compete with them (labels sit below on the vector base).
+      "hillshade-exaggeration": 0.3,
+      "hillshade-shadow-color": "#5a5145",
+      "hillshade-highlight-color": "#ffffff",
+    },
+  });
+}
+
+/** Toggle the terrain hillshade (the lyr-terrain checkbox). Safe before
+ *  the map is ready: the desired state is applied when the layer mounts. */
+export function setTerrainVisible(on: boolean): void {
+  _terrainVisible = on;
+  if (map.getLayer("hillshade")) {
+    map.setLayoutProperty("hillshade", "visibility", on ? "visible" : "none");
+  }
 }
 
 function addHydroLayer(): void {
@@ -216,16 +289,90 @@ function addHydroLayer(): void {
     id: "hydro",
     type: "raster",
     source: "hydro",
-    layout: { visibility: _hydroVisible ? "visible" : "none" },
+    layout: { visibility: hydroEffective() ? "visible" : "none" },
     paint: { "raster-opacity": 0.85 },
   });
 }
 
+// M1.4: a hidden background layer added just above hydro. Line overlays
+// (public lands, trails, clickable streams) insert BEFORE this anchor and
+// symbol/point overlays append after it, so z-order is an explicit
+// contract instead of a registration-order + promise-timing accident.
+const SYMBOL_ANCHOR = "bl-anchor-symbols";
+
+function addSymbolAnchor(): void {
+  map.addLayer({
+    id: SYMBOL_ANCHOR,
+    type: "background",
+    layout: { visibility: "none" },
+    paint: {},
+  });
+}
+
+/** beforeId for line overlays: below every symbol layer, above hydro.
+ *  Undefined before the map is ready (callers all run via onMapReady). */
+export function lineOverlayAnchor(): string | undefined {
+  return map.getLayer(SYMBOL_ANCHOR) ? SYMBOL_ANCHOR : undefined;
+}
+
 export function setBaseMap(key: BaseMapKey): void {
   if (!isBaseKey(key) || key === _currentBaseKey) return;
+  const prevKey = _currentBaseKey;
   _currentBaseKey = key;
-  removeBase();
-  addBase(key); // re-inserted below hydro, overlays untouched
+  // Crossfade (M2.e2): add the new base below hydro FIRST and retire the
+  // old one only after the new one has painted. Removing first flashed
+  // the gray map background between raster bases and, for the async
+  // vector base, left no base at all for the whole style round-trip.
+  const oldLayers = _baseLayerIds;
+  const oldSources = _baseSourceIds;
+  _baseLayerIds = [];
+  _baseSourceIds = [];
+  const removeOld = () => {
+    for (const id of oldLayers) if (map.getLayer(id)) map.removeLayer(id);
+    for (const id of oldSources) if (map.getSource(id)) map.removeSource(id);
+  };
+  // Retire the old base when the new one has painted: its source reports
+  // loaded, or the map goes idle — with a hard timeout so the old base
+  // can never leak when tiles hang (slow network, offline, tile outage).
+  const retireOldWhenPainted = (newSourceId?: string) => {
+    let done = false;
+    const onSrc = (e: { sourceId?: string; isSourceLoaded?: boolean }) => {
+      if (e.sourceId === newSourceId && e.isSourceLoaded) fire();
+    };
+    const fire = () => {
+      if (done) return;
+      done = true;
+      map.off("sourcedata", onSrc);
+      removeOld();
+    };
+    if (newSourceId) map.on("sourcedata", onSrc);
+    map.once("idle", fire);
+    window.setTimeout(fire, 4000);
+  };
+  const gen = ++_baseGen;
+  if (key === "vector") {
+    void addVectorBase(gen).then((r) => {
+      if (r === "ok") {
+        retireOldWhenPainted();
+      } else if (r === "failed" && gen === _baseGen) {
+        // Style fetch failed and nothing newer superseded us: keep the
+        // previous base on screen and restore its tracking + key so the
+        // UI reflects what's actually shown.
+        _baseLayerIds = oldLayers;
+        _baseSourceIds = oldSources;
+        _currentBaseKey = prevKey;
+        window.currentBaseKey = prevKey;
+        applyHydroVisibility();
+        announceBase();
+      } else {
+        removeOld(); // superseded: a newer base is on top; drop ours
+      }
+    });
+  } else {
+    addRasterBase(key, gen);
+    retireOldWhenPainted(`base-${gen}`);
+  }
+  applyHydroVisibility(); // hydro suppressed on vector, checkbox-driven on raster
   try {
     localStorage.setItem("bl_basemap", key);
   } catch (_) {
@@ -238,15 +385,41 @@ export function currentBaseKey(): BaseMapKey {
   return _currentBaseKey;
 }
 
+/** Announce the active base key so UI (segment buttons, hydro toggle)
+ *  can resync after programmatic changes: the boot fallback when a
+ *  persisted vector base fails, and the failed-switch revert. */
+function announceBase(): void {
+  document.dispatchEvent(
+    new CustomEvent("bl:base-changed", { detail: _currentBaseKey }),
+  );
+}
+
 let _hydroVisible = true; // lyr-usgs default checked
+
+/** M1.2: the hydro raster is suppressed while the vector base is active —
+ *  the vector base carries its own hydrography, and the 0.85-opacity
+ *  raster double-draws water and paints over the vector labels. The
+ *  checkbox state (`_hydroVisible`) is preserved; it re-applies whenever
+ *  a raster base is active. */
+function hydroEffective(): boolean {
+  return _hydroVisible && _currentBaseKey !== "vector";
+}
+
+function applyHydroVisibility(): void {
+  if (map.getLayer("hydro")) {
+    map.setLayoutProperty(
+      "hydro",
+      "visibility",
+      hydroEffective() ? "visible" : "none",
+    );
+  }
+}
 
 /** Toggle the USGS hydro overlay (the lyr-usgs checkbox). Safe before
  *  the map is ready: the desired state is applied when the layer mounts. */
 export function setHydroVisible(on: boolean): void {
   _hydroVisible = on;
-  if (map.getLayer("hydro")) {
-    map.setLayoutProperty("hydro", "visibility", on ? "visible" : "none");
-  }
+  applyHydroVisibility();
 }
 
 // -- Ready gate ------------------------------------------------------
@@ -267,7 +440,9 @@ export function mapReady(): Promise<void> {
 
 map.on("load", () => {
   addBase(_currentBaseKey);
+  addHillshadeLayer(); // base < hillshade < hydro < anchor (M1.4/M3.1)
   addHydroLayer();
+  addSymbolAnchor();
   _ready = true;
   for (const cb of _readyCbs) cb();
   _readyCbs.length = 0;
