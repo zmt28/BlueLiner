@@ -2130,17 +2130,51 @@ def _rate_limit_pins(request: Request) -> None:
 _SESSION_COOKIE = "bl_session"
 
 
+# Sliding renewal (M5.1): when a valid session's previous sighting is
+# older than this, the response re-issues the cookie with a fresh
+# 30-day max_age -- so any visit inside the window extends it and a
+# returning user never re-logs-in. The threshold keeps Set-Cookie off
+# the common burst of requests (at most one refresh per day).
+_SESSION_RENEW_AFTER_H = 24.0
+
+
 def _session_user(request: Request) -> dict | None:
     """Validated session-cookie user, or None. Lookup is one indexed
-    DB hit (token_hash PK); negligible per-request cost."""
+    DB hit (token_hash PK); negligible per-request cost. Flags the
+    request for a sliding cookie renewal when the session hasn't been
+    seen for _SESSION_RENEW_AFTER_H (picked up by the response
+    middleware below)."""
     cookies = getattr(request, "cookies", None) or {}
     token = (cookies.get(_SESSION_COOKIE) or "").strip()
     if not token:
         return None
     try:
-        return db.user_from_session(token)
+        user = db.user_from_session(token)
     except Exception:
         return None
+    if not user:
+        return None
+    prev_seen = user.pop("prev_seen_at", None)
+    try:
+        seen = datetime.fromisoformat(prev_seen)
+        age_h = (datetime.now(timezone.utc) - seen).total_seconds() / 3600
+        if age_h >= _SESSION_RENEW_AFTER_H:
+            request.state.bl_renew_session = token
+    except (TypeError, ValueError, AttributeError):
+        pass  # unparseable timestamp or stateless test double: no renewal
+    return user
+
+
+@app.middleware("http")
+async def _renew_session_cookie(request: Request, call_next):
+    """Re-issue the session cookie when _session_user flagged the
+    request (sliding renewal). Runs on every response but only touches
+    ones whose handler validated a stale-enough session."""
+    response = await call_next(request)
+    token = getattr(request.state, "bl_renew_session", None)
+    if token:
+        _set_session_cookie(response, token)
+    return response
 
 
 def _owner(request: Request, required: bool = True) -> str | None:
@@ -2276,7 +2310,8 @@ async def api_request_magic_link(body: _MagicLinkIn, request: Request):
 
 
 @app.get("/auth/consume", response_class=HTMLResponse)
-async def auth_consume(token: str = Query(..., min_length=8, max_length=64)):
+async def auth_consume(token: str = Query(..., min_length=8, max_length=64),
+                       request: Request = None):
     """Validate the magic-link token, mint a session, set cookie,
     redirect to /. On failure, render a small error page with a link
     to request a fresh one. Server-rendered HTML keeps this independent
@@ -2287,10 +2322,15 @@ async def auth_consume(token: str = Query(..., min_length=8, max_length=64)):
 
     user = await asyncio.to_thread(db.upsert_user_by_email, email)
     sess_token = secrets.token_urlsafe(32)
-    # Best-effort persist of UA/IP for the session row.
-    # (Not asked here; just no client context to capture cleanly.)
+    # Persist UA/IP on the session row -- the raw material for the
+    # active-devices list in Settings (M5.2f).
+    ua = ip = None
+    if request is not None:
+        ua = ((request.headers.get("user-agent") or "").strip()[:300]
+              or None)
+        ip = request.client.host if request.client else None
     await asyncio.to_thread(db.create_session, user["id"], sess_token,
-                            None, None)
+                            ua, ip)
     resp = HTMLResponse(_consume_success_html(user["email"]))
     _set_session_cookie(resp, sess_token)
     return resp

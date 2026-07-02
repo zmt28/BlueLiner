@@ -843,6 +843,12 @@ def consume_magic_link(token: str) -> str | None:
 
 # Sessions -----------------------------------------------------------
 
+# Idle cap (M5.1): a session unused this long is dead server-side even
+# if a cookie for it resurfaces. Active users never hit it -- the
+# sliding cookie renewal keeps them signed in indefinitely.
+SESSION_IDLE_DAYS = 90
+
+
 def create_session(user_id: int, token: str,
                    user_agent: str | None, ip: str | None) -> None:
     now = datetime.now(timezone.utc).isoformat()
@@ -858,15 +864,22 @@ def create_session(user_id: int, token: str,
 
 def user_from_session(token: str) -> dict | None:
     """Validate a session cookie's token and return the owning user.
+    Enforces the server-side idle cap (M5.1): a session unseen for
+    SESSION_IDLE_DAYS is deleted on sight. The returned dict carries
+    `prev_seen_at` (the session's last_seen_at BEFORE this touch) so
+    the caller can decide whether the cookie deserves a sliding
+    renewal; it is popped before the user dict reaches any response.
     Touches `last_seen_at` opportunistically (best-effort, ignore
     update failures so reads stay fast)."""
     if not token:
         return None
     th = _hash(token)
+    now = datetime.now(timezone.utc)
     with _conn() as conn:
         cur = conn.cursor()
         cur.execute(
-            _ph("SELECT u.id, u.email, u.display_name, u.created_at"
+            _ph("SELECT u.id, u.email, u.display_name, u.created_at,"
+                " s.last_seen_at AS prev_seen_at"
                 " FROM sessions s JOIN users u ON u.id = s.user_id"
                 " WHERE s.token_hash = ? AND u.deleted_at IS NULL"),
             (th,))
@@ -874,10 +887,18 @@ def user_from_session(token: str) -> dict | None:
         if not row:
             return None
         try:
+            seen = datetime.fromisoformat(row["prev_seen_at"])
+            if (now - seen).days >= SESSION_IDLE_DAYS:
+                cur.execute(
+                    _ph("DELETE FROM sessions WHERE token_hash = ?"), (th,))
+                return None
+        except (TypeError, ValueError):
+            pass  # unparseable last_seen: treat as fresh, repair below
+        try:
             cur.execute(
                 _ph("UPDATE sessions SET last_seen_at = ?"
                     " WHERE token_hash = ?"),
-                (datetime.now(timezone.utc).isoformat(), th))
+                (now.isoformat(), th))
             conn.commit()
         except Exception:
             pass
@@ -893,6 +914,29 @@ def delete_session(token: str) -> None:
             _ph("DELETE FROM sessions WHERE token_hash = ?"),
             (_hash(token),))
         conn.commit()
+
+
+def prune_auth_rows() -> tuple[int, int]:
+    """Sweep dead auth state (M5.1): sessions idle past the cap and
+    magic links that expired or were consumed more than a day ago.
+    Called from the precompute cycle -- rows only otherwise die when
+    their token happens to resurface. Returns (sessions, links) pruned."""
+    now = datetime.now(timezone.utc)
+    idle_cutoff = (now - timedelta(days=SESSION_IDLE_DAYS)).isoformat()
+    link_cutoff = (now - timedelta(days=1)).isoformat()
+    with _conn() as conn:
+        cur = conn.cursor()
+        cur.execute(
+            _ph("DELETE FROM sessions WHERE last_seen_at < ?"),
+            (idle_cutoff,))
+        n_sessions = cur.rowcount
+        cur.execute(
+            _ph("DELETE FROM magic_links WHERE expires_at < ?"
+                " OR used_at < ?"),
+            (link_cutoff, link_cutoff))
+        n_links = cur.rowcount
+        conn.commit()
+    return n_sessions, n_links
 
 
 # Pin claim flow -----------------------------------------------------

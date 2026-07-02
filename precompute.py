@@ -181,5 +181,14 @@ async def refresh_focused() -> None:
             except Exception as exc:
                 logger.warning("refresh_focused: %s gauge_meta failed: %s",
                                st, exc)
+        # Auth housekeeping (M5.1): idle sessions + dead magic links.
+        # Best-effort; a sweep failure must never fail the cycle.
+        try:
+            n_sess, n_links = await asyncio.to_thread(db.prune_auth_rows)
+            if n_sess or n_links:
+                logger.info("pruned %d idle sessions, %d dead magic links",
+                            n_sess, n_links)
+        except Exception:
+            logger.exception("auth prune failed")
     finally:
         _refresh_running = False

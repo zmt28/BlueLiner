@@ -92,6 +92,90 @@ def test_claim_pins_relinks_anonymous_to_user(tmp_path, monkeypatch):
     assert len(db.list_pins(user_owner)) == 2
 
 
+# -- Session longevity (M5.1) ------------------------------------------
+
+def _backdate_session(token, hours):
+    import sqlite3
+    from datetime import datetime, timedelta, timezone
+    past = (datetime.now(timezone.utc) - timedelta(hours=hours)).isoformat()
+    c = sqlite3.connect(db.DB_PATH)
+    c.execute("UPDATE sessions SET last_seen_at=? WHERE token_hash=?",
+              (past, db._hash(token)))
+    c.commit()
+    c.close()
+
+
+def test_idle_session_expires_server_side(tmp_path, monkeypatch):
+    _fresh(tmp_path, monkeypatch)
+    user = db.upsert_user_by_email("alice@example.com")
+    db.create_session(user["id"], "sess-IDLE", None, None)
+    _backdate_session("sess-IDLE", hours=(db.SESSION_IDLE_DAYS * 24) + 1)
+    assert db.user_from_session("sess-IDLE") is None
+    # Deleted on sight, not just rejected: a second lookup misses too
+    # (the row is gone, not waiting for the prune sweep).
+    import sqlite3
+    c = sqlite3.connect(db.DB_PATH)
+    n = c.execute("SELECT COUNT(*) FROM sessions").fetchone()[0]
+    assert n == 0
+
+
+def test_session_user_flags_sliding_renewal(tmp_path, monkeypatch):
+    _fresh(tmp_path, monkeypatch)
+    user = db.upsert_user_by_email("alice@example.com")
+    db.create_session(user["id"], "sess-SLIDE", None, None)
+
+    # Fresh session (seen seconds ago): no renewal flag.
+    req = _req(cookies={main._SESSION_COOKIE: "sess-SLIDE"})
+    req.state = SimpleNamespace()
+    got = main._session_user(req)
+    assert got and got["id"] == user["id"]
+    assert "prev_seen_at" not in got            # popped before use
+    assert not hasattr(req.state, "bl_renew_session")
+
+    # Unseen for >24h: the request is flagged so the middleware
+    # re-issues the cookie with a fresh 30-day max_age.
+    _backdate_session("sess-SLIDE", hours=25)
+    req2 = _req(cookies={main._SESSION_COOKIE: "sess-SLIDE"})
+    req2.state = SimpleNamespace()
+    assert main._session_user(req2)
+    assert req2.state.bl_renew_session == "sess-SLIDE"
+
+
+def test_prune_auth_rows(tmp_path, monkeypatch):
+    _fresh(tmp_path, monkeypatch)
+    user = db.upsert_user_by_email("alice@example.com")
+    db.create_session(user["id"], "sess-LIVE", None, None)
+    db.create_session(user["id"], "sess-DEAD", None, None)
+    _backdate_session("sess-DEAD", hours=(db.SESSION_IDLE_DAYS * 24) + 1)
+    db.create_magic_link("alice@example.com", "tok-OLD")
+    import sqlite3
+    from datetime import datetime, timedelta, timezone
+    long_ago = (datetime.now(timezone.utc) - timedelta(days=2)).isoformat()
+    c = sqlite3.connect(db.DB_PATH)
+    c.execute("UPDATE magic_links SET expires_at=? WHERE token_hash=?",
+              (long_ago, db._hash("tok-OLD")))
+    c.commit()
+    c.close()
+    db.create_magic_link("alice@example.com", "tok-FRESH")
+
+    assert db.prune_auth_rows() == (1, 1)
+    assert db.user_from_session("sess-LIVE")            # survivor
+    assert db.consume_magic_link("tok-FRESH") == "alice@example.com"
+
+
+def test_consume_captures_session_context(tmp_path, monkeypatch):
+    _fresh(tmp_path, monkeypatch)
+    db.create_magic_link("alice@example.com", "tok-UA")
+    req = _req(ip="198.51.100.7",
+               headers={"user-agent": "Mozilla/5.0 (iPhone)"})
+    resp = asyncio.run(main.auth_consume("tok-UA", req))
+    assert resp.status_code == 200
+    import sqlite3
+    c = sqlite3.connect(db.DB_PATH)
+    ua, ip = c.execute("SELECT user_agent, ip FROM sessions").fetchone()
+    assert ua == "Mozilla/5.0 (iPhone)" and ip == "198.51.100.7"
+
+
 # -- _owner upgrade ----------------------------------------------------
 
 def test_owner_prefers_session_over_device_token(tmp_path, monkeypatch):
