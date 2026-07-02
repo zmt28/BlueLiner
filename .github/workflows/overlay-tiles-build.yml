@@ -1,4 +1,4 @@
-name: Data build — point-overlay tiles (access/dams/stocking)
+name: Data build — point-overlay tiles (access/dams/stocking/flyshops)
 
 # Builds a POINT-overlay PMTiles archive (access | dams | stocking) and
 # optionally publishes it to R2. These static reference overlays move off the
@@ -20,7 +20,7 @@ on:
       layer:
         description: "Which overlay to build"
         type: choice
-        options: [access, dams, stocking]
+        options: [access, dams, stocking, flyshops]
         default: access
       r2_prefix:
         description: "R2 version prefix (source + publish target, e.g. v4)"
@@ -76,6 +76,7 @@ jobs:
             access)   echo "path=data/access_points/access.geojson.gz" >> "$GITHUB_OUTPUT" ;;
             dams)     echo "path=data/dams/dams.geojson.gz"            >> "$GITHUB_OUTPUT" ;;
             stocking) echo "path=data/stocking/stocking.geojson.gz"    >> "$GITHUB_OUTPUT" ;;
+            flyshops) echo "path=data/fly_shops/fly_shops.geojson.gz"  >> "$GITHUB_OUTPUT" ;;
           esac
 
       - name: Fetch published access GeoJSON (access only)
@@ -96,7 +97,8 @@ jobs:
           layer, path = sys.argv[1], sys.argv[2]
           n = sum(1 for _ in json.load(gzip.open(path, "rt"))["features"])
           print(f"{layer}: {n:,} features")
-          floor = {"access": 1000, "dams": 1000, "stocking": 500}[layer]
+          floor = {"access": 1000, "dams": 1000, "stocking": 500,
+                   "flyshops": 300}[layer]
           if n < floor:
               sys.exit(f"only {n} {layer} features — build looks broken/empty")
           PY

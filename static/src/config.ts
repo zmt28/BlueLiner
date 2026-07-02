@@ -67,6 +67,10 @@ export const STOCKING_TILES_URL: string = (_env.VITE_STOCKING_TILES_URL || "").t
 export const STOCKING_TILES_ENABLED: boolean = STOCKING_TILES_URL.length > 0;
 export const STOCKING_SOURCE_LAYER = "stocking";
 
+export const FLYSHOPS_TILES_URL: string = (_env.VITE_FLYSHOPS_TILES_URL || "").trim();
+export const FLYSHOPS_TILES_ENABLED: boolean = FLYSHOPS_TILES_URL.length > 0;
+export const FLYSHOPS_SOURCE_LAYER = "flyshops";
+
 // Self-hosted vector basemap (offline-ready basemap, Phase 0). Points at
 // `basemap.pmtiles` built + published by scripts/build_basemap_tiles.sh. The
 // companion style/glyphs/sprite live under the same versioned prefix, next to

@@ -47,6 +47,7 @@ import {
   setPublicLandsVisible,
   setTrailsVisible,
   setDamsVisible,
+  setFlyShopsVisible,
 } from "./map-layers";
 import {
   loadClickableStreams,
@@ -542,6 +543,7 @@ for (const t of ["boat_ramp", "walk_in", "wading_access", "pier", "parking"]) {
 }
 wireLayerToggle("lyr-stocked", setStockedVisible);
 wireLayerToggle("lyr-dams", setDamsVisible);
+wireLayerToggle("lyr-flyshops", setFlyShopsVisible);
 wireLayerToggle("lyr-public-lands", setPublicLandsVisible);
 // Trails are a static PMTiles line layer (no per-state fetch); the layer is
 // only added when VITE_TRAILS_TILES_URL is configured, so the toggle just

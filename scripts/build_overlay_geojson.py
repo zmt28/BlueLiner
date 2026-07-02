@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """
-Dump a national POINT overlay (dams | stocking) to a gzipped GeoJSON
-FeatureCollection, the source for the PMTiles build (scripts/build_poi_tiles.sh).
+Dump a national POINT overlay (dams | stocking | flyshops) to a gzipped
+GeoJSON FeatureCollection, the source for the PMTiles build
+(scripts/build_poi_tiles.sh).
 
 Runs in the DATA-BUILD environment (egress to the NID FeatureServer / state
 agency ArcGIS feeds) -- NOT the runtime image, NOT the Claude Code sandbox
@@ -63,10 +64,90 @@ def _stocking_points() -> list[dict]:
     return out
 
 
-LAYERS = {"dams": _dams_points, "stocking": _stocking_points}
+OVERPASS_URL = "https://overpass-api.de/api/interpreter"
+_CONUS = (24.5, -125.0, 49.5, -66.9)   # (s, w, n, e)
+_UA = {"User-Agent": "blueliner-data-build (github.com/zmt28/BlueLiner)"}
+
+
+def _flyshops_points(rows: int = 4, cols: int = 6) -> list[dict]:
+    """Every OSM fishing/fly shop in CONUS (shop=fishing covers fly shops,
+    bait & tackle -- OSM tagging doesn't reliably distinguish them). Tiled
+    Overpass sweep, same pattern as build_river_poi.fetch_osm_access; shops
+    are sparse (~thousands nationwide) so a 4x6 grid stays under load limits.
+    Ways/relations resolve via `out center`."""
+    import time
+
+    import httpx
+
+    s, w, n, e = _CONUS
+    dlat, dlon = (n - s) / rows, (e - w) / cols
+    elements: list[dict] = []
+    with httpx.Client(timeout=300.0, headers=_UA) as c:
+        for r in range(rows):
+            for col in range(cols):
+                bs, bw = s + r * dlat, w + col * dlon
+                bn, be = bs + dlat, bw + dlon
+                q = (f"[out:json][timeout:240];"
+                     f'nwr["shop"="fishing"]({bs},{bw},{bn},{be});'
+                     f"out center tags;")
+                for attempt in range(4):
+                    try:
+                        resp = c.post(OVERPASS_URL, data={"data": q})
+                        if resp.status_code == 200:
+                            elements += resp.json().get("elements", [])
+                            break
+                    except httpx.TransportError:
+                        pass
+                    time.sleep(5 * (attempt + 1))
+                time.sleep(1)   # be polite to the public instance
+            print(f"[flyshops] row {r + 1}/{rows}: {len(elements):,} raw",
+                  flush=True)
+
+    return _flyshop_elements_to_points(elements)
+
+
+def _flyshop_elements_to_points(elements: list[dict]) -> list[dict]:
+    """Overpass elements (node | way/relation with `center`) -> canonical
+    point dicts. Split out from the fetch for testability."""
+    seen: set = set()
+    out: list[dict] = []
+    for el in elements:
+        key = (el.get("type"), el.get("id"))
+        if key in seen:
+            continue
+        seen.add(key)
+        lat = el.get("lat") or (el.get("center") or {}).get("lat")
+        lon = el.get("lon") or (el.get("center") or {}).get("lon")
+        if lat is None or lon is None:
+            continue
+        t = el.get("tags") or {}
+        addr_bits = [x for x in (t.get("addr:housenumber"),
+                                 t.get("addr:street")) if x]
+        addr = " ".join(addr_bits)
+        if t.get("addr:city"):
+            addr = f"{addr}, {t['addr:city']}" if addr else t["addr:city"]
+        out.append({
+            "lat": lat,
+            "lon": lon,
+            "name": t.get("name") or "Fishing shop",
+            "website": t.get("website") or t.get("contact:website") or "",
+            "phone": t.get("phone") or t.get("contact:phone") or "",
+            "addr": addr,
+            "source": "osm",
+            "osm_id": f"{el.get('type')}/{el.get('id')}",
+        })
+    return out
+
+
+LAYERS = {
+    "dams": _dams_points,
+    "stocking": _stocking_points,
+    "flyshops": _flyshops_points,
+}
 DEFAULT_OUT = {
     "dams": os.path.join(ROOT, "data", "dams", "dams.geojson.gz"),
     "stocking": os.path.join(ROOT, "data", "stocking", "stocking.geojson.gz"),
+    "flyshops": os.path.join(ROOT, "data", "fly_shops", "fly_shops.geojson.gz"),
 }
 
 

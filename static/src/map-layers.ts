@@ -39,6 +39,9 @@ import {
   DAMS_TILES_ENABLED,
   DAMS_TILES_URL,
   DAMS_SOURCE_LAYER,
+  FLYSHOPS_TILES_ENABLED,
+  FLYSHOPS_TILES_URL,
+  FLYSHOPS_SOURCE_LAYER,
   STOCKING_TILES_ENABLED,
   STOCKING_TILES_URL,
   STOCKING_SOURCE_LAYER,
@@ -413,6 +416,62 @@ onMapReady(() => {
     iconImage: "poi-dam",
     visible: _damsVisible,
     popupHtml: (p, ll) => damPopupHtml(p as DamFeatureProps, ll),
+  });
+});
+
+// -- Fly & tackle shops (OSM shop=fishing) --------------------------------
+// National static PMTiles built by scripts/build_overlay_geojson.py flyshops
+// (Overpass sweep) + build_poi_tiles.sh. OSM tagging doesn't reliably split
+// fly shops from bait & tackle, so the layer is honest about covering both.
+
+interface FlyShopProps {
+  name?: string;
+  website?: string;
+  phone?: string;
+  addr?: string;
+}
+
+let _flyshopsVisible = false;
+
+export function flyShopPopupHtml(
+  p: FlyShopProps,
+  lngLat?: [number, number],
+): string {
+  const meta = [p.addr ? esc(p.addr) : "", p.phone ? esc(p.phone) : ""]
+    .filter(Boolean)
+    .join(" &middot; ");
+  const link = p.website
+    ? `<div class="ap-link"><a href="${esc(p.website)}" target="_blank" ` +
+      `rel="noopener noreferrer">Website &rarr;</a></div>`
+    : "";
+  const dir = lngLat ? directionsLinkHtml(lngLat[1], lngLat[0], p.name) : "";
+  return (
+    `<div class="ap-popup">` +
+    `<div class="ap-name">${esc(p.name || "Fishing shop")}</div>` +
+    (meta ? `<div class="ap-meta">${meta}</div>` : "") +
+    link +
+    dir +
+    `</div>`
+  );
+}
+
+export function setFlyShopsVisible(on: boolean): void {
+  warnIfPoiMountFailed(on);
+  _flyshopsVisible = on;
+  if (map.getLayer("flyshops-pts")) {
+    map.setLayoutProperty("flyshops-pts", "visibility", vis(on));
+  }
+}
+
+onMapReady(() => {
+  if (!FLYSHOPS_TILES_ENABLED) return;
+  addPointTileLayer({
+    key: "flyshops",
+    url: FLYSHOPS_TILES_URL,
+    sourceLayer: FLYSHOPS_SOURCE_LAYER,
+    iconImage: "poi-fly_shop",
+    visible: _flyshopsVisible,
+    popupHtml: (p, ll) => flyShopPopupHtml(p as FlyShopProps, ll),
   });
 });
 
