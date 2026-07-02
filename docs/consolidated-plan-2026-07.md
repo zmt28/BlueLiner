@@ -213,8 +213,12 @@ mode click-suppression, confirmed writes, input preservation) across every remai
       email shipped first since the Resend infra existed).
 - [ ] **M4.2** Real search: prebuilt static index (rivers, gauges, counties, towns) searched
       client-side; free geocoder fallback. (M2.f's keyboard/highlight work carries over.)
-- [ ] **M4.3** Perceived-speed pass: optimistic pin/catch writes (pairs with M2.b4/M2.d1 error
-      handling), skeletons on panel loads.
+- [x] **M4.3** Perceived-speed pass: optimistic pin/catch writes (pairs with M2.b4/M2.d1 error
+      handling), skeletons on panel loads. *(Resolved across M2 + M4.1: favorites/bell toggles
+      and pin/catch DELETEs are optimistic with rollback; content-CREATING writes (pin save,
+      catch save) deliberately stay confirmed-with-preserved-input — showing "saved" before the
+      server agrees risks silent data loss, and both now have busy states + toasts. Panel loads
+      all have skeletons/placeholders since M2.)*
 - [x] **M4.4a** Scoring depth: trend arrows ("rising fast"). *(Done: each precompute pass diffs
       per-gauge flow against the prior snapshot (zero extra USGS load), classifies %/hour into
       rising fast/rising/steady/falling/dropping fast, persists it in the gauge conditions, and
