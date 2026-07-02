@@ -325,6 +325,17 @@ def init_db() -> None:
             "CREATE INDEX IF NOT EXISTS idx_favorites_state "
             "ON favorites(state)"
         )
+        # Daily email-send budget (M5.4). One counter row per (scope,
+        # UTC day); scopes are "alerts:global" and "alerts:user:<id>".
+        # Durable (not in-process) because the free-tier dyno restarts
+        # often and the precompute pass also runs via external cron.
+        cur.execute(
+            "CREATE TABLE IF NOT EXISTS email_budget ("
+            " scope TEXT NOT NULL,"
+            " day TEXT NOT NULL,"
+            " n INTEGER NOT NULL DEFAULT 0,"
+            " PRIMARY KEY (scope, day))"
+        )
 
 
 def healthcheck() -> bool:
@@ -1126,3 +1137,46 @@ def set_favorite_verdict(user_id: int, site_no: str, overall: str) -> None:
             _ph("UPDATE favorites SET last_overall = ?"
                 " WHERE user_id = ? AND site_no = ?"),
             (overall, user_id, site_no))
+
+
+# Email budget (M5.4) -------------------------------------------------
+
+def try_spend_email_budget(scope: str, limit: int) -> bool:
+    """Atomically reserve one send from today's (UTC) budget for
+    `scope`. Returns False once the day's `limit` is spent -- the
+    caller skips the send. The guarded UPDATE makes concurrent workers
+    safe: only rows still under the limit increment."""
+    if limit <= 0:
+        return False
+    day = datetime.now(timezone.utc).date().isoformat()
+    with _conn() as conn:
+        cur = conn.cursor()
+        cur.execute(
+            _ph("UPDATE email_budget SET n = n + 1"
+                " WHERE scope = ? AND day = ? AND n < ?"),
+            (scope, day, limit))
+        if cur.rowcount:
+            return True
+    # No row for today yet (or the limit is hit). Insert the day's
+    # first spend; on a PK race with another worker, fall back to one
+    # more guarded UPDATE. Separate _conn() blocks so the failed
+    # INSERT's rollback can't discard a prior increment.
+    try:
+        with _conn() as conn:
+            conn.cursor().execute(
+                _ph("INSERT INTO email_budget (scope, day, n)"
+                    " VALUES (?, ?, 1)"),
+                (scope, day))
+            # Yesterday's counters are dead weight; sweep opportunistically
+            # on the (rare) first send of a scope's day.
+            conn.cursor().execute(
+                _ph("DELETE FROM email_budget WHERE day < ?"), (day,))
+        return True
+    except Exception:
+        with _conn() as conn:
+            cur = conn.cursor()
+            cur.execute(
+                _ph("UPDATE email_budget SET n = n + 1"
+                    " WHERE scope = ? AND day = ? AND n < ?"),
+                (scope, day, limit))
+            return bool(cur.rowcount)

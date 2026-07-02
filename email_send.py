@@ -68,7 +68,7 @@ def send_magic_link(email: str, consume_url: str,
         return False
 
 
-# -- Condition alerts (M4.1) ------------------------------------------
+# -- Condition alerts (M4.1, digested per pass in M5.4) ----------------
 
 _VERDICT_LABEL = {"green": "Good", "yellow": "Fair", "red": "Poor",
                   "gray": "No data"}
@@ -76,44 +76,64 @@ _VERDICT_COLOR = {"green": "#2F6B3D", "yellow": "#8a6d1f", "red": "#8A3327",
                   "gray": "#5b6673"}
 
 
-def _build_alert_html(river_name: str, state: str, prev: str,
-                      new: str) -> str:
-    new_label = _VERDICT_LABEL.get(new, new)
-    prev_label = _VERDICT_LABEL.get(prev, prev)
-    color = _VERDICT_COLOR.get(new, "#222")
+def _digest_subject(items: list[dict]) -> str:
+    if len(items) == 1:
+        it = items[0]
+        return f"{it['name']} just went {_VERDICT_LABEL.get(it['new'], it['new'])}"
+    good = sum(1 for it in items if it["new"] == "green")
+    if good == len(items):
+        return f"{len(items)} of your waters just went Good"
+    if good == 0:
+        return f"{len(items)} of your waters just went Poor"
+    return f"{len(items)} of your waters just changed"
+
+
+def _build_digest_html(items: list[dict]) -> str:
+    rows = []
+    for it in items:
+        new_label = _VERDICT_LABEL.get(it["new"], it["new"])
+        prev_label = _VERDICT_LABEL.get(it["prev"], it["prev"])
+        color = _VERDICT_COLOR.get(it["new"], "#222")
+        rows.append(
+            f'<p style="margin:0 0 12px;font-size:15px">'
+            f'<strong>{it["name"]}</strong> ({it["state"]}) just went '
+            f'<strong style="color:{color}">{new_label}</strong> '
+            f'(was {prev_label}).</p>')
     return (
         f'<div style="font-family:system-ui,sans-serif;max-width:480px;'
         f'margin:0 auto;padding:24px;color:#222">'
-        f'<h2 style="margin:0 0 8px">{river_name}</h2>'
-        f'<p style="margin:0 0 16px;font-size:15px">Conditions just went '
-        f'<strong style="color:{color}">{new_label}</strong> '
-        f'(was {prev_label}).</p>'
+        f'<h2 style="margin:0 0 16px">Your waters changed</h2>'
+        f'{"".join(rows)}'
         f'<p style="margin:24px 0">'
         f'<a href="https://blueliner.app/map" style="display:inline-block;'
         f'background:#15506C;color:#fff;text-decoration:none;'
         f'padding:12px 20px;border-radius:6px;font-weight:600">'
         f'Check the water</a></p>'
         f'<p style="font-size:12px;color:#888">You get these because '
-        f'{river_name} ({state}) is a favorite with alerts on. Turn them '
-        f'off from My Content &rarr; Favorites in the app.</p>'
+        f'these are favorites with alerts on. Turn them off from '
+        f'My Content &rarr; Favorites in the app.</p>'
         f'</div>'
     )
 
 
-def send_condition_alert(email: str, river_name: str, state: str,
-                         prev: str, new: str) -> bool:
-    """One favorite-water transition alert. Returns True on success.
+def send_condition_digest(email: str, items: list[dict]) -> bool:
+    """One email covering every favorite of `email`'s that transitioned
+    this precompute pass. `items`: [{"name", "state", "prev", "new"}].
+    A single-item digest reads identically to the old per-river alert.
     In dev (no API key) logs and returns True, same as the magic link."""
-    new_label = _VERDICT_LABEL.get(new, new)
+    if not items:
+        return False
     if not _API_KEY:
-        logger.info("(dev) condition alert for %s: %s (%s) %s -> %s",
-                    email, river_name, state, prev, new)
+        logger.info("(dev) condition digest for %s: %s", email,
+                    "; ".join(f"{it['name']} ({it['state']})"
+                              f" {it['prev']} -> {it['new']}"
+                              for it in items))
         return True
     payload = {
         "from": _FROM,
         "to": [email],
-        "subject": f"{river_name} just went {new_label}",
-        "html": _build_alert_html(river_name, state, prev, new),
+        "subject": _digest_subject(items),
+        "html": _build_digest_html(items),
     }
     try:
         with httpx.Client(timeout=10.0) as c:
@@ -122,5 +142,5 @@ def send_condition_alert(email: str, river_name: str, state: str,
             r.raise_for_status()
         return True
     except Exception as exc:
-        logger.warning("Resend alert failed for %s: %s", email, exc)
+        logger.warning("Resend digest failed for %s: %s", email, exc)
         return False
