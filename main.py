@@ -425,15 +425,20 @@ _TREND_COLOR = {"rising_fast": "#c0392b", "rising": "#e67e22",
                 "falling_fast": "#2471a3"}
 
 
-def _flow_trend(current: float | None, previous: float | None,
-                hours: float | None) -> str | None:
-    """Classify flow direction from two readings `hours` apart, or None
+def _flow_rate(current: float | None, previous: float | None,
+               hours: float | None) -> float | None:
+    """Fractional flow change per hour between two readings, or None
     when either reading (or a sane interval) is missing."""
     if not current or not previous or not hours:
         return None
     if hours <= 0.05 or hours > 6:
         return None  # same reading, or too stale to call a "trend"
-    rate = (current - previous) / previous / hours
+    return (current - previous) / previous / hours
+
+
+def _flow_trend_from_rate(rate: float | None) -> str | None:
+    if rate is None:
+        return None
     if rate >= 0.20:
         return "rising_fast"
     if rate >= 0.05:
@@ -443,6 +448,62 @@ def _flow_trend(current: float | None, previous: float | None,
     if rate <= -0.05:
         return "falling"
     return "steady"
+
+
+def _flow_trend(current: float | None, previous: float | None,
+                hours: float | None) -> str | None:
+    """Classify flow direction from two readings `hours` apart, or None
+    when either reading (or a sane interval) is missing."""
+    return _flow_trend_from_rate(_flow_rate(current, previous, hours))
+
+
+# -- Fishable window (M4.4b) --------------------------------------------
+# A short, honest projection layered on the trend: when flow is good,
+# say whether the window is open or closing; when it's blown out but
+# dropping, project (assuming the current decay rate holds) roughly when
+# flow re-enters the fishable band (< 2x median) and say so. No signal
+# at all is better than a speculative one, so anything ambiguous
+# (yellow-steady, no median, no trend) stays silent.
+
+_WINDOW_COLOR = {"open": "#27ae60", "closing": "#e67e22",
+                 "dropping_in": "#2980b9", "none_yet": "#7f8c9a"}
+
+
+def _flow_window(conditions: dict, historical_median: float | None,
+                 rate: float | None) -> tuple[str, str] | None:
+    """(key, label) for the fishable-window chip, or None for silence."""
+    cur = conditions.get("current_flow")
+    trend = conditions.get("trend")
+    if not cur or not trend:
+        return None
+    if conditions.get("flow") == "green":
+        if trend == "rising_fast":
+            return ("closing", "Fishable now — rising fast, window closing")
+        return ("open", "Good window now")
+    if not historical_median:
+        return None
+    # Blown out (above the 2x-median fishable band) and falling: project
+    # when cur * (1 + rate)^h re-enters 2x median.
+    if cur > 2 * historical_median and rate is not None and rate < -0.005:
+        try:
+            h = math.log((2 * historical_median) / cur) / math.log(1 + rate)
+        except ValueError:
+            return None
+        if h <= 0:
+            return None
+        if h <= 8:
+            when = "later today"
+        elif h <= 30:
+            when = "tomorrow"
+        elif h <= 72:
+            when = "in a couple of days"
+        else:
+            return None
+        return ("dropping_in", f"Blown out but dropping — window {when}")
+    if cur > 3 * historical_median and trend in ("steady", "rising",
+                                                 "rising_fast"):
+        return ("none_yet", "Blown out — no window yet")
+    return None
 
 
 # -- Popup HTML --
@@ -599,11 +660,19 @@ def _flow_context_html(conditions: dict, historical_median: float | None) -> str
             f' <span style="color:{_TREND_COLOR[tdir]};font-weight:600;'
             f'margin-left:4px">{_TREND_ARROW[tdir]} {_TREND_LABEL[tdir]}</span>'
         )
+    # Fishable-window line (M4.4b), when the projection has a verdict.
+    wkey = conditions.get("window")
+    window_html = ""
+    if wkey in _WINDOW_COLOR and conditions.get("window_label"):
+        window_html = (
+            f'<div style="margin-top:4px;color:{_WINDOW_COLOR[wkey]};'
+            f'font-weight:600">{conditions["window_label"]}</div>'
+        )
     return f"""
         <div style="padding:8px 12px;background:#f0f4f8;border-radius:6px;margin:6px 0;font-size:13px;color:#444">
             <span style="font-weight:600">Flow context:</span>
             {current:.0f} cfs now vs. {historical_median:.0f} cfs median for {date_label}
-            <span style="color:{trend_color};font-weight:600;margin-left:4px">{trend}</span>{tdir_html}
+            <span style="color:{trend_color};font-weight:600;margin-left:4px">{trend}</span>{tdir_html}{window_html}
         </div>"""
 
 
@@ -1136,10 +1205,16 @@ async def _assemble_rivers(time_series: list, trout_layers: list,
         # Flow direction vs the prior snapshot (M4.4); precompute passes
         # the previous readings in, the live bbox path doesn't have them.
         if prev_flows and site_no:
-            tdir = _flow_trend(conditions.get("current_flow"),
-                               prev_flows.get(site_no), prev_hours)
+            rate = _flow_rate(conditions.get("current_flow"),
+                              prev_flows.get(site_no), prev_hours)
+            tdir = _flow_trend_from_rate(rate)
             if tdir:
                 conditions["trend"] = tdir
+                # Fishable window (M4.4b): a projection on top of the
+                # trend; silent unless there's something honest to say.
+                w = _flow_window(conditions, historical_median, rate)
+                if w:
+                    conditions["window"], conditions["window_label"] = w
         on_trout = any(is_near_trout_stream(latitude, longitude, g) for g in tgs)
         gnis = (gauge_metas.get(site_no, {}).get("gnis_name") if site_no
                 else None)
@@ -1237,6 +1312,9 @@ async def _assemble_rivers(time_series: list, trout_layers: list,
                      "current_flow": gg["conditions"].get("current_flow"),
                      **({"trend": gg["conditions"]["trend"]}
                         if gg["conditions"].get("trend") else {}),
+                     **({"window": gg["conditions"]["window"],
+                         "window_label": gg["conditions"]["window_label"]}
+                        if gg["conditions"].get("window") else {}),
                  }}
                 for gg in river["gauges"]
             ],

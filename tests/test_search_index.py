@@ -46,6 +46,37 @@ def test_parse_gazetteer_counties_filters_non_conus():
     assert rows == [["Baltimore County", "MD", 39.4431, -76.6165]]
 
 
+def test_parse_gazetteer_survives_utf8_bom():
+    # The real Census files carry a UTF-8 BOM; a plain utf-8 decode left
+    # "﻿USPS" as the first header key and zeroed the whole parse
+    # (CI run 2 of the index build). Both decode paths must survive it.
+    bommed = "﻿" + GAZ
+    assert bsi.parse_gazetteer(bommed, "county") == [
+        ["Baltimore County", "MD", 39.4431, -76.6165]]
+    # And the canonical fix: utf-8-sig at decode time.
+    decoded = bommed.encode("utf-8").decode("utf-8-sig")
+    assert bsi.parse_gazetteer(decoded, "county")[0][0] == "Baltimore County"
+
+
+# The 2025 vintage switched to pipe-delimited and inserted GEOIDFQ
+# (CI runs 2-4 of the index build parsed 0 rows from it: every line
+# collapsed into one "cell" under the tab split). Layout below is
+# verbatim from 2025_Gaz_counties_national.txt.
+GAZ_2025_PIPES = (
+    "USPS|GEOID|GEOIDFQ|ANSICODE|NAME|ALAND|AWATER|"
+    "ALAND_SQMI|AWATER_SQMI|INTPTLAT|INTPTLONG\n"
+    "MD|24005|0500000US24005|01695314|Baltimore County|1|1|1|1|"
+    "39.4431|-76.6165\n"
+    "PR|72001|0500000US72001|01804480|Adjuntas Municipio|1|1|1|1|"
+    "18.1810|-66.7580\n"
+)
+
+
+def test_parse_gazetteer_sniffs_2025_pipe_delimiter():
+    rows = bsi.parse_gazetteer(GAZ_2025_PIPES, "county")
+    assert rows == [["Baltimore County", "MD", 39.4431, -76.6165]]
+
+
 GAZ_PLACES = (
     "USPS\tGEOID\tANSICODE\tNAME\tLSAD\tFUNCSTAT\tALAND\tAWATER\t"
     "ALAND_SQMI\tAWATER_SQMI\tINTPTLAT\tINTPTLONG\n"

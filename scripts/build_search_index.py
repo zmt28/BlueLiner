@@ -45,11 +45,13 @@ from states import STATES  # noqa: E402
 _UA = {"User-Agent": "blueliner-data-build (github.com/zmt28/BlueLiner)"}
 
 USGS_SITE_URL = "https://waterservices.usgs.gov/nwis/site/"
-# 2023 vintage; bump the year on a rebuild when Census publishes new ones.
-GAZ_COUNTIES_URL = ("https://www2.census.gov/geo/docs/maps-data/data/"
-                    "gazetteer/2023_Gazetteers/2023_Gaz_counties_national.zip")
-GAZ_PLACES_URL = ("https://www2.census.gov/geo/docs/maps-data/data/"
-                  "gazetteer/2023_Gazetteers/2023_Gaz_place_national.zip")
+# Census gazetteer: one directory per vintage
+# (.../gazetteer/<year>_Gazetteer/<year>_Gaz_counties_national.zip -- note
+# the SINGULAR "Gazetteer"). Census publishes yearly; try newest first so
+# rebuilds pick up fresh vintages without a code change.
+GAZ_VINTAGES = (2025, 2024, 2023, 2022, 2021, 2020)
+GAZ_URL_TPL = ("https://www2.census.gov/geo/docs/maps-data/data/gazetteer/"
+               "{year}_Gazetteer/{year}_Gaz_{kind}_national.zip")
 
 COORD_PRECISION = 4  # ~11 m; plenty for a flyTo target
 
@@ -103,15 +105,23 @@ def fetch_gauges(codes: list[str]) -> list[list]:
 
 
 def parse_gazetteer(tsv: str, kind: str) -> list[list]:
-    """Census gazetteer TSV -> [[name, state, lat, lon], ...]. Places
-    carry suffixes like 'town'/'city'/'CDP' in NAME; strip the common
-    ones so search reads naturally ('Parkton', not 'Parkton CDP')."""
+    """Census gazetteer table -> [[name, state, lat, lon], ...]. Vintages
+    through 2024 are tab-delimited; 2025 switched to pipe-delimited (and
+    grew a GEOIDFQ column), so sniff the delimiter from the header line.
+    Places carry suffixes like 'town'/'city'/'CDP' in NAME; strip the
+    common ones so search reads naturally ('Parkton', not 'Parkton CDP')."""
     rows: list[list] = []
     header: list[str] | None = None
+    delim: str | None = None
     for line in tsv.splitlines():
         if not line.strip():
             continue
-        parts = [p.strip() for p in line.split("\t")]
+        if delim is None:
+            delim = "|" if "|" in line else "\t"
+        # strip() per cell handles \r line endings and the trailing
+        # whitespace Census pads some columns with; lstrip("﻿")
+        # belt-and-braces the BOM should a caller decode plain utf-8.
+        parts = [p.strip().lstrip("﻿") for p in line.split(delim)]
         if header is None:
             header = parts
             continue
@@ -135,18 +145,42 @@ def parse_gazetteer(tsv: str, kind: str) -> list[list]:
     return rows
 
 
-def fetch_gazetteer(url: str, kind: str) -> list[list]:
+def fetch_gazetteer(kind: str) -> list[list]:
+    """`kind` is the Census filename token: "counties" | "place". Tries
+    the newest vintage first and falls back year by year (404s happen
+    while a new vintage is mid-publish)."""
     import httpx
 
     with httpx.Client(timeout=120.0, headers=_UA,
                       follow_redirects=True) as c:
-        r = c.get(url)
-        r.raise_for_status()
+        r = None
+        for year in GAZ_VINTAGES:
+            url = GAZ_URL_TPL.format(year=year, kind=kind)
+            resp = c.get(url)
+            if resp.status_code == 200:
+                r = resp
+                print(f"[{kind}] vintage {year}", flush=True)
+                break
+            print(f"[{kind}] {year}: HTTP {resp.status_code}, "
+                  f"trying older vintage", flush=True)
+        if r is None:
+            raise RuntimeError(f"no gazetteer vintage found for {kind}")
     zf = zipfile.ZipFile(io.BytesIO(r.content))
-    name = next(n for n in zf.namelist() if n.endswith(".txt"))
-    # Gazetteer files are latin-1-ish; utf-8 with replacement is safe.
-    tsv = zf.read(name).decode("utf-8", errors="replace")
-    rows = parse_gazetteer(tsv, kind)
+    txts = [n for n in zf.namelist() if n.lower().endswith(".txt")]
+    if not txts:
+        raise RuntimeError(
+            f"no .txt member in {kind} gazetteer zip: {zf.namelist()}")
+    # Largest .txt = the data file (zips can also carry a small readme,
+    # which a naive first-match silently picked before).
+    name = max(txts, key=lambda n: zf.getinfo(n).file_size)
+    print(f"[{kind}] members {zf.namelist()} -> using {name}", flush=True)
+    # utf-8-sig: the gazetteer files carry a UTF-8 BOM, which would
+    # otherwise prefix the first header cell ("﻿USPS" != "USPS")
+    # and silently zero the parse.
+    tsv = zf.read(name).decode("utf-8-sig", errors="replace")
+    head = tsv.splitlines()[0] if tsv else ""
+    print(f"[{kind}] header: {head[:160]!r}", flush=True)
+    rows = parse_gazetteer(tsv, "county" if kind == "counties" else "place")
     print(f"[{kind}] {len(rows):,} rows", flush=True)
     return rows
 
@@ -168,10 +202,8 @@ def main() -> int:
     index = {
         "v": 1,
         "gauges": fetch_gauges(codes),
-        "counties": [] if args.skip_census else
-            fetch_gazetteer(GAZ_COUNTIES_URL, "county"),
-        "places": [] if args.skip_census else
-            fetch_gazetteer(GAZ_PLACES_URL, "place"),
+        "counties": [] if args.skip_census else fetch_gazetteer("counties"),
+        "places": [] if args.skip_census else fetch_gazetteer("place"),
     }
     payload = json.dumps(index, separators=(",", ":"))
     os.makedirs(os.path.dirname(args.out) or ".", exist_ok=True)

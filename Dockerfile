@@ -47,6 +47,12 @@ ARG VITE_DAMS_TILES_URL=""
 ENV VITE_DAMS_TILES_URL=$VITE_DAMS_TILES_URL
 ARG VITE_STOCKING_TILES_URL=""
 ENV VITE_STOCKING_TILES_URL=$VITE_STOCKING_TILES_URL
+ARG VITE_FLYSHOPS_TILES_URL=""
+ENV VITE_FLYSHOPS_TILES_URL=$VITE_FLYSHOPS_TILES_URL
+# Client-side search index (M4.2): gauges + counties + towns JSON.
+# Unset = river-catalog-only search.
+ARG VITE_SEARCH_INDEX_URL=""
+ENV VITE_SEARCH_INDEX_URL=$VITE_SEARCH_INDEX_URL
 
 # Build -> static/dist/index.html + static/dist/assets/*. The dist
 # folder is what stage 2 copies in below; everything else in this
