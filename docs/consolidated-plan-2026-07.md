@@ -24,16 +24,26 @@ fill-in work. Items marked **[bug]** are behavior defects, not just polish.
 
 ## M1 — Light up what's built (from architecture review, Phase 1)
 
-- [ ] **M1.1** Build + publish the CONUS basemap archive (`scripts/build_basemap_tiles.sh` → R2),
-      set `VITE_BASEMAP_TILES_URL` on Render, make `vector` the default base.
+> **Status correction (2026-07-02):** the basemap build/publish/enable half of M1 was
+> already done on 2026-06-08 — `VITE_BASEMAP_TILES_URL` is set in the Render dashboard
+> (v5 archive on R2, verified in the live bundle), so the vector base is offered and
+> offline downloads are live in production. What remains is the defaults flip + code work.
+
+- [x] **M1.1a** Build + publish the CONUS basemap archive (`scripts/build_basemap_tiles.sh` → R2),
+      set `VITE_BASEMAP_TILES_URL` on Render. *(Done 2026-06-08 via basemap-build.yml + Render
+      dashboard; v5 prefix.)*
+- [ ] **M1.1b** Make `vector` the **default** base (live fallback is still `street`,
+      `map-setup.ts:loadBaseMapPref`).
 - [ ] **M1.2** Default the USGS hydro raster overlay **off** (auto-off when vector base active) —
       ends double-drawn water and label smothering. (`map-setup.ts:241`)
-- [ ] **M1.3** Ship offline downloads (same flag; UI self-mounts). Device-test the SW asset path;
-      consider small download concurrency (sequential today, `offline-tiles.ts:160`).
+- [x] **M1.3** Ship offline downloads (same flag; UI self-mounts in prod since 2026-06-08).
+      Remaining: device-test the SW asset path; consider small download concurrency
+      (sequential today, `offline-tiles.ts:160`).
 - [ ] **M1.4** Layer-order contract: explicit `beforeId` anchors (line overlays below base labels,
       symbols above); remove the promise-timing z-order dependency. (`map-layers.ts:163`)
 - [ ] **M1.5** Boot hygiene: SW-cache or inline `/api/states` (removes the warm-boot network gate,
       `app-boot.ts:36`); bundle Lucide at build time instead of unpkg CDN (`index.html:33`).
+      *(Both confirmed still live issues in the deployed sw.js / HTML.)*
 
 ---
 

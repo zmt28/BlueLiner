@@ -8,6 +8,18 @@ Method: four parallel audits — map rendering path, frontend/product architectu
 data model, and a web-research benchmark of TroutRoutes' 2025–26 feature set — synthesized
 here. File references are to this repo at the time of review.
 
+> **CORRECTION (2026-07-02).** The review's headline claim that the vector basemap and
+> offline downloads are "dark-shipped behind an unset env var" is **wrong for the current
+> production deploy**. `VITE_BASEMAP_TILES_URL=https://data.blueliner.app/v5/basemap.pmtiles`
+> is set in the **Render dashboard build env** (verified in the live bundle at blueliner.app
+> and in the successful `basemap-build.yml` runs of 2026-06-08) — so the vector base is
+> offered and offline downloads are live. The repo misled the review: `config.ts` said
+> "Unset (today)", `render.yaml` doesn't carry the var, and CLAUDE.md predates the June work.
+> What remains true and unshipped: **street raster + the hydro overlay are still the
+> default** (vector must be picked manually), the layer-order contract, `/api/states`
+> caching, and the Lucide CDN dependency. Phase 1 below is therefore mostly a *defaults
+> flip*, not a build-and-publish project. The strategic analysis is unchanged.
+
 ---
 
 ## 1. Executive summary
