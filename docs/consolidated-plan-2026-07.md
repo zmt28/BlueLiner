@@ -111,20 +111,23 @@ fill-in work. Items marked **[bug]** are behavior defects, not just polish.
 
 ### M2.f Search quick fixes (audit P3 — distinct from M4's real-search project)
 
-- [ ] **M2.f1** Arrow-key navigation (the `.is-active` style exists unused, `app.css:353`);
+- [x] **M2.f1** Arrow-key navigation (the `.is-active` style exists unused, `app.css:353`);
       Enter picks the active row (`search.ts:182-194`).
-- [ ] **M2.f2** Highlight the matched substring in results (`<mark>`).
-- [ ] **M2.f3** Empty-query "recents" are fake (first 5 rivers with a clock icon,
+- [x] **M2.f2** Highlight the matched substring in results (`<mark>`).
+- [x] **M2.f3** Empty-query "recents" are fake (first 5 rivers with a clock icon,
       `search.ts:89-100`): track real recents in localStorage, or relabel/re-icon.
+      *(Done: real recents in localStorage under "Recent"; falls back to a plain
+      "Rivers" sampler with a waves icon when none.)*
 
 ### M2.g CSS pass (audit P4 — one sweep, half a day)
 
-- [ ] **M2.g1** `:active` press states on buttons/tiles/rows (zero exist — taps feel dead on touch).
-- [ ] **M2.g2** Global `:focus-visible { box-shadow: var(--ring-focus) }` for interactive elements
+- [x] **M2.g1** `:active` press states on buttons/tiles/rows (zero exist — taps feel dead on touch).
+- [x] **M2.g2** Global `:focus-visible { box-shadow: var(--ring-focus) }` for interactive elements
       (token exists, barely used; several inputs kill their outline).
-- [ ] **M2.g3** `@media (prefers-reduced-motion: reduce)` neutralizing transitions/animations.
-- [ ] **M2.g4** Thin tinted scrollbars in panel scroll regions.
-- [ ] **M2.g5** Truncation/wrapping for long POI names in popups (`.ap-name` can blow out the
+- [x] **M2.g3** `@media (prefers-reduced-motion: reduce)` neutralizing transitions/animations.
+      *(CSS only; JS-driven map easing still animates — revisit if it matters.)*
+- [x] **M2.g4** Thin tinted scrollbars in panel scroll regions.
+- [x] **M2.g5** Truncation/wrapping for long POI names in popups (`.ap-name` can blow out the
       420px popup).
 - [ ] **M2.g6** Decide dark mode posture: at minimum dark panel/modal variants over the satellite
       base, or record light-only as intentional.
