@@ -17,7 +17,8 @@
 
 import { map } from "./map-setup";
 import { selectRiver } from "./selection";
-import { activeConditionFilter } from "./streams";
+import { activeConditionFilter, filterOverlayActive } from "./streams";
+import { riverPasses } from "./rivers";
 import { riverLngLat } from "./coords";
 import { refreshIcons, esc } from "./util";
 
@@ -46,15 +47,15 @@ if (wrap && iconBtn && pill && input && results) {
     return (window.allRivers as River[] | undefined) || [];
   }
 
-  /** The searchable pool: the live catalog, scoped by the Condition
-   *  filter (the conditions overlay, streams.ts) when one is active --
-   *  the map fades non-matching rivers, so surfacing them here would
-   *  contradict the overlay. */
+  /** The searchable pool: the live catalog, scoped by the Filters pane
+   *  (the filter overlay, streams.ts) when any control is active -- the
+   *  map fades non-matching rivers, so surfacing them here would
+   *  contradict the overlay. riverPasses covers condition + stocked +
+   *  hatch in one predicate. */
   function pool(): River[] {
-    const cond = activeConditionFilter();
     const all = rivers();
-    if (!cond) return all;
-    return all.filter((r) => (r.conditions?.overall || "gray") === cond);
+    if (!filterOverlayActive()) return all;
+    return all.filter(riverPasses);
   }
 
   /** Collapse to the round icon button (mobile only, empty query). */
@@ -107,7 +108,11 @@ if (wrap && iconBtn && pill && input && results) {
         .slice(0, 12);
       if (!matches.length) {
         const cond = activeConditionFilter();
-        const scope = cond ? ` with ${condLabel(cond)} conditions` : "";
+        const scope = cond
+          ? ` with ${condLabel(cond)} conditions`
+          : filterOverlayActive()
+            ? " matching the current filters"
+            : "";
         html = `<div class="search-empty">No matches for "${esc(input!.value.trim())}"${esc(scope)}</div>`;
       } else {
         html =

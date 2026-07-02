@@ -90,26 +90,45 @@ const COND_CHIP_VARIANT: Record<ConditionKey, string> = {
   gray: "none",
 };
 
-/** Reflect the active condition filter on the floating map chip. */
-function updateCondChip(cond: ConditionKey | null): void {
+/** Reflect the active filters on the floating map chip. `extras` are
+ *  the non-Condition filter descriptions (stocked / hatch). */
+function updateCondChip(cond: ConditionKey | null, extras: string[] = []): void {
   const chip = document.getElementById("cond-chip");
   if (!chip) return;
-  if (!cond) {
+  const parts = [
+    ...(cond ? [`${COND_CHIP_LABEL[cond]} conditions`] : []),
+    ...extras,
+  ];
+  if (!parts.length) {
     chip.hidden = true;
     return;
   }
   const label = document.getElementById("cond-chip-label");
-  if (label) label.textContent = `Showing: ${COND_CHIP_LABEL[cond]} conditions`;
-  const dot = document.getElementById("cond-chip-dot");
-  if (dot) dot.className = `cond-chip-dot is-${COND_CHIP_VARIANT[cond]}`;
+  if (label) label.textContent = `Showing: ${parts.join(" + ")}`;
+  const dot = document.getElementById("cond-chip-dot") as HTMLElement | null;
+  if (dot) {
+    // The colored dot describes the Condition verdict only; hide it for
+    // stocked/hatch-only filters.
+    dot.className = `cond-chip-dot is-${cond ? COND_CHIP_VARIANT[cond] : "none"}`;
+    dot.style.display = cond ? "" : "none";
+  }
   chip.hidden = false;
 }
 
 function onFilterChange(): void {
   const v = condSelect.value;
   const cond: ConditionKey | null = v === "any" ? null : (v as ConditionKey);
-  setConditionOverlay(cond);
-  updateCondChip(cond);
+  const stocked = (document.getElementById("stocked-only") as HTMLInputElement)
+    .checked;
+  const hatchSel = document.getElementById("hatch-select") as HTMLSelectElement;
+  const hatch = hatchSel.value;
+  setConditionOverlay(cond, stocked || hatch !== "any");
+  const extras: string[] = [];
+  if (stocked) extras.push("near stocked water");
+  if (hatch === "active") extras.push("active hatches");
+  else if (hatch !== "any")
+    extras.push(`${hatchSel.selectedOptions[0]?.textContent || hatch} hatch`);
+  updateCondChip(cond, extras);
   renderRivers();
 }
 
@@ -117,9 +136,11 @@ condSelect.onchange = onFilterChange;
 (document.getElementById("stocked-only") as HTMLInputElement).onchange = onFilterChange;
 (document.getElementById("hatch-select") as HTMLSelectElement).onchange = onFilterChange;
 
-// The chip's x resets the Condition filter back to Any.
+// The chip's x resets every Filters-pane control back to default.
 document.getElementById("cond-chip-clear")?.addEventListener("click", () => {
   condSelect.value = "any";
+  (document.getElementById("stocked-only") as HTMLInputElement).checked = false;
+  (document.getElementById("hatch-select") as HTMLSelectElement).value = "any";
   onFilterChange();
 });
 

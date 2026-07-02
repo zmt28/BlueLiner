@@ -21,7 +21,10 @@ import {
 import { getCurrentSt } from "./state";
 import { esc } from "./util";
 import { createMarkerTooltip } from "./popups";
-import { refreshConditionOverlay } from "./streams";
+import {
+  refreshConditionOverlay,
+  registerRiverFilterPredicate,
+} from "./streams";
 
 // -- State catalog ----------------------------------------------------
 
@@ -227,6 +230,11 @@ export async function loadRivers(state: string): Promise<void> {
 // would be a cycle).
 
 registerGaugeRenderer({ show: showGaugesFor, hide: hideSelectedGauges });
+
+// Hand the Filters-pane predicate to the overlay index builder in
+// streams.ts (registration, not an import there: streams.ts is imported
+// by this module, so the reverse import would be a cycle).
+registerRiverFilterPredicate(riverPasses);
 
 // -- Window bridge ----------------------------------------------------
 

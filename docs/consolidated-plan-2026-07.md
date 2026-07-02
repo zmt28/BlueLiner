@@ -71,13 +71,15 @@ fill-in work. Items marked **[bug]** are behavior defects, not just polish.
 
 ### M2.c Selection & panels (audit P1)
 
-- [ ] **M2.c1** **Pad the viewport when a panel opens.** Selecting a river/reach never repositions
+- [x] **M2.c1** **Pad the viewport when a panel opens.** Selecting a river/reach never repositions
       the map, so the 420px desktop drawer / mobile peek sheet covers the feature just clicked
       (`selection.ts:53`, `streams.ts:599`, `app.css:1152`). `map.easeTo({ padding: ... })` on
       open/close; pass the same padding to search's `flyTo` (`search.ts:149`).
-- [ ] **M2.c2** **[bug]** "Near stocked water" and "Active hatch" filters are inert — the only
+- [x] **M2.c2** **[bug]** "Near stocked water" and "Active hatch" filters are inert — the only
       consumer (`riverPasses()`, `rivers.ts:44`) is never called. Wire them into the overlay/search
-      filtering, or hide the controls until they work (`index.html:351-363`).
+      filtering, or hide the controls until they work (`index.html:351-363`). *(Done: the condition
+      overlay generalized to the full Filters-pane predicate; matches paint in their own verdict
+      color; chip + search pool + empty-state cover all three filters; chip × clears all.)*
 
 ### M2.d Forms & feedback (audit P1–P3)
 
