@@ -1,15 +1,42 @@
 /**
  * Small dependency-free utilities used across the app (extracted from
- * the legacy app.js, PR B1c). All three exports are pure functions
- * (or near-pure -- popupOpts reads window dimensions, refreshIcons
- * touches DOM but is idempotent + defensive).
+ * the legacy app.js, PR B1c) plus the bundled Lucide icon hydrator.
  *
  * Mirrors the state.ts bridge pattern: each export is also written
- * to `window` so the still-monolithic app.js can `const x =
- * window.x`-rebind instead of keeping its own duplicate. Future
- * modules that consume these import directly via ES syntax (no
- * window indirection).
+ * to `window` so legacy callers can `const x = window.x`-rebind.
+ * Modules that consume these import directly via ES syntax.
  */
+
+import {
+  createIcons,
+  ArrowUpRight,
+  Bookmark,
+  Check,
+  ChevronDown,
+  ChevronRight,
+  Compass,
+  Droplets,
+  Filter,
+  Fish,
+  Layers,
+  Leaf,
+  LocateFixed,
+  LogIn,
+  LogOut,
+  MailCheck,
+  MapPin,
+  Minus,
+  Plus,
+  Route,
+  Search,
+  Settings,
+  Sparkles,
+  Sprout,
+  Trees,
+  Waves,
+  WifiOff,
+  X,
+} from "lucide";
 
 /**
  * HTML-escape a value for safe interpolation into innerHTML / template
@@ -30,32 +57,60 @@ export function esc(s: unknown): string {
   );
 }
 
+// Every data-lucide name used anywhere in the app: static index.html,
+// dynamic HTML in the TS modules, AND the server-rendered popup_html
+// (main.py emits `arrow-up-right`). Icons are Vite-bundled at build
+// time (M1.5) — the old unpkg.com/lucide@latest runtime script is gone.
+// Adding a new data-lucide name REQUIRES adding its PascalCase icon
+// here, or it silently renders as an empty <i>.
+const APP_ICONS = {
+  ArrowUpRight,
+  Bookmark,
+  Check,
+  ChevronDown,
+  ChevronRight,
+  Compass,
+  Droplets,
+  Filter,
+  Fish,
+  Layers,
+  Leaf,
+  LocateFixed,
+  LogIn,
+  LogOut,
+  MailCheck,
+  MapPin,
+  Minus,
+  Plus,
+  Route,
+  Search,
+  Settings,
+  Sparkles,
+  Sprout,
+  Trees,
+  Waves,
+  WifiOff,
+  X,
+};
+
 /**
  * Hydrate any freshly-injected `<i data-lucide="...">` nodes to inline
  * SVG. Called after every dynamic HTML render so the server-rendered
  * river panel + Python-generated popup HTML show real icons instead
- * of empty `<i>` shells. Defensive: silently no-ops when Lucide
- * hasn't loaded yet (CDN script is deferred; an early panel open
- * before the script runs would otherwise throw).
+ * of empty `<i>` shells.
  *
- * @param root Optional subtree to limit the scan to. Currently
- *             unused by callers (Lucide's createIcons doesn't accept
- *             a root in v0.x); the parameter is kept for future
- *             callsites that may want scoped hydration.
+ * @param _root Kept for future scoped hydration; createIcons scans the
+ *              whole document.
  */
-export function refreshIcons(root?: Element | null): void {
-  if (!window.lucide || !window.lucide.createIcons) return;
+export function refreshIcons(_root?: Element | null): void {
   try {
-    window.lucide.createIcons(root ? { nameAttr: "data-lucide" } : undefined);
+    createIcons({ icons: APP_ICONS });
   } catch (_) {
     /* ignore */
   }
 }
 
-// -- Window bridge for legacy app.js ---------------------------------
-// Same pattern as state.ts: app.js loses its duplicate definitions
-// and rebinds `const esc = window.esc;` etc. Future TS modules
-// import these via ES syntax and don't go through window.
+// -- Window bridge ----------------------------------------------------
 
 declare global {
   interface Window {

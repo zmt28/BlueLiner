@@ -22,7 +22,7 @@
  */
 
 import maplibregl, { ExpressionSpecification, LayerSpecification } from "maplibre-gl";
-import { map, onMapReady } from "./map-setup";
+import { map, onMapReady, lineOverlayAnchor } from "./map-setup";
 import { esc } from "./util";
 import { STREAM_TILES_ENABLED, STREAM_TILES_URL, STREAM_SOURCE_LAYER } from "./config";
 import { ensurePmtilesProtocol } from "./tiles";
@@ -304,7 +304,7 @@ onMapReady(() => {
       "line-width": WIDTH_EXPR,
       "line-opacity": opacityExpr(),
     },
-  } as LayerSpecification);
+  } as LayerSpecification, lineOverlayAnchor());
   // Transparent fat casing for touch targets; clicks bind here.
   map.addLayer({
     id: "clickable-streams-hit",
@@ -313,7 +313,7 @@ onMapReady(() => {
     ...SRC_LAYER,
     layout: { visibility: visStr(_streamsVisible), "line-cap": "round" },
     paint: { "line-color": "#000", "line-opacity": 0, "line-width": 16 },
-  } as LayerSpecification);
+  } as LayerSpecification, lineOverlayAnchor());
   // Apply the persisted wild/native filter to the freshly-added layers.
   applyStreamFilter();
   // Re-apply the selection highlight (and, while a condition filter is

@@ -23,7 +23,7 @@
  */
 
 import { LayerSpecification, FilterSpecification } from "maplibre-gl";
-import { map, onMapReady } from "./map-setup";
+import { map, onMapReady, lineOverlayAnchor } from "./map-setup";
 import { esc } from "./util";
 import { makePopup } from "./popups";
 import {
@@ -174,6 +174,9 @@ function addPointTileLayer(o: PointTileOpts): void {
   }
   // Icons rasterize asynchronously; add the symbol layer only once they're
   // registered so the first paint has glyphs (a missing icon renders nothing).
+  // Z-order contract (M1.4): symbol layers append with no beforeId — above
+  // the bl-anchor-symbols anchor, and therefore above every line overlay,
+  // regardless of when this promise resolves.
   registerPoiIcons().then(() => {
     if (map.getLayer(lyr)) return;
     map.addLayer({
@@ -480,7 +483,7 @@ onMapReady(() => {
         0,
       ],
     },
-  } as LayerSpecification);
+  } as LayerSpecification, lineOverlayAnchor());
   map.addLayer({
     id: "public-lands-line",
     type: "line",
@@ -499,7 +502,7 @@ onMapReady(() => {
       "line-opacity": ["match", ["get", "public_access"], "OA", 1, "RA", 1, 0],
       "line-dasharray": ["match", ["get", "public_access"], "RA", ["literal", [4, 4]], ["literal", [1, 0]]],
     },
-  } as LayerSpecification);
+  } as LayerSpecification, lineOverlayAnchor());
   const popup = makePopup();
   map.on("click", "public-lands-fill", (e) => {
     if (isPinPlacementActive()) return; // the click is placing a pin
@@ -585,7 +588,7 @@ onMapReady(() => {
       "line-opacity": 0.85,
       "line-dasharray": [2, 1.5],
     },
-  } as LayerSpecification);
+  } as LayerSpecification, lineOverlayAnchor());
   const popup = makePopup();
   map.on("click", "trails-line", (e) => {
     if (isPinPlacementActive()) return; // the click is placing a pin

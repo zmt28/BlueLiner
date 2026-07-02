@@ -25,12 +25,11 @@
          publishes window.L for the still-monolithic app.js. The old
          vendor <script> tag is gone (was loading Leaflet a second
          time when in head + body of index.html before B1d). -->
-    <!-- Lucide outline icons. Replaces the original emoji + unicode
-         glyphs (bug, fish, mailbox, arrow) used in popups and modals.
-         App calls window.lucide.createIcons() via a refreshIcons()
-         helper after any dynamic HTML injection so freshly-rendered
-         <i data-lucide="..."> nodes get hydrated to inline SVG. -->
-    <script src="https://unpkg.com/lucide@latest" defer></script>
+    <!-- Lucide outline icons are Vite-bundled (util.ts imports the exact
+         glyph set) — no CDN on the render path. refreshIcons() hydrates
+         <i data-lucide="..."> nodes to inline SVG after any dynamic HTML
+         injection. -->
+
     <!-- Agent demo panel (LOCAL ONLY). Ships in the static bundle but self-gates:
          on boot it GETs /api/agent/health and stays invisible unless the server
          reports {enabled:true}. The public deployment never mounts the agent

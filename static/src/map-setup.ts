@@ -93,7 +93,10 @@ function loadBaseMapPref(): BaseMapKey {
   } catch (_) {
     /* localStorage unavailable */
   }
-  return "street";
+  // M1.1b: the self-hosted vector base is the default wherever it's
+  // configured (sharper on HiDPI, self-hosted, offline-capable); the
+  // raster street base remains the fallback default when it isn't.
+  return BASEMAP_TILES_ENABLED ? "vector" : "street";
 }
 
 let _currentBaseKey: BaseMapKey = loadBaseMapPref();
@@ -214,6 +217,8 @@ function addBase(key: BaseMapKey): void {
         _currentBaseKey = "street";
         window.currentBaseKey = "street";
         addRasterBase("street", gen);
+        applyHydroVisibility(); // raster base -> hydro follows the checkbox again
+        announceBase();
       }
     });
   } else {
@@ -227,9 +232,30 @@ function addHydroLayer(): void {
     id: "hydro",
     type: "raster",
     source: "hydro",
-    layout: { visibility: _hydroVisible ? "visible" : "none" },
+    layout: { visibility: hydroEffective() ? "visible" : "none" },
     paint: { "raster-opacity": 0.85 },
   });
+}
+
+// M1.4: a hidden background layer added just above hydro. Line overlays
+// (public lands, trails, clickable streams) insert BEFORE this anchor and
+// symbol/point overlays append after it, so z-order is an explicit
+// contract instead of a registration-order + promise-timing accident.
+const SYMBOL_ANCHOR = "bl-anchor-symbols";
+
+function addSymbolAnchor(): void {
+  map.addLayer({
+    id: SYMBOL_ANCHOR,
+    type: "background",
+    layout: { visibility: "none" },
+    paint: {},
+  });
+}
+
+/** beforeId for line overlays: below every symbol layer, above hydro.
+ *  Undefined before the map is ready (callers all run via onMapReady). */
+export function lineOverlayAnchor(): string | undefined {
+  return map.getLayer(SYMBOL_ANCHOR) ? SYMBOL_ANCHOR : undefined;
 }
 
 export function setBaseMap(key: BaseMapKey): void {
@@ -279,6 +305,8 @@ export function setBaseMap(key: BaseMapKey): void {
         _baseSourceIds = oldSources;
         _currentBaseKey = prevKey;
         window.currentBaseKey = prevKey;
+        applyHydroVisibility();
+        announceBase();
       } else {
         removeOld(); // superseded: a newer base is on top; drop ours
       }
@@ -287,6 +315,7 @@ export function setBaseMap(key: BaseMapKey): void {
     addRasterBase(key, gen);
     retireOldWhenPainted(`base-${gen}`);
   }
+  applyHydroVisibility(); // hydro suppressed on vector, checkbox-driven on raster
   try {
     localStorage.setItem("bl_basemap", key);
   } catch (_) {
@@ -299,15 +328,41 @@ export function currentBaseKey(): BaseMapKey {
   return _currentBaseKey;
 }
 
+/** Announce the active base key so UI (segment buttons, hydro toggle)
+ *  can resync after programmatic changes: the boot fallback when a
+ *  persisted vector base fails, and the failed-switch revert. */
+function announceBase(): void {
+  document.dispatchEvent(
+    new CustomEvent("bl:base-changed", { detail: _currentBaseKey }),
+  );
+}
+
 let _hydroVisible = true; // lyr-usgs default checked
+
+/** M1.2: the hydro raster is suppressed while the vector base is active —
+ *  the vector base carries its own hydrography, and the 0.85-opacity
+ *  raster double-draws water and paints over the vector labels. The
+ *  checkbox state (`_hydroVisible`) is preserved; it re-applies whenever
+ *  a raster base is active. */
+function hydroEffective(): boolean {
+  return _hydroVisible && _currentBaseKey !== "vector";
+}
+
+function applyHydroVisibility(): void {
+  if (map.getLayer("hydro")) {
+    map.setLayoutProperty(
+      "hydro",
+      "visibility",
+      hydroEffective() ? "visible" : "none",
+    );
+  }
+}
 
 /** Toggle the USGS hydro overlay (the lyr-usgs checkbox). Safe before
  *  the map is ready: the desired state is applied when the layer mounts. */
 export function setHydroVisible(on: boolean): void {
   _hydroVisible = on;
-  if (map.getLayer("hydro")) {
-    map.setLayoutProperty("hydro", "visibility", on ? "visible" : "none");
-  }
+  applyHydroVisibility();
 }
 
 // -- Ready gate ------------------------------------------------------
@@ -329,6 +384,7 @@ export function mapReady(): Promise<void> {
 map.on("load", () => {
   addBase(_currentBaseKey);
   addHydroLayer();
+  addSymbolAnchor();
   _ready = true;
   for (const cb of _readyCbs) cb();
   _readyCbs.length = 0;

@@ -32,18 +32,24 @@ fill-in work. Items marked **[bug]** are behavior defects, not just polish.
 - [x] **M1.1a** Build + publish the CONUS basemap archive (`scripts/build_basemap_tiles.sh` → R2),
       set `VITE_BASEMAP_TILES_URL` on Render. *(Done 2026-06-08 via basemap-build.yml + Render
       dashboard; v5 prefix.)*
-- [ ] **M1.1b** Make `vector` the **default** base (live fallback is still `street`,
-      `map-setup.ts:loadBaseMapPref`).
-- [ ] **M1.2** Default the USGS hydro raster overlay **off** (auto-off when vector base active) —
-      ends double-drawn water and label smothering. (`map-setup.ts:241`)
+- [x] **M1.1b** Make `vector` the **default** base (live fallback is still `street`,
+      `map-setup.ts:loadBaseMapPref`). *(Done: defaults to vector when configured; boot falls
+      back to street if the style fetch fails.)*
+- [x] **M1.2** Default the USGS hydro raster overlay **off** (auto-off when vector base active) —
+      ends double-drawn water and label smothering. *(Done as: hydro suppressed while the vector
+      base is active; the checkbox is preserved and re-applies on raster bases, and is disabled
+      with an explanatory tooltip while vector is active.)*
 - [x] **M1.3** Ship offline downloads (same flag; UI self-mounts in prod since 2026-06-08).
       Remaining: device-test the SW asset path; consider small download concurrency
       (sequential today, `offline-tiles.ts:160`).
-- [ ] **M1.4** Layer-order contract: explicit `beforeId` anchors (line overlays below base labels,
-      symbols above); remove the promise-timing z-order dependency. (`map-layers.ts:163`)
-- [ ] **M1.5** Boot hygiene: SW-cache or inline `/api/states` (removes the warm-boot network gate,
+- [x] **M1.4** Layer-order contract: explicit `beforeId` anchors (line overlays below base labels,
+      symbols above); remove the promise-timing z-order dependency. *(Done: hidden
+      `bl-anchor-symbols` background layer above hydro; line overlays insert before it, symbol
+      layers append above it.)*
+- [x] **M1.5** Boot hygiene: SW-cache or inline `/api/states` (removes the warm-boot network gate,
       `app-boot.ts:36`); bundle Lucide at build time instead of unpkg CDN (`index.html:33`).
-      *(Both confirmed still live issues in the deployed sw.js / HTML.)*
+      *(Done: /api/states is SWR in sw.js v25; the 27 Lucide icons used app-wide are Vite-bundled
+      via util.ts.)*
 
 ---
 

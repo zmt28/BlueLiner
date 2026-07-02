@@ -551,6 +551,22 @@ wireLayerToggle("lyr-pins", setPinsVisible);
 
 // -- Base-map segmented control ------------------------------------
 
+// M1.2: hydro is suppressed by map-setup while the vector base is active
+// (the vector base carries its own hydrography). Reflect that on the
+// checkbox row so it doesn't read as a dead toggle.
+function syncHydroToggleForBase(key: string): void {
+  const cb = document.getElementById("lyr-usgs") as HTMLInputElement | null;
+  if (!cb) return;
+  const onVector = key === "vector";
+  cb.disabled = onVector;
+  const row = cb.closest("label");
+  if (row instanceof HTMLElement) {
+    row.title = onVector
+      ? "The vector base includes hydrography — this overlay applies to the raster bases."
+      : "";
+  }
+}
+
 const basemapSeg = document.getElementById("basemap-mode");
 if (basemapSeg) {
   // The vector base only exists when a basemap archive is configured at build
@@ -567,13 +583,24 @@ if (basemapSeg) {
     btn.addEventListener("click", () => {
       const key = btn.dataset.base as "street" | "satellite" | "topo" | "vector";
       setBaseMap(key);
-      for (const sib of basemapSeg.querySelectorAll<HTMLButtonElement>(
-        "button[data-base]",
-      )) {
-        sib.classList.toggle("on", sib.dataset.base === key);
-      }
+      reflectBase(key);
     });
   }
+  /** Sync the segment buttons + hydro toggle to the active base. */
+  const reflectBase = (key: string): void => {
+    for (const sib of basemapSeg.querySelectorAll<HTMLButtonElement>(
+      "button[data-base]",
+    )) {
+      sib.classList.toggle("on", sib.dataset.base === key);
+    }
+    syncHydroToggleForBase(key);
+  };
+  reflectBase(initialKey);
+  // Programmatic changes (boot fallback when a persisted vector base
+  // fails; failed-switch revert) announce themselves — resync the UI.
+  document.addEventListener("bl:base-changed", (e) => {
+    reflectBase(String((e as CustomEvent).detail));
+  });
 }
 
 // -- Connectivity badge --------------------------------------------

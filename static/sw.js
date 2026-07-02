@@ -18,7 +18,7 @@ const swSelf = /** @type {any} */ (self);
 // name doesn't match the current CACHE constant, which forces every
 // returning browser to refetch the shell on next visit -- the only
 // reliable way to roll out a buggy client-side change.
-const CACHE = "blueliner-v24";
+const CACHE = "blueliner-v25";
 // Vite production builds emit fingerprinted asset filenames (e.g.
 // `/static/dist/assets/index-DkF7p.js`) so the SHELL list can no
 // longer enumerate them at SW build time. Strategy:
@@ -111,7 +111,14 @@ swSelf.addEventListener("fetch", (/** @type {FetchEvent} */ e) => {
     return;
   }
   if (url.origin !== location.origin) return;     // tiles / CDNs: passthrough
-  if (url.pathname === "/api/rivers" || url.pathname === "/api/river_lines") {
+  if (
+    url.pathname === "/api/rivers" ||
+    url.pathname === "/api/river_lines" ||
+    // /api/states is a stable catalog that gates the whole boot
+    // (app-boot awaits it before the map init) — SWR removes the warm-
+    // boot network stall (M1.5).
+    url.pathname === "/api/states"
+  ) {
     e.respondWith(staleWhileRevalidate(req));      // precomputed -> SWR
     return;
   }

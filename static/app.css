@@ -2181,6 +2181,9 @@ html, body {
    reduced motion, panel scrollbars, popup truncation.
    ================================================================== */
 
+/* Hydro toggle reads as inert while the vector base suppresses it (M1.2). */
+.filter-row-toggle:has(input:disabled) { opacity: 0.45; }
+
 /* g1: uniform, layout-stable press feedback. Buttons had :hover but no
    :active, so taps felt dead on touch until the action completed. */
 button:not(:disabled):active,

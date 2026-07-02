@@ -10,6 +10,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "lucide": "^1.23.0",
     "maplibre-gl": "^5.24.0",
     "pmtiles": "^3.2.1"
   },
