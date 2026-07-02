@@ -40,6 +40,8 @@
 import { esc } from "./util";
 import { sparkline, wireSparkHover } from "./sparkline";
 import { getCurrentUser, openModal, closeModal } from "./auth";
+import { showToast } from "./toast";
+import { confirmDialog } from "./confirm";
 
 // -- Species datalist (filled into #cf-species-list on first open) -
 
@@ -213,6 +215,7 @@ async function submitCatch(ev: SubmitEvent): Promise<void> {
     });
     if (!r.ok) throw new Error("save failed");
     closeModal("catch-modal");
+    showToast("Catch saved", "success");
   } catch {
     err.textContent = "Could not save. Try again.";
   }
@@ -294,16 +297,21 @@ function renderCatchList(catches: Catch[]): void {
 }
 
 async function deleteCatch(id: number, rowEl: HTMLElement): Promise<void> {
-  if (!confirm("Delete this catch?")) return;
+  const ok = await confirmDialog({
+    title: "Delete catch?",
+    message: "This catch and its conditions snapshot will be permanently removed.",
+    confirmLabel: "Delete",
+    danger: true,
+  });
+  if (!ok) return;
   try {
     const r = await fetch(`/api/catches/${id}`, { method: "DELETE" });
-    if (r.ok || r.status === 204) {
-      rowEl.remove();
-      const list = document.getElementById("catches-list") as HTMLElement;
-      if (!list.children.length) renderCatchList([]);
-    }
+    if (!r.ok && r.status !== 204) throw new Error(`HTTP ${r.status}`);
+    rowEl.remove();
+    const list = document.getElementById("catches-list") as HTMLElement;
+    if (!list.children.length) renderCatchList([]);
   } catch {
-    /* ignore */
+    showToast("Couldn't delete the catch — try again.", "error");
   }
 }
 

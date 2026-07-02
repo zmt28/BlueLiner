@@ -46,6 +46,7 @@ import {
 import { ensurePmtilesProtocol } from "./tiles";
 import { registerPoiIcons } from "./poi-map-icons";
 import { directionsLinkHtml } from "./directions";
+import { isPinPlacementActive } from "./pins";
 
 // Desired visibility (matches the HTML checkbox defaults; controls.ts
 // overrides from saved prefs before the map `load` fires).
@@ -179,6 +180,7 @@ function addPointTileLayer(o: PointTileOpts): void {
     } as LayerSpecification);
     const popup = makePopup();
     map.on("click", lyr, (e) => {
+      if (isPinPlacementActive()) return; // the click is placing a pin
       const f = e.features && e.features[0];
       if (!f) return;
       // Selecting a POI click -> close the rail panel.
@@ -194,9 +196,11 @@ function addPointTileLayer(o: PointTileOpts): void {
         .addTo(map);
     });
     map.on("mouseenter", lyr, () => {
+      if (isPinPlacementActive()) return; // keep the crosshair
       map.getCanvas().style.cursor = "pointer";
     });
     map.on("mouseleave", lyr, () => {
+      if (isPinPlacementActive()) return;
       map.getCanvas().style.cursor = "";
     });
   });
@@ -479,6 +483,7 @@ onMapReady(() => {
   } as LayerSpecification);
   const popup = makePopup();
   map.on("click", "public-lands-fill", (e) => {
+    if (isPinPlacementActive()) return; // the click is placing a pin
     const f = e.features && e.features[0];
     if (!f) return;
     popup
@@ -554,6 +559,7 @@ onMapReady(() => {
   } as LayerSpecification);
   const popup = makePopup();
   map.on("click", "trails-line", (e) => {
+    if (isPinPlacementActive()) return; // the click is placing a pin
     const f = e.features && e.features[0];
     if (!f) return;
     popup

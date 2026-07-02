@@ -41,31 +41,32 @@ fill-in work. Items marked **[bug]** are behavior defects, not just polish.
 
 ### M2.a Feedback primitives (do first — several fixes below depend on them)
 
-- [ ] **M2.a1** Minimal toast/snackbar component (the `--z-toast` token already exists,
+- [x] **M2.a1** Minimal toast/snackbar component (the `--z-toast` token already exists,
       `tokens.css:216`; nothing uses it). Success + error variants, auto-dismiss.
-- [ ] **M2.a2** Small styled confirm modal (reuse the pin-claim modal pattern,
-      `index.html:647`) to replace native `confirm()`.
+      *(Done: `static/src/toast.ts`.)*
+- [x] **M2.a2** Small styled confirm modal (reuse the pin-claim modal pattern,
+      `index.html:647`) to replace native `confirm()`. *(Done: `static/src/confirm.ts`.)*
 
 ### M2.b Pin flow overhaul (the reported complaint + adjacent bugs)
 
-- [ ] **M2.b1** **Ghost pin at the click point.** On map click in pin mode, immediately drop a
+- [x] **M2.b1** **Ghost pin at the click point.** On map click in pin mode, immediately drop a
       provisional (semi-transparent, draggable) `.bl-pin` marker at `e.lngLat` before showing the
       form; commit on Save, remove on Cancel. Today only the coordinate is stored and the form is
       a `position: fixed` box in the bottom-right corner, disconnected from the click
       (`pins.ts:93-99`, `app.css:881-893`). Draggable ghost = free fine-tune of placement.
-- [ ] **M2.b2** **[bug]** Pin mode doesn't suppress other click handlers: placing a pin on a
+- [x] **M2.b2** **[bug]** Pin mode doesn't suppress other click handlers: placing a pin on a
       stream/POI/public land also fires that feature's click (opens river panel / popup). Guard
       the stream + POI + lands + trails handlers on pin mode (`streams.ts:323`,
       `map-layers.ts:181,481,556`).
-- [ ] **M2.b3** Pin mode is invisible on touch (crosshair cursor only, `pins.ts:88`). Show a
+- [x] **M2.b3** Pin mode is invisible on touch (crosshair cursor only, `pins.ts:88`). Show a
       dismissible hint chip ("Tap the map to place a pin") while armed; Esc cancels mode + form.
-- [ ] **M2.b4** **[bug]** Save failure is silent and discards the note: on `!res.ok` the form
+- [x] **M2.b4** **[bug]** Save failure is silent and discards the note: on `!res.ok` the form
       hides and state clears anyway (`pins.ts:117-122`). Keep the form open, show inline error,
       preserve the note; remove the ghost only on success.
-- [ ] **M2.b5** **[bug]** Pin delete ignores the response and has no confirmation: marker is
+- [x] **M2.b5** **[bug]** Pin delete ignores the response and has no confirmation: marker is
       removed even if the DELETE failed (`pins.ts:56-61`). Check `res.ok`; route through the
       M2.a2 confirm.
-- [ ] **M2.b6** `loadPins()` has no error handling (unhandled rejection on network failure,
+- [x] **M2.b6** `loadPins()` has no error handling (unhandled rejection on network failure,
       `pins.ts:67-74`); humanize `created_at` in the pin popup (raw timestamp today, `pins.ts:41`).
 
 ### M2.c Selection & panels (audit P1)
@@ -80,12 +81,12 @@ fill-in work. Items marked **[bug]** are behavior defects, not just polish.
 
 ### M2.d Forms & feedback (audit P1–P3)
 
-- [ ] **M2.d1** Catch save: show "Catch saved ✓" toast before closing the modal — today it just
+- [x] **M2.d1** Catch save: show "Catch saved ✓" toast before closing the modal — today it just
       vanishes (`catches.ts:215`).
 - [ ] **M2.d2** **[bug]** Magic-link login advances to "Check your inbox" even when the send
       failed (empty catch, `auth.ts:177-191`; no error element in the modal). Advance only on
       `r.ok`; add inline error.
-- [ ] **M2.d3** Replace native `confirm()` in catch delete (`catches.ts:297`) and account delete
+- [x] **M2.d3** Replace native `confirm()` in catch delete (`catches.ts:297`) and account delete
       (`auth.ts:314`) with M2.a2.
 - [ ] **M2.d4** Geolocation: pulse/spinner on `.locate-btn.is-active` while acquiring; toast on
       error/permission-denied; disabled state when unsupported (`controls.ts:329-346`).

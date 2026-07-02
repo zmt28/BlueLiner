@@ -917,6 +917,37 @@ html, body {
 .pin-form button:hover { background: var(--accent-hover); }
 .pin-form button.secondary { background: var(--bg-sunken); color: var(--fg-2); }
 .pin-form button.secondary:hover { background: var(--bg-pressed); }
+.pin-form-error {
+    color: var(--bl-cond-poor-700);
+    font-size: var(--fs-caption);
+    margin-bottom: var(--space-3);
+}
+/* Ghost pin: the draggable provisional marker dropped at the click point
+   while the note form is open. Pulses so it reads as "not saved yet". */
+.bl-pin--ghost { opacity: 0.8; }
+.bl-pin--ghost .bl-pin-dot { animation: bl-pin-pulse 1.2s ease-in-out infinite; }
+@keyframes bl-pin-pulse {
+    0%, 100% { transform: rotate(-45deg) scale(1); }
+    50%      { transform: rotate(-45deg) scale(1.18); }
+}
+/* Pin-mode hint chip: touch has no crosshair cursor, so this is the only
+   signal that a tap will drop a pin. Top-center, below the app bar. */
+.bl-pin-hint {
+    position: fixed;
+    top: calc(64px + env(safe-area-inset-top, 0px));
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: var(--z-overlay);
+    background: rgba(255,255,255,0.97);
+    backdrop-filter: blur(8px);
+    color: var(--fg-1);
+    font-size: var(--fs-meta);
+    padding: var(--space-3) var(--space-5);
+    border-radius: var(--radius-3);
+    box-shadow: var(--elev-2);
+    pointer-events: none;
+    white-space: nowrap;
+}
 .bl-pin-dot {
     width: 16px;
     height: 16px;
@@ -1131,6 +1162,39 @@ html, body {
 
 .modal-actions { display: flex; gap: var(--space-3); margin-top: var(--space-4); }
 .modal-actions button { flex: 1; }
+.modal-actions button.danger { background: var(--bl-cond-poor-500); color: #fff; }
+.modal-actions button.danger:hover { background: var(--bl-cond-poor-700); }
+
+/* Toasts (toast.ts): bottom-centered stack above everything else. */
+.bl-toasts {
+    position: fixed;
+    bottom: calc(var(--space-7) + env(safe-area-inset-bottom, 0px));
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: var(--z-toast);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--space-3);
+    pointer-events: none;
+}
+.bl-toast {
+    pointer-events: auto;
+    background: var(--fg-1);
+    color: var(--bg-surface);
+    font-size: var(--fs-meta);
+    padding: var(--space-3) var(--space-5);
+    border-radius: var(--radius-3);
+    box-shadow: var(--elev-2);
+    border-left: 3px solid transparent;
+    max-width: min(420px, calc(100vw - 32px));
+    opacity: 0;
+    transform: translateY(8px);
+    transition: opacity 0.25s ease, transform 0.25s ease;
+}
+.bl-toast.is-in { opacity: 1; transform: none; }
+.bl-toast--success { border-left-color: var(--bl-cond-good-500); }
+.bl-toast--error { border-left-color: var(--bl-cond-poor-500); }
 
 .modal-row { margin: var(--space-4) 0 4px; }
 .modal-label { font-size: var(--fs-caption); color: var(--fg-3); margin-bottom: 4px; }

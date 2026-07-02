@@ -29,6 +29,7 @@
 
 import { DEVICE_HEADER } from "./state";
 import { loadPins } from "./pins";
+import { confirmDialog } from "./confirm";
 
 // -- CURRENT_USER state --------------------------------------------
 // AuthMe-shaped value or null when signed out. Module-private; the
@@ -310,13 +311,15 @@ async function saveDisplayName(): Promise<void> {
 }
 
 async function deleteAccount(): Promise<void> {
-  if (
-    !confirm(
-      "Delete your account? Pins you've claimed will become anonymous " +
-        "again on this device. This cannot be undone.",
-    )
-  )
-    return;
+  const ok = await confirmDialog({
+    title: "Delete your account?",
+    message:
+      "Pins you've claimed will become anonymous again on this device. " +
+      "This cannot be undone.",
+    confirmLabel: "Delete account",
+    danger: true,
+  });
+  if (!ok) return;
   try {
     await fetch("/api/me", { method: "DELETE" });
   } catch {
