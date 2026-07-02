@@ -287,6 +287,45 @@ def init_db() -> None:
             "ON catches(user_id, occurred_at)"
         )
 
+        # Favorite waters (M4.1). One row per (user, gauged river);
+        # `last_overall` is the river's verdict at the last precompute
+        # pass -- the alert check compares fresh verdicts against it and
+        # emails on meaningful transitions. `notify` is the per-favorite
+        # alert opt-out.
+        if _IS_PG:
+            cur.execute(
+                "CREATE TABLE IF NOT EXISTS favorites ("
+                " user_id BIGINT NOT NULL,"
+                " site_no TEXT NOT NULL,"
+                " name TEXT NOT NULL,"
+                " state TEXT NOT NULL,"
+                " lat DOUBLE PRECISION,"
+                " lon DOUBLE PRECISION,"
+                " notify INTEGER NOT NULL DEFAULT 1,"
+                " last_overall TEXT,"
+                " created_at TEXT NOT NULL,"
+                " PRIMARY KEY (user_id, site_no))"
+            )
+        else:
+            cur.execute(
+                "CREATE TABLE IF NOT EXISTS favorites ("
+                " user_id INTEGER NOT NULL,"
+                " site_no TEXT NOT NULL,"
+                " name TEXT NOT NULL,"
+                " state TEXT NOT NULL,"
+                " lat REAL,"
+                " lon REAL,"
+                " notify INTEGER NOT NULL DEFAULT 1,"
+                " last_overall TEXT,"
+                " created_at TEXT NOT NULL,"
+                " PRIMARY KEY (user_id, site_no))"
+            )
+        # The alert check scans per state on every precompute pass.
+        cur.execute(
+            "CREATE INDEX IF NOT EXISTS idx_favorites_state "
+            "ON favorites(state)"
+        )
+
 
 def healthcheck() -> bool:
     with _conn() as conn:
@@ -1002,3 +1041,88 @@ def count_catches(user_id: int) -> int:
             _ph("SELECT COUNT(*) AS n FROM catches WHERE user_id = ?"),
             (user_id,))
         return int(cur.fetchone()["n"])
+
+
+# -- Favorites (M4.1) --------------------------------------------------
+
+
+def list_favorites(user_id: int) -> list[dict]:
+    with _conn() as conn:
+        cur = conn.cursor()
+        cur.execute(
+            _ph("SELECT site_no, name, state, lat, lon, notify,"
+                " last_overall, created_at FROM favorites"
+                " WHERE user_id = ? ORDER BY created_at DESC"),
+            (user_id,))
+        return [
+            {"site_no": r["site_no"], "name": r["name"], "state": r["state"],
+             "lat": r["lat"], "lon": r["lon"], "notify": bool(r["notify"]),
+             "last_overall": r["last_overall"], "created_at": r["created_at"]}
+            for r in cur.fetchall()
+        ]
+
+
+def add_favorite(user_id: int, site_no: str, name: str, state: str,
+                 lat: float | None, lon: float | None) -> dict:
+    """Upsert (re-favoriting refreshes name/coords, keeps notify +
+    last_overall so re-adding doesn't re-trigger an alert)."""
+    created_at = datetime.now(timezone.utc).isoformat()
+    with _conn() as conn:
+        cur = conn.cursor()
+        cur.execute(
+            _ph("INSERT INTO favorites (user_id, site_no, name, state,"
+                " lat, lon, notify, created_at)"
+                " VALUES (?, ?, ?, ?, ?, ?, 1, ?)"
+                " ON CONFLICT (user_id, site_no) DO UPDATE SET"
+                " name = excluded.name, state = excluded.state,"
+                " lat = excluded.lat, lon = excluded.lon"),
+            (user_id, site_no, name, state, lat, lon, created_at))
+    return {"site_no": site_no, "name": name, "state": state,
+            "lat": lat, "lon": lon, "notify": True,
+            "last_overall": None, "created_at": created_at}
+
+
+def remove_favorite(user_id: int, site_no: str) -> bool:
+    with _conn() as conn:
+        cur = conn.cursor()
+        cur.execute(
+            _ph("DELETE FROM favorites WHERE user_id = ? AND site_no = ?"),
+            (user_id, site_no))
+        return cur.rowcount > 0
+
+
+def set_favorite_notify(user_id: int, site_no: str, on: bool) -> bool:
+    with _conn() as conn:
+        cur = conn.cursor()
+        cur.execute(
+            _ph("UPDATE favorites SET notify = ?"
+                " WHERE user_id = ? AND site_no = ?"),
+            (1 if on else 0, user_id, site_no))
+        return cur.rowcount > 0
+
+
+def favorites_for_state(state: str) -> list[dict]:
+    """Every favorite in a state, with the owner's email -- the alert
+    check's working set (one indexed scan per precompute pass)."""
+    with _conn() as conn:
+        cur = conn.cursor()
+        cur.execute(
+            _ph("SELECT f.user_id, f.site_no, f.name, f.notify,"
+                " f.last_overall, u.email FROM favorites f"
+                " JOIN users u ON u.id = f.user_id"
+                " WHERE f.state = ? AND u.deleted_at IS NULL"),
+            (state,))
+        return [
+            {"user_id": r["user_id"], "site_no": r["site_no"],
+             "name": r["name"], "notify": bool(r["notify"]),
+             "last_overall": r["last_overall"], "email": r["email"]}
+            for r in cur.fetchall()
+        ]
+
+
+def set_favorite_verdict(user_id: int, site_no: str, overall: str) -> None:
+    with _conn() as conn:
+        conn.cursor().execute(
+            _ph("UPDATE favorites SET last_overall = ?"
+                " WHERE user_id = ? AND site_no = ?"),
+            (overall, user_id, site_no))

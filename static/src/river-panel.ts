@@ -40,6 +40,7 @@ import { sparkline, wireSparkHover } from "./sparkline";
 import { autoLoadElevation } from "./elevation-profile";
 import { wireSnapSheet } from "./snap-sheet";
 import { map } from "./map-setup";
+import { wireFavorite } from "./favorites";
 
 // -- Panel state (module-private) --------------------------------------
 
@@ -109,6 +110,7 @@ export function openRiverPanel(river: River): void {
   // window so their later extraction doesn't need to touch this file.
   if (window.wireTrend) window.wireTrend(body);
   if (window.wireCatch) window.wireCatch(body, river);
+  wireFavorite(body, river); // bookmark toggle (M4.1); gauged rivers only
   autoLoadFlowChart(body);
   // Gradient tab: a gauged river has no single comid, so key the profile
   // by its levelpath + NHD name (the named-section the endpoint resolves).

@@ -2395,3 +2395,65 @@ async def api_delete_catch(catch_id: int, request: Request):
     if not ok:
         raise HTTPException(status_code=404, detail="Catch not found")
     return Response(status_code=204)
+
+
+# -- Favorites (M4.1) --------------------------------------------------
+# Favorite waters, tied to accounts (favorites drive email condition
+# alerts, so they need an address). The alert diffing itself lives in
+# favorites.py and runs inside the precompute pass, never here.
+
+
+class _FavoriteIn(BaseModel):
+    site_no: str
+    name: str
+    state: str
+    lat: float | None = None
+    lon: float | None = None
+
+
+class _FavoritePatch(BaseModel):
+    notify: bool
+
+
+@app.get("/api/favorites")
+async def api_list_favorites(request: Request):
+    user = _require_user(request)
+    items = await asyncio.to_thread(db.list_favorites, user["id"])
+    return {"favorites": items}
+
+
+@app.post("/api/favorites", status_code=201)
+async def api_add_favorite(body: _FavoriteIn, request: Request):
+    user = _require_user(request)
+    site_no = body.site_no.strip()
+    name = body.name.strip()
+    state = body.state.strip().upper()
+    # The client's state is a hint (viewport mode spans borders); resolve
+    # from the coordinate when it's missing or wrong-looking.
+    if state not in STATES and body.lat is not None and body.lon is not None:
+        state = point_in_state(body.lat, body.lon) or ""
+    if not site_no or not name or state not in STATES:
+        raise HTTPException(status_code=400,
+                            detail="site_no, name and a resolvable state required")
+    return await asyncio.to_thread(
+        db.add_favorite, user["id"], site_no, name, state, body.lat, body.lon)
+
+
+@app.delete("/api/favorites/{site_no}", status_code=204)
+async def api_remove_favorite(site_no: str, request: Request):
+    user = _require_user(request)
+    ok = await asyncio.to_thread(db.remove_favorite, user["id"], site_no)
+    if not ok:
+        raise HTTPException(status_code=404, detail="Favorite not found")
+    return Response(status_code=204)
+
+
+@app.patch("/api/favorites/{site_no}")
+async def api_patch_favorite(site_no: str, body: _FavoritePatch,
+                             request: Request):
+    user = _require_user(request)
+    ok = await asyncio.to_thread(
+        db.set_favorite_notify, user["id"], site_no, body.notify)
+    if not ok:
+        raise HTTPException(status_code=404, detail="Favorite not found")
+    return {"site_no": site_no, "notify": body.notify}

@@ -203,8 +203,14 @@ mode click-suppression, confirmed writes, input preservation) across every remai
 
 ## M4 — Product stickiness (from architecture review, Phase 3)
 
-- [ ] **M4.1** Favorites → condition alerts → Web Push/Resend email ("Gunpowder just went
-      green") — the retention loop TroutRoutes can't match without a scoring layer.
+- [x] **M4.1a** Favorites → condition **email** alerts ("Gunpowder just went green") — the
+      retention loop TroutRoutes can't match without a scoring layer. *(Done: account-tied
+      favorites (bookmark on the river panel + My Content list with condition dot, per-favorite
+      bell, optimistic writes); the precompute pass diffs verdicts per state and emails via
+      Resend on transitions into green/red — first observation silent, notify-off still tracks
+      state so re-enabling doesn't replay.)*
+- [ ] **M4.1b** Web Push for the same alerts (VAPID keys + service-worker push handler;
+      email shipped first since the Resend infra existed).
 - [ ] **M4.2** Real search: prebuilt static index (rivers, gauges, counties, towns) searched
       client-side; free geocoder fallback. (M2.f's keyboard/highlight work carries over.)
 - [ ] **M4.3** Perceived-speed pass: optimistic pin/catch writes (pairs with M2.b4/M2.d1 error

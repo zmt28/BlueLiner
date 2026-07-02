@@ -115,7 +115,11 @@ declare global {
     // Consumed by closeRiverPanel (river-panel.ts) via window to avoid
     // an import cycle (this module imports openRiverPanel from there).
     clearRiverSelection: typeof clearRiverSelection;
+    // Consumed by favorites.ts (favorites -> selection -> river-panel ->
+    // favorites would cycle).
+    selectRiver: typeof selectRiver;
   }
 }
 
 window.clearRiverSelection = clearRiverSelection;
+window.selectRiver = selectRiver;
