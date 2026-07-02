@@ -138,6 +138,33 @@ fill-in work. Items marked **[bug]** are behavior defects, not just polish.
       *(Done: real recents in localStorage under "Recent"; falls back to a plain
       "Rivers" sampler with a waves icon when none.)*
 
+### M2.h Pin-pattern sweep round 2 (2026-07-02 follow-up audit)
+
+A second audit applied the pin-flow patterns (immediate spatial feedback, visible modes,
+mode click-suppression, confirmed writes, input preservation) across every remaining flow.
+
+- [x] **M2.h1** State switch narrates itself: "Loading {State}…" chip during the fetch,
+      "Preparing {State} — first visit can take a minute…" for lazy states (was a silent
+      20s retry against an empty map); `loadRivers` survives fetch failures and drops
+      stale responses on rapid switching.
+- [x] **M2.h2** Shared `map-mode.ts` click-claim registry: pin placement AND offline
+      download framing suppress feature clicks (framing previously let a tap open the
+      river panel over the framing UI). Also fixed: the download Go button stayed
+      disabled forever after a failure.
+- [x] **M2.h3** Catch location is visible and adjustable: the form shows the coordinate
+      it inherited (for gauged rivers, the *gauge* position — possibly miles off) and
+      "Adjust on map" steps the modal aside for a draggable ghost marker; Done commits
+      into the enrichment + saved catch, Esc/cancel restores.
+- [x] **M2.h4** Server-confirmed writes: logout reloads only on `r.ok`; claim-pins checks
+      `res.ok`, keeps the modal + re-offer on failure; settings save toasts its errors.
+- [ ] **M2.h5** Offline download cancel: keep Cancel enabled mid-download, thread an
+      `AbortController` through `downloadArea`/`prefetch`, report "Saved N of M tiles"
+      on cancel/failure (partial cache is currently silent). (`controls.ts:749`,
+      `offline-tiles.ts:371`)
+- [ ] **M2.h6** Stream class/wild/native filters: surface a "no streams match here" chip
+      when the filtered network is empty in-viewport (map just goes blank today).
+      (`streams.ts:166`, `controls.ts` class chips)
+
 ### M2.g CSS pass (audit P4 — one sweep, half a day)
 
 - [x] **M2.g1** `:active` press states on buttons/tiles/rows (zero exist — taps feel dead on touch).

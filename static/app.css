@@ -1173,6 +1173,44 @@ html, body {
     50%      { opacity: 0.55; }
 }
 
+/* Catch-location row + adjust-on-map mode (catches.ts). */
+.cf-loc-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-3);
+    margin-bottom: var(--space-3);
+}
+.cf-loc-label { font-size: var(--fs-caption); color: var(--fg-3); }
+.cf-loc-adjust {
+    font-size: var(--fs-caption);
+    padding: 2px var(--space-3);
+    background: var(--bg-sunken);
+    color: var(--fg-2);
+    border-radius: var(--radius-2);
+}
+.cf-loc-adjust:hover { background: var(--bg-pressed); }
+.bl-catchloc-bar {
+    position: fixed;
+    bottom: calc(var(--space-7) + env(safe-area-inset-bottom, 0px));
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: var(--z-overlay);
+    display: flex;
+    align-items: center;
+    gap: var(--space-4);
+    background: rgba(255,255,255,0.97);
+    backdrop-filter: blur(8px);
+    color: var(--fg-1);
+    font-size: var(--fs-meta);
+    padding: var(--space-3) var(--space-5);
+    border-radius: var(--radius-3);
+    box-shadow: var(--elev-2);
+    max-width: calc(100vw - 24px);
+}
+.bl-catchloc-bar button { flex-shrink: 0; }
+.bl-catchloc-bar button.secondary { background: var(--bg-sunken); color: var(--fg-2); }
+
 /* State-load chip (rivers.ts): narrates the state switch / lazy first
    compute, same placement as the pin-mode hint. */
 .bl-state-chip {
