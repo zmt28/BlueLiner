@@ -749,31 +749,57 @@ if (offlineSection && BASEMAP_TILES_ENABLED && "indexedDB" in window) {
   }
 
   dlBtn.addEventListener("click", enterDownloadMode);
-  cancelBtn.addEventListener("click", exitDownloadMode);
+  // While a download runs, Cancel becomes "Stop" and aborts it (per-tile
+  // cancellation point in offline-tiles.ts); otherwise it exits framing.
+  let dlAbort: AbortController | null = null;
+  cancelBtn.addEventListener("click", () => {
+    if (busy) {
+      dlAbort?.abort();
+      return;
+    }
+    exitDownloadMode();
+  });
 
   goBtn.addEventListener("click", async () => {
     const bbox = boxBBox();
     const z = Math.floor(map.getZoom());
     busy = true;
     goBtn.disabled = true;
-    cancelBtn.disabled = true;
+    dlAbort = new AbortController();
+    const cancelLabel = cancelBtn.textContent;
+    cancelBtn.textContent = "Stop";
     try {
-      const r = await downloadArea(bbox, archives, z, BASEMAP_STYLE_URL, (p) => {
+      const r = await downloadArea(
+        bbox,
+        archives,
+        z,
+        BASEMAP_STYLE_URL,
+        (p) => {
+          estEl.textContent =
+            p.phase === "assets"
+              ? "Saving map style…"
+              : `Saving ${p.done.toLocaleString()}/${p.total.toLocaleString()}…`;
+        },
+        dlAbort.signal,
+      );
+      if (r.cancelled) {
+        // Partial coverage is still real coverage — say what was kept.
         estEl.textContent =
-          p.phase === "assets"
-            ? "Saving map style…"
-            : `Saving ${p.done.toLocaleString()}/${p.total.toLocaleString()}…`;
-      });
-      estEl.textContent = `Saved ${mb(r.bytes)} for offline use ✓`;
-      await refreshStatus();
-      setTimeout(exitDownloadMode, 1400);
+          `Stopped — kept ${r.done.toLocaleString()}/` +
+          `${r.total.toLocaleString()} tiles (${mb(r.bytes)})`;
+        await refreshStatus();
+      } else {
+        estEl.textContent = `Saved ${mb(r.bytes)} for offline use ✓`;
+        await refreshStatus();
+        setTimeout(exitDownloadMode, 1400);
+      }
     } catch (e) {
       estEl.textContent = `Download failed: ${(e as Error).message}`;
     } finally {
       busy = false;
+      dlAbort = null;
       goBtn.disabled = false; // was left disabled forever after a failure
-      cancelBtn.disabled = false;
-      void updateEstimate();
+      cancelBtn.textContent = cancelLabel;
     }
   });
 

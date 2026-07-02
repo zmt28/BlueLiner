@@ -152,6 +152,7 @@ export async function prefetch(
   minZoom: number,
   maxZoom: number,
   onProgress?: (done: number, total: number) => void,
+  signal?: AbortSignal,
 ): Promise<PrefetchResult> {
   const total = tileCount(bbox, minZoom, maxZoom);
   const p = cachingPmtiles(httpsUrl);
@@ -164,6 +165,11 @@ export async function prefetch(
     const y1 = lat2y(bbox.s, z);
     for (let x = Math.min(x0, x1); x <= Math.max(x0, x1); x++) {
       for (let y = Math.min(y0, y1); y <= Math.max(y0, y1); y++) {
+        // Per-tile cancellation point (M2.h5) — a large download used to
+        // be uninterruptible for its whole run.
+        if (signal?.aborted) {
+          throw new DOMException("Download cancelled", "AbortError");
+        }
         requested++;
         try {
           const r = await p.getZxy(z, x, y);
@@ -374,12 +380,21 @@ export async function downloadArea(
   viewZoom: number,
   styleUrl: string | null,
   onProgress?: (p: DownloadProgress) => void,
-): Promise<{ tiles: number; bytes: number; entries: number }> {
+  signal?: AbortSignal,
+): Promise<{
+  tiles: number;
+  bytes: number;
+  entries: number;
+  cancelled: boolean;
+  done: number;
+  total: number;
+}> {
   await requestPersist();
   const plans = await planArea(bbox, archives, viewZoom);
   const grand = plans.reduce((s, p) => s + p.total, 0);
   let done = 0;
   let tiles = 0;
+  let cancelled = false;
 
   setPersisting(true);
   try {
@@ -388,14 +403,36 @@ export async function downloadArea(
       await cacheAssets(styleUrl);
     }
     for (const plan of plans) {
-      const r = await prefetch(plan.url, bbox, plan.minZ, plan.maxZ, () => {
-        done++;
-        onProgress?.({ phase: "tiles", done, total: grand });
-      });
-      tiles += r.present;
+      try {
+        const r = await prefetch(
+          plan.url,
+          bbox,
+          plan.minZ,
+          plan.maxZ,
+          () => {
+            done++;
+            onProgress?.({ phase: "tiles", done, total: grand });
+          },
+          signal,
+        );
+        tiles += r.present;
+      } catch (e) {
+        if ((e as Error).name === "AbortError") {
+          // Everything cached so far stays useful (the range cache is
+          // cumulative); report the partial coverage instead of hiding it.
+          cancelled = true;
+          break;
+        }
+        throw e;
+      }
     }
   } finally {
     setPersisting(false);
+  }
+
+  if (cancelled) {
+    const stats = await offlineStats();
+    return { tiles, done, total: grand, cancelled, ...stats };
   }
 
   try {
@@ -414,7 +451,14 @@ export async function downloadArea(
     /* meta is best-effort */
   }
   const stats = await offlineStats();
-  return { tiles, bytes: stats.bytes, entries: stats.entries };
+  return {
+    tiles,
+    done,
+    total: grand,
+    cancelled: false,
+    bytes: stats.bytes,
+    entries: stats.entries,
+  };
 }
 
 // Debug handle for manual testing (e.g. from a desktop console).

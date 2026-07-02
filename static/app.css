@@ -1230,6 +1230,24 @@ html, body {
     white-space: nowrap;
 }
 
+/* Empty stream-filter chip (streams.ts): sits below the state chip slot. */
+.bl-filter-empty-chip {
+    position: fixed;
+    top: calc(112px + env(safe-area-inset-top, 0px));
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: var(--z-overlay);
+    background: rgba(255,255,255,0.97);
+    backdrop-filter: blur(8px);
+    color: var(--fg-3);
+    font-size: var(--fs-caption);
+    padding: var(--space-2) var(--space-4);
+    border-radius: var(--radius-3);
+    box-shadow: var(--elev-2);
+    pointer-events: none;
+    white-space: nowrap;
+}
+
 /* Toasts (toast.ts): bottom-centered stack above everything else. */
 .bl-toasts {
     position: fixed;

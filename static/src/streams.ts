@@ -170,6 +170,42 @@ function applyStreamFilter(): void {
   }
 }
 
+// -- Empty-filter feedback (M2.h6) -------------------------------------
+// When the class/wild/native filters leave nothing in view, the map used
+// to just go blank with no signal. A small chip says so; re-checked on
+// idle (cheap: queryRenderedFeatures respects the layer filter).
+
+let _filterEmptyChip: HTMLElement | null = null;
+
+function _setFilterEmptyChip(on: boolean): void {
+  if (!on) {
+    _filterEmptyChip?.remove();
+    _filterEmptyChip = null;
+    return;
+  }
+  if (!_filterEmptyChip) {
+    _filterEmptyChip = document.createElement("div");
+    _filterEmptyChip.className = "bl-filter-empty-chip";
+    _filterEmptyChip.textContent = "No streams match these filters in view";
+    document.body.appendChild(_filterEmptyChip);
+  }
+}
+
+function _checkFilterEmpty(): void {
+  if (!streamFilterExpr() || !_streamsVisible || !map.getLayer("clickable-streams")) {
+    _setFilterEmptyChip(false);
+    return;
+  }
+  const feats = map.queryRenderedFeatures(undefined, {
+    layers: ["clickable-streams"],
+  });
+  _setFilterEmptyChip(feats.length === 0);
+}
+
+onMapReady(() => {
+  map.on("idle", _checkFilterEmpty);
+});
+
 type StreamFilterPatch = {
   wild?: boolean;
   native?: boolean;

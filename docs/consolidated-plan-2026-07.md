@@ -157,13 +157,14 @@ mode click-suppression, confirmed writes, input preservation) across every remai
       into the enrichment + saved catch, Esc/cancel restores.
 - [x] **M2.h4** Server-confirmed writes: logout reloads only on `r.ok`; claim-pins checks
       `res.ok`, keeps the modal + re-offer on failure; settings save toasts its errors.
-- [ ] **M2.h5** Offline download cancel: keep Cancel enabled mid-download, thread an
+- [x] **M2.h5** Offline download cancel: keep Cancel enabled mid-download, thread an
       `AbortController` through `downloadArea`/`prefetch`, report "Saved N of M tiles"
-      on cancel/failure (partial cache is currently silent). (`controls.ts:749`,
-      `offline-tiles.ts:371`)
-- [ ] **M2.h6** Stream class/wild/native filters: surface a "no streams match here" chip
+      on cancel/failure (partial cache is currently silent). *(Done: Cancel becomes
+      "Stop" during a run; per-tile cancellation point; "Stopped — kept N/M tiles"
+      keeps the partial coverage visible.)*
+- [x] **M2.h6** Stream class/wild/native filters: surface a "no streams match here" chip
       when the filtered network is empty in-viewport (map just goes blank today).
-      (`streams.ts:166`, `controls.ts` class chips)
+      *(Done: idle-checked "No streams match these filters in view" chip.)*
 
 ### M2.g CSS pass (audit P4 — one sweep, half a day)
 
