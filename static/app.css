@@ -1165,6 +1165,23 @@ html, body {
 .modal-actions button.danger { background: var(--bl-cond-poor-500); color: #fff; }
 .modal-actions button.danger:hover { background: var(--bl-cond-poor-700); }
 
+/* Passkey affordances (M5.3). */
+.login-divider {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    margin: var(--space-4) 0;
+    color: var(--fg-3);
+    font-size: var(--fs-meta);
+}
+.login-divider::before,
+.login-divider::after {
+    content: "";
+    flex: 1;
+    height: 1px;
+    background: var(--border-1);
+}
+
 /* Login step 2 (M5.2): code fallback + resend/edit actions. */
 .login-code-row { display: flex; gap: var(--space-3); }
 .login-code-row input {

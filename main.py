@@ -2353,6 +2353,227 @@ async def api_verify_code(body: _CodeIn, request: Request):
     return resp
 
 
+# -- Passkeys / WebAuthn (M5.3) ----------------------------------------
+# Free zero-email re-auth: after one magic-link sign-in the user can
+# enroll a platform passkey (Face ID / fingerprint / device PIN) and
+# never need the email flow on that device again.
+
+try:
+    import webauthn as _webauthn
+    from webauthn.helpers import bytes_to_base64url as _wa_b64
+    from webauthn.helpers import structs as _wa_structs
+except ImportError:                    # keep the app bootable without it
+    _webauthn = None
+
+_WA_RP_NAME = "Blueliner"
+# Production runs behind Render's proxy, which can hide the real
+# scheme -- set WEBAUTHN_RP_ID=blueliner.app +
+# WEBAUTHN_ORIGIN=https://blueliner.app there. Dev derives both from
+# the request (localhost is a secure context).
+_WA_RP_ID_ENV = os.environ.get("WEBAUTHN_RP_ID", "").strip()
+_WA_ORIGIN_ENV = os.environ.get("WEBAUTHN_ORIGIN", "").strip()
+
+_WA_CHALLENGE_TTL = 300.0
+_wa_reg_challenges: dict[int, tuple[bytes, float]] = {}
+_wa_auth_challenges: dict[str, tuple[bytes, float]] = {}
+
+
+def _wa_rp(request: Request) -> tuple[str, str]:
+    rp_id = _WA_RP_ID_ENV or (request.url.hostname or "localhost")
+    origin = _WA_ORIGIN_ENV or f"{request.url.scheme}://{request.url.netloc}"
+    return rp_id, origin
+
+
+def _wa_take_challenge(store: dict, key) -> bytes | None:
+    """Single-use challenge redemption with TTL."""
+    entry = store.pop(key, None)
+    if not entry or time.time() - entry[1] > _WA_CHALLENGE_TTL:
+        return None
+    return entry[0]
+
+
+def _wa_put_challenge(store: dict, key, challenge: bytes) -> None:
+    now = time.time()
+    for k, (_, ts) in list(store.items()):     # purge expired
+        if now - ts > _WA_CHALLENGE_TTL:
+            store.pop(k, None)
+    while len(store) >= 1000:                  # bound memory
+        store.pop(next(iter(store)), None)
+    store[key] = (challenge, now)
+
+
+def _wa_nickname(user_agent: str | None) -> str:
+    """'Chrome on Mac' -- same terse shape the devices list uses."""
+    ua = user_agent or ""
+    os_name = ("iPhone/iPad" if ("iPhone" in ua or "iPad" in ua)
+               else "Android" if "Android" in ua
+               else "Mac" if ("Mac OS X" in ua or "Macintosh" in ua)
+               else "Windows" if "Windows" in ua
+               else "Linux" if "Linux" in ua else "")
+    browser = ("Edge" if "Edg/" in ua
+               else "Firefox" if "Firefox/" in ua
+               else "Chrome" if "Chrome/" in ua
+               else "Safari" if "Safari/" in ua else "Passkey")
+    return f"{browser} on {os_name}" if os_name else browser
+
+
+@app.post("/api/auth/webauthn/register-options")
+async def api_webauthn_register_options(request: Request):
+    """Creation options for enrolling a passkey on the signed-in
+    account. The challenge is held server-side (single-use, 5-min TTL)
+    and consumed by /register."""
+    if _webauthn is None:
+        raise HTTPException(status_code=501, detail="Passkeys unavailable")
+    user = _session_user(request)
+    if not user:
+        raise HTTPException(status_code=401, detail="Not signed in")
+    rp_id, _ = _wa_rp(request)
+    existing = await asyncio.to_thread(
+        db.list_webauthn_credentials, user["id"])
+    opts = _webauthn.generate_registration_options(
+        rp_id=rp_id,
+        rp_name=_WA_RP_NAME,
+        user_id=str(user["id"]).encode(),
+        user_name=user["email"],
+        user_display_name=user.get("display_name") or user["email"],
+        # Excluding registered ids stops "add a passkey" from silently
+        # duplicating one that's already on the device.
+        exclude_credentials=[
+            _wa_structs.PublicKeyCredentialDescriptor(
+                id=_webauthn.base64url_to_bytes(c["credential_id"]))
+            for c in existing],
+        authenticator_selection=_wa_structs.AuthenticatorSelectionCriteria(
+            resident_key=_wa_structs.ResidentKeyRequirement.PREFERRED,
+            user_verification=(
+                _wa_structs.UserVerificationRequirement.PREFERRED)),
+    )
+    _wa_put_challenge(_wa_reg_challenges, user["id"], opts.challenge)
+    return Response(content=_webauthn.options_to_json(opts),
+                    media_type="application/json")
+
+
+class _WebAuthnRegisterIn(BaseModel):
+    credential: dict
+
+
+@app.post("/api/auth/webauthn/register", status_code=204)
+async def api_webauthn_register(body: _WebAuthnRegisterIn, request: Request):
+    if _webauthn is None:
+        raise HTTPException(status_code=501, detail="Passkeys unavailable")
+    user = _session_user(request)
+    if not user:
+        raise HTTPException(status_code=401, detail="Not signed in")
+    challenge = _wa_take_challenge(_wa_reg_challenges, user["id"])
+    if challenge is None:
+        raise HTTPException(status_code=400,
+                            detail="Challenge expired — try again")
+    rp_id, origin = _wa_rp(request)
+    try:
+        verified = _webauthn.verify_registration_response(
+            credential=body.credential,
+            expected_challenge=challenge,
+            expected_rp_id=rp_id,
+            expected_origin=origin)
+    except Exception as exc:
+        logger.warning("webauthn registration failed for user %s: %s",
+                       user["id"], exc)
+        raise HTTPException(status_code=400,
+                            detail="Passkey registration failed")
+    transports = ",".join(
+        (body.credential.get("response") or {}).get("transports") or []) \
+        or None
+    try:
+        await asyncio.to_thread(
+            db.add_webauthn_credential, user["id"],
+            _wa_b64(verified.credential_id),
+            _wa_b64(verified.credential_public_key),
+            verified.sign_count, transports,
+            _wa_nickname(request.headers.get("user-agent")))
+    except Exception:
+        raise HTTPException(status_code=400,
+                            detail="Passkey already registered")
+    return Response(status_code=204)
+
+
+@app.post("/api/auth/webauthn/auth-options")
+async def api_webauthn_auth_options(request: Request):
+    """Request options for a usernameless (discoverable-credential)
+    sign-in. Returns an opaque handle the client echoes back so the
+    challenge can be matched without any account hint."""
+    if _webauthn is None:
+        raise HTTPException(status_code=501, detail="Passkeys unavailable")
+    _rate_limit_auth(request)
+    rp_id, _ = _wa_rp(request)
+    opts = _webauthn.generate_authentication_options(
+        rp_id=rp_id,
+        user_verification=_wa_structs.UserVerificationRequirement.PREFERRED)
+    handle = secrets.token_urlsafe(16)
+    _wa_put_challenge(_wa_auth_challenges, handle, opts.challenge)
+    return {"handle": handle,
+            "options": json.loads(_webauthn.options_to_json(opts))}
+
+
+class _WebAuthnAuthIn(BaseModel):
+    handle: str
+    credential: dict
+
+
+@app.post("/api/auth/webauthn/authenticate")
+async def api_webauthn_authenticate(body: _WebAuthnAuthIn, request: Request):
+    if _webauthn is None:
+        raise HTTPException(status_code=501, detail="Passkeys unavailable")
+    _rate_limit_auth(request)
+    challenge = _wa_take_challenge(_wa_auth_challenges, body.handle)
+    if challenge is None:
+        raise HTTPException(status_code=400,
+                            detail="Challenge expired — try again")
+    cred_id = body.credential.get("id") or ""
+    stored = await asyncio.to_thread(db.get_webauthn_credential, cred_id)
+    if not stored:
+        raise HTTPException(status_code=400, detail="Unknown passkey")
+    rp_id, origin = _wa_rp(request)
+    try:
+        verified = _webauthn.verify_authentication_response(
+            credential=body.credential,
+            expected_challenge=challenge,
+            expected_rp_id=rp_id,
+            expected_origin=origin,
+            credential_public_key=_webauthn.base64url_to_bytes(
+                stored["public_key"]),
+            credential_current_sign_count=stored["sign_count"])
+    except Exception as exc:
+        logger.warning("webauthn auth failed for credential %s: %s",
+                       cred_id[:12], exc)
+        raise HTTPException(status_code=400, detail="Passkey sign-in failed")
+    await asyncio.to_thread(db.touch_webauthn_credential, cred_id,
+                            verified.new_sign_count)
+    sess_token = await _mint_session(stored["email"], request)
+    resp = JSONResponse({"ok": True, "email": stored["email"]})
+    _set_session_cookie(resp, sess_token)
+    return resp
+
+
+@app.get("/api/me/passkeys")
+async def api_me_passkeys(request: Request):
+    user = _session_user(request)
+    if not user:
+        raise HTTPException(status_code=401, detail="Not signed in")
+    keys = await asyncio.to_thread(db.list_webauthn_credentials, user["id"])
+    return {"passkeys": keys}
+
+
+@app.delete("/api/me/passkeys/{cid}", status_code=204)
+async def api_me_delete_passkey(cid: str, request: Request):
+    user = _session_user(request)
+    if not user:
+        raise HTTPException(status_code=401, detail="Not signed in")
+    ok = await asyncio.to_thread(db.delete_webauthn_credential,
+                                 user["id"], cid)
+    if not ok:
+        raise HTTPException(status_code=404, detail="Passkey not found")
+    return Response(status_code=204)
+
+
 @app.get("/auth/consume", response_class=HTMLResponse)
 async def auth_consume(token: str = Query(..., min_length=8, max_length=64),
                        request: Request = None):

@@ -31,6 +31,7 @@ import { DEVICE_HEADER } from "./state";
 import { loadPins } from "./pins";
 import { confirmDialog } from "./confirm";
 import { showToast } from "./toast";
+import { passkeysSupported, signInWithPasskey, registerPasskey } from "./passkeys";
 
 // -- CURRENT_USER state --------------------------------------------
 // AuthMe-shaped value or null when signed out. Module-private; the
@@ -343,6 +344,40 @@ function wireAuthHandlers(): void {
       inp.select();
     });
 
+  // Passkey sign-in (M5.3): shown only on capable browsers.
+  const pkWrap = document.getElementById("login-passkey-wrap");
+  const pkBtn = document.getElementById("login-passkey") as HTMLButtonElement | null;
+  if (pkWrap && pkBtn && passkeysSupported()) {
+    pkWrap.hidden = false;
+    pkBtn.addEventListener("click", async () => {
+      pkBtn.disabled = true;
+      const res = await signInWithPasskey();
+      pkBtn.disabled = false;
+      if (res === "ok") {
+        location.reload();
+      } else if (res === "error") {
+        showToast("Passkey sign-in didn't work — use the email link.", "error");
+      }
+      // "cancel" = the user closed the platform sheet; stay quiet.
+    });
+  }
+
+  // Passkey enrollment prompt buttons.
+  const pkAdd = document.getElementById("passkey-add") as HTMLButtonElement | null;
+  if (pkAdd)
+    pkAdd.addEventListener("click", async () => {
+      pkAdd.disabled = true;
+      const res = await registerPasskey();
+      pkAdd.disabled = false;
+      if (res === "ok") {
+        localStorage.setItem("bl_passkey_dismissed", "1");
+        closeModal("passkey-modal");
+        showToast("Passkey added — next sign-in is one tap", "success");
+      } else if (res === "error") {
+        showToast("Couldn't add a passkey — try again from Settings.", "error");
+      }
+    });
+
   // Resend (cooldown-gated) + "wrong address" recovery.
   const resend = document.getElementById("login-resend");
   if (resend)
@@ -453,6 +488,37 @@ async function confirmClaim(): Promise<void> {
   loadPins();
 }
 
+// -- Passkey enrollment prompt (M5.3) -------------------------------
+
+async function maybePromptPasskey(): Promise<void> {
+  if (!CURRENT_USER || !passkeysSupported()) return;
+  if (localStorage.getItem("bl_passkey_dismissed") === "1") return;
+  // Don't stack on top of the claim-pins modal; the passkey offer can
+  // wait for the next visit.
+  const claim = document.getElementById("claim-modal");
+  if (claim && !claim.hidden) return;
+  try {
+    const r = await fetch("/api/me/passkeys");
+    if (!r.ok) return;
+    const { passkeys } = (await r.json()) as { passkeys: unknown[] };
+    if (passkeys.length > 0) return; // already enrolled somewhere
+  } catch {
+    return;
+  }
+  openModal("passkey-modal");
+  // Any close path (Skip / [x] / backdrop) counts as "asked and
+  // answered" -- same one-shot policy as the claim prompt.
+  document.getElementById("passkey-modal")!.addEventListener(
+    "click",
+    (e) => {
+      if ((e.target as HTMLElement).matches("[data-close]")) {
+        localStorage.setItem("bl_passkey_dismissed", "1");
+      }
+    },
+    { once: true },
+  );
+}
+
 // -- Settings ------------------------------------------------------
 
 function loadSettings(): void {
@@ -463,6 +529,95 @@ function loadSettings(): void {
     (CURRENT_USER.display_name as string | undefined) || "";
   (document.getElementById("settings-saved") as HTMLElement).style.opacity = "0";
   void loadSessionsList();
+  void loadPasskeysList();
+}
+
+// -- Passkey management (M5.3) --------------------------------------
+
+async function loadPasskeysList(): Promise<void> {
+  const row = document.getElementById("settings-passkeys-row");
+  const ul = document.getElementById("settings-passkeys") as HTMLUListElement | null;
+  if (!row || !ul) return;
+  if (!passkeysSupported()) {
+    row.hidden = true;
+    return;
+  }
+  row.hidden = false;
+  interface Pk {
+    credential_id: string;
+    nickname: string | null;
+    created_at: string | null;
+    last_used_at: string | null;
+  }
+  let passkeys: Pk[];
+  try {
+    const r = await fetch("/api/me/passkeys");
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    passkeys = ((await r.json()) as { passkeys: Pk[] }).passkeys;
+  } catch {
+    ul.innerHTML = "<li class='sess-note'>Couldn't load passkeys.</li>";
+    return;
+  }
+  ul.innerHTML = passkeys.length
+    ? ""
+    : "<li class='sess-note'>No passkeys yet — add one to skip the email sign-in.</li>";
+  for (const k of passkeys) {
+    const li = document.createElement("li");
+    li.className = "sess-row";
+    const meta = document.createElement("div");
+    meta.className = "sess-meta";
+    const label = document.createElement("div");
+    label.textContent = k.nickname || "Passkey";
+    const used = document.createElement("div");
+    used.className = "sess-seen";
+    used.textContent = k.last_used_at
+      ? `Last used ${relTime(k.last_used_at)}`
+      : "Never used yet";
+    meta.append(label, used);
+    li.appendChild(meta);
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "secondary sess-revoke";
+    btn.textContent = "Remove";
+    btn.addEventListener("click", async () => {
+      const ok = await confirmDialog({
+        title: "Remove this passkey?",
+        message: "You'll need the email link to sign in on that device again.",
+        confirmLabel: "Remove",
+        danger: true,
+      });
+      if (!ok) return;
+      btn.disabled = true;
+      try {
+        const r = await fetch(
+          `/api/me/passkeys/${encodeURIComponent(k.credential_id)}`,
+          { method: "DELETE" });
+        if (!r.ok) throw new Error(`HTTP ${r.status}`);
+        li.remove();
+        showToast("Passkey removed", "success");
+      } catch {
+        btn.disabled = false;
+        showToast("Couldn't remove the passkey — try again.", "error");
+      }
+    });
+    li.appendChild(btn);
+    ul.appendChild(li);
+  }
+  const addBtn = document.getElementById("settings-passkey-add") as HTMLButtonElement | null;
+  if (addBtn && !addBtn.dataset.wired) {
+    addBtn.dataset.wired = "1";
+    addBtn.addEventListener("click", async () => {
+      addBtn.disabled = true;
+      const res = await registerPasskey();
+      addBtn.disabled = false;
+      if (res === "ok") {
+        showToast("Passkey added", "success");
+        void loadPasskeysList();
+      } else if (res === "error") {
+        showToast("Couldn't add a passkey — try again.", "error");
+      }
+    });
+  }
 }
 
 // -- Active devices (M5.2f) -----------------------------------------
@@ -607,7 +762,10 @@ export async function initAuth(): Promise<void> {
   wireAuthHandlers();
   // catches.ts wires its own form + my-catches DOM at module init;
   // initAuth() doesn't need to trigger it.
-  if (CURRENT_USER) await maybePromptClaim();
+  if (CURRENT_USER) {
+    await maybePromptClaim();
+    await maybePromptPasskey();
+  }
 }
 
 // -- Window bridge for cross-module consumers ----------------------

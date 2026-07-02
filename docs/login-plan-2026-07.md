@@ -39,23 +39,23 @@ login frequency is the recurring leak. The plan attacks both.
 The 30-day fixed cookie is the leak: activity should extend the
 session, and abandonment should end it server-side.
 
-- [ ] **a. Sliding renewal.** `db.user_from_session` already touches
+- [x] **a. Sliding renewal.** `db.user_from_session` already touches
   `last_seen_at` on every validated request. Re-issue the cookie
   (same token, fresh 30-day `max_age`) when `last_seen_at` is >24 h
   old — a response-side check in `_session_user`'s callers or a small
   middleware. A user who opens the app monthly never re-logs-in.
-- [ ] **b. Server-side idle expiry.** Sessions currently live forever
+- [x] **b. Server-side idle expiry.** Sessions currently live forever
   in the DB (`user_from_session` checks nothing but existence).
   Reject + delete sessions idle >90 days; prune expired rows and
   used/expired `magic_links` rows in the precompute pass (same
   best-effort pattern as `favorites.check_favorite_alerts`).
-- [ ] **c. Capture session context.** `main.auth_consume` calls
+- [x] **c. Capture session context.** `main.auth_consume` calls
   `db.create_session(user["id"], sess_token, None, None)` — pass the
   real `User-Agent` and client IP. Costs nothing, enables M5.2f.
 
 ## M5.2 — Magic-link flow polish (medium; QoL)
 
-- [ ] **a. 6-digit code fallback (cross-device fix).** The email
+- [x] **a. 6-digit code fallback (cross-device fix).** The email
   gains a short code alongside the button; the "Check your inbox"
   step (`login-step-2` in `auth.ts`) gains a code input. Requesting
   on desktop and opening the email on a phone currently signs in the
@@ -63,25 +63,25 @@ session, and abandonment should end it server-side.
   `magic_links` grows a hashed `code` column; `POST
   /api/auth/verify-code {email, code}` with a 5-attempt cap per link,
   minting the same session as `/auth/consume`.
-- [ ] **b. Live "signed in" handoff.** While step-2 is visible, poll
+- [x] **b. Live "signed in" handoff.** While step-2 is visible, poll
   `/api/me` every ~3 s (cookie is browser-wide, so a link consumed in
   another tab of the same browser is visible immediately) — the modal
   flips to "You're in" and refreshes the auth slot without a manual
   reload. BroadcastChannel from the consume page as the fast path.
-- [ ] **c. Resend cooldown + edit address.** The step-2 "try again"
+- [x] **c. Resend cooldown + edit address.** The step-2 "try again"
   link becomes "Resend (60 s)" with a countdown, plus a separate
   "Wrong address?" that returns to step 1 with the field prefilled —
   today `openModal` blanks it.
-- [ ] **d. Expired-link recovery.** `_consume_error_html` is a dead
+- [x] **d. Expired-link recovery.** `_consume_error_html` is a dead
   end ("request a fresh one" → start over). The `magic_links` row
   still holds the email even when expired: render a one-click "Send a
   new link to j***@gmail.com" button (masked, rate-limited through
   the existing `_rate_limit_auth` path).
-- [ ] **e. Plain-text part + deliverability.** Both templates are
+- [x] **e. Plain-text part + deliverability.** Both templates are
   HTML-only; add a `text` part (Resend supports it in the same
   payload) to lower spam scoring — a magic link in spam is a support
   ticket and a burned email.
-- [ ] **f. Active-sessions list in Settings.** UA/IP/last-seen are in
+- [x] **f. Active-sessions list in Settings.** UA/IP/last-seen are in
   the `sessions` table once M5.1c lands; list devices with a revoke
   button (`DELETE /api/me/sessions/{id}`). Polish + a security
   feature users expect.
@@ -91,29 +91,35 @@ session, and abandonment should end it server-side.
 Free forever, no third-party service, perfect PWA fit (Face ID /
 fingerprint / device PIN). Library: `py_webauthn` (pure-Python deps).
 
-- [ ] **a. Schema + endpoints.** `webauthn_credentials` table
+- [x] **a. Schema + endpoints.** `webauthn_credentials` table
   (user_id, credential_id, public_key, sign_count, transports,
   nickname, created_at, last_used_at). Four routes:
   `register-options` / `register` / `auth-options` / `authenticate`,
   session-minting identical to the magic-link path.
-- [ ] **b. Post-sign-in enrollment prompt.** After a successful
+- [x] **b. Post-sign-in enrollment prompt.** After a successful
   magic-link/code sign-in, one dismissable prompt: "Add a passkey and
   skip the email next time." (Same pattern as the pin-claim modal —
   `bl_passkey_dismissed` localStorage flag.)
-- [ ] **c. Login modal integration.** "Sign in with a passkey" as the
-  primary action when `PublicKeyCredential` is available, with
-  conditional-mediation autofill on the email field
-  (`autocomplete="username webauthn"`) so one tap signs in. Email
-  flow stays as the fallback and the new-user path.
-- [ ] **d. Manage passkeys in Settings.** List / rename / revoke.
+- [x] **c. Login modal integration.** "Sign in with a passkey" button
+  shown when the browser supports the WebAuthn JSON APIs. Email flow
+  stays as the fallback and the new-user path. (Conditional-mediation
+  autofill on the email field deferred — the explicit button covers
+  the flow; revisit if adoption data says one more tap matters.)
+- [x] **d. Manage passkeys in Settings.** List + revoke, with
+  auto-nicknames from the registering browser ("Chrome on Mac");
+  rename deferred as not worth a custom input dialog yet.
+- [ ] **e. Production env.** Render runs behind a proxy that can hide
+  the request scheme, so set `WEBAUTHN_RP_ID=blueliner.app` and
+  `WEBAUTHN_ORIGIN=https://blueliner.app` in the dashboard (dev
+  derives both from the request; localhost is a secure context).
 
 ## M5.4 — Alert email efficiency (small; protects the budget today)
 
-- [ ] **a. Digest per pass.** `favorites.check_favorite_alerts`
+- [x] **a. Digest per pass.** `favorites.check_favorite_alerts`
   currently sends one email per river transition. Collect all
   transitions for a user within a refresh pass and send **one**
   email listing them. Cuts worst-case volume by the favorites count.
-- [ ] **b. Caps.** Per-user daily alert cap (e.g. 4) and a global
+- [x] **b. Caps.** Per-user daily alert cap (e.g. 4) and a global
   daily send counter (env `EMAIL_DAILY_BUDGET`, default 90 — just
   under Resend's 100/day free limit) checked before any send; when
   exhausted, skip alerts (never skip magic links — login outranks

@@ -342,6 +342,25 @@ def init_db() -> None:
             "CREATE INDEX IF NOT EXISTS idx_favorites_state "
             "ON favorites(state)"
         )
+        # Passkeys (M5.3). One row per registered WebAuthn credential;
+        # credential_id + public_key are base64url strings (the wire
+        # format), sign_count guards against cloned authenticators
+        # (synced passkeys legitimately report 0).
+        cur.execute(
+            "CREATE TABLE IF NOT EXISTS webauthn_credentials ("
+            " credential_id TEXT PRIMARY KEY,"
+            " user_id BIGINT NOT NULL,"
+            " public_key TEXT NOT NULL,"
+            " sign_count BIGINT NOT NULL DEFAULT 0,"
+            " transports TEXT,"
+            " nickname TEXT,"
+            " created_at TEXT NOT NULL,"
+            " last_used_at TEXT)"
+        )
+        cur.execute(
+            "CREATE INDEX IF NOT EXISTS idx_webauthn_user "
+            "ON webauthn_credentials(user_id)"
+        )
         # Daily email-send budget (M5.4). One counter row per (scope,
         # UTC day); scopes are "alerts:global" and "alerts:user:<id>".
         # Durable (not in-process) because the free-tier dyno restarts
@@ -1301,6 +1320,71 @@ def set_favorite_verdict(user_id: int, site_no: str, overall: str) -> None:
             _ph("UPDATE favorites SET last_overall = ?"
                 " WHERE user_id = ? AND site_no = ?"),
             (overall, user_id, site_no))
+
+
+# Passkeys / WebAuthn credentials (M5.3) ------------------------------
+
+def add_webauthn_credential(user_id: int, credential_id: str,
+                            public_key: str, sign_count: int,
+                            transports: str | None,
+                            nickname: str | None) -> None:
+    with _conn() as conn:
+        conn.cursor().execute(
+            _ph("INSERT INTO webauthn_credentials (credential_id, user_id,"
+                " public_key, sign_count, transports, nickname, created_at)"
+                " VALUES (?, ?, ?, ?, ?, ?, ?)"),
+            (credential_id, user_id, public_key, sign_count, transports,
+             nickname, datetime.now(timezone.utc).isoformat()))
+        conn.commit()
+
+
+def get_webauthn_credential(credential_id: str) -> dict | None:
+    """Credential + owner email for the sign-in path. Deleted users'
+    credentials don't authenticate."""
+    with _conn() as conn:
+        cur = conn.cursor()
+        cur.execute(
+            _ph("SELECT c.credential_id, c.user_id, c.public_key,"
+                " c.sign_count, u.email"
+                " FROM webauthn_credentials c JOIN users u ON u.id = c.user_id"
+                " WHERE c.credential_id = ? AND u.deleted_at IS NULL"),
+            (credential_id,))
+        row = cur.fetchone()
+        return dict(row) if row else None
+
+
+def list_webauthn_credentials(user_id: int) -> list[dict]:
+    with _conn() as conn:
+        cur = conn.cursor()
+        cur.execute(
+            _ph("SELECT credential_id, nickname, created_at, last_used_at"
+                " FROM webauthn_credentials WHERE user_id = ?"
+                " ORDER BY created_at"),
+            (user_id,))
+        return [dict(r) for r in cur.fetchall()]
+
+
+def touch_webauthn_credential(credential_id: str, sign_count: int) -> None:
+    """Post-authentication bookkeeping: new sign count + last-used."""
+    with _conn() as conn:
+        conn.cursor().execute(
+            _ph("UPDATE webauthn_credentials SET sign_count = ?,"
+                " last_used_at = ? WHERE credential_id = ?"),
+            (sign_count, datetime.now(timezone.utc).isoformat(),
+             credential_id))
+        conn.commit()
+
+
+def delete_webauthn_credential(user_id: int, credential_id: str) -> bool:
+    """Revoke one of the user's OWN passkeys (user_id guard, same
+    pattern as delete_user_session)."""
+    with _conn() as conn:
+        cur = conn.cursor()
+        cur.execute(
+            _ph("DELETE FROM webauthn_credentials"
+                " WHERE credential_id = ? AND user_id = ?"),
+            (credential_id, user_id))
+        return cur.rowcount > 0
 
 
 # Email budget (M5.4) -------------------------------------------------

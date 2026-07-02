@@ -5,3 +5,4 @@ httpx
 shapely
 psycopg[binary]
 email-validator
+webauthn
