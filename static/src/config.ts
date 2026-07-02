@@ -71,6 +71,14 @@ export const FLYSHOPS_TILES_URL: string = (_env.VITE_FLYSHOPS_TILES_URL || "").t
 export const FLYSHOPS_TILES_ENABLED: boolean = FLYSHOPS_TILES_URL.length > 0;
 export const FLYSHOPS_SOURCE_LAYER = "flyshops";
 
+// Client-side search index (M4.2): gauges + counties + towns, built by
+// scripts/build_search_index.py and fetched lazily on first search
+// focus. Point at the .json.gz; the client falls back to the sibling
+// plain .json when DecompressionStream is unavailable. Unset => search
+// covers the live river catalog only (the pre-M4.2 behavior).
+export const SEARCH_INDEX_URL: string = (_env.VITE_SEARCH_INDEX_URL || "").trim();
+export const SEARCH_INDEX_ENABLED: boolean = SEARCH_INDEX_URL.length > 0;
+
 // Self-hosted vector basemap (offline-ready basemap, Phase 0). Points at
 // `basemap.pmtiles` built + published by scripts/build_basemap_tiles.sh. The
 // companion style/glyphs/sprite live under the same versioned prefix, next to

@@ -211,8 +211,14 @@ mode click-suppression, confirmed writes, input preservation) across every remai
       state so re-enabling doesn't replay.)*
 - [ ] **M4.1b** Web Push for the same alerts (VAPID keys + service-worker push handler;
       email shipped first since the Resend infra existed).
-- [ ] **M4.2** Real search: prebuilt static index (rivers, gauges, counties, towns) searched
-      client-side; free geocoder fallback. (M2.f's keyboard/highlight work carries over.)
+- [x] **M4.2** Real search: prebuilt static index (rivers, gauges, counties, towns) searched
+      client-side. *(Done: `build_search_index.py` (USGS site service + Census gazetteer) +
+      `search-index-build.yml` publish to R2; the client lazy-loads the index on first search
+      focus (DecompressionStream with plain-JSON fallback) and renders Gauges + Places groups —
+      gauges match by name or site-number prefix and open their river's panel when it's in the
+      catalog. To ship: dispatch the workflow with upload, set `VITE_SEARCH_INDEX_URL`. A
+      geocoder fallback for arbitrary addresses remains a non-goal — the places index covers
+      towns/counties.)*
 - [x] **M4.3** Perceived-speed pass: optimistic pin/catch writes (pairs with M2.b4/M2.d1 error
       handling), skeletons on panel loads. *(Resolved across M2 + M4.1: favorites/bell toggles
       and pin/catch DELETEs are optimistic with rollback; content-CREATING writes (pin save,
