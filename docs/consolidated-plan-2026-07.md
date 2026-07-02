@@ -100,9 +100,12 @@ fill-in work. Items marked **[bug]** are behavior defects, not just polish.
 - [x] **M2.e1** Layer toggles: `.catch` on the icon/tile mount path — on failure, uncheck +
       toast (today: checkbox stays checked with nothing shown, `map-layers.ts:163`). *(Done as:
       mount failure flags the module; enabling any point layer afterward toasts once.)*
-- [ ] **M2.e2** Basemap switch flashes empty (vector switch shows *no base* for a full style
+- [x] **M2.e2** Basemap switch flashes empty (vector switch shows *no base* for a full style
       round-trip): add the new base before removing the old; drop the old on the new source's
-      first `idle`/`sourcedata` (`map-setup.ts:227-228`).
+      first `idle`/`sourcedata` (`map-setup.ts:227-228`). *(Done: generation-unique base ids
+      crossfade; old base retires on source-loaded/idle with a 4s hard timeout so it can't leak;
+      a failed vector style fetch keeps the previous base and reverts the key; boot falls back
+      to street raster if the persisted vector base fails.)*
 - [x] **M2.e3** Public-lands + trails layers: add pointer cursor on hover and `bl:poi-open`
       dispatch on click, matching every other POI layer (`map-layers.ts:481,556`).
 - [x] **M2.e4** Condition-filter empty result: when the overlay index is empty, show a small

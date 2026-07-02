@@ -147,27 +147,32 @@ function baseAnchor(): string | undefined {
   return map.getLayer("hydro") ? "hydro" : undefined;
 }
 
-function addRasterBase(key: RasterBaseKey): void {
-  map.addSource("base", BASES[key]);
-  map.addLayer({ id: "base", type: "raster", source: "base" }, baseAnchor());
-  _baseLayerIds = ["base"];
-  _baseSourceIds = ["base"];
+function addRasterBase(key: RasterBaseKey, gen: number): void {
+  // Generation-unique ids so a crossfading old base and its replacement
+  // can coexist below hydro until the new one has painted (M2.e2).
+  const id = `base-${gen}`;
+  map.addSource(id, BASES[key]);
+  map.addLayer({ id, type: "raster", source: id }, baseAnchor());
+  _baseLayerIds = [id];
+  _baseSourceIds = [id];
 }
 
 /** Vector base: fetch the self-hosted Protomaps style.json, point glyphs +
  *  sprite at its R2-hosted assets, then inject its vector source + full layer
  *  stack below the hydro anchor. Async (style fetch), so it guards on _baseGen
  *  to stay correct if the user switches base again before it resolves. */
-async function addVectorBase(gen: number): Promise<void> {
+async function addVectorBase(
+  gen: number,
+): Promise<"ok" | "failed" | "superseded"> {
   ensurePmtilesProtocol();
   let style: StyleSpecification;
   try {
     style = (await (await fetch(BASEMAP_STYLE_URL)).json()) as StyleSpecification;
   } catch (err) {
     console.warn("vector basemap style failed to load:", err);
-    return;
+    return "failed";
   }
-  if (gen !== _baseGen) return; // superseded by a later base switch
+  if (gen !== _baseGen) return "superseded"; // a later base switch won
 
   // glyphs/sprite are style-document-level; set them without setStyle so the
   // Protomaps label fonts + icon atlas resolve (the map's default glyphs is a
@@ -195,19 +200,25 @@ async function addVectorBase(gen: number): Promise<void> {
   }
   _baseLayerIds = layerIds;
   _baseSourceIds = sourceIds;
+  return "ok";
 }
 
+/** Boot-time base add (no previous base to crossfade from). If the
+ *  persisted vector base fails its style fetch, fall back to the street
+ *  raster rather than booting with no base at all. */
 function addBase(key: BaseMapKey): void {
   const gen = ++_baseGen;
-  if (key === "vector") void addVectorBase(gen);
-  else addRasterBase(key);
-}
-
-function removeBase(): void {
-  for (const id of _baseLayerIds) if (map.getLayer(id)) map.removeLayer(id);
-  for (const id of _baseSourceIds) if (map.getSource(id)) map.removeSource(id);
-  _baseLayerIds = [];
-  _baseSourceIds = [];
+  if (key === "vector") {
+    void addVectorBase(gen).then((r) => {
+      if (r === "failed" && gen === _baseGen && !_baseLayerIds.length) {
+        _currentBaseKey = "street";
+        window.currentBaseKey = "street";
+        addRasterBase("street", gen);
+      }
+    });
+  } else {
+    addRasterBase(key, gen);
+  }
 }
 
 function addHydroLayer(): void {
@@ -223,9 +234,59 @@ function addHydroLayer(): void {
 
 export function setBaseMap(key: BaseMapKey): void {
   if (!isBaseKey(key) || key === _currentBaseKey) return;
+  const prevKey = _currentBaseKey;
   _currentBaseKey = key;
-  removeBase();
-  addBase(key); // re-inserted below hydro, overlays untouched
+  // Crossfade (M2.e2): add the new base below hydro FIRST and retire the
+  // old one only after the new one has painted. Removing first flashed
+  // the gray map background between raster bases and, for the async
+  // vector base, left no base at all for the whole style round-trip.
+  const oldLayers = _baseLayerIds;
+  const oldSources = _baseSourceIds;
+  _baseLayerIds = [];
+  _baseSourceIds = [];
+  const removeOld = () => {
+    for (const id of oldLayers) if (map.getLayer(id)) map.removeLayer(id);
+    for (const id of oldSources) if (map.getSource(id)) map.removeSource(id);
+  };
+  // Retire the old base when the new one has painted: its source reports
+  // loaded, or the map goes idle — with a hard timeout so the old base
+  // can never leak when tiles hang (slow network, offline, tile outage).
+  const retireOldWhenPainted = (newSourceId?: string) => {
+    let done = false;
+    const onSrc = (e: { sourceId?: string; isSourceLoaded?: boolean }) => {
+      if (e.sourceId === newSourceId && e.isSourceLoaded) fire();
+    };
+    const fire = () => {
+      if (done) return;
+      done = true;
+      map.off("sourcedata", onSrc);
+      removeOld();
+    };
+    if (newSourceId) map.on("sourcedata", onSrc);
+    map.once("idle", fire);
+    window.setTimeout(fire, 4000);
+  };
+  const gen = ++_baseGen;
+  if (key === "vector") {
+    void addVectorBase(gen).then((r) => {
+      if (r === "ok") {
+        retireOldWhenPainted();
+      } else if (r === "failed" && gen === _baseGen) {
+        // Style fetch failed and nothing newer superseded us: keep the
+        // previous base on screen and restore its tracking + key so the
+        // UI reflects what's actually shown.
+        _baseLayerIds = oldLayers;
+        _baseSourceIds = oldSources;
+        _currentBaseKey = prevKey;
+        window.currentBaseKey = prevKey;
+      } else {
+        removeOld(); // superseded: a newer base is on top; drop ours
+      }
+    });
+  } else {
+    addRasterBase(key, gen);
+    retireOldWhenPainted(`base-${gen}`);
+  }
   try {
     localStorage.setItem("bl_basemap", key);
   } catch (_) {
