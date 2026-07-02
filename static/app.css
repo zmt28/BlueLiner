@@ -2327,3 +2327,78 @@ textarea:focus-visible,
     color: inherit;
     font-weight: var(--fw-bold);
 }
+
+/* ==================================================================
+   Favorite waters (M4.1): panel bookmark toggle + My Content list.
+   ================================================================== */
+
+.bl-fav-btn {
+    margin-left: auto;
+    flex-shrink: 0;
+    width: 34px;
+    height: 34px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--radius-2);
+    background: var(--bg-sunken);
+    color: var(--fg-3);
+}
+.bl-fav-btn:hover { background: var(--bg-pressed); color: var(--fg-1); }
+.bl-fav-btn svg { width: 18px; height: 18px; }
+.bl-fav-btn.is-fav { color: var(--bl-river-600, #1b6f96); }
+.bl-fav-btn.is-fav svg { fill: currentColor; }
+
+.fav-list { display: flex; flex-direction: column; gap: 2px; }
+.fav-row {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    padding: var(--space-2) var(--space-2);
+    border-radius: var(--radius-2);
+}
+.fav-row:hover { background: var(--bg-sunken); }
+.fav-dot {
+    width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0;
+    background: var(--bl-cond-none-500, #7F8B9C);
+}
+.fav-dot.is-good { background: var(--bl-cond-good-500); }
+.fav-dot.is-fair { background: var(--bl-cond-fair-500, #B7892F); }
+.fav-dot.is-poor { background: var(--bl-cond-poor-500); }
+.fav-name {
+    flex: 1;
+    min-width: 0;
+    text-align: left;
+    font-size: var(--fs-meta);
+    color: var(--fg-1);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    background: none;
+    padding: var(--space-2) 0;
+}
+.fav-state {
+    margin-left: var(--space-2);
+    font-size: var(--fs-caption);
+    color: var(--fg-3);
+}
+.fav-bell, .fav-remove {
+    flex-shrink: 0;
+    width: 28px; height: 28px;
+    display: inline-flex; align-items: center; justify-content: center;
+    border-radius: var(--radius-2);
+    background: none;
+    color: var(--fg-3);
+}
+.fav-bell:hover, .fav-remove:hover { background: var(--bg-pressed); color: var(--fg-1); }
+.fav-bell svg { width: 15px; height: 15px; }
+.fav-bell.on { color: var(--bl-river-600, #1b6f96); }
+.fav-remove { font-size: 16px; line-height: 1; }
+.fav-empty {
+    font-size: var(--fs-caption);
+    color: var(--fg-3);
+    padding: var(--space-2) 0;
+    text-align: left;
+    background: none;
+}
+button.fav-signin { color: var(--bl-river-600, #1b6f96); cursor: pointer; }

@@ -1,0 +1,88 @@
+name: Data build — search index
+
+# Builds the client-side search index (M4.2): all lower-48 USGS stream
+# gauges + Census counties + towns, one compact JSON fetched lazily on
+# first search focus. Manually triggered on a data release, same
+# posture as the other overlay builds. Publishes BOTH
+# search_index.json.gz (DecompressionStream clients) and the plain
+# .json fallback under the versioned prefix.
+#
+# Reuses the same R2 secrets as data-build.yml:
+#   R2_BUCKET, R2_ENDPOINT, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY
+
+on:
+  workflow_dispatch:
+    inputs:
+      r2_prefix:
+        description: "R2 version prefix to publish under (e.g. v5)"
+        required: false
+        default: "v5"
+      upload:
+        description: "Publish to R2 (uncheck for a dry run)"
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: search-index-build
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+      R2_ENDPOINT: ${{ secrets.R2_ENDPOINT }}
+      R2_BUCKET: ${{ secrets.R2_BUCKET }}
+      R2_PREFIX: ${{ inputs.r2_prefix }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install build dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install httpx
+
+      - name: Build index
+        run: |
+          python scripts/build_search_index.py \
+            --out "${{ runner.temp }}/search_index.json.gz"
+
+      - name: Sanity gate
+        run: |
+          python - "${{ runner.temp }}/search_index.json.gz" <<'PY'
+          import gzip, json, sys
+          d = json.load(gzip.open(sys.argv[1], "rt"))
+          g, c, p = len(d["gauges"]), len(d["counties"]), len(d["places"])
+          print(f"gauges={g:,} counties={c:,} places={p:,}")
+          if g < 5000 or c < 2500 or p < 15000:
+              sys.exit("index looks broken/empty — refusing to publish")
+          PY
+
+      - name: Upload artifact (always)
+        uses: actions/upload-artifact@v4
+        with:
+          name: search-index
+          path: |
+            ${{ runner.temp }}/search_index.json.gz
+            ${{ runner.temp }}/search_index.json
+
+      - name: Publish to R2
+        if: ${{ inputs.upload }}
+        run: |
+          base="s3://$R2_BUCKET/$R2_PREFIX"
+          aws s3 cp "${{ runner.temp }}/search_index.json.gz" \
+            "$base/search_index.json.gz" --endpoint-url "$R2_ENDPOINT" \
+            --content-type application/json
+          aws s3 cp "${{ runner.temp }}/search_index.json" \
+            "$base/search_index.json" --endpoint-url "$R2_ENDPOINT" \
+            --content-type application/json
+          echo "Published. Wire the client with:"
+          echo "  VITE_SEARCH_INDEX_URL=<public base>/$R2_PREFIX/search_index.json.gz"

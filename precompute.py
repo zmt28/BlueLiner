@@ -22,6 +22,7 @@ import os
 
 from states import STATES
 import db
+import favorites
 import stocking
 
 logger = logging.getLogger("blueliner.precompute")
@@ -99,13 +100,41 @@ async def refresh_state(st: str, *, backfill: bool = True) -> list[dict]:
     ts = data.get("value", {}).get("timeSeries", [])
     trout = [main._trout_for_state(st)]  # non-blocking; tags fill next cycle
     stocked = await asyncio.to_thread(stocking.stocked_points, st)
+    # Flow-trend context (M4.4): the prior snapshot's per-gauge flows +
+    # its age give a direction ("rising fast") with zero extra USGS load.
+    prev_flows: dict[str, float] = {}
+    prev_hours: float | None = None
+    try:
+        prev = await asyncio.to_thread(db.get_river_snapshot, st)
+        if prev:
+            prev_rivers, prev_updated = prev
+            from datetime import datetime, timezone
+            dt = datetime.fromisoformat(prev_updated)
+            if dt.tzinfo is None:
+                dt = dt.replace(tzinfo=timezone.utc)
+            prev_hours = (datetime.now(timezone.utc) - dt).total_seconds() / 3600
+            for r in prev_rivers:
+                for g in r.get("gauges") or []:
+                    cf = (g.get("conditions") or {}).get("current_flow")
+                    if g.get("site_no") and cf:
+                        prev_flows[g["site_no"]] = cf
+    except Exception:
+        logger.exception("flow-trend prior snapshot read failed for %s", st)
     # Access renders from the static PMTiles map layer now, so precompute no
     # longer loads the (104k-point) access overlay into the app process.
-    rivers = await main._assemble_rivers(ts, trout, stocked)
+    rivers = await main._assemble_rivers(
+        ts, trout, stocked, prev_flows=prev_flows, prev_hours=prev_hours)
     if not rivers:
         logger.info("refresh %s: no rivers (USGS empty/unreachable)", st)
         return []
     await asyncio.to_thread(db.put_river_snapshot, st, rivers)
+    # Favorite-water alerts (M4.1): diff fresh verdicts against each
+    # favorite's stored state and email on meaningful transitions.
+    # Best-effort -- an alert failure must never fail the snapshot.
+    try:
+        await asyncio.to_thread(favorites.check_favorite_alerts, st, rivers)
+    except Exception:
+        logger.exception("favorite alerts failed for %s", st)
     main._state_rivers_cache[st] = rivers  # warm L1 so next request is instant
     if backfill:
         site_nos = [r["site_no"] for r in rivers if r.get("site_no")]

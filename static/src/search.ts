@@ -21,6 +21,57 @@ import { activeConditionFilter, filterOverlayActive } from "./streams";
 import { riverPasses } from "./rivers";
 import { riverLngLat } from "./coords";
 import { refreshIcons, esc } from "./util";
+import { SEARCH_INDEX_URL, SEARCH_INDEX_ENABLED } from "./config";
+
+// -- Static search index (M4.2) ----------------------------------------
+// Gauges + counties + towns, prebuilt by scripts/build_search_index.py
+// and fetched ONCE on first search focus (~hundreds of KB gz). Positional
+// arrays: gauges [site_no, name, state, lat, lon]; places/counties
+// [name, state, lat, lon]. Unset URL => river-catalog-only search (the
+// pre-M4.2 behavior).
+
+type GaugeEntry = [string, string, string, number, number];
+type PlaceEntry = [string, string, number, number];
+
+interface SearchIndex {
+  gauges: GaugeEntry[];
+  counties: PlaceEntry[];
+  places: PlaceEntry[];
+}
+
+let _index: SearchIndex | null = null;
+let _indexLoading: Promise<void> | null = null;
+
+function ensureIndex(onReady: () => void): void {
+  if (!SEARCH_INDEX_ENABLED || _index || _indexLoading) return;
+  _indexLoading = (async () => {
+    try {
+      let text: string;
+      if (SEARCH_INDEX_URL.endsWith(".gz") && "DecompressionStream" in window) {
+        const res = await fetch(SEARCH_INDEX_URL);
+        if (!res.ok || !res.body) throw new Error(`HTTP ${res.status}`);
+        text = await new Response(
+          res.body.pipeThrough(new DecompressionStream("gzip")),
+        ).text();
+      } else {
+        const url = SEARCH_INDEX_URL.replace(/\.gz$/, "");
+        const res = await fetch(url);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        text = await res.text();
+      }
+      const d = JSON.parse(text) as Partial<SearchIndex>;
+      _index = {
+        gauges: d.gauges || [],
+        counties: d.counties || [],
+        places: d.places || [],
+      };
+      onReady(); // re-render with the richer pool
+    } catch (err) {
+      console.warn("search index failed to load:", err);
+      _indexLoading = null; // allow a retry on the next focus
+    }
+  })();
+}
 
 const MOBILE_BP = "(max-width: 759px)";
 const COND_VARIANT: Record<string, "good" | "fair" | "poor" | "none"> = {
@@ -42,6 +93,10 @@ function isMobileView(): boolean {
 
 if (wrap && iconBtn && pill && input && results) {
   let focused = false;
+  // Last-rendered index matches; the result buttons reference them by
+  // position (data-j) so click routing needs no re-query.
+  let _gaugeMatches: GaugeEntry[] = [];
+  let _placeMatches: PlaceEntry[] = [];
 
   function rivers(): River[] {
     return (window.allRivers as River[] | undefined) || [];
@@ -172,8 +227,20 @@ if (wrap && iconBtn && pill && input && results) {
     } else {
       const matches = scoped
         .filter((r) => r.name.toLowerCase().includes(q))
-        .slice(0, 12);
-      if (!matches.length) {
+        .slice(0, 8);
+      // Index groups (M4.2): gauges by name or site-number prefix;
+      // towns + counties merged under Places.
+      _gaugeMatches = _index
+        ? _index.gauges
+            .filter((g) => g[1].toLowerCase().includes(q) || g[0].startsWith(q))
+            .slice(0, 5)
+        : [];
+      _placeMatches = _index
+        ? [..._index.places, ..._index.counties]
+            .filter((p) => p[0].toLowerCase().includes(q))
+            .slice(0, 5)
+        : [];
+      if (!matches.length && !_gaugeMatches.length && !_placeMatches.length) {
         const cond = activeConditionFilter();
         const scope = cond
           ? ` with ${condLabel(cond)} conditions`
@@ -182,23 +249,53 @@ if (wrap && iconBtn && pill && input && results) {
             : "";
         html = `<div class="search-empty">No matches for "${esc(input!.value.trim())}"${esc(scope)}</div>`;
       } else {
-        html =
-          '<div class="search-results-group"><div class="search-results-label">Rivers</div>' +
-          matches
-            .map((r) => {
-              const idx = all.indexOf(r);
-              const cond = condClass(r.conditions?.overall || "gray");
-              return (
-                `<button type="button" class="search-result" data-i="${idx}">` +
-                `<span class="search-result-icon"><i data-lucide="waves"></i></span>` +
-                `<span class="search-result-text"><span class="search-result-name">${hlName(r.name, q)}</span>` +
-                `<span class="search-result-meta">${esc(r.label || "")}</span></span>` +
-                `<span class="search-result-cond is-${cond}">${condLabel(r.conditions?.overall || "gray")}</span>` +
-                `</button>`
-              );
-            })
-            .join("") +
-          "</div>";
+        if (matches.length) {
+          html +=
+            '<div class="search-results-group"><div class="search-results-label">Rivers</div>' +
+            matches
+              .map((r) => {
+                const idx = all.indexOf(r);
+                const cond = condClass(r.conditions?.overall || "gray");
+                return (
+                  `<button type="button" class="search-result" data-i="${idx}">` +
+                  `<span class="search-result-icon"><i data-lucide="waves"></i></span>` +
+                  `<span class="search-result-text"><span class="search-result-name">${hlName(r.name, q)}</span>` +
+                  `<span class="search-result-meta">${esc(r.label || "")}</span></span>` +
+                  `<span class="search-result-cond is-${cond}">${condLabel(r.conditions?.overall || "gray")}</span>` +
+                  `</button>`
+                );
+              })
+              .join("") +
+            "</div>";
+        }
+        if (_gaugeMatches.length) {
+          html +=
+            '<div class="search-results-group"><div class="search-results-label">Gauges</div>' +
+            _gaugeMatches
+              .map(
+                (g, j) =>
+                  `<button type="button" class="search-result" data-kind="gauge" data-j="${j}">` +
+                  `<span class="search-result-icon"><i data-lucide="droplets"></i></span>` +
+                  `<span class="search-result-text"><span class="search-result-name">${hlName(g[1], q)}</span>` +
+                  `<span class="search-result-meta">USGS ${esc(g[0])} &middot; ${esc(g[2])}</span></span></button>`,
+              )
+              .join("") +
+            "</div>";
+        }
+        if (_placeMatches.length) {
+          html +=
+            '<div class="search-results-group"><div class="search-results-label">Places</div>' +
+            _placeMatches
+              .map(
+                (p, j) =>
+                  `<button type="button" class="search-result" data-kind="place" data-j="${j}">` +
+                  `<span class="search-result-icon"><i data-lucide="map-pin"></i></span>` +
+                  `<span class="search-result-text"><span class="search-result-name">${hlName(p[0], q)}</span>` +
+                  `<span class="search-result-meta">${esc(p[1])}</span></span></button>`,
+              )
+              .join("") +
+            "</div>";
+        }
       }
     }
     if (!html) {
@@ -211,6 +308,16 @@ if (wrap && iconBtn && pill && input && results) {
     refreshIcons();
     results!.querySelectorAll<HTMLButtonElement>(".search-result").forEach((b) =>
       b.addEventListener("click", () => {
+        if (b.dataset.kind === "gauge") {
+          const g = _gaugeMatches[Number(b.dataset.j)];
+          if (g) selectGauge(g);
+          return;
+        }
+        if (b.dataset.kind === "place") {
+          const p = _placeMatches[Number(b.dataset.j)];
+          if (p) selectPlace(p);
+          return;
+        }
         const i = Number(b.dataset.i);
         const r = rivers()[i];
         if (r) selectResult(r);
@@ -218,11 +325,8 @@ if (wrap && iconBtn && pill && input && results) {
     );
   }
 
-  function selectResult(r: River): void {
-    pushRecent(r);
-    map.flyTo({ center: riverLngLat(r), zoom: Math.max(map.getZoom(), 12) });
-    // Central selection: opens the panel + highlights the reaches.
-    selectRiver(r);
+  /** Close the dropdown + reset the pill (shared by all select paths). */
+  function closeSearch(): void {
     focused = false;
     pill!.classList.remove("is-focused");
     results!.hidden = true;
@@ -231,11 +335,37 @@ if (wrap && iconBtn && pill && input && results) {
     applyCollapsedState();
   }
 
+  /** A gauge in the live catalog opens its river panel; otherwise fly
+   *  to the site (viewport mode will pick its rivers up on settle). */
+  function selectGauge(g: GaugeEntry): void {
+    const river = rivers().find((r) =>
+      r.site_no === g[0] || (r.gauges || []).some((x) => x.site_no === g[0]),
+    );
+    map.flyTo({ center: [g[4], g[3]], zoom: Math.max(map.getZoom(), 12) });
+    if (river) selectRiver(river);
+    closeSearch();
+  }
+
+  function selectPlace(p: PlaceEntry): void {
+    const county = p[0].toLowerCase().includes("county");
+    map.flyTo({ center: [p[3], p[2]], zoom: county ? 9.5 : 11.5 });
+    closeSearch();
+  }
+
+  function selectResult(r: River): void {
+    pushRecent(r);
+    map.flyTo({ center: riverLngLat(r), zoom: Math.max(map.getZoom(), 12) });
+    // Central selection: opens the panel + highlights the reaches.
+    selectRiver(r);
+    closeSearch();
+  }
+
   function openSearch(): void {
     applyCollapsedState();
     focused = true;
     pill!.classList.add("is-focused");
     setTimeout(() => input!.focus(), 0);
+    ensureIndex(renderResults); // lazy one-time index fetch (M4.2)
     renderResults();
   }
 
@@ -250,6 +380,7 @@ if (wrap && iconBtn && pill && input && results) {
   input.addEventListener("focus", () => {
     focused = true;
     pill!.classList.add("is-focused");
+    ensureIndex(renderResults);
     renderResults();
   });
   input.addEventListener("input", renderResults);

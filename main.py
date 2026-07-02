@@ -406,6 +406,45 @@ def score_conditions(variables: list[dict], historical_median: float | None = No
     }
 
 
+# -- Flow trend (M4.4) --------------------------------------------------
+# Direction is derived by diffing against the PREVIOUS precomputed
+# snapshot (30-45 min apart) -- no extra USGS load. Classified as a
+# fractional change per hour so irregular refresh intervals compare
+# fairly. Anglers read this as "is it blowing out or dropping in":
+# rising fast on a freestoner = leave now; falling after a spike =
+# tomorrow's window.
+
+_TREND_LABEL = {"rising_fast": "rising fast", "rising": "rising",
+                "steady": "steady", "falling": "falling",
+                "falling_fast": "dropping fast"}
+_TREND_ARROW = {"rising_fast": "&#8599;&#8599;", "rising": "&#8599;",
+                "steady": "&#8594;", "falling": "&#8600;",
+                "falling_fast": "&#8600;&#8600;"}
+_TREND_COLOR = {"rising_fast": "#c0392b", "rising": "#e67e22",
+                "steady": "#7f8c9a", "falling": "#2980b9",
+                "falling_fast": "#2471a3"}
+
+
+def _flow_trend(current: float | None, previous: float | None,
+                hours: float | None) -> str | None:
+    """Classify flow direction from two readings `hours` apart, or None
+    when either reading (or a sane interval) is missing."""
+    if not current or not previous or not hours:
+        return None
+    if hours <= 0.05 or hours > 6:
+        return None  # same reading, or too stale to call a "trend"
+    rate = (current - previous) / previous / hours
+    if rate >= 0.20:
+        return "rising_fast"
+    if rate >= 0.05:
+        return "rising"
+    if rate <= -0.20:
+        return "falling_fast"
+    if rate <= -0.05:
+        return "falling"
+    return "steady"
+
+
 # -- Popup HTML --
 
 _MONTH_ABBR = "JFMAMJJASOND"
@@ -551,11 +590,20 @@ def _flow_context_html(conditions: dict, historical_median: float | None) -> str
         trend, trend_color = "Below average", "#3498db"
     else:
         trend, trend_color = "Near median", "#27ae60"
+    # Direction vs the previous snapshot (M4.4) -- present only on the
+    # precomputed path (bbox-mode live assembly has no prior reading).
+    tdir = conditions.get("trend")
+    tdir_html = ""
+    if tdir in _TREND_LABEL:
+        tdir_html = (
+            f' <span style="color:{_TREND_COLOR[tdir]};font-weight:600;'
+            f'margin-left:4px">{_TREND_ARROW[tdir]} {_TREND_LABEL[tdir]}</span>'
+        )
     return f"""
         <div style="padding:8px 12px;background:#f0f4f8;border-radius:6px;margin:6px 0;font-size:13px;color:#444">
             <span style="font-weight:600">Flow context:</span>
             {current:.0f} cfs now vs. {historical_median:.0f} cfs median for {date_label}
-            <span style="color:{trend_color};font-weight:600;margin-left:4px">{trend}</span>
+            <span style="color:{trend_color};font-weight:600;margin-left:4px">{trend}</span>{tdir_html}
         </div>"""
 
 
@@ -1011,7 +1059,9 @@ def _trout_geojson_str(layers: list) -> str:
 
 
 async def _assemble_rivers(time_series: list, trout_layers: list,
-                           stocked_pts: list) -> list[dict]:
+                           stocked_pts: list,
+                           prev_flows: dict[str, float] | None = None,
+                           prev_hours: float | None = None) -> list[dict]:
     """Shared core: aggregate USGS sites -> group into rivers -> popups.
     `trout_layers` is a list of TroutLayer|None (a gauge is on trout if
     near ANY). Access points render straight from the PMTiles map layer, so
@@ -1083,6 +1133,13 @@ async def _assemble_rivers(time_series: list, trout_layers: list,
         site_no = info.get("site_no")
         historical_median = _stats_cache.get(site_no, {}).get(today_key) if site_no else None
         conditions = score_conditions(variables, historical_median)
+        # Flow direction vs the prior snapshot (M4.4); precompute passes
+        # the previous readings in, the live bbox path doesn't have them.
+        if prev_flows and site_no:
+            tdir = _flow_trend(conditions.get("current_flow"),
+                               prev_flows.get(site_no), prev_hours)
+            if tdir:
+                conditions["trend"] = tdir
         on_trout = any(is_near_trout_stream(latitude, longitude, g) for g in tgs)
         gnis = (gauge_metas.get(site_no, {}).get("gnis_name") if site_no
                 else None)
@@ -1169,10 +1226,18 @@ async def _assemble_rivers(time_series: list, trout_layers: list,
             # Per-gauge points (each USGS site's own location + condition) so
             # the client can render one condition icon per gauge. Trimmed --
             # popup_html (server-rendered) keeps the full per-gauge detail.
+            # current_flow persists so the NEXT precompute pass can diff a
+            # flow trend against this snapshot (M4.4); trend rides along for
+            # clients.
             "gauges": [
                 {"lat": gg["lat"], "lon": gg["lon"], "site_no": gg["site_no"],
                  "site_name": gg["site_name"],
-                 "conditions": {"overall": gg["conditions"]["overall"]}}
+                 "conditions": {
+                     "overall": gg["conditions"]["overall"],
+                     "current_flow": gg["conditions"].get("current_flow"),
+                     **({"trend": gg["conditions"]["trend"]}
+                        if gg["conditions"].get("trend") else {}),
+                 }}
                 for gg in river["gauges"]
             ],
             "popup_html": build_river_popup_html(river),
@@ -2395,3 +2460,65 @@ async def api_delete_catch(catch_id: int, request: Request):
     if not ok:
         raise HTTPException(status_code=404, detail="Catch not found")
     return Response(status_code=204)
+
+
+# -- Favorites (M4.1) --------------------------------------------------
+# Favorite waters, tied to accounts (favorites drive email condition
+# alerts, so they need an address). The alert diffing itself lives in
+# favorites.py and runs inside the precompute pass, never here.
+
+
+class _FavoriteIn(BaseModel):
+    site_no: str
+    name: str
+    state: str
+    lat: float | None = None
+    lon: float | None = None
+
+
+class _FavoritePatch(BaseModel):
+    notify: bool
+
+
+@app.get("/api/favorites")
+async def api_list_favorites(request: Request):
+    user = _require_user(request)
+    items = await asyncio.to_thread(db.list_favorites, user["id"])
+    return {"favorites": items}
+
+
+@app.post("/api/favorites", status_code=201)
+async def api_add_favorite(body: _FavoriteIn, request: Request):
+    user = _require_user(request)
+    site_no = body.site_no.strip()
+    name = body.name.strip()
+    state = body.state.strip().upper()
+    # The client's state is a hint (viewport mode spans borders); resolve
+    # from the coordinate when it's missing or wrong-looking.
+    if state not in STATES and body.lat is not None and body.lon is not None:
+        state = point_in_state(body.lat, body.lon) or ""
+    if not site_no or not name or state not in STATES:
+        raise HTTPException(status_code=400,
+                            detail="site_no, name and a resolvable state required")
+    return await asyncio.to_thread(
+        db.add_favorite, user["id"], site_no, name, state, body.lat, body.lon)
+
+
+@app.delete("/api/favorites/{site_no}", status_code=204)
+async def api_remove_favorite(site_no: str, request: Request):
+    user = _require_user(request)
+    ok = await asyncio.to_thread(db.remove_favorite, user["id"], site_no)
+    if not ok:
+        raise HTTPException(status_code=404, detail="Favorite not found")
+    return Response(status_code=204)
+
+
+@app.patch("/api/favorites/{site_no}")
+async def api_patch_favorite(site_no: str, body: _FavoritePatch,
+                             request: Request):
+    user = _require_user(request)
+    ok = await asyncio.to_thread(
+        db.set_favorite_notify, user["id"], site_no, body.notify)
+    if not ok:
+        raise HTTPException(status_code=404, detail="Favorite not found")
+    return {"site_no": site_no, "notify": body.notify}

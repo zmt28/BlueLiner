@@ -10,6 +10,8 @@
 import {
   createIcons,
   ArrowUpRight,
+  Bell,
+  BellOff,
   Bookmark,
   Check,
   ChevronDown,
@@ -66,6 +68,8 @@ export function esc(s: unknown): string {
 // here, or it silently renders as an empty <i>.
 const APP_ICONS = {
   ArrowUpRight,
+  Bell,
+  BellOff,
   Bookmark,
   Check,
   ChevronDown,

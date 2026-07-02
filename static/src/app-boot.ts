@@ -28,6 +28,7 @@ import "./legend";
 import "./search";
 import { initAuth } from "./auth";
 import "./catches";
+import { loadFavorites } from "./favorites";
 import { loadPins } from "./pins";
 
 import { refreshIcons } from "./util";
@@ -53,6 +54,7 @@ async function init(): Promise<void> {
   loadRivers(state);
   loadPins();
   await initAuth();
+  void loadFavorites(); // needs the signed-in state initAuth resolved
 }
 
 init();

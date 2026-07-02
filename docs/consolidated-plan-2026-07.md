@@ -203,14 +203,33 @@ mode click-suppression, confirmed writes, input preservation) across every remai
 
 ## M4 — Product stickiness (from architecture review, Phase 3)
 
-- [ ] **M4.1** Favorites → condition alerts → Web Push/Resend email ("Gunpowder just went
-      green") — the retention loop TroutRoutes can't match without a scoring layer.
-- [ ] **M4.2** Real search: prebuilt static index (rivers, gauges, counties, towns) searched
-      client-side; free geocoder fallback. (M2.f's keyboard/highlight work carries over.)
-- [ ] **M4.3** Perceived-speed pass: optimistic pin/catch writes (pairs with M2.b4/M2.d1 error
-      handling), skeletons on panel loads.
-- [ ] **M4.4** Scoring depth: trend arrows ("rising fast") + simple fishable-window signal from
-      data already in the snapshot pipeline.
+- [x] **M4.1a** Favorites → condition **email** alerts ("Gunpowder just went green") — the
+      retention loop TroutRoutes can't match without a scoring layer. *(Done: account-tied
+      favorites (bookmark on the river panel + My Content list with condition dot, per-favorite
+      bell, optimistic writes); the precompute pass diffs verdicts per state and emails via
+      Resend on transitions into green/red — first observation silent, notify-off still tracks
+      state so re-enabling doesn't replay.)*
+- [ ] **M4.1b** Web Push for the same alerts (VAPID keys + service-worker push handler;
+      email shipped first since the Resend infra existed).
+- [x] **M4.2** Real search: prebuilt static index (rivers, gauges, counties, towns) searched
+      client-side. *(Done: `build_search_index.py` (USGS site service + Census gazetteer) +
+      `search-index-build.yml` publish to R2; the client lazy-loads the index on first search
+      focus (DecompressionStream with plain-JSON fallback) and renders Gauges + Places groups —
+      gauges match by name or site-number prefix and open their river's panel when it's in the
+      catalog. To ship: dispatch the workflow with upload, set `VITE_SEARCH_INDEX_URL`. A
+      geocoder fallback for arbitrary addresses remains a non-goal — the places index covers
+      towns/counties.)*
+- [x] **M4.3** Perceived-speed pass: optimistic pin/catch writes (pairs with M2.b4/M2.d1 error
+      handling), skeletons on panel loads. *(Resolved across M2 + M4.1: favorites/bell toggles
+      and pin/catch DELETEs are optimistic with rollback; content-CREATING writes (pin save,
+      catch save) deliberately stay confirmed-with-preserved-input — showing "saved" before the
+      server agrees risks silent data loss, and both now have busy states + toasts. Panel loads
+      all have skeletons/placeholders since M2.)*
+- [x] **M4.4a** Scoring depth: trend arrows ("rising fast"). *(Done: each precompute pass diffs
+      per-gauge flow against the prior snapshot (zero extra USGS load), classifies %/hour into
+      rising fast/rising/steady/falling/dropping fast, persists it in the gauge conditions, and
+      renders an arrow chip in the popup's Flow context block.)*
+- [ ] **M4.4b** Fishable-window signal (project the trend + temp band forward a day).
 
 ---
 
