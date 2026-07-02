@@ -105,18 +105,23 @@ def fetch_gauges(codes: list[str]) -> list[list]:
 
 
 def parse_gazetteer(tsv: str, kind: str) -> list[list]:
-    """Census gazetteer TSV -> [[name, state, lat, lon], ...]. Places
-    carry suffixes like 'town'/'city'/'CDP' in NAME; strip the common
-    ones so search reads naturally ('Parkton', not 'Parkton CDP')."""
+    """Census gazetteer table -> [[name, state, lat, lon], ...]. Vintages
+    through 2024 are tab-delimited; 2025 switched to pipe-delimited (and
+    grew a GEOIDFQ column), so sniff the delimiter from the header line.
+    Places carry suffixes like 'town'/'city'/'CDP' in NAME; strip the
+    common ones so search reads naturally ('Parkton', not 'Parkton CDP')."""
     rows: list[list] = []
     header: list[str] | None = None
+    delim: str | None = None
     for line in tsv.splitlines():
         if not line.strip():
             continue
+        if delim is None:
+            delim = "|" if "|" in line else "\t"
         # strip() per cell handles \r line endings and the trailing
         # whitespace Census pads some columns with; lstrip("﻿")
         # belt-and-braces the BOM should a caller decode plain utf-8.
-        parts = [p.strip().lstrip("﻿") for p in line.split("\t")]
+        parts = [p.strip().lstrip("﻿") for p in line.split(delim)]
         if header is None:
             header = parts
             continue
