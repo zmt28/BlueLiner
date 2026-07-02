@@ -163,10 +163,26 @@ function streamFilterExpr(): unknown[] | null {
   return clauses.length ? ["all", ...clauses] : null;
 }
 
+// Labels only make sense on named reaches; AND-ed with the active
+// class/wild/native filter so filtered-out water isn't labeled.
+const LABEL_BASE_FILTER: unknown[] = [
+  "!=",
+  ["coalesce", ["get", "gnis_name"], ""],
+  "",
+];
+
+function labelFilterExpr(): unknown[] {
+  const expr = streamFilterExpr();
+  return expr ? ["all", LABEL_BASE_FILTER, expr] : LABEL_BASE_FILTER;
+}
+
 function applyStreamFilter(): void {
   const expr = streamFilterExpr();
   for (const id of ["clickable-streams", "clickable-streams-hit"]) {
     if (map.getLayer(id)) map.setFilter(id, expr as never);
+  }
+  if (map.getLayer("stream-labels")) {
+    map.setFilter("stream-labels", labelFilterExpr() as never);
   }
 }
 
@@ -303,11 +319,26 @@ function opacityExpr(): ExpressionSpecification {
   ] as unknown as ExpressionSpecification;
 }
 
+// M3.2: tier is the hero — better water draws a visibly heavier line on
+// top of the base streamorder width, so gold/class1 reads at a glance.
+const TIER_WIDTH_BONUS: unknown = [
+  "match",
+  ["get", "tier"],
+  "gold", 1.6,
+  "class1", 0.9,
+  "class2", 0.4,
+  0,
+];
+
 const WIDTH_EXPR: ExpressionSpecification = [
   "case",
   ["boolean", ["feature-state", "selected"], false],
   8,
-  ["interpolate", ["linear"], ["coalesce", ["get", "streamorder"], 3], 1, 4, 7, 7],
+  [
+    "+",
+    ["interpolate", ["linear"], ["coalesce", ["get", "streamorder"], 3], 1, 4, 7, 7],
+    TIER_WIDTH_BONUS,
+  ],
 ] as unknown as ExpressionSpecification;
 
 function visStr(on: boolean): "visible" | "none" {
@@ -350,15 +381,52 @@ onMapReady(() => {
     layout: { visibility: visStr(_streamsVisible), "line-cap": "round" },
     paint: { "line-color": "#000", "line-opacity": 0, "line-width": 16 },
   } as LayerSpecification, lineOverlayAnchor());
+  // M3.2: along-stream name labels. Symbol layer -> above the anchor
+  // (appended), self-hosted glyphs (map-setup EMPTY_STYLE). Water labels
+  // are conventionally italic; collision handles density.
+  map.addLayer({
+    id: "stream-labels",
+    type: "symbol",
+    source: "clickable-streams",
+    ...SRC_LAYER,
+    minzoom: 10,
+    filter: labelFilterExpr() as never,
+    layout: {
+      visibility: visStr(_streamsVisible),
+      "symbol-placement": "line",
+      "text-field": ["get", "gnis_name"],
+      "text-font": ["Noto Sans Italic"],
+      "text-size": ["interpolate", ["linear"], ["zoom"], 10, 10, 14, 13],
+      "symbol-spacing": 350,
+    },
+    paint: {
+      "text-color": "#33566b",
+      "text-halo-color": "rgba(255,255,255,0.9)",
+      "text-halo-width": 1.4,
+    },
+  } as LayerSpecification);
   // Apply the persisted wild/native filter to the freshly-added layers.
   applyStreamFilter();
   // Re-apply the selection highlight (and, while a condition filter is
   // active, the conditions overlay) as new tiles arrive (pan/zoom) --
-  // fresh tiles carry no feature-state.
-  map.on("sourcedata", (e) => {
-    if (e.sourceId === "clickable-streams" && e.isSourceLoaded) {
+  // fresh tiles carry no feature-state. M3.3: the reapply is O(all
+  // loaded reaches) (querySourceFeatures + per-feature setFeatureState),
+  // and sourcedata fires repeatedly DURING a pan gesture — running it
+  // per tile batch was the main pan-time stutter. Coalesce to one pass
+  // on the next idle instead.
+  let _reapplyArmed = false;
+  const _scheduleFeatureStateReapply = (): void => {
+    if (_reapplyArmed) return;
+    _reapplyArmed = true;
+    map.once("idle", () => {
+      _reapplyArmed = false;
       reapplyStreamHighlight();
       _applyCondOverlay();
+    });
+  };
+  map.on("sourcedata", (e) => {
+    if (e.sourceId === "clickable-streams" && e.isSourceLoaded) {
+      _scheduleFeatureStateReapply();
     }
   });
   map.on("click", "clickable-streams-hit", (e) => {
@@ -379,7 +447,7 @@ onMapReady(() => {
 
 export function setStreamsVisible(on: boolean): void {
   _streamsVisible = on;
-  for (const id of ["clickable-streams", "clickable-streams-hit"]) {
+  for (const id of ["clickable-streams", "clickable-streams-hit", "stream-labels"]) {
     if (map.getLayer(id)) map.setLayoutProperty(id, "visibility", visStr(on));
   }
 }

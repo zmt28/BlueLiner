@@ -31,7 +31,11 @@ import maplibregl, {
   StyleSpecification,
 } from "maplibre-gl";
 
-import { BASEMAP_TILES_ENABLED, BASEMAP_STYLE_URL } from "./config";
+import {
+  BASEMAP_TILES_ENABLED,
+  BASEMAP_TILES_URL,
+  BASEMAP_STYLE_URL,
+} from "./config";
 import { ensurePmtilesProtocol } from "./tiles";
 
 type BaseMapKey = "street" | "satellite" | "topo" | "vector";
@@ -103,11 +107,19 @@ let _currentBaseKey: BaseMapKey = loadBaseMapPref();
 
 // Empty style at construction; base/hydro (and module overlays) are added
 // on the `load` event, where addSource/addLayer are legal.
+// Glyphs: self-hosted basemap fonts when configured (so text layers —
+// stream labels — work on EVERY base with zero third-party dependency);
+// the demotiles placeholder remains only for unconfigured dev builds.
 const EMPTY_STYLE: StyleSpecification = {
   version: 8,
   sources: {},
   layers: [],
-  glyphs: "https://demotiles.maplibre.org/font/{fontstack}/{range}.pbf",
+  glyphs: BASEMAP_TILES_ENABLED
+    ? BASEMAP_TILES_URL.replace(
+        /basemap\.pmtiles$/,
+        "basemap/fonts/{fontstack}/{range}.pbf",
+      )
+    : "https://demotiles.maplibre.org/font/{fontstack}/{range}.pbf",
 };
 
 export const map: MaplibreMap = new maplibregl.Map({
@@ -144,9 +156,10 @@ let _baseSourceIds: string[] = [];
 // style fetch so a rapid switch-away doesn't paint a now-stale base.
 let _baseGen = 0;
 
-/** The base always sits below the hydro overlay (and thus below every module
- *  overlay, which mount on top of hydro). */
+/** The base always sits below the hillshade + hydro overlays (and thus
+ *  below every module overlay, which mount on top of hydro). */
 function baseAnchor(): string | undefined {
+  if (map.getLayer("hillshade")) return "hillshade";
   return map.getLayer("hydro") ? "hydro" : undefined;
 }
 
@@ -223,6 +236,50 @@ function addBase(key: BaseMapKey): void {
     });
   } else {
     addRasterBase(key, gen);
+  }
+}
+
+// -- Terrain hillshade (M3.1) -----------------------------------------
+// AWS Open Data Terrarium elevation tiles (keyless, free) rendered as a
+// subtle hillshade between the base and hydro. Anglers read gradient;
+// this is the single biggest "reads like a real topo product" addition
+// at zero cost. Toggled by the lyr-terrain checkbox (default on).
+
+const TERRAIN_DEM_TILES =
+  "https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png";
+
+let _terrainVisible = true; // lyr-terrain default checked
+
+function addHillshadeLayer(): void {
+  map.addSource("terrain-dem", {
+    type: "raster-dem",
+    tiles: [TERRAIN_DEM_TILES],
+    encoding: "terrarium",
+    tileSize: 256,
+    maxzoom: 15,
+    attribution: "Terrain: Mapzen (AWS Open Data)",
+  });
+  map.addLayer({
+    id: "hillshade",
+    type: "hillshade",
+    source: "terrain-dem",
+    layout: { visibility: _terrainVisible ? "visible" : "none" },
+    paint: {
+      // Subtle: shading should read as texture under the data layers,
+      // not compete with them (labels sit below on the vector base).
+      "hillshade-exaggeration": 0.3,
+      "hillshade-shadow-color": "#5a5145",
+      "hillshade-highlight-color": "#ffffff",
+    },
+  });
+}
+
+/** Toggle the terrain hillshade (the lyr-terrain checkbox). Safe before
+ *  the map is ready: the desired state is applied when the layer mounts. */
+export function setTerrainVisible(on: boolean): void {
+  _terrainVisible = on;
+  if (map.getLayer("hillshade")) {
+    map.setLayoutProperty("hillshade", "visibility", on ? "visible" : "none");
   }
 }
 
@@ -383,6 +440,7 @@ export function mapReady(): Promise<void> {
 
 map.on("load", () => {
   addBase(_currentBaseKey);
+  addHillshadeLayer(); // base < hillshade < hydro < anchor (M1.4/M3.1)
   addHydroLayer();
   addSymbolAnchor();
   _ready = true;

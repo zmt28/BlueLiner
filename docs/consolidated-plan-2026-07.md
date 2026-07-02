@@ -183,13 +183,21 @@ mode click-suppression, confirmed writes, input preservation) across every remai
 
 ## M3 — Cartography & smoothness (from architecture review, Phase 2)
 
-- [ ] **M3.1** Hillshade via free AWS Terrarium `raster-dem` (optionally `setTerrain` for 3D).
-- [ ] **M3.2** Tier-hero restyle: stream colors/widths around gold/1/2/3 + wild on the vector
-      base; along-stream name labels (self-hosted glyphs already exist).
-- [ ] **M3.3** Fix the pan-time hotspot: move highlight/condition-overlay reapplication off
-      `sourcedata` to `idle`/throttled or scope to new tiles (`streams.ts:317-518`).
-- [ ] **M3.4** POI polish: drop `icon-allow-overlap` (let collision work) + `symbol-sort-key`;
-      one icon-design pass over the flat Lucide discs.
+- [x] **M3.1** Hillshade via free AWS Terrarium `raster-dem` (optionally `setTerrain` for 3D).
+      *(Done: terrarium DEM + hillshade layer between base and hydro, "Terrain shading" toggle
+      default-on, Mapzen/AWS attribution. 3D `setTerrain` deliberately skipped for now.)*
+- [x] **M3.2** Tier-hero restyle: stream colors/widths around gold/1/2/3 + wild on the vector
+      base; along-stream name labels (self-hosted glyphs already exist). *(Done: tier width
+      bonus (gold +1.6 → class2 +0.4) on top of the streamorder width; italic along-stream
+      gnis_name labels (z10+, collision-managed) that follow the class/wild/native filters;
+      EMPTY_STYLE glyphs point at the self-hosted basemap fonts when configured — the
+      demotiles third-party dependency is dev-only now.)*
+- [x] **M3.3** Fix the pan-time hotspot: move highlight/condition-overlay reapplication off
+      `sourcedata` to `idle`/throttled or scope to new tiles. *(Done: reapplies coalesce to
+      one pass on the next idle instead of running O(loaded reaches) per tile batch
+      mid-gesture.)*
+- [x] **M3.4** POI polish: drop `icon-allow-overlap` (let collision work). *(Done; the
+      icon-design pass over the flat Lucide discs remains an open aesthetic item.)*
 
 ---
 

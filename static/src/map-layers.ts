@@ -193,8 +193,10 @@ function addPointTileLayer(o: PointTileOpts): void {
         visibility: vis(o.visible),
         "icon-image": o.iconImage,
         "icon-size": ["interpolate", ["linear"], ["zoom"], 8, 0.75, 13, 1],
-        "icon-allow-overlap": true,
-        "icon-ignore-placement": true,
+        // M3.4: let the collision engine thin dense clusters (~92k dams
+        // at mid-zoom were pure clutter with overlap forced on). Zoom in
+        // and everything places; every feature stays clickable.
+        "icon-padding": 2,
       },
     } as LayerSpecification);
     const popup = makePopup();

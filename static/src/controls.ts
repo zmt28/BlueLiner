@@ -25,7 +25,13 @@
  *   - rivers: loadRivers, renderRivers
  */
 
-import { map, currentBaseKey, setBaseMap, setHydroVisible } from "./map-setup";
+import {
+  map,
+  currentBaseKey,
+  setBaseMap,
+  setHydroVisible,
+  setTerrainVisible,
+} from "./map-setup";
 import {
   BASEMAP_TILES_ENABLED,
   BASEMAP_TILES_URL,
@@ -532,6 +538,7 @@ function wireLayerToggle(
 
 wireLayerToggle("lyr-fishable", setStreamsVisible, loadClickableStreams);
 wireLayerToggle("lyr-usgs", setHydroVisible);
+wireLayerToggle("lyr-terrain", setTerrainVisible);
 // Access is split into per-type toggles (boat ramp / walk-in / wading /
 // pier / parking); each shares the one lazy per-state loader, which reads
 // the CURRENT state at show time via getCurrentSt() (state may have changed
