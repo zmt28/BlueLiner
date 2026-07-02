@@ -58,14 +58,14 @@ function vis(on: boolean): "visible" | "none" {
 
 // -- Access points ------------------------------------------------------
 // A vector-tile symbol layer -- the access TYPE is the glyph (sailboat /
-// footprints / waves / dock / P) via icon-image. Each type is an independent
-// toggle (lyr-access-<type>); the enabled set is a layer filter. A feature
-// whose type isn't one of the five buckets falls into walk_in.
+// footprints / dock / P) via icon-image. Each type is an independent toggle
+// (lyr-access-<type>); the enabled set is a layer filter. Fishing/wading spots,
+// trailheads and generic walk-ins fold into one "fishing_access" type; an
+// unknown type also falls into fishing_access.
 
 const ACCESS_TYPES = [
   "boat_ramp",
-  "walk_in",
-  "wading_access",
+  "fishing_access",
   "pier",
   "parking",
 ] as const;
@@ -74,15 +74,14 @@ type AccessType = (typeof ACCESS_TYPES)[number];
 function _accessBucket(type: string | undefined): AccessType {
   return (ACCESS_TYPES as readonly string[]).includes(type || "")
     ? (type as AccessType)
-    : "walk_in";
+    : "fishing_access";
 }
 
 // Per-type desired visibility (controls.ts overrides from saved prefs
 // before `load`). All off by default -- access is opt-in.
 const _accessTypeVisible: Record<AccessType, boolean> = {
   boat_ramp: false,
-  walk_in: false,
-  wading_access: false,
+  fishing_access: false,
   pier: false,
   parking: false,
 };
@@ -102,7 +101,7 @@ export function accessPopupHtml(
   const accessChip = p.access
     ? `<span class="ap-chip ap-chip-${esc(p.access)}">${esc(p.access)}</span>`
     : "";
-  const typeLabel = String(p.type || "walk_in").replace(/_/g, " ");
+  const typeLabel = String(p.type || "fishing_access").replace(/_/g, " ");
   const notes = p.notes ? `<div class="ap-notes">${esc(p.notes)}</div>` : "";
   const link = p.agency_url
     ? `<div class="ap-link"><a href="${esc(p.agency_url)}" target="_blank" ` +
@@ -116,11 +115,18 @@ export function accessPopupHtml(
       (p.precision ? ` &middot; ${esc(p.precision)}` : "") +
       `</div>`
     : "";
+  // The containing public-land unit (PAD-US), when the point sits in one and it
+  // isn't already the name -- e.g. a named ramp inside "Gunpowder Falls SP".
+  const park =
+    p.park && p.park !== p.name
+      ? `<div class="ap-notes">${esc(p.park)}</div>`
+      : "";
   const dir = lngLat ? directionsLinkHtml(lngLat[1], lngLat[0], p.name) : "";
   return (
     `<div class="ap-popup">` +
     `<div class="ap-name">${esc(p.name || "Access point")}</div>` +
     `<div class="ap-meta">${esc(typeLabel)}${accessChip}</div>` +
+    park +
     notes +
     link +
     src +

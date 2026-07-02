@@ -14,8 +14,7 @@
 
 export type PoiType =
   | "boat_ramp"
-  | "walk_in"
-  | "wading_access"
+  | "fishing_access"
   | "pier"
   | "parking"
   | "stocked"
@@ -30,17 +29,12 @@ const GLYPH_PATHS: Record<PoiType, string> = {
     '<path d="M22 18H2a4 4 0 0 0 4 4h12a4 4 0 0 0 4-4Z"/>' +
     '<path d="M21 14 10 2 3 14h18Z"/>' +
     '<path d="M10 2v16"/>',
-  // Lucide "footprints"
-  walk_in:
+  // Lucide "footprints" -- walk-in / trailhead / fishing access.
+  fishing_access:
     '<path d="M4 16v-2.38C4 11.5 2.97 10.5 3 8c.03-2.72 1.49-6 4.5-6C9.37 2 10 3.8 10 5.5c0 3.11-2 5.66-2 8.68V16a2 2 0 1 1-4 0Z"/>' +
     '<path d="M20 20v-2.38c0-2.12 1.03-3.12 1-5.62-.03-2.72-1.49-6-4.5-6C14.63 6 14 7.8 14 9.5c0 3.11 2 5.66 2 8.68V20a2 2 0 1 0 4 0Z"/>' +
     '<path d="M16 17h4"/>' +
     '<path d="M4 13h4"/>',
-  // Lucide "waves"
-  wading_access:
-    '<path d="M2 6c.6.5 1.2 1 2.5 1C7 7 7 5 9.5 5c2.6 0 2.4 2 5 2 2.5 0 2.5-2 5-2 1.3 0 1.9.5 2.5 1"/>' +
-    '<path d="M2 12c.6.5 1.2 1 2.5 1 2.5 0 2.5-2 5-2 2.6 0 2.4 2 5 2 2.5 0 2.5-2 5-2 1.3 0 1.9.5 2.5 1"/>' +
-    '<path d="M2 18c.6.5 1.2 1 2.5 1 2.5 0 2.5-2 5-2 2.6 0 2.4 2 5 2 2.5 0 2.5-2 5-2 1.3 0 1.9.5 2.5 1"/>',
   // Hand-drawn dock: deck line over three pilings (Lucide stroke style).
   pier:
     '<path d="M3 8h18"/>' +
@@ -76,9 +70,9 @@ const GLYPH_PATHS: Record<PoiType, string> = {
     '<circle cx="12" cy="10" r="3"/>',
 };
 
-/** Bare white-stroke glyph SVG. Unknown types fall back to walk_in. */
+/** Bare white-stroke glyph SVG. Unknown types fall back to fishing_access. */
 export function poiGlyphSvg(type: string, px: number): string {
-  const inner = GLYPH_PATHS[type as PoiType] || GLYPH_PATHS.walk_in;
+  const inner = GLYPH_PATHS[type as PoiType] || GLYPH_PATHS.fishing_access;
   return (
     `<svg xmlns="http://www.w3.org/2000/svg" width="${px}" height="${px}" ` +
     `viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" ` +

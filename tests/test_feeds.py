@@ -120,7 +120,7 @@ def test_dedupe_collapses_same_water_nearby_segments():
 # coherent enough for the builder to consume.
 
 def test_access_sources_field_mappings_are_coherent():
-    valid_types = {"boat_ramp", "walk_in", "wading_access", "pier", "parking"}
+    valid_types = {"boat_ramp", "fishing_access", "pier", "parking"}
     for src in json.load(open(_ACCESS_SOURCES_JSON)).get("sources", []):
         st = src.get("state", "?")
         assert src.get("name_field"), f"{st}: source missing name_field"

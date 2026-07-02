@@ -53,8 +53,7 @@ const POINT_GROUPS: Array<[section: string, rows: Array<[type: string, label: st
     "Access & facilities",
     [
       ["boat_ramp", "Boat ramp"],
-      ["walk_in", "Walk-in access"],
-      ["wading_access", "Wading access"],
+      ["fishing_access", "Fishing access"],
       ["pier", "Pier"],
       ["parking", "Parking"],
     ],

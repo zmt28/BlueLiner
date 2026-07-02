@@ -24,8 +24,7 @@ const GLYPH_PX = 26;
 // user layers, not tiled).
 const POI_ICON_TYPES = [
   "boat_ramp",
-  "walk_in",
-  "wading_access",
+  "fishing_access",
   "pier",
   "parking",
   "stocked",

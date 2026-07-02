@@ -284,7 +284,7 @@ interface StockedFeatureProps {
 }
 
 /** /api/access feature properties. */
-type AccessType = "boat_ramp" | "walk_in" | "pier" | "parking" | string;
+type AccessType = "boat_ramp" | "fishing_access" | "pier" | "parking" | string;
 
 interface AccessFeatureProps {
   name?: string;
@@ -298,6 +298,8 @@ interface AccessFeatureProps {
   precision?: "surveyed" | "mapped" | string;
   source_id?: string | null;
   levelpathid?: number | string | null;
+  /** Containing PAD-US public-land unit ("Gunpowder Falls SP"), if any. */
+  park?: string | null;
   [key: string]: unknown;
 }
 

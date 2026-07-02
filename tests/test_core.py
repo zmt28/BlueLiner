@@ -92,7 +92,7 @@ def stub_access_overlay(monkeypatch):
             {"name": "MD Ramp", "type": "boat_ramp", "access": "public",
              "source": "agency", "precision": "surveyed",
              "agency_url": "https://md.gov", "lat": 39.576, "lon": -76.613},
-            {"name": "MD Walk", "type": "walk_in", "access": "public",
+            {"name": "MD Walk", "type": "fishing_access", "access": "public",
              "source": "osm", "precision": "mapped",
              "lat": 39.600, "lon": -76.600},
         ],

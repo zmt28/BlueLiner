@@ -24,7 +24,7 @@ def test_normalize_osm_types_and_ids():
     assert len(pts) == 3                                  # coordless dropped
     by_id = {p["source_id"]: p for p in pts}
     assert by_id["n1"]["type"] == "boat_ramp" and by_id["n1"]["access"] == "public"
-    assert by_id["w2"]["type"] == "wading_access"         # way center used
+    assert by_id["w2"]["type"] == "fishing_access"         # way center used
     assert by_id["n3"]["access"] == "private"
     assert all(p["source"] == "osm" for p in pts)
 
@@ -41,7 +41,7 @@ def test_normalize_osm_parking_and_trailhead():
          "tags": {"highway": "residential"}},   # not an access tag -> dropped
     ])
     by_id = {p["source_id"]: p["type"] for p in pts}
-    assert by_id == {"w20": "parking", "n21": "walk_in", "n22": "pier"}
+    assert by_id == {"w20": "parking", "n21": "fishing_access", "n22": "pier"}
 
 
 def test_normalize_osm_geojson_centroids_ways():
@@ -69,13 +69,13 @@ def _agency_feat(props, lon=-77.5, lat=38.5):
 def test_normalize_agency_type_flags_first_truthy_wins():
     src = {"state": "MD", "agency_url": "https://x.gov", "name_field": "N",
            "type_flags": {"RAMP": "boat_ramp", "PIER": "pier",
-                          "SHORE_FISH": "walk_in"}}
+                          "SHORE_FISH": "fishing_access"}}
     pts = bp.normalize_agency([
         _agency_feat({"N": "Ramp+Pier", "RAMP": "Y", "PIER": "Y"}),
         _agency_feat({"N": "Pier only", "RAMP": "N", "PIER": "Y"}),
         _agency_feat({"N": "Nothing", "RAMP": "N", "PIER": "N"}),
     ], src)
-    assert [p["type"] for p in pts] == ["boat_ramp", "pier", "walk_in"]
+    assert [p["type"] for p in pts] == ["boat_ramp", "pier", "fishing_access"]
     assert all(p["source"] == "agency" for p in pts)
 
 
@@ -92,14 +92,14 @@ def test_normalize_agency_fixed_type_notes_and_keyword():
     kt = {"state": "KY", "name_field": "N", "type_field": "AccessType"}
     got = [bp.normalize_agency([_agency_feat({"N": "x", "AccessType": v})], kt)[0]
            ["type"] for v in ("Any Boat", "Small Boat Only", "Bank Access")]
-    assert got == ["boat_ramp", "boat_ramp", "walk_in"]
+    assert got == ["boat_ramp", "boat_ramp", "fishing_access"]
 
 
 def test_normalize_agency_dedupe_collapses_parcels():
     # NY PFR publishes thousands of tiny bank parcels; dedupe keeps one pin
     # per named water per ~1 km cell.
     src = {"state": "NY", "agency_url": "https://x.gov", "name_field": "W",
-           "fixed_type": "walk_in", "dedupe": True}
+           "fixed_type": "fishing_access", "dedupe": True}
     feats = [
         _agency_feat({"W": "Beaver Kill"}, lon=-74.9012, lat=41.9501),
         _agency_feat({"W": "Beaver Kill"}, lon=-74.9014, lat=41.9503),  # same cell
@@ -113,10 +113,10 @@ def test_normalize_type_maps_strings_onto_enum():
     assert n("Boat Ramp") == "boat_ramp"
     assert n("BOAT LAUNCH") == "boat_ramp"
     assert n("Fishing Pier") == "pier"
-    assert n("Wading Access") == "wading_access"
+    assert n("Wading Access") == "fishing_access"
     assert n("Parking Lot") == "parking"
-    assert n("Trail to river") == "walk_in"
-    assert n(None) == "walk_in"
+    assert n("Trail to river") == "fishing_access"
+    assert n(None) == "fishing_access"
 
 
 def test_normalize_agency_centroids_non_point_geometry():
@@ -126,6 +126,28 @@ def test_normalize_agency_centroids_non_point_geometry():
             "properties": {"N": "Reach"}}
     (p,) = bp.normalize_agency([feat], {"state": "X", "name_field": "N"})
     assert abs(p["lon"] - -77.1) < 1e-6 and abs(p["lat"] - 38.1) < 1e-6
+
+
+def test_name_points_by_public_land():
+    from shapely.geometry import Polygon
+    geoms = [Polygon([(-76.7, 39.4), (-76.7, 39.6), (-76.5, 39.6), (-76.5, 39.4)])]
+    names = ["Gunpowder Falls SP"]
+    pts = [
+        {"lon": -76.6, "lat": 39.5, "name": None},           # inside, no name
+        {"lon": -76.6, "lat": 39.5, "name": "Access point"},  # inside, generic
+        {"lon": -76.6, "lat": 39.5, "name": "Smith Ramp"},    # inside, real name
+        {"lon": -80.0, "lat": 35.0, "name": None},            # outside
+    ]
+    bp.name_points_by_public_land(pts, geoms, names)
+    # Missing/generic names get the park; a real name is kept but still tagged.
+    assert pts[0]["name"] == "Gunpowder Falls SP" and pts[0]["park"] == "Gunpowder Falls SP"
+    assert pts[1]["name"] == "Gunpowder Falls SP"
+    assert pts[2]["name"] == "Smith Ramp" and pts[2]["park"] == "Gunpowder Falls SP"
+    assert pts[3].get("name") is None and "park" not in pts[3]
+    # No polygons -> no-op (dev box without the public-lands file).
+    unchanged = [{"lon": -76.6, "lat": 39.5, "name": None}]
+    bp.name_points_by_public_land(unchanged, [], [])
+    assert unchanged[0].get("park") is None
 
 
 def test_normalize_ridb_drops_null_island_and_types_launches():
@@ -138,7 +160,7 @@ def test_normalize_ridb_drops_null_island_and_types_launches():
          "FacilityLatitude": 40.1, "FacilityLongitude": -77.1},
     ])
     assert {p["source_id"]: p["type"] for p in pts} == {
-        "10": "boat_ramp", "12": "walk_in"}
+        "10": "boat_ramp", "12": "fishing_access"}
 
 
 def test_dedupe_prefers_authoritative_source():
@@ -188,7 +210,7 @@ def _bruteforce_dedupe(points, radius_m):
 def test_dedupe_grid_matches_bruteforce_on_a_cloud():
     """The grid dedupe is identical to the brute-force greedy result on a
     deterministic mixed-type point cloud (incl. clusters that collapse)."""
-    types = ("boat_ramp", "pier", "parking", "walk_in")
+    types = ("boat_ramp", "pier", "parking", "fishing_access")
     pts = []
     # a lattice of points ~30 m apart (inside DEDUPE_M=40 m) so many collapse,
     # plus far-apart anchors that must all survive -- deterministic, no RNG.
@@ -239,7 +261,7 @@ def test_clip_records_vectorized_keeps_near_drops_far():
     tree = STRtree([reach0, reach1])
     recs = [
         {"lon": -76.6001, "lat": 39.4001, "name": "near0", "type": "parking"},
-        {"lon": -78.5001, "lat": 37.5001, "name": "near1", "type": "walk_in"},
+        {"lon": -78.5001, "lat": 37.5001, "name": "near1", "type": "fishing_access"},
         {"lon": -80.0, "lat": 35.0, "name": "far", "type": "parking"},
     ]
     out = bp.clip_records(recs, tree, [5000, 6000], tf, buffer_m=150.0, chunk=2)
@@ -253,7 +275,7 @@ def test_clip_and_associate_keeps_near_drops_far():
     lpids = [5000]
     pts = [
         (500.0, 30.0, {"name": "near", "type": "boat_ramp"}),   # 30 m off -> keep
-        (500.0, 200.0, {"name": "far", "type": "walk_in"}),     # 200 m off -> drop
+        (500.0, 200.0, {"name": "far", "type": "fishing_access"}),     # 200 m off -> drop
     ]
     kept = bp.clip_and_associate(pts, streams, lpids, buffer_m=75.0)
     assert [k["name"] for k in kept] == ["near"]
