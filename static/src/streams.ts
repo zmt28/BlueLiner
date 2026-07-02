@@ -34,7 +34,7 @@ import {
 import { selectRiver } from "./selection";
 import { refreshIcons } from "./util";
 import { autoLoadElevation } from "./elevation-profile";
-import { isPinPlacementActive } from "./pins";
+import { mapClicksClaimed } from "./map-mode";
 
 // -- Stream tier coloring (the nationwide quality axis) --------------
 // Tiles carry `tier` (gold/class1/class2/class3 or null), normalized in the
@@ -326,17 +326,17 @@ onMapReady(() => {
     }
   });
   map.on("click", "clickable-streams-hit", (e) => {
-    if (isPinPlacementActive()) return; // the click is placing a pin
+    if (mapClicksClaimed()) return; // a placement/framing mode owns clicks
     const f = e.features && e.features[0];
     if (!f) return;
     onStreamClick((f.properties || {}) as ClickableStreamProps, e.lngLat);
   });
   map.on("mouseenter", "clickable-streams-hit", () => {
-    if (isPinPlacementActive()) return; // keep the crosshair
+    if (mapClicksClaimed()) return; // keep the mode cursor
     map.getCanvas().style.cursor = "pointer";
   });
   map.on("mouseleave", "clickable-streams-hit", () => {
-    if (isPinPlacementActive()) return;
+    if (mapClicksClaimed()) return;
     map.getCanvas().style.cursor = "";
   });
 });

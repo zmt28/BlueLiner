@@ -27,6 +27,7 @@ import { DEVICE_HEADER } from "./state";
 import { directionsLinkHtml } from "./directions";
 import { showToast } from "./toast";
 import { confirmDialog } from "./confirm";
+import { claimMapClicks, releaseMapClicks } from "./map-mode";
 
 interface PinEntry {
   id: number;
@@ -167,6 +168,10 @@ function discardPlacement(): void {
 
 function setPinMode(on: boolean): void {
   pinMode = on;
+  // Feature click handlers stand down while armed (shared registry —
+  // streams/POIs/lands/trails check mapClicksClaimed()).
+  if (on) claimMapClicks("pin");
+  else releaseMapClicks("pin");
   dropBtn.classList.toggle("active", on);
   map.getCanvas().style.cursor = on ? "crosshair" : "";
   setHintVisible(on);

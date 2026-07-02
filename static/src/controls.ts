@@ -63,6 +63,7 @@ import {
 } from "./rivers";
 import { setPinsVisible } from "./pins";
 import { showToast } from "./toast";
+import { claimMapClicks, releaseMapClicks } from "./map-mode";
 import { getStates, setCurrentSt, STATE_ZOOM } from "./state";
 import { centerLngLat } from "./coords";
 import { refreshIcons } from "./util";
@@ -734,12 +735,16 @@ if (offlineSection && BASEMAP_TILES_ENABLED && "indexedDB" in window) {
     closePanel(); // so the map is visible for framing
     overlay.hidden = false;
     actionbar.hidden = false;
+    // Framing owns the map: tapping a stream/POI under the frame must not
+    // open panels over the framing UI (same guard as pin placement).
+    claimMapClicks("offline-frame");
     map.on("moveend", scheduleEstimate);
     void updateEstimate();
   }
   function exitDownloadMode(): void {
     overlay.hidden = true;
     actionbar.hidden = true;
+    releaseMapClicks("offline-frame");
     map.off("moveend", scheduleEstimate);
   }
 
@@ -766,6 +771,7 @@ if (offlineSection && BASEMAP_TILES_ENABLED && "indexedDB" in window) {
       estEl.textContent = `Download failed: ${(e as Error).message}`;
     } finally {
       busy = false;
+      goBtn.disabled = false; // was left disabled forever after a failure
       cancelBtn.disabled = false;
       void updateEstimate();
     }

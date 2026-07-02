@@ -30,6 +30,7 @@
 import { DEVICE_HEADER } from "./state";
 import { loadPins } from "./pins";
 import { confirmDialog } from "./confirm";
+import { showToast } from "./toast";
 
 // -- CURRENT_USER state --------------------------------------------
 // AuthMe-shaped value or null when signed out. Module-private; the
@@ -132,12 +133,16 @@ async function onAccountAction(action: string | undefined): Promise<void> {
     return;
   }
   if (action === "logout") {
+    // Only reload once the server actually ended the session — reloading
+    // on a failed request left the server session live while the UI
+    // looked signed out.
     try {
-      await fetch("/api/auth/logout", { method: "POST" });
+      const r = await fetch("/api/auth/logout", { method: "POST" });
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      location.reload();
     } catch {
-      /* ignore */
+      showToast("Couldn't sign out — try again.", "error");
     }
-    location.reload();
   } else if (action === "settings") {
     openModal("settings-modal");
   } else if (action === "my-catches") {
@@ -279,13 +284,27 @@ async function confirmClaim(): Promise<void> {
   const btn = document.getElementById("claim-confirm") as HTMLButtonElement;
   btn.disabled = true;
   btn.textContent = "Claiming…";
+  let ok = false;
   try {
-    await fetch("/api/pins/claim", { method: "POST", headers: DEVICE_HEADER });
-    localStorage.setItem("bl_claim_dismissed", "1");
+    const r = await fetch("/api/pins/claim", {
+      method: "POST",
+      headers: DEVICE_HEADER,
+    });
+    ok = r.ok;
   } catch {
-    /* ignore */
+    ok = false;
   }
+  btn.disabled = false;
+  btn.textContent = "Claim pins";
+  if (!ok) {
+    // Keep the modal open and DON'T set bl_claim_dismissed — a failed
+    // claim used to look identical to success and was never re-offered.
+    showToast("Couldn't claim your pins — try again.", "error");
+    return;
+  }
+  localStorage.setItem("bl_claim_dismissed", "1");
   closeModal("claim-modal");
+  showToast("Pins claimed", "success");
   loadPins();
 }
 
@@ -320,9 +339,11 @@ async function saveDisplayName(): Promise<void> {
       setTimeout(() => {
         t.style.opacity = "0";
       }, 1400);
+    } else {
+      showToast("Couldn't save your name — try again.", "error");
     }
   } catch {
-    /* ignore */
+    showToast("Couldn't save your name — check your connection.", "error");
   }
   btn.disabled = false;
 }

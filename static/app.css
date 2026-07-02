@@ -1173,6 +1173,25 @@ html, body {
     50%      { opacity: 0.55; }
 }
 
+/* State-load chip (rivers.ts): narrates the state switch / lazy first
+   compute, same placement as the pin-mode hint. */
+.bl-state-chip {
+    position: fixed;
+    top: calc(64px + env(safe-area-inset-top, 0px));
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: var(--z-overlay);
+    background: rgba(255,255,255,0.97);
+    backdrop-filter: blur(8px);
+    color: var(--fg-2);
+    font-size: var(--fs-meta);
+    padding: var(--space-3) var(--space-5);
+    border-radius: var(--radius-3);
+    box-shadow: var(--elev-2);
+    pointer-events: none;
+    white-space: nowrap;
+}
+
 /* Toasts (toast.ts): bottom-centered stack above everything else. */
 .bl-toasts {
     position: fixed;

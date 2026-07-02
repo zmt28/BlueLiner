@@ -49,7 +49,7 @@ import {
 import { ensurePmtilesProtocol } from "./tiles";
 import { registerPoiIcons } from "./poi-map-icons";
 import { directionsLinkHtml } from "./directions";
-import { isPinPlacementActive } from "./pins";
+import { mapClicksClaimed } from "./map-mode";
 import { showToast } from "./toast";
 
 // Desired visibility (matches the HTML checkbox defaults; controls.ts
@@ -199,7 +199,7 @@ function addPointTileLayer(o: PointTileOpts): void {
     } as LayerSpecification);
     const popup = makePopup();
     map.on("click", lyr, (e) => {
-      if (isPinPlacementActive()) return; // the click is placing a pin
+      if (mapClicksClaimed()) return; // a placement/framing mode owns clicks
       const f = e.features && e.features[0];
       if (!f) return;
       // Selecting a POI click -> close the rail panel.
@@ -215,11 +215,11 @@ function addPointTileLayer(o: PointTileOpts): void {
         .addTo(map);
     });
     map.on("mouseenter", lyr, () => {
-      if (isPinPlacementActive()) return; // keep the crosshair
+      if (mapClicksClaimed()) return; // keep the mode cursor
       map.getCanvas().style.cursor = "pointer";
     });
     map.on("mouseleave", lyr, () => {
-      if (isPinPlacementActive()) return;
+      if (mapClicksClaimed()) return;
       map.getCanvas().style.cursor = "";
     });
   }).catch((err) => {
@@ -564,7 +564,7 @@ onMapReady(() => {
   } as LayerSpecification, lineOverlayAnchor());
   const popup = makePopup();
   map.on("click", "public-lands-fill", (e) => {
-    if (isPinPlacementActive()) return; // the click is placing a pin
+    if (mapClicksClaimed()) return; // a placement/framing mode owns clicks
     const f = e.features && e.features[0];
     if (!f) return;
     // A POI click -> close the rail panel (matches the point layers).
@@ -580,11 +580,11 @@ onMapReady(() => {
       .addTo(map);
   });
   map.on("mouseenter", "public-lands-fill", () => {
-    if (isPinPlacementActive()) return; // keep the crosshair
+    if (mapClicksClaimed()) return; // keep the mode cursor
     map.getCanvas().style.cursor = "pointer";
   });
   map.on("mouseleave", "public-lands-fill", () => {
-    if (isPinPlacementActive()) return;
+    if (mapClicksClaimed()) return;
     map.getCanvas().style.cursor = "";
   });
 });
@@ -650,7 +650,7 @@ onMapReady(() => {
   } as LayerSpecification, lineOverlayAnchor());
   const popup = makePopup();
   map.on("click", "trails-line", (e) => {
-    if (isPinPlacementActive()) return; // the click is placing a pin
+    if (mapClicksClaimed()) return; // a placement/framing mode owns clicks
     const f = e.features && e.features[0];
     if (!f) return;
     // A POI click -> close the rail panel (matches the point layers).
@@ -666,11 +666,11 @@ onMapReady(() => {
       .addTo(map);
   });
   map.on("mouseenter", "trails-line", () => {
-    if (isPinPlacementActive()) return; // keep the crosshair
+    if (mapClicksClaimed()) return; // keep the mode cursor
     map.getCanvas().style.cursor = "pointer";
   });
   map.on("mouseleave", "trails-line", () => {
-    if (isPinPlacementActive()) return;
+    if (mapClicksClaimed()) return;
     map.getCanvas().style.cursor = "";
   });
 });
