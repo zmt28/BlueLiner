@@ -46,6 +46,18 @@ def test_parse_gazetteer_counties_filters_non_conus():
     assert rows == [["Baltimore County", "MD", 39.4431, -76.6165]]
 
 
+def test_parse_gazetteer_survives_utf8_bom():
+    # The real Census files carry a UTF-8 BOM; a plain utf-8 decode left
+    # "﻿USPS" as the first header key and zeroed the whole parse
+    # (CI run 2 of the index build). Both decode paths must survive it.
+    bommed = "﻿" + GAZ
+    assert bsi.parse_gazetteer(bommed, "county") == [
+        ["Baltimore County", "MD", 39.4431, -76.6165]]
+    # And the canonical fix: utf-8-sig at decode time.
+    decoded = bommed.encode("utf-8").decode("utf-8-sig")
+    assert bsi.parse_gazetteer(decoded, "county")[0][0] == "Baltimore County"
+
+
 GAZ_PLACES = (
     "USPS\tGEOID\tANSICODE\tNAME\tLSAD\tFUNCSTAT\tALAND\tAWATER\t"
     "ALAND_SQMI\tAWATER_SQMI\tINTPTLAT\tINTPTLONG\n"

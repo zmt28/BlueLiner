@@ -113,7 +113,10 @@ def parse_gazetteer(tsv: str, kind: str) -> list[list]:
     for line in tsv.splitlines():
         if not line.strip():
             continue
-        parts = [p.strip() for p in line.split("\t")]
+        # strip() per cell handles \r line endings and the trailing
+        # whitespace Census pads some columns with; lstrip("﻿")
+        # belt-and-braces the BOM should a caller decode plain utf-8.
+        parts = [p.strip().lstrip("﻿") for p in line.split("\t")]
         if header is None:
             header = parts
             continue
@@ -159,8 +162,10 @@ def fetch_gazetteer(kind: str) -> list[list]:
             raise RuntimeError(f"no gazetteer vintage found for {kind}")
     zf = zipfile.ZipFile(io.BytesIO(r.content))
     name = next(n for n in zf.namelist() if n.endswith(".txt"))
-    # Gazetteer files are latin-1-ish; utf-8 with replacement is safe.
-    tsv = zf.read(name).decode("utf-8", errors="replace")
+    # utf-8-sig: the gazetteer files carry a UTF-8 BOM, which would
+    # otherwise prefix the first header cell ("﻿USPS" != "USPS")
+    # and silently zero the parse.
+    tsv = zf.read(name).decode("utf-8-sig", errors="replace")
     rows = parse_gazetteer(tsv, "county" if kind == "counties" else "place")
     print(f"[{kind}] {len(rows):,} rows", flush=True)
     return rows
