@@ -51,6 +51,7 @@ export function openModal(id: string): void {
   el.hidden = false;
   // Reset login modal state if reopened.
   if (id === "login-modal") {
+    stopSignedInWatch();
     (document.getElementById("login-step-1") as HTMLElement).hidden = false;
     (document.getElementById("login-step-2") as HTMLElement).hidden = true;
     const inp = document.getElementById("login-email") as HTMLInputElement | null;
@@ -152,6 +153,103 @@ async function onAccountAction(action: string | undefined): Promise<void> {
   }
 }
 
+// -- "Check your inbox" step (M5.2) ---------------------------------
+// The step-2 pane owns three live behaviors: a signed-in watcher (the
+// link may be consumed in another tab of this browser -- the cookie is
+// browser-wide, so /api/me flips to 200 and we can finish without a
+// manual reload), a resend cooldown, and the 6-digit code form for
+// the cross-device case (email opened on the phone, session wanted
+// here).
+
+let lastLoginEmail = "";
+let pollTimer: number | null = null;
+let cooldownTimer: number | null = null;
+
+function stopSignedInWatch(): void {
+  if (pollTimer !== null) {
+    window.clearInterval(pollTimer);
+    pollTimer = null;
+  }
+}
+
+function startSignedInWatch(): void {
+  stopSignedInWatch();
+  pollTimer = window.setInterval(async () => {
+    const modal = document.getElementById("login-modal");
+    const step2 = document.getElementById("login-step-2");
+    if (!modal || modal.hidden || !step2 || step2.hidden) {
+      stopSignedInWatch();
+      return;
+    }
+    try {
+      const r = await fetch("/api/me");
+      if (r.ok) {
+        stopSignedInWatch();
+        location.reload(); // session cookie landed via another tab
+      }
+    } catch {
+      /* offline blip; keep polling */
+    }
+  }, 3000);
+}
+
+// Fast path for the same-browser case: the consume page broadcasts on
+// sign-in so this tab reacts instantly instead of on the next poll.
+try {
+  new BroadcastChannel("bl-auth").addEventListener("message", () => {
+    const step2 = document.getElementById("login-step-2");
+    if (step2 && !step2.hidden && !CURRENT_USER) location.reload();
+  });
+} catch {
+  /* BroadcastChannel unsupported: polling covers it */
+}
+
+function startResendCooldown(seconds = 60): void {
+  const btn = document.getElementById("login-resend") as HTMLButtonElement | null;
+  if (!btn) return;
+  if (cooldownTimer !== null) window.clearInterval(cooldownTimer);
+  let left = seconds;
+  btn.disabled = true;
+  btn.textContent = `Resend link (${left}s)`;
+  cooldownTimer = window.setInterval(() => {
+    left -= 1;
+    if (left <= 0) {
+      window.clearInterval(cooldownTimer!);
+      cooldownTimer = null;
+      btn.disabled = false;
+      btn.textContent = "Resend link";
+    } else {
+      btn.textContent = `Resend link (${left}s)`;
+    }
+  }, 1000);
+}
+
+async function requestLink(email: string): Promise<boolean> {
+  try {
+    const r = await fetch("/api/auth/request-link", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ email }),
+    });
+    return r.ok;
+  } catch {
+    return false;
+  }
+}
+
+function enterStep2(email: string): void {
+  lastLoginEmail = email;
+  (document.getElementById("login-sent-to") as HTMLElement).textContent = email;
+  (document.getElementById("login-step-1") as HTMLElement).hidden = true;
+  (document.getElementById("login-step-2") as HTMLElement).hidden = false;
+  const code = document.getElementById("login-code") as HTMLInputElement | null;
+  if (code) code.value = "";
+  const err = document.getElementById("login-code-error");
+  if (err) err.hidden = true;
+  startResendCooldown();
+  startSignedInWatch();
+}
+
 // -- Wire all auth-related DOM handlers ----------------------------
 
 function wireAuthHandlers(): void {
@@ -183,17 +281,7 @@ function wireAuthHandlers(): void {
       const errEl = document.getElementById("login-error") as HTMLElement | null;
       btn.disabled = true;
       btn.textContent = "Sending…";
-      let sent = false;
-      try {
-        const r = await fetch("/api/auth/request-link", {
-          method: "POST",
-          headers: { "content-type": "application/json" },
-          body: JSON.stringify({ email }),
-        });
-        sent = r.ok;
-      } catch {
-        sent = false;
-      }
+      const sent = await requestLink(email);
       btn.disabled = false;
       btn.textContent = "Send sign-in link";
       // Only advance to "Check your inbox" when the link actually went
@@ -208,16 +296,73 @@ function wireAuthHandlers(): void {
         return;
       }
       if (errEl) errEl.hidden = true;
-      (document.getElementById("login-sent-to") as HTMLElement).textContent = email;
-      (document.getElementById("login-step-1") as HTMLElement).hidden = true;
-      (document.getElementById("login-step-2") as HTMLElement).hidden = false;
+      enterStep2(email);
     });
-  const retry = document.getElementById("login-retry");
-  if (retry)
-    retry.addEventListener("click", () => {
+
+  // 6-digit code form (cross-device sign-in).
+  const codeForm = document.getElementById("login-code-form");
+  if (codeForm)
+    codeForm.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const inp = document.getElementById("login-code") as HTMLInputElement;
+      const code = inp.value.trim();
+      const errEl = document.getElementById("login-code-error") as HTMLElement | null;
+      if (!/^\d{6}$/.test(code)) {
+        if (errEl) {
+          errEl.textContent = "Enter the 6-digit code from the email.";
+          errEl.hidden = false;
+        }
+        return;
+      }
+      const btn = document.getElementById("login-code-submit") as HTMLButtonElement;
+      btn.disabled = true;
+      btn.textContent = "Checking…";
+      let ok = false;
+      try {
+        const r = await fetch("/api/auth/verify-code", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ email: lastLoginEmail, code }),
+        });
+        ok = r.ok;
+      } catch {
+        ok = false;
+      }
+      if (ok) {
+        stopSignedInWatch();
+        location.reload();
+        return;
+      }
+      btn.disabled = false;
+      btn.textContent = "Sign in";
+      if (errEl) {
+        errEl.textContent =
+          "That code didn't match — double-check it, or resend the link.";
+        errEl.hidden = false;
+      }
+      inp.select();
+    });
+
+  // Resend (cooldown-gated) + "wrong address" recovery.
+  const resend = document.getElementById("login-resend");
+  if (resend)
+    resend.addEventListener("click", async () => {
+      if (!lastLoginEmail) return;
+      startResendCooldown();
+      if (!(await requestLink(lastLoginEmail))) {
+        showToast("Couldn't resend the link — try again.", "error");
+      }
+    });
+  const editEmail = document.getElementById("login-edit-email");
+  if (editEmail)
+    editEmail.addEventListener("click", () => {
+      stopSignedInWatch();
       (document.getElementById("login-step-2") as HTMLElement).hidden = true;
       (document.getElementById("login-step-1") as HTMLElement).hidden = false;
-      (document.getElementById("login-email") as HTMLInputElement).focus();
+      const inp = document.getElementById("login-email") as HTMLInputElement;
+      inp.value = lastLoginEmail; // prefill: usually a typo fix, not a restart
+      inp.focus();
+      inp.select();
     });
 
   // Account / profile actions (the profile pane replaces the old
@@ -317,6 +462,94 @@ function loadSettings(): void {
   (document.getElementById("settings-name") as HTMLInputElement).value =
     (CURRENT_USER.display_name as string | undefined) || "";
   (document.getElementById("settings-saved") as HTMLElement).style.opacity = "0";
+  void loadSessionsList();
+}
+
+// -- Active devices (M5.2f) -----------------------------------------
+
+/** "Chrome on Windows" from a UA string; terse on purpose. */
+function summarizeUa(ua: string | null): string {
+  if (!ua) return "Unknown device";
+  const os = /iPhone|iPad/.test(ua) ? "iPhone/iPad"
+    : /Android/.test(ua) ? "Android"
+    : /Mac OS X|Macintosh/.test(ua) ? "Mac"
+    : /Windows/.test(ua) ? "Windows"
+    : /Linux/.test(ua) ? "Linux" : "";
+  const browser = /Edg\//.test(ua) ? "Edge"
+    : /Firefox\//.test(ua) ? "Firefox"
+    : /Chrome\//.test(ua) ? "Chrome"
+    : /Safari\//.test(ua) ? "Safari" : "Browser";
+  return os ? `${browser} on ${os}` : browser;
+}
+
+function relTime(iso: string | null): string {
+  if (!iso) return "a while ago";
+  const ms = Date.now() - new Date(iso).getTime();
+  if (!Number.isFinite(ms) || ms < 0) return "just now";
+  const min = Math.floor(ms / 60_000);
+  if (min < 2) return "just now";
+  if (min < 60) return `${min} min ago`;
+  const h = Math.floor(min / 60);
+  if (h < 48) return `${h} h ago`;
+  return `${Math.floor(h / 24)} days ago`;
+}
+
+async function loadSessionsList(): Promise<void> {
+  const ul = document.getElementById("settings-sessions") as HTMLUListElement | null;
+  if (!ul) return;
+  ul.innerHTML = "<li class='sess-note'>Loading…</li>";
+  interface Sess {
+    id: string;
+    last_seen_at: string | null;
+    user_agent: string | null;
+    current: boolean;
+  }
+  let sessions: Sess[];
+  try {
+    const r = await fetch("/api/me/sessions");
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    sessions = ((await r.json()) as { sessions: Sess[] }).sessions;
+  } catch {
+    ul.innerHTML = "<li class='sess-note'>Couldn't load devices.</li>";
+    return;
+  }
+  ul.innerHTML = "";
+  for (const s of sessions) {
+    const li = document.createElement("li");
+    li.className = "sess-row";
+    const meta = document.createElement("div");
+    meta.className = "sess-meta";
+    const label = document.createElement("div");
+    label.textContent = summarizeUa(s.user_agent)
+      + (s.current ? " — this device" : "");
+    const seen = document.createElement("div");
+    seen.className = "sess-seen";
+    seen.textContent = `Last active ${relTime(s.last_seen_at)}`;
+    meta.append(label, seen);
+    li.appendChild(meta);
+    if (!s.current) {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "secondary sess-revoke";
+      btn.textContent = "Sign out";
+      btn.addEventListener("click", async () => {
+        btn.disabled = true;
+        try {
+          const r = await fetch(
+            `/api/me/sessions/${encodeURIComponent(s.id)}`,
+            { method: "DELETE" });
+          if (!r.ok) throw new Error(`HTTP ${r.status}`);
+          li.remove();
+          showToast("Device signed out", "success");
+        } catch {
+          btn.disabled = false;
+          showToast("Couldn't sign that device out — try again.", "error");
+        }
+      });
+      li.appendChild(btn);
+    }
+    ul.appendChild(li);
+  }
 }
 
 async function saveDisplayName(): Promise<void> {

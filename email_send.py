@@ -22,7 +22,16 @@ _API_KEY = os.environ.get("RESEND_API_KEY", "").strip()
 _FROM = os.environ.get("EMAIL_FROM", "Blueliner <no-reply@blueliner.app>")
 
 
-def _build_magic_link_html(consume_url: str, expires_minutes: int) -> str:
+def _build_magic_link_html(consume_url: str, expires_minutes: int,
+                           code: str | None = None) -> str:
+    code_block = ""
+    if code:
+        code_block = (
+            f'<p style="font-size:14px;color:#444;margin:20px 0 4px">'
+            f'On a different device than the one you asked from? Type '
+            f'this code there instead:</p>'
+            f'<p style="font-size:28px;font-weight:700;'
+            f'letter-spacing:6px;margin:4px 0 0">{code}</p>')
     return (
         f'<div style="font-family:system-ui,sans-serif;max-width:480px;'
         f'margin:0 auto;padding:24px;color:#222">'
@@ -35,6 +44,7 @@ def _build_magic_link_html(consume_url: str, expires_minutes: int) -> str:
         f'background:#1e6fd9;color:#fff;text-decoration:none;'
         f'padding:12px 20px;border-radius:6px;font-weight:600">'
         f'Sign in to Blueliner</a></p>'
+        f'{code_block}'
         f'<p style="font-size:13px;color:#666">If the button doesn\'t '
         f'work, copy and paste this URL:<br>'
         f'<span style="word-break:break-all">{consume_url}</span></p>'
@@ -43,19 +53,36 @@ def _build_magic_link_html(consume_url: str, expires_minutes: int) -> str:
         f'</div>')
 
 
+def _build_magic_link_text(consume_url: str, expires_minutes: int,
+                           code: str | None = None) -> str:
+    code_block = (f"\n\nOn a different device? Type this code there "
+                  f"instead: {code}" if code else "")
+    return (
+        f"Sign in to Blueliner\n\n"
+        f"Open this link to finish signing in (valid {expires_minutes} "
+        f"minutes, single use):\n{consume_url}{code_block}\n\n"
+        f"Did not request this? You can safely ignore the email.\n")
+
+
 def send_magic_link(email: str, consume_url: str,
-                    expires_minutes: int = 15) -> bool:
-    """Send the sign-in link to `email`. Returns True on success.
-    In dev (no API key) logs the URL and returns True so the flow
-    can be tested locally by copy-pasting from the log."""
+                    expires_minutes: int = 15,
+                    code: str | None = None) -> bool:
+    """Send the sign-in link (plus the cross-device fallback code when
+    given) to `email`. Returns True on success. In dev (no API key)
+    logs the URL and returns True so the flow can be tested locally by
+    copy-pasting from the log."""
     if not _API_KEY:
-        logger.info("(dev) magic-link for %s -> %s", email, consume_url)
+        logger.info("(dev) magic-link for %s -> %s (code %s)",
+                    email, consume_url, code or "-")
         return True
     payload = {
         "from": _FROM,
         "to": [email],
         "subject": "Sign in to Blueliner",
-        "html": _build_magic_link_html(consume_url, expires_minutes),
+        "html": _build_magic_link_html(consume_url, expires_minutes, code),
+        # Plain-text part keeps spam scoring down (M5.2e); a sign-in
+        # email in the junk folder is a lost user.
+        "text": _build_magic_link_text(consume_url, expires_minutes, code),
     }
     try:
         with httpx.Client(timeout=10.0) as c:
@@ -134,6 +161,11 @@ def send_condition_digest(email: str, items: list[dict]) -> bool:
         "to": [email],
         "subject": _digest_subject(items),
         "html": _build_digest_html(items),
+        "text": "Your waters changed\n\n" + "\n".join(
+            f"- {it['name']} ({it['state']}): now "
+            f"{_VERDICT_LABEL.get(it['new'], it['new'])} (was "
+            f"{_VERDICT_LABEL.get(it['prev'], it['prev'])})"
+            for it in items) + "\n\nhttps://blueliner.app/map\n",
     }
     try:
         with httpx.Client(timeout=10.0) as c:

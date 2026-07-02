@@ -1165,6 +1165,50 @@ html, body {
 .modal-actions button.danger { background: var(--bl-cond-poor-500); color: #fff; }
 .modal-actions button.danger:hover { background: var(--bl-cond-poor-700); }
 
+/* Login step 2 (M5.2): code fallback + resend/edit actions. */
+.login-code-row { display: flex; gap: var(--space-3); }
+.login-code-row input {
+    flex: 1;
+    min-width: 0;
+    padding: 10px var(--space-4);
+    border: 1px solid var(--border-strong);
+    border-radius: var(--radius-2);
+    font: inherit;
+    font-size: var(--fs-body);
+    letter-spacing: 4px;
+    text-align: center;
+    color: var(--fg-1);
+    background: var(--bg-surface);
+}
+.login-code-row button { width: auto !important; flex: 0 0 auto; padding: 10px var(--space-5) !important; }
+.login-step2-actions {
+    display: flex;
+    gap: var(--space-3);
+    margin-top: var(--space-4);
+}
+
+/* Active devices list in Settings (M5.2f). */
+.sessions-list {
+    list-style: none;
+    padding: 0;
+    margin: var(--space-2) 0 0;
+    max-height: 200px;
+    overflow-y: auto;
+}
+.sess-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-3);
+    padding: 8px 0;
+    border-bottom: 1px solid var(--border-1);
+}
+.sess-row:last-child { border-bottom: none; }
+.sess-meta { font-size: var(--fs-body); color: var(--fg-1); min-width: 0; }
+.sess-seen { font-size: var(--fs-meta); color: var(--fg-3); }
+.sess-note { font-size: var(--fs-meta); color: var(--fg-3); padding: 6px 0; }
+.sess-revoke { width: auto !important; flex: 0 0 auto; padding: 6px var(--space-4) !important; font-size: var(--fs-meta) !important; }
+
 /* Locate button: pulse while a geolocation fix is being acquired (the
    static blue alone read as "nothing happening" for up to 10s). */
 .locate-btn.is-active { animation: bl-locate-pulse 1s ease-in-out infinite; }

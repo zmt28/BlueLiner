@@ -235,8 +235,25 @@ def init_db() -> None:
             " email TEXT NOT NULL,"
             " created_at TEXT NOT NULL,"
             " expires_at TEXT NOT NULL,"
-            " used_at TEXT)"
+            " used_at TEXT,"
+            # 6-digit fallback code (M5.2a), hashed like the token.
+            # `attempts` caps guesses per link (brute-force guard).
+            " code_hash TEXT,"
+            " attempts INTEGER NOT NULL DEFAULT 0)"
         )
+        for _col, _ddl in (
+                ("code_hash", "TEXT"),
+                ("attempts", "INTEGER NOT NULL DEFAULT 0")):
+            if _IS_PG:
+                cur.execute(
+                    f"ALTER TABLE magic_links ADD COLUMN IF NOT EXISTS "
+                    f"{_col} {_ddl}")
+            else:
+                try:
+                    cur.execute(
+                        f"ALTER TABLE magic_links ADD COLUMN {_col} {_ddl}")
+                except Exception:
+                    pass   # SQLite: column already exists -> ignore
         # Catch log (Phase 2). Private by default; the visibility /
         # share_geom / share_token columns are inert until Phase 3
         # turns on sharing. `env` is an immutable JSON snapshot of the
@@ -794,18 +811,20 @@ def _hash(token: str) -> str:
     return hashlib.sha256(token.encode()).hexdigest()
 
 
-def create_magic_link(email: str, token: str) -> None:
-    """Persist the SHA-256 of the link token. Plaintext is emailed and
-    never stored. Idempotent by token_hash collision (effectively never)."""
+def create_magic_link(email: str, token: str, code: str | None = None) -> None:
+    """Persist the SHA-256 of the link token (and of the optional
+    6-digit fallback code). Plaintext is emailed and never stored.
+    Idempotent by token_hash collision (effectively never)."""
     now = datetime.now(timezone.utc)
     expires = now + timedelta(minutes=MAGIC_LINK_TTL_MINUTES)
     with _conn() as conn:
         cur = conn.cursor()
         cur.execute(
             _ph("INSERT INTO magic_links (token_hash, email, created_at,"
-                " expires_at) VALUES (?, ?, ?, ?)"),
+                " expires_at, code_hash) VALUES (?, ?, ?, ?, ?)"),
             (_hash(token), email.strip().lower(),
-             now.isoformat(), expires.isoformat()))
+             now.isoformat(), expires.isoformat(),
+             _hash(code) if code else None))
         conn.commit()
 
 
@@ -838,6 +857,76 @@ def consume_magic_link(token: str) -> str | None:
         if cur.rowcount == 0:
             return None
         conn.commit()
+        return row["email"]
+
+
+MAGIC_CODE_MAX_ATTEMPTS = 5
+
+
+def consume_magic_link_by_code(email: str, code: str) -> str | None:
+    """Redeem a live magic link by its 6-digit fallback code (M5.2a) --
+    the cross-device path: request on the desktop, read the code off
+    the phone, type it into the desktop. Single-use, expiry-checked,
+    and capped at MAGIC_CODE_MAX_ATTEMPTS guesses per link (every
+    mismatch increments; a capped link is dead even with the right
+    code). Returns the email on success."""
+    email = (email or "").strip().lower()
+    if not email or not code:
+        return None
+    now = datetime.now(timezone.utc)
+    ch = _hash(code.strip())
+    with _conn() as conn:
+        cur = conn.cursor()
+        # Newest live link for this email; older ones stay untouched
+        # (re-requesting a link shouldn't let stale codes accumulate
+        # guesses).
+        cur.execute(
+            _ph("SELECT token_hash, code_hash, expires_at, attempts"
+                " FROM magic_links WHERE email = ? AND used_at IS NULL"
+                " AND code_hash IS NOT NULL"
+                " ORDER BY created_at DESC LIMIT 1"),
+            (email,))
+        row = cur.fetchone()
+        if not row:
+            return None
+        try:
+            if datetime.fromisoformat(row["expires_at"]) < now:
+                return None
+        except (TypeError, ValueError):
+            return None
+        if row["attempts"] >= MAGIC_CODE_MAX_ATTEMPTS:
+            return None
+        if row["code_hash"] != ch:
+            cur.execute(
+                _ph("UPDATE magic_links SET attempts = attempts + 1"
+                    " WHERE token_hash = ?"),
+                (row["token_hash"],))
+            conn.commit()
+            return None
+        cur.execute(
+            _ph("UPDATE magic_links SET used_at = ?"
+                " WHERE token_hash = ? AND used_at IS NULL"),
+            (now.isoformat(), row["token_hash"]))
+        if cur.rowcount == 0:
+            return None  # racing redemption
+        conn.commit()
+        return email
+
+
+def peek_magic_link_email(token: str) -> str | None:
+    """The email behind an EXPIRED-but-unused link token (M5.2d) --
+    lets the expired-link page offer one-click re-request instead of a
+    dead end. Used links return None: 'already used' usually means the
+    user is signed in elsewhere, and re-offering would just confuse."""
+    with _conn() as conn:
+        cur = conn.cursor()
+        cur.execute(
+            _ph("SELECT email, used_at FROM magic_links"
+                " WHERE token_hash = ?"),
+            (_hash(token),))
+        row = cur.fetchone()
+        if not row or row["used_at"]:
+            return None
         return row["email"]
 
 
@@ -914,6 +1003,37 @@ def delete_session(token: str) -> None:
             _ph("DELETE FROM sessions WHERE token_hash = ?"),
             (_hash(token),))
         conn.commit()
+
+
+def list_sessions(user_id: int) -> list[dict]:
+    """A user's active sessions for the devices list (M5.2f). `id` is
+    the token HASH -- safe to expose (SHA-256 preimage = the cookie
+    value; the hash itself can't authenticate) and stable enough to
+    revoke by."""
+    with _conn() as conn:
+        cur = conn.cursor()
+        cur.execute(
+            _ph("SELECT token_hash, created_at, last_seen_at, user_agent, ip"
+                " FROM sessions WHERE user_id = ?"
+                " ORDER BY last_seen_at DESC"),
+            (user_id,))
+        return [
+            {"id": r["token_hash"], "created_at": r["created_at"],
+             "last_seen_at": r["last_seen_at"],
+             "user_agent": r["user_agent"], "ip": r["ip"]}
+            for r in cur.fetchall()
+        ]
+
+
+def delete_user_session(user_id: int, token_hash: str) -> bool:
+    """Revoke one of the user's OWN sessions by its hash id. The
+    user_id guard stops cross-account revocation."""
+    with _conn() as conn:
+        cur = conn.cursor()
+        cur.execute(
+            _ph("DELETE FROM sessions WHERE token_hash = ? AND user_id = ?"),
+            (token_hash, user_id))
+        return cur.rowcount > 0
 
 
 def prune_auth_rows() -> tuple[int, int]:

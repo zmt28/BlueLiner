@@ -644,11 +644,24 @@
                 <i class="modal-icon" data-lucide="mail-check" aria-hidden="true"></i>
                 <h2>Check your inbox</h2>
                 <p class="modal-lede">We sent a sign-in link to
-                    <strong id="login-sent-to"></strong>.</p>
-                <p class="modal-lede">Open it on this device to finish
-                    signing in.</p>
-                <button id="login-retry" type="button" class="secondary">
-                    Use a different email</button>
+                    <strong id="login-sent-to"></strong>. Open it on
+                    this device to finish signing in.</p>
+                <p class="modal-lede">Reading the email on another
+                    device? Type its code here instead:</p>
+                <form id="login-code-form" class="login-code-row">
+                    <input id="login-code" inputmode="numeric"
+                           autocomplete="one-time-code" maxlength="6"
+                           pattern="[0-9]{6}" placeholder="6-digit code">
+                    <button id="login-code-submit" type="submit">
+                        Sign in</button>
+                </form>
+                <div id="login-code-error" class="cf-error" hidden></div>
+                <div class="login-step2-actions">
+                    <button id="login-resend" type="button"
+                            class="secondary">Resend link</button>
+                    <button id="login-edit-email" type="button"
+                            class="secondary">Use a different email</button>
+                </div>
             </div>
         </div>
     </div>
@@ -757,6 +770,10 @@
                 <button id="settings-save" type="button">Save</button>
                 <div id="settings-saved" class="modal-fine"
                      style="opacity:0;transition:opacity .3s">Saved.</div>
+            </div>
+            <div class="modal-row">
+                <div class="modal-label">Devices</div>
+                <ul id="settings-sessions" class="sessions-list"></ul>
             </div>
             <div class="modal-danger">
                 <div class="modal-label">Danger zone</div>

@@ -2286,16 +2286,17 @@ def _set_session_cookie(response: Response, token: str) -> None:
 
 @app.post("/api/auth/request-link", status_code=204)
 async def api_request_magic_link(body: _MagicLinkIn, request: Request):
-    """Issue a magic-link to the supplied email. Always returns 204 --
-    no account-enumeration leak (the UI shows 'Check your inbox' state
-    unconditionally)."""
+    """Issue a magic-link (plus its 6-digit cross-device code, M5.2a)
+    to the supplied email. Always returns 204 -- no account-enumeration
+    leak (the UI shows 'Check your inbox' state unconditionally)."""
     _rate_limit_auth(request)
     email = body.email.strip().lower()
     token = secrets.token_urlsafe(24)             # 192 bits, URL-safe
+    code = f"{secrets.randbelow(1_000_000):06d}"  # emailed, never stored raw
     consume_url = (
         f"{str(request.base_url).rstrip('/')}/auth/consume?token={token}")
     try:
-        await asyncio.to_thread(db.create_magic_link, email, token)
+        await asyncio.to_thread(db.create_magic_link, email, token, code)
     except Exception as exc:
         logger.warning("create_magic_link failed for %s: %s", email, exc)
         return Response(status_code=204)         # still no enumeration
@@ -2303,23 +2304,16 @@ async def api_request_magic_link(body: _MagicLinkIn, request: Request):
     try:
         await asyncio.to_thread(
             email_send.send_magic_link, email, consume_url,
-            db.MAGIC_LINK_TTL_MINUTES)
+            db.MAGIC_LINK_TTL_MINUTES, code)
     except Exception as exc:
         logger.warning("send_magic_link failed for %s: %s", email, exc)
     return Response(status_code=204)
 
 
-@app.get("/auth/consume", response_class=HTMLResponse)
-async def auth_consume(token: str = Query(..., min_length=8, max_length=64),
-                       request: Request = None):
-    """Validate the magic-link token, mint a session, set cookie,
-    redirect to /. On failure, render a small error page with a link
-    to request a fresh one. Server-rendered HTML keeps this independent
-    of the SPA so first-time users don't hit a blank page mid-load."""
-    email = await asyncio.to_thread(db.consume_magic_link, token)
-    if not email:
-        return HTMLResponse(_consume_error_html(), status_code=400)
-
+async def _mint_session(email: str, request: Request | None) -> str:
+    """Create the user (if new) + a session row; returns the session
+    token for the cookie. Shared by link, code, and (later) passkey
+    redemption so every path records the same context."""
     user = await asyncio.to_thread(db.upsert_user_by_email, email)
     sess_token = secrets.token_urlsafe(32)
     # Persist UA/IP on the session row -- the raw material for the
@@ -2331,7 +2325,50 @@ async def auth_consume(token: str = Query(..., min_length=8, max_length=64),
         ip = request.client.host if request.client else None
     await asyncio.to_thread(db.create_session, user["id"], sess_token,
                             ua, ip)
-    resp = HTMLResponse(_consume_success_html(user["email"]))
+    return sess_token
+
+
+class _CodeIn(BaseModel):
+    email: EmailStr
+    code: str
+
+
+@app.post("/api/auth/verify-code")
+async def api_verify_code(body: _CodeIn, request: Request):
+    """Redeem the 6-digit fallback code from the sign-in email (M5.2a)
+    -- signs in THIS device when the link was opened on another one.
+    Wrong guesses burn the link's attempt budget server-side."""
+    _rate_limit_auth(request)
+    code = body.code.strip()
+    if not (code.isdigit() and len(code) == 6):
+        raise HTTPException(status_code=400, detail="Invalid code")
+    email = await asyncio.to_thread(
+        db.consume_magic_link_by_code, body.email, code)
+    if not email:
+        raise HTTPException(status_code=400,
+                            detail="Wrong or expired code")
+    sess_token = await _mint_session(email, request)
+    resp = JSONResponse({"ok": True, "email": email})
+    _set_session_cookie(resp, sess_token)
+    return resp
+
+
+@app.get("/auth/consume", response_class=HTMLResponse)
+async def auth_consume(token: str = Query(..., min_length=8, max_length=64),
+                       request: Request = None):
+    """Validate the magic-link token, mint a session, set cookie,
+    redirect to /. On failure, render a small error page -- with a
+    one-click re-request when the link merely expired (M5.2d).
+    Server-rendered HTML keeps this independent of the SPA so
+    first-time users don't hit a blank page mid-load."""
+    email = await asyncio.to_thread(db.consume_magic_link, token)
+    if not email:
+        stale_email = await asyncio.to_thread(db.peek_magic_link_email, token)
+        return HTMLResponse(_consume_error_html(stale_email),
+                            status_code=400)
+
+    sess_token = await _mint_session(email, request)
+    resp = HTMLResponse(_consume_success_html(email))
     _set_session_cookie(resp, sess_token)
     return resp
 
@@ -2353,10 +2390,44 @@ def _consume_success_html(email: str) -> str:
         "<div class='ok'>&#10003;</div>"
         f"<h3 style='margin:12px 0 4px'>Signed in as {safe}</h3>"
         "<p style='color:#666;margin:0'>Redirecting&hellip;</p>"
-        "</div>")
+        "</div>"
+        # Fast-path ping for the tab that requested the link (M5.2b):
+        # its polling notices within seconds; this makes it instant.
+        "<script>try{new BroadcastChannel('bl-auth')"
+        ".postMessage('signed-in')}catch(e){}</script>")
 
 
-def _consume_error_html() -> str:
+def _mask_email(email: str) -> str:
+    """j***@gmail.com -- enough for 'yes, that's me', nothing more."""
+    local, _, domain = email.partition("@")
+    return f"{(local[:1] or '*')}***@{domain}"
+
+
+def _consume_error_html(stale_email: str | None = None) -> str:
+    """Expired/used-link page. When the token maps to an expired-but-
+    unused link we know the address -- offer one-click re-request
+    (M5.2d) instead of a dead end. The raw email only rides in the
+    page's JS (its holder was the addressee); the visible text is
+    masked."""
+    if stale_email:
+        safe = (stale_email.replace("\\", "").replace("'", "")
+                .replace("<", "").replace(">", ""))
+        recover = (
+            f"<button class='btn' id='resend'>Send a new link to "
+            f"{_mask_email(safe)}</button>"
+            f"<p id='sent' style='display:none;color:#27ae60'>"
+            f"Sent &mdash; check your inbox.</p>"
+            f"<script>document.getElementById('resend').onclick="
+            f"function(){{var b=this;b.disabled=true;"
+            f"fetch('/api/auth/request-link',{{method:'POST',"
+            f"headers:{{'content-type':'application/json'}},"
+            f"body:JSON.stringify({{email:'{safe}'}})}})"
+            f".then(function(r){{if(r.ok){{b.style.display='none';"
+            f"document.getElementById('sent').style.display='block'}}"
+            f"else{{b.disabled=false}}}})"
+            f".catch(function(){{b.disabled=false}})}};</script>")
+    else:
+        recover = "<a class='btn' href='/'>Back to Blueliner</a>"
     return (
         "<!doctype html><meta charset='utf-8'>"
         "<title>Link expired</title>"
@@ -2367,15 +2438,16 @@ def _consume_error_html() -> str:
         "box-shadow:0 1px 6px rgba(0,0,0,.08);text-align:center;"
         "max-width:380px}"
         ".warn{font-size:48px;color:#e67e22;line-height:1}"
-        "a.btn{display:inline-block;background:#1e6fd9;color:#fff;"
+        ".btn{display:inline-block;background:#1e6fd9;color:#fff;"
         "text-decoration:none;padding:10px 18px;border-radius:6px;"
-        "margin-top:12px;font-weight:600}"
+        "margin-top:12px;font-weight:600;border:0;font-size:15px;"
+        "cursor:pointer}"
         "</style>"
         "<div class='card'>"
         "<div class='warn'>&#9888;</div>"
         "<h3 style='margin:12px 0 8px'>This sign-in link is no longer valid</h3>"
         "<p style='color:#666'>It may have expired or already been used.</p>"
-        "<a class='btn' href='/'>Back to Blueliner</a>"
+        f"{recover}"
         "</div>")
 
 
@@ -2396,6 +2468,34 @@ async def api_me(request: Request):
         raise HTTPException(status_code=401, detail="Not signed in")
     return {"id": user["id"], "email": user["email"],
             "display_name": user.get("display_name")}
+
+
+@app.get("/api/me/sessions")
+async def api_me_sessions(request: Request):
+    """The user's active sessions/devices (M5.2f). `current` marks the
+    one making this request so the UI can label 'This device' and keep
+    its revoke button out of reach."""
+    user = _session_user(request)
+    if not user:
+        raise HTTPException(status_code=401, detail="Not signed in")
+    sessions = await asyncio.to_thread(db.list_sessions, user["id"])
+    cur_hash = hashlib.sha256(
+        request.cookies.get(_SESSION_COOKIE, "").strip().encode()).hexdigest()
+    for s in sessions:
+        s["current"] = s["id"] == cur_hash
+    return {"sessions": sessions}
+
+
+@app.delete("/api/me/sessions/{sid}", status_code=204)
+async def api_me_revoke_session(sid: str, request: Request):
+    """Revoke one of the caller's own sessions by its hash id."""
+    user = _session_user(request)
+    if not user:
+        raise HTTPException(status_code=401, detail="Not signed in")
+    ok = await asyncio.to_thread(db.delete_user_session, user["id"], sid)
+    if not ok:
+        raise HTTPException(status_code=404, detail="Session not found")
+    return Response(status_code=204)
 
 
 @app.patch("/api/me")

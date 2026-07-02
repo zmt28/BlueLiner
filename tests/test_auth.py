@@ -92,6 +92,110 @@ def test_claim_pins_relinks_anonymous_to_user(tmp_path, monkeypatch):
     assert len(db.list_pins(user_owner)) == 2
 
 
+# -- Code fallback + link recovery (M5.2) --------------------------------
+
+def test_code_redemption_single_use(tmp_path, monkeypatch):
+    _fresh(tmp_path, monkeypatch)
+    db.create_magic_link("alice@example.com", "tok-CODE", code="123456")
+    assert db.consume_magic_link_by_code("Alice@Example.com ", "123456") \
+        == "alice@example.com"
+    # Consuming by code kills the link entirely: no code replay, no
+    # link-token redemption either.
+    assert db.consume_magic_link_by_code("alice@example.com", "123456") is None
+    assert db.consume_magic_link("tok-CODE") is None
+
+
+def test_code_attempts_capped(tmp_path, monkeypatch):
+    _fresh(tmp_path, monkeypatch)
+    db.create_magic_link("alice@example.com", "tok-BRUTE", code="123456")
+    for _ in range(db.MAGIC_CODE_MAX_ATTEMPTS):
+        assert db.consume_magic_link_by_code(
+            "alice@example.com", "000000") is None
+    # Even the right code is dead after the attempt budget burns.
+    assert db.consume_magic_link_by_code("alice@example.com", "123456") is None
+    # The LINK itself still works -- guessing codes must not lock out
+    # the legitimate email holder.
+    assert db.consume_magic_link("tok-BRUTE") == "alice@example.com"
+
+
+def test_code_uses_newest_link(tmp_path, monkeypatch):
+    _fresh(tmp_path, monkeypatch)
+    db.create_magic_link("alice@example.com", "tok-old", code="111111")
+    db.create_magic_link("alice@example.com", "tok-new", code="222222")
+    # Only the newest link's code redeems (a re-request invalidates the
+    # old code path).
+    assert db.consume_magic_link_by_code("alice@example.com", "111111") is None
+    assert db.consume_magic_link_by_code("alice@example.com", "222222") \
+        == "alice@example.com"
+
+
+def test_verify_code_endpoint_sets_cookie(tmp_path, monkeypatch):
+    _fresh(tmp_path, monkeypatch)
+    db.create_magic_link("alice@example.com", "tok-EP", code="654321")
+    req = _req(ip="203.0.113.44",
+               headers={"user-agent": "Mozilla/5.0 (Desktop)"})
+    resp = asyncio.run(main.api_verify_code(
+        main._CodeIn(email="alice@example.com", code="654321"), req))
+    sc = resp.headers.get("set-cookie") or ""
+    assert main._SESSION_COOKIE in sc and "HttpOnly" in sc
+    with pytest.raises(HTTPException) as ei:
+        asyncio.run(main.api_verify_code(
+            main._CodeIn(email="alice@example.com", code="654321"), req))
+    assert ei.value.status_code == 400
+
+
+def test_expired_link_page_offers_resend(tmp_path, monkeypatch):
+    _fresh(tmp_path, monkeypatch)
+    db.create_magic_link("alice@example.com", "tok-EXP")
+    import sqlite3
+    from datetime import datetime, timedelta, timezone
+    past = (datetime.now(timezone.utc) - timedelta(minutes=30)).isoformat()
+    c = sqlite3.connect(db.DB_PATH)
+    c.execute("UPDATE magic_links SET expires_at=? WHERE token_hash=?",
+              (past, db._hash("tok-EXP")))
+    c.commit()
+    c.close()
+    resp = asyncio.run(main.auth_consume("tok-EXP", _req()))
+    assert resp.status_code == 400
+    body = resp.body.decode()
+    assert "a***@example.com" in body          # masked display
+    assert "request-link" in body               # one-click re-request
+    # A USED link stays a dead end (user probably signed in elsewhere).
+    db.create_magic_link("bob@example.com", "tok-USED")
+    assert db.consume_magic_link("tok-USED") == "bob@example.com"
+    resp2 = asyncio.run(main.auth_consume("tok-USED", _req()))
+    assert "request-link" not in resp2.body.decode()
+
+
+def test_sessions_list_and_revoke(tmp_path, monkeypatch):
+    _fresh(tmp_path, monkeypatch)
+    user = db.upsert_user_by_email("alice@example.com")
+    db.create_session(user["id"], "sess-here", "Safari iPhone", "1.1.1.1")
+    db.create_session(user["id"], "sess-there", "Chrome Desktop", "2.2.2.2")
+    other = db.upsert_user_by_email("mallory@example.com")
+    db.create_session(other["id"], "sess-mallory", None, None)
+
+    req = _req(cookies={main._SESSION_COOKIE: "sess-here"})
+    out = asyncio.run(main.api_me_sessions(req))
+    sessions = out["sessions"]
+    assert len(sessions) == 2                   # only alice's
+    cur = next(s for s in sessions if s["current"])
+    assert cur["user_agent"] == "Safari iPhone"
+    othr = next(s for s in sessions if not s["current"])
+
+    # Revoke the other device; it stops authenticating.
+    asyncio.run(main.api_me_revoke_session(othr["id"], req))
+    assert db.user_from_session("sess-there") is None
+    assert db.user_from_session("sess-here")    # current survives
+
+    # Can't revoke someone else's session (404, not deleted).
+    mal_hash = db._hash("sess-mallory")
+    with pytest.raises(HTTPException) as ei:
+        asyncio.run(main.api_me_revoke_session(mal_hash, req))
+    assert ei.value.status_code == 404
+    assert db.user_from_session("sess-mallory")
+
+
 # -- Session longevity (M5.1) ------------------------------------------
 
 def _backdate_session(token, hours):
@@ -208,8 +312,9 @@ def test_request_link_creates_row_and_sends(tmp_path, monkeypatch):
     _fresh(tmp_path, monkeypatch)
     sent = {}
 
-    def fake_send(email, url, ttl):
+    def fake_send(email, url, ttl, code=None):
         sent["email"], sent["url"], sent["ttl"] = email, url, ttl
+        sent["code"] = code
         return True
 
     import email_send
@@ -223,6 +328,7 @@ def test_request_link_creates_row_and_sends(tmp_path, monkeypatch):
     assert sent["email"] == "alice@example.com"
     assert sent["url"].startswith("http://localhost:8000/auth/consume?token=")
     assert sent["ttl"] == db.MAGIC_LINK_TTL_MINUTES
+    assert sent["code"].isdigit() and len(sent["code"]) == 6
 
 
 def test_request_link_rate_limit(tmp_path, monkeypatch):
